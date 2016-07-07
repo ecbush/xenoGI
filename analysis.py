@@ -1,6 +1,6 @@
 import sys
 from Group import *
-from htrans import *
+from xtrans import *
 
 ## Load groups
 
@@ -125,34 +125,45 @@ within wsize of the last gene.'''
 
         print("Neighbors for family",family,"in",strainNum2StrD[leaf])
 
-        geneT=familyStrainT[family][leaf]
-        if geneT[0] != 1:
-            print("Right now can't handle cases where more than one gene in a species")
-            return
+        geneT=familyStrainT[family][leaf][1]
+        #if geneT[0] > 1:
+        #    print("Right now can't handle cases where more than one gene in a species")
+        #    return
 
-        gene = geneT[1][0]
+        if geneT == ():
+            print("  There are no family members in this species.")
 
-        neighbGenesL=[]
-        for contig in geneOrderT[leaf]:
-            try:
-                ind=contig.index(gene)
-                neighbGenesL=contig[ind-wsize:ind+wsize]
-                break
-            except ValueError:
-                continue
+        for gene in geneT:
 
-        rowsL=[]
-        for tempGene in neighbGenesL:
-            geneName=geneNum2NameD[tempGene]
-            if tempGene == gene: # if its the one in the family we're querying, mark with *
-                geneName = '*'+geneName
-            else:
-                geneName = ' '+geneName
-            famNum=gene2FamD[tempGene]
-            group=fam2GroupD[famNum]
-            rowsL.append([geneName,str(famNum),str(group)])
+            print("  For",geneNum2NameD[gene])
+            
+            neighbGenesL=[]
+            for contig in geneOrderT[leaf]:
+                try:
+                    ind=contig.index(gene)
+                    neighbGenesL=contig[ind-wsize:ind+wsize]
+                    break
+                except ValueError:
+                    continue
 
-        printTable(rowsL,2)
+            rowsL=[]
+            for tempGene in neighbGenesL:
+                try:
+                    geneName=geneNum2NameD[tempGene]
+                    if tempGene == gene: # if its the one in the family we're querying, mark with *
+                        geneName = '*'+geneName
+                    else:
+                        geneName = ' '+geneName
+                    famNum=gene2FamD[tempGene]
+                    group=fam2GroupD[famNum]
+                    rowsL.append([geneName,str(famNum),str(group)])
+                except KeyError:
+                    # There are genes which are present in the
+                    # ordering files, but not in the sequences
+                    # files. This can lead to key errors here.
+                    rowsL.append([' geneNum '+str(tempGene),'no family','no group'])
+                    
+            printTable(rowsL,2)
 
 
         
@@ -189,4 +200,4 @@ if __name__ == "__main__":
     # Go.
     #vPrintGroups(groupL[2],subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
     #printFamNeighb(3518,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
-    printFamNeighb(610,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
+    #printFamNeighb(610,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
