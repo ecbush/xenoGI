@@ -1,8 +1,6 @@
-import os
+import sys
 
-strainProtFNL = [line.rstrip() for line in open("blast/databases/simpProtFiles.txt",'r')]
-
-outfile = open("code/blastAll.sh", 'w')
+strainProtFNL = [line.rstrip() for line in open(sys.argv[1],'r')]
 
 for query in strainProtFNL:
     for db in strainProtFNL:
@@ -17,10 +15,14 @@ for query in strainProtFNL:
             file_err = "blast/out/" + qstem + '-' + dbstem + ".err"
 
 
-            outfile.write("qsub -cwd -V -e " + file_err +\
-                          " -o " + file_out +\
-                          " -b y /usr/bin/blastall -p blastp -e 0.01 -m 8" +\
-                          " -d " + db + " -i " + query + '\n')
+            print('qsub -cwd -V -e ' + file_err +\
+                          ' -o ' + file_out +\
+                          ' -b y /usr/bin/blastall -p blastp -M BLOSUM62 -G 11 -E 1 -e 0.01 -v 10000 -b 10000 -F \\"m S\\" -m 8 -z 300000000' +\
+                          ' -d ' + db + ' -i ' + query)
 
 
-outfile.close()
+# got these blast parms from Duret et colleagues. http://bioinformatics.oxfordjournals.org/content/28/8/1078.full
+# -M BLOSUM62 -G 11 -E 1 -e 1e-04 -v 10000 -b 10000 -F "m S" -m 8 -z 300000000
+# I've just changed the threshold, to make it more permissive.
+
+# OLD parms I used                          " -b y /usr/bin/blastall -p blastp -e 0.01 -m 8" +\

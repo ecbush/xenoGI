@@ -29,22 +29,12 @@ stop in headers.'''
             
 if __name__ == "__main__":
 
-    aaL = fasta.load("seq/ncbi/Escherichia_coli_CFT073.faa")
-    nucL = fasta.load("seq/ncbi/Escherichia_coli_CFT073.ffn")
-    writeSimplifiedAA(aaL,nucL,"seq/ncbi/Escherichia_coli_CFT073.simp.faa")
+    aaFileL=[x.rstrip() for x in open(sys.argv[1],'r')]
+    nucFileL=[x.rstrip() for x in open(sys.argv[2],'r')]
 
-    aaL = fasta.load("seq/ncbi/escherichia_coli_O157_H7.faa")
-    nucL = fasta.load("seq/ncbi/escherichia_coli_O157_H7.ffn")
-    writeSimplifiedAA(aaL,nucL,"seq/ncbi/escherichia_coli_O157_H7.simp.faa")
-
-    aaL = fasta.load("seq/ncbi/Klebsiella_pneumoniae_MGH_78578.faa")
-    nucL = fasta.load("seq/ncbi/Klebsiella_pneumoniae_MGH_78578.ffn")
-    writeSimplifiedAA(aaL,nucL,"seq/ncbi/Klebsiella_pneumoniae_MGH_78578.simp.faa")
-
-    aaL = fasta.load("seq/ncbi/Salmonella_Typhimurium_14028S.faa")
-    nucL = fasta.load("seq/ncbi/Salmonella_Typhimurium_14028S.ffn")
-    writeSimplifiedAA(aaL,nucL,"seq/ncbi/Salmonella_Typhimurium_14028S.simp.faa")
-
-    aaL = fasta.load("seq/ncbi/Shigella_flexneri_2a_2457T.faa")
-    nucL = fasta.load("seq/ncbi/Shigella_flexneri_2a_2457T.ffn")
-    writeSimplifiedAA(aaL,nucL,"seq/ncbi/Shigella_flexneri_2a_2457T.simp.faa")
+    for i in range(len(aaFileL)):
+        
+        aaL = fasta.load(aaFileL[i])
+        nucL = fasta.load(nucFileL[i])
+        stem=aaFileL[i].split(".faa")[0]
+        writeSimplifiedAA(aaL,nucL, stem + ".simp.faa" )

@@ -40,7 +40,7 @@ stop in headers.'''
 
 if __name__ == "__main__":
 
-    rawProtFileL=[x.rstrip() for x in open("seq/broad/rawProtFiles.txt",'r')]
+    rawProtFileL=[x.rstrip() for x in open(sys.argv[1],'r')]
 
     #protFN='seq/broad/escherichia_sp._b646_1_proteins.fasta'
 
