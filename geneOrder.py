@@ -2,7 +2,7 @@ import sys
 
 # general idea. take a list of broad summary files and a second list of ncbi. use to load and get gene order.
 
-
+# broad genome summary file:
 #LOCUS   SYMBOL  SYNOYM  LENGTH  START   STOP    STRAND  NAME    CHROMOSOME      GENOME ONTOLOGY ENZYME CODE     KEGG    PATHWAY REACTION        
 
 
@@ -49,8 +49,9 @@ def mkGeneOrderStr(strainName,D):
     return strainName + '\t' + '\t'.join(contigL)
 
 def loadNCBI(fn):
-    '''Given NCBI data in our .simp.faa format, get the gene names and start locations. Should replace this with something better (something that uses .gbff files) in future.'''
-
+    '''Given NCBI data in our .simp.faa format, get the gene names and
+    start locations. Should replace this with something better
+    (something that uses .gbff files) in future.'''
 
     D={}
     D['chr']=[] # always this name for chr here, since we know the ones we're working with for now only have one chr. will need to change in future, when we use more ncbi stuff.
