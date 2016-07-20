@@ -170,14 +170,13 @@ within wsize of the last gene.'''
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    groupFN=sys.argv[2]
 
     params = __import__(paramFN.replace('.py', ''))
 
     tree,strainStr2NumD,strainNum2StrD = readTree(params.treeFN)
     
     # load groups
-    groupL=readGroupOut(groupFN,tree)
+    groupL=readGroupOut(params.groupOutFN,tree)
 
     
     # get familyStrainT etc.

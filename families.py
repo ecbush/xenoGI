@@ -122,8 +122,12 @@ def getCluster(seed,simG):
     return alreadySearchedS
                 
     
-def family(nodeOrderL,subtreeL):
+def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG):
     '''Main function.'''
+
+    geneUsedL = [False for x in geneNum2NameD]
+    
+    familyL=[]
     
     for t,node,lnode,rnode in nodeOrderL:
         if lnode != None:
@@ -131,8 +135,56 @@ def family(nodeOrderL,subtreeL):
             subtree=subtreeL[node]
             leftS,rightS,outgroupS = createLRSets(subtree,geneNum2NameD,geneName2StrainNumD)
             seedL = createSeedL(leftS,rightS,simG)
-    
 
+            for seed in seedL:
+                if seed[0] == -float('inf'):
+                    # we've gotten to the point in the seed list with
+                    # genes having no match on the other branch
+                    break
+                clust=getCluster(seed,simG)
+                #print(node,"len clust",len(clust),seed)
+
+                if any((geneUsedL[gene] for gene in clust)):
+                    continue
+                else:
+                    # none of the genes in this cluster used yet
+                    for gene in clust:
+                        geneUsedL[gene] = True
+                    familyL.append(clust)
+                    #print("cluster added, now have",len(familyL))
+
+    return familyL
+
+def printFamilies(familyL,geneNum2NameD):
+    '''For every gene, print the family number, then the gene name. We
+number families in order in clustL, and then give each gene with no
+cluster its own number.'''
+
+    familyNumL = [-1 for x in geneNum2NameD]
+
+    famNum = 0
+    for fam in familyL:
+        for gene in fam:
+            familyNumL[gene] = famNum
+        famNum+=1
+
+    multiGeneFamNum=famNum
+    print("Number of multigene families",multiGeneFamNum,file=sys.stderr)
+        
+    # get the single gene families numbered
+    for gene in range(len(familyNumL)):
+        if familyNumL[gene] == -1:
+            familyNumL[gene] = famNum
+            famNum+=1
+
+    print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)
+    print("Number of total families",famNum,file=sys.stderr)
+    
+    # print family number and gene name
+    for gene in range(len(familyNumL)):
+        print(familyNumL[gene],geneNum2NameD[gene],sep='\t')
+            
+    
 ## Main
 
 if __name__ == "__main__":
@@ -155,8 +207,8 @@ if __name__ == "__main__":
 
     nodeOrderL=createNodeProcessOrderList(tree)
 
-
-    clusterL=[]
+    '''
+    familyL=[]
     geneUsedL = [False for x in geneName2NumD]
     
     t,node,lnode,rnode = nodeOrderL[0]
@@ -165,3 +217,8 @@ if __name__ == "__main__":
     seedL = createSeedL(leftS,rightS,simG)
     
     c=getCluster(seedL[0],simG)
+    '''
+
+    familyL = families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG)
+
+    printFamilies(familyL,geneNum2NameD)
