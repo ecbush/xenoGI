@@ -13,6 +13,34 @@ sequences and store in a dictionary keyed by protein name.
             seqD[gn]=seq
     return seqD
 
+def score(s1,s2):
+    '''Calculate score between a pair of protein sequences, based on a
+global alignment. We scale the alignment score to be between 0 and 1,
+based on the max and min possible scores for these sequences..'''
+
+    opn = 11
+    ext = 1
+    
+    r_s1s2 = parasail.nw_scan(s1,s2, opn, ext, parasail.blosum62)
+
+    if len(s1) < len(s2):
+        r_self = parasail.nw_scan(s1,s1, opn, ext, parasail.blosum62)
+    else:
+        r_self = parasail.nw_scan(s2,s2, opn, ext, parasail.blosum62)
+
+    sc = r_s1s2.score
+    mx = r_self.score # max possible is shorter seq against itself.
+    
+    # lowest possible score, if we have gaps opposite all residues and
+    # two opens. Note parasail does not count gap extend for the
+    # residue where a gap is opened, hence the -2 in the extend
+    # formula below.
+    mn = - ( 2 * opn + ( (len(s1)+len(s2) -2 ) * ext ) )
+
+    scaled = (sc - mn) / (mx - mn)
+    
+    return scaled
+    
 def globAlignBlast(fn,seqD,doneSet):
     '''Given a file name with blast output, go through each hit and run
 needleman wunch on the sequences. Print gene names, score and blast
@@ -33,9 +61,9 @@ percID.
 
         if (g1,g2) in doneSet: continue
 
-        r=parasail.nw_scan(seqD[g1],seqD[g2], 11, 1, parasail.blosum62)
+        scaled = score(seqD[g1],seqD[g2])
 
-        print(g1,g2,r.score,percID,sep='\t')
+        print(g1,g2,format(scaled,".6f"),sep='\t')
 
         doneSet.add((g1,g2))
         doneSet.add((g2,g1))
@@ -43,7 +71,7 @@ percID.
         # note. parasail stats is currently messed up, giving
         # wrong length. We'll just use score here. In future, when
         # that package allows you to get the alignment, we can
-        # work on getting true distances.
+        # work on getting something based on non-gap sites only.
 
         # also, clearly we need to parallelize this in future.
 
@@ -63,3 +91,5 @@ if __name__ == "__main__":
     doneSet = set()
     for fn in blastFnL:
         globAlignBlast(fn,seqD,doneSet)
+
+

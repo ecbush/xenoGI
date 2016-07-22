@@ -2,7 +2,7 @@ import sys
 from tree import *
 from genomes import *
 from Group import *
-
+from Family import *
    
 ## Load functions
 
@@ -10,58 +10,46 @@ from Group import *
 
 def createFamilyStrainT(familyFN,tree,geneName2NumD,geneName2StrainNumD):
     '''Create a tuple representation of families. Input file consists of
-two columns, first is family number, second is gene name (as a
-string). We create a tuple, where the index is family number. The
-value is another tuple (we'll refer to it as a 'family tuple'). This
-family tuple has indexes corresponding to nodes on the tree. At each
-position we have another tuple (gene count, [tuple of genes]).
+one family per line. Family number, mcra node number, and genes in
+family. We create a tuple, where the index is family number. The value
+is an object of class Family.
     '''
 
-    # load into raw lists
     rawFamL=[]
-    geneL=[]
+    maxFamNum=0
     f=open(familyFN,'r')
     while True:
         s=f.readline()
         if s=='':
             break
         L=s.split()
-        rawFamL.append(int(L[0]))
-        geneL.append(L[1])
-        
-        
-    # create initial version as list of lists
-    tempFamiliesL=[]
-    for i in range(max(rawFamL)+1):
-        tempFamiliesL.append([[0,[]] for j in range(nodeCount(tree))])
-        
-    # now populate
-    for i in range(len(rawFamL)):
-        famNum=rawFamL[i]
-        geneID=geneName2NumD[geneL[i]]
-        strainNum=geneName2StrainNumD[geneL[i]]
-        tempFamiliesL[famNum][strainNum][0]+=1
-        tempFamiliesL[famNum][strainNum][1].append(geneID)
-        
-    # convert to tuple of tuples.
-    newFamiliesL=[]
-    for tempFam in tempFamiliesL:
-        newTempFam=[]
-        for famGeneCount,famGeneL in tempFam:
-            newTempFam.append((famGeneCount,tuple(famGeneL)))
-            
-        newFamiliesL.append(tuple(newTempFam))
+        famNum=int(L[0])
+        mrca = int(L[1])
+        genesL = L[2:]
 
-    return tuple(newFamiliesL)
+        rawFamL.append(Family(famNum,mrca,genesL,nodeCount(tree),geneName2NumD,geneName2StrainNumD))
+
+        if famNum > maxFamNum:
+            maxFamNum = famNum
+
+    # ensure each family is put at index corresponding to its fam num
+    famL = [None for i in range(maxFamNum+1)]
+    for fam in rawFamL:
+        famL[fam.id] = fam
+    
+    return tuple(famL)
+
 
 ## Group functions
 
 def createGroupL(familyStrainT,tree):
-    '''Greate groups, one family per group initially store groups separately by mrca in a list of lists.  (where the index of the outer list corresponds to the mrca)'''
+    '''Greate groups, one family per group initially store groups
+separately by mrca in a list of lists.  (where the index of the outer
+list corresponds to the mrca)'''
     groupL=[[] for i in range(nodeCount(tree))]
-    for i in range(1,len(familyStrainT)):
-        # skip 0th because we have no 0 family number
-        gr=Group(i,[i],familyStrainT=familyStrainT,tree=tree)
+
+    for fam in familyStrainT:
+        gr = Group(fam.id, fam.mrca, [fam.id])
         groupL[gr.mrca].append(gr)
 
     # sort each list by group number
@@ -303,6 +291,7 @@ if __name__ == "__main__":
 
     geneName2NumD,geneNum2NameD,geneName2StrainNumD = createGeneDs(params.geneOrderFN,strainStr2NumD)
 
+    
     familyStrainT = createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD)
 
     adjacencyS = createAdjacencySet(params.geneOrderFN,geneName2NumD)
@@ -315,6 +304,7 @@ if __name__ == "__main__":
     subtreeL=createSubtreeL(tree)
     subtreeL.sort()
 
+    
 
     ## cut off the last one, which will always be core families
     #groupL=groupL[:-1]
@@ -325,6 +315,7 @@ if __name__ == "__main__":
     print("Creating score matrix.",file=sys.stderr)
     scoreL=createScoreL(groupL,adjacencyS,subtreeL)
 
+    '''
     
     # iteratively merge groups
     print("Begining merging.",file=sys.stderr)
@@ -343,3 +334,4 @@ if __name__ == "__main__":
 
     print("Groups written.",file=sys.stderr)
 
+    '''

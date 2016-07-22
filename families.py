@@ -7,7 +7,7 @@ from genomes import *
 
 ## Functions
 
-def createSimilarityGraph(distancesFN,geneName2NumD):
+def createSimilarityGraph(scoresFN,geneName2NumD):
     '''Read distances from the distances file and use to create network
 with genes and nodes and edges representing global alignment score
 between proteins with significant similarity.'''
@@ -15,17 +15,16 @@ between proteins with significant similarity.'''
     G=networkx.Graph()
     for i in range(len(geneName2NumD)): G.add_node(i)
     
-    f = open(distancesFN,'r')
+    f = open(scoresFN,'r')
 
     while True:
         s = f.readline()
         if s == '':
             break
-        g1,g2,alSc,percSim=s.split('\t')
-        alSc = int(alSc)
-        percSim = float(percSim)
+        g1,g2,sc=s.split('\t')
+        sc = float(sc)
 
-        G.add_edge(geneName2NumD[g1],geneName2NumD[g2],alSc=alSc)
+        G.add_edge(geneName2NumD[g1],geneName2NumD[g2],score=sc)
 
     return G
 
@@ -80,8 +79,8 @@ def closestMatch(gene,rightS,simG):
     bestEdgeScore = -float('inf')
     for edge in simG.edges_iter(gene):
         if edge[1] in rightS:
-            if simG.get_edge_data(*edge)['alSc'] > bestEdgeScore:
-                bestEdgeScore =  simG.get_edge_data(*edge)['alSc']
+            if simG.get_edge_data(*edge)['score'] > bestEdgeScore:
+                bestEdgeScore =  simG.get_edge_data(*edge)['score']
                 bestGene = edge[1]
     return bestEdgeScore, gene, bestGene
     
@@ -115,7 +114,7 @@ def getCluster(seed,simG):
         for gene in notYetSearchedS:
             for edge in simG.edges_iter(gene):
                 newGene=edge[1]
-                if newGene not in alreadySearchedS and newGene not in newGenesS and simG.get_edge_data(*edge)['alSc'] > alThresh:
+                if newGene not in alreadySearchedS and newGene not in newGenesS and simG.get_edge_data(*edge)['score'] > alThresh:
                     newGenesS.add(newGene)
             alreadySearchedS.add(gene)
         notYetSearchedS = newGenesS
@@ -123,7 +122,8 @@ def getCluster(seed,simG):
                 
     
 def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG):
-    '''Main function.'''
+    '''Given a graph of genes and their similarity scores (simG) find
+families using the PhiGs algorithm..'''
 
     geneUsedL = [False for x in geneNum2NameD]
     
@@ -150,40 +150,40 @@ def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG):
                     # none of the genes in this cluster used yet
                     for gene in clust:
                         geneUsedL[gene] = True
-                    familyL.append(clust)
+                    familyL.append((node,clust))
+
                     #print("cluster added, now have",len(familyL))
 
     return familyL
 
+
 def printFamilies(familyL,geneNum2NameD):
-    '''For every gene, print the family number, then the gene name. We
-number families in order in clustL, and then give each gene with no
-cluster its own number.'''
-
-    familyNumL = [-1 for x in geneNum2NameD]
-
+    '''Print all gene families, one family per line. We number families in
+order in familyL, and then give each gene with no cluster its own
+number.
+    '''
+    genesInMultiGeneFamsS = set()
+    
     famNum = 0
-    for fam in familyL:
-        for gene in fam:
-            familyNumL[gene] = famNum
+    for node,fam in familyL:
+        genesInMultiGeneFamsS.update(fam) # add all genes in fam
+        genesStr = "\t".join((geneNum2NameD[gene] for gene in fam))
+        print(famNum,node,genesStr,sep='\t')
         famNum+=1
 
     multiGeneFamNum=famNum
     print("Number of multigene families",multiGeneFamNum,file=sys.stderr)
-        
-    # get the single gene families numbered
-    for gene in range(len(familyNumL)):
-        if familyNumL[gene] == -1:
-            familyNumL[gene] = famNum
+
+    
+    for gene in geneNum2NameD: 
+        if not gene in genesInMultiGeneFamsS:
+            node = geneName2StrainNumD[geneNum2NameD[gene]]
+            print(famNum,node,geneNum2NameD[gene],sep='\t')
             famNum+=1
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)
     print("Number of total families",famNum,file=sys.stderr)
-    
-    # print family number and gene name
-    for gene in range(len(familyNumL)):
-        print(familyNumL[gene],geneNum2NameD[gene],sep='\t')
-            
+
     
 ## Main
 
@@ -202,22 +202,10 @@ if __name__ == "__main__":
     subtreeL.sort()
 
     
-    simG = createSimilarityGraph(params.distancesFN,geneName2NumD)
+    simG = createSimilarityGraph(params.scoresFN,geneName2NumD)
 
 
     nodeOrderL=createNodeProcessOrderList(tree)
-
-    '''
-    familyL=[]
-    geneUsedL = [False for x in geneName2NumD]
-    
-    t,node,lnode,rnode = nodeOrderL[0]
-    subtree=subtreeL[node]
-    leftS,rightS,outgroupS = createLRSets(subtree,geneNum2NameD,geneName2StrainNumD)
-    seedL = createSeedL(leftS,rightS,simG)
-    
-    c=getCluster(seedL[0],simG)
-    '''
 
     familyL = families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG)
 
