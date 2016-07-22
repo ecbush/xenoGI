@@ -61,25 +61,25 @@ list corresponds to the mrca)'''
             
 ## Distance calculations
 
-def isAdjacent(famT1,famT2,adjacencyS,node):
+def isAdjacent(fam1,fam2,adjacencyS,node):
     '''Return True if any of the genes at node from fam1 are adjacent to
 genes at that node for fam2.'''
-    for gn1 in famT1[node][1]:
-        for gn2 in famT2[node][1]:
+    for gn1 in fam1.famGeneT[node][1]:
+        for gn2 in fam2.famGeneT[node][1]:
             if gn1<gn2: key = (gn1,gn2)
             else: key = (gn2,gn1)
             if key in adjacencyS:
                 return True
     return False
   
-def rcost(famT1,famT2,adjacencyS,subtree,rootAdjacent):
+def rcost(fam1,fam2,adjacencyS,subtree,rootAdjacent):
     '''Parsimony based calculation of cost of evolutionary rearrangement
 given fam1 and fam2 begin at root of subtree. Assume either adjacent
 or not at root (specificed by rootAdjacent). Charge 1 for each
 rearrangment.
     '''
     if subtree[1]==():
-        isAdj=isAdjacent(famT1,famT2,adjacencyS,subtree[0])
+        isAdj=isAdjacent(fam1,fam2,adjacencyS,subtree[0])
         if (isAdj and rootAdjacent) or (not isAdj and not rootAdjacent):
             # state given by rootAdjacent matches adjacency info in our data
             return 0
@@ -87,21 +87,21 @@ rearrangment.
             return 1
     else:
         # left subtree
-        left = rcost(famT1,famT2,adjacencyS,subtree[1],rootAdjacent)
-        chLeft = 1 + rcost(famT1,famT2,adjacencyS,subtree[1],not rootAdjacent)
+        left = rcost(fam1,fam2,adjacencyS,subtree[1],rootAdjacent)
+        chLeft = 1 + rcost(fam1,fam2,adjacencyS,subtree[1],not rootAdjacent)
 
-        right = rcost(famT1,famT2,adjacencyS,subtree[2],rootAdjacent)
-        chRight = 1 + rcost(famT1,famT2,adjacencyS,subtree[2],not rootAdjacent)
+        right = rcost(fam1,fam2,adjacencyS,subtree[2],rootAdjacent)
+        chRight = 1 + rcost(fam1,fam2,adjacencyS,subtree[2],not rootAdjacent)
 
         return min(left,chLeft) + min(right,chRight)
 
-def costDiff(famT1,famT2,adjacencyS,subtree):
+def costDiff(fam1,fam2,adjacencyS,subtree):
     '''Given two families calculate the difference in rcost depending on
-whether we assume the root is not adjacent or adjacent. famT1 and
-famT2 are family tuples specifying the genes present in a family.
+whether we assume the root is not adjacent or adjacent. fam1 and
+fam2 are family tuples specifying the genes present in a family.
     '''
-    t=rcost(famT1,famT2,adjacencyS,subtree,True)
-    f=rcost(famT1,famT2,adjacencyS,subtree,False)
+    t=rcost(fam1,fam2,adjacencyS,subtree,True)
+    f=rcost(fam1,fam2,adjacencyS,subtree,False)
     return(f-t)
 
 
@@ -315,8 +315,6 @@ if __name__ == "__main__":
     print("Creating score matrix.",file=sys.stderr)
     scoreL=createScoreL(groupL,adjacencyS,subtreeL)
 
-    '''
-    
     # iteratively merge groups
     print("Begining merging.",file=sys.stderr)
     
@@ -333,5 +331,3 @@ if __name__ == "__main__":
     writeGroups(groupL,params.groupOutFN)
 
     print("Groups written.",file=sys.stderr)
-
-    '''
