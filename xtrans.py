@@ -4,8 +4,6 @@ from genomes import *
 from Group import *
 from Family import *
    
-## Load functions
-
 # Families
 
 def createFamilyStrainT(familyFN,tree,geneName2NumD,geneName2StrainNumD):
