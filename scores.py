@@ -18,15 +18,20 @@ def score(s1,s2):
 global alignment. We scale the alignment score to be between 0 and 1,
 based on the max and min possible scores for these sequences..'''
 
-    opn = 11
+    opn = 12
     ext = 1
+    matr = parasail.blosum62
+    # note, since parasail doesn't charge extend on the first base its
+    # like emboss, and not like ncbi blast. NCBI blast uses existance 11,
+    # extend 1 for blosum 62, thus we should use open 12 ext 1 here.
+
     
-    r_s1s2 = parasail.nw_scan(s1,s2, opn, ext, parasail.blosum62)
+    r_s1s2 = parasail.nw_scan(s1,s2, opn, ext, matr)
 
     if len(s1) < len(s2):
-        r_self = parasail.nw_scan(s1,s1, opn, ext, parasail.blosum62)
+        r_self = parasail.nw_scan(s1,s1, opn, ext, matr)
     else:
-        r_self = parasail.nw_scan(s2,s2, opn, ext, parasail.blosum62)
+        r_self = parasail.nw_scan(s2,s2, opn, ext, matr)
 
     sc = r_s1s2.score
     mx = r_self.score # max possible is shorter seq against itself.
