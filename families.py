@@ -3,30 +3,9 @@
 import sys, networkx
 from tree import *
 from genomes import *
-
+from synScores import *
 
 ## Functions
-
-def createSimilarityGraph(scoresFN,geneName2NumD):
-    '''Read distances from the distances file and use to create network
-with genes and nodes and edges representing global alignment score
-between proteins with significant similarity.'''
-
-    G=networkx.Graph()
-    for i in range(len(geneName2NumD)): G.add_node(i)
-    
-    f = open(scoresFN,'r')
-
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        g1,g2,sc=s.split('\t')
-        sc = float(sc)
-
-        G.add_edge(geneName2NumD[g1],geneName2NumD[g2],score=sc)
-
-    return G
 
 def nodeDetails(tree,timeOnBrLeadingHere):
     '''Given a tree, return list of (time,node #, left node #, right node
@@ -202,7 +181,7 @@ if __name__ == "__main__":
     subtreeL.sort()
 
     
-    simG = createSimilarityGraph(params.scoresFN,geneName2NumD)
+    simG = createSimilarityGraph(params.synScoresFN,geneName2NumD)
 
 
     nodeOrderL=createNodeProcessOrderList(tree)

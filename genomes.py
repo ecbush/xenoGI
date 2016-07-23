@@ -1,3 +1,5 @@
+from tree import *
+
 # Functions for loading genes and gene order
 
 def createGeneDs(geneOrderFN,strainStr2NumD):
@@ -53,4 +55,25 @@ putting them in a set.'''
                 else:
                     adjacencyS.add((gnB,gnA))
     return adjacencyS
+
+def createGeneOrderTs(geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD):
+    '''Go though gene order file and get orderings into a set of tuples.'''
+    f = open(geneOrderFN,'r')
+    geneOrderL=[None for x in range(nodeCount(subtreeL[-1]))] # an index for each node
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        s=s.rstrip()
+        # note, our gene order format has contigs separated by \t, and
+        # genes within them separated by a space character.
+        L=s.split('\t')
+        strain = L[0]
+        contigL=[]
+        for contig in L[1:]:
+            geneNumT=tuple((geneName2NumD[g] for g in contig.split(' ')))
+            contigL.append(geneNumT)
+            
+        geneOrderL[strainStr2NumD[strain]]=tuple(contigL)
+    return tuple(geneOrderL)
 

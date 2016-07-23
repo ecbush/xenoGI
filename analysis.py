@@ -1,5 +1,6 @@
 import sys
 from Group import *
+from genomes import *
 from xtrans import *
 
 ## Load groups
@@ -72,27 +73,6 @@ def vPrintGroups(groupL,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD):
     for group in groupL:
         vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
         print('---')
-
-def createGeneOrderTs(geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD):
-    '''Go though gene order file and get orderings into a set of tuples.'''
-    f = open(geneOrderFN,'r')
-    geneOrderL=[None for x in range(nodeCount(subtreeL[-1]))] # an index for each node
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        s=s.rstrip()
-        # note, our gene order format has contigs separated by \t, and
-        # genes within them separated by a space character.
-        L=s.split('\t')
-        strain = L[0]
-        gnNmContigL=[]
-        for contig in L[1:]:
-            geneNumT=tuple((geneName2NumD[g] for g in contig.split(' ')))
-            gnNmContigL.append(geneNumT)
-            
-        geneOrderL[strainStr2NumD[strain]]=tuple(gnNmContigL)
-    return tuple(geneOrderL)
 
 def createGene2FamD(familyStrainT):
     '''Given the family information in familyStrainT, create a dictionary
