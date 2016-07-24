@@ -1,11 +1,29 @@
-# A version of the PhiGs algorithm  http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
+# Functions for a modiefied version of the PhiGs algorithm  http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
+# (We've added the use of synteny)
 # Eliot Bush 7/2016
-import sys, networkx
-from tree import *
-from genomes import *
-from synScores import *
+import sys,networkx
+import trees
 
-## Functions
+def createSimilarityGraph(scoresFN,geneName2NumD):
+    '''Read distances from the distances file and use to create network
+with genes and nodes and edges representing global alignment score
+between proteins with significant similarity.'''
+
+    G=networkx.Graph()
+    for i in range(len(geneName2NumD)): G.add_node(i)
+    
+    f = open(scoresFN,'r')
+
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        g1,g2,sc=s.split('\t')
+        sc = float(sc)
+
+        G.add_edge(geneName2NumD[g1],geneName2NumD[g2],score=sc)
+
+    return G
 
 def nodeDetails(tree,timeOnBrLeadingHere):
     '''Given a tree, return list of (time,node #, left node #, right node
@@ -34,8 +52,8 @@ def createLRSets(tree,geneNum2NameD,geneName2StrainNumD):
 right, or outgroup. Genes in the left set are found in a species on
 the left branch of tree.'''
 
-    leftSpeciesS=set(leafList(tree[1]))
-    rightSpeciesS=set(leafList(tree[2]))
+    leftSpeciesS=set(trees.leafList(tree[1]))
+    rightSpeciesS=set(trees.leafList(tree[2]))
     
     leftS=set()
     rightS=set()
@@ -136,7 +154,7 @@ families using the PhiGs algorithm..'''
     return familyL
 
 
-def printFamilies(familyL,geneNum2NameD):
+def printFamilies(familyL,geneNum2NameD,geneName2StrainNumD):
     '''Print all gene families, one family per line. We number families in
 order in familyL, and then give each gene with no cluster its own
 number.
@@ -164,28 +182,3 @@ number.
     print("Number of total families",famNum,file=sys.stderr)
 
     
-## Main
-
-if __name__ == "__main__":
-
-    paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
-
-    # load data
-    tree,strainStr2NumD,strainNum2StrD = readTree(params.treeFN)
-   
-    geneName2NumD,geneNum2NameD,geneName2StrainNumD = createGeneDs(params.geneOrderFN,strainStr2NumD)
-
-    # subtree list
-    subtreeL=createSubtreeL(tree)
-    subtreeL.sort()
-
-    
-    simG = createSimilarityGraph(params.synScoresFN,geneName2NumD)
-
-
-    nodeOrderL=createNodeProcessOrderList(tree)
-
-    familyL = families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG)
-
-    printFamilies(familyL,geneNum2NameD)

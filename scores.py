@@ -1,19 +1,6 @@
 import sys,fasta,parasail
 
-## Funcs
-
-def loadProt(protFnL):
-    '''Given a list of file names of simp.faa type fasta files, load the
-sequences and store in a dictionary keyed by protein name.
-    '''
-    seqD={}
-    for fn in protFnL:
-        for header,seq in fasta.load(fn):
-            gn = header.split()[0][1:]
-            seqD[gn]=seq
-    return seqD
-
-def score(s1,s2):
+def simScore(s1,s2):
     '''Calculate score between a pair of protein sequences, based on a
 global alignment. We scale the alignment score to be between 0 and 1,
 based on the max and min possible scores for these sequences..'''
@@ -48,7 +35,7 @@ based on the max and min possible scores for these sequences..'''
     
 def globAlignBlast(fn,seqD,doneSet):
     '''Given a file name with blast output, go through each hit and run
-needleman wunch on the sequences. Print gene names, score and blast
+needleman wunch on the sequences. Print gene names, simScore and blast
 percID.
     '''
     f=open(fn,'r')
@@ -66,7 +53,7 @@ percID.
 
         if (g1,g2) in doneSet: continue
 
-        scaled = score(seqD[g1],seqD[g2])
+        scaled = simScore(seqD[g1],seqD[g2])
 
         print(g1,g2,format(scaled,".6f"),sep='\t')
 
@@ -82,19 +69,3 @@ percID.
 
     f.close()
     
-
-    
-## Main
-
-if __name__ == "__main__":
-
-    blastFnL=[fn.rstrip() for fn in open(sys.argv[1])]
-    protFnL=[fn.rstrip() for fn in open(sys.argv[2])]    
-
-    seqD=loadProt(protFnL)
-
-    doneSet = set()
-    for fn in blastFnL:
-        globAlignBlast(fn,seqD,doneSet)
-
-

@@ -1,6 +1,16 @@
-from tree import *
-
 # Functions for loading genes and gene order
+import trees,fasta
+
+def loadProt(protFnL):
+    '''Given a list of file names of simp.faa type fasta files, load the
+sequences and store in a dictionary keyed by protein name.
+    '''
+    seqD={}
+    for fn in protFnL:
+        for header,seq in fasta.load(fn):
+            gn = header.split()[0][1:]
+            seqD[gn]=seq
+    return seqD
 
 def createGeneDs(geneOrderFN,strainStr2NumD):
     '''Load the gene order file, and give each gene a unique
