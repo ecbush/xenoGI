@@ -97,7 +97,76 @@ we get this closest match, put in a list, sort, and return.'''
     seedL.sort(reverse=True)
     return seedL
 
-def getCluster(seed,simG):
+def createAdjacencyGraph(simG,geneOrderT):
+    '''Create a graph with genes as nodes, and edges representing adjacent genes.'''
+
+    # get same nodes (genes) as sim graph
+    adjG=networkx.Graph()
+    for node in simG.nodes_iter(): adjG.add_node(node)
+
+    # add adjacencies as edges
+    for contigT in geneOrderT:
+        if not contigT == None:
+            for geneNumT in contigT:
+                for i in range(len(geneNumT)-1):
+                    adjG.add_edge(geneNumT[i],geneNumT[i+1])
+
+    return adjG
+
+def pairScore(gn1,gn2,simG):
+    '''Given a pair of genes, see if there is an edge. If so, return
+score, if not, return 0.'''
+    data=simG.get_edge_data(gn1,gn2)
+    if data == None:
+        return 0
+    else:
+        return data['score']
+    
+def synScore(gn1,gn2,simG,adjG):
+    '''Given two genes, calculate a synteny score for them.
+    e.g. if each list has two genes, it will be the max of this
+    o  g1 o       o g1 o
+    |     |  or      X
+    o  g2 o       o g2 o
+    where 
+    the g's are our starting pair, and the o's are adjacent genes.
+    '''
+    gn1AdjL = [y for x,y in adjG.edges_iter(gn1)]
+    gn2AdjL = [y for x,y in adjG.edges_iter(gn2)]
+    if gn1AdjL == [] or gn2AdjL == []:
+        return 0
+    else:
+        sc = 0
+        if len(gn1AdjL) == 1:
+            for iterGn in gn2AdjL:
+                sc += pairScore(gn1AdjL[0],iterGn,simG)
+        elif len(gn2AdjL) == 1:
+            for iterGn in gn1AdjL:
+                sc += pairScore(gn2AdjL[0],iterGn,simG)
+        else:
+            # both gn1AdjL and gn2AdjL have 2
+            #print(gn1AdjL,gn2AdjL,gn1,gn2)
+            case1 = pairScore(gn1AdjL[0],gn2AdjL[0],simG) + pairScore(gn1AdjL[1],gn2AdjL[1],simG)
+            case2 = pairScore(gn1AdjL[0],gn2AdjL[1],simG) + pairScore(gn1AdjL[1],gn2AdjL[0],simG)
+            sc = max(case1,case2)
+    return sc
+
+def createSynScoresGraph(simG,adjG):
+    '''Create a graph with genes as nodes, and edges representing the sum
+of the scores of syntenic genes (two immediately adjacent genes).'''
+
+    # get same nodes (genes) as sim graph
+    synScoresG=networkx.Graph()
+    for node in simG.nodes_iter(): adjG.add_node(node)
+
+    # create and edge for every one in simG. Give it weight of sum of
+    # scores of adjacent genes
+    for gn1,gn2 in simG.edges_iter():
+        sc = synScore(gn1,gn2,simG,adjG)
+        synScoresG.add_edge(gn1,gn2,score=sc)
+    return synScoresG
+
+def getFamily(seed,synThresh,simG,synScoresG):
     '''Depth first search to get a single cluster.'''
 
     alThresh,g1,g2 = seed
@@ -111,16 +180,17 @@ def getCluster(seed,simG):
         for gene in notYetSearchedS:
             for edge in simG.edges_iter(gene):
                 newGene=edge[1]
-                if newGene not in alreadySearchedS and newGene not in newGenesS and simG.get_edge_data(*edge)['score'] > alThresh:
-                    newGenesS.add(newGene)
+                if newGene not in alreadySearchedS and newGene not in newGenesS:
+                    if simG.get_edge_data(*edge)['score'] > alThresh or synScoresG.get_edge_data(*edge)['score'] > synThresh:
+                        newGenesS.add(newGene)
             alreadySearchedS.add(gene)
         notYetSearchedS = newGenesS
     return alreadySearchedS
                 
     
-def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG):
+def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,synThresh,simG,synScoresG):
     '''Given a graph of genes and their similarity scores (simG) find
-families using the PhiGs algorithm..'''
+families using a PhiGs-like algorithm, with synteny also considered.'''
 
     geneUsedL = [False for x in geneNum2NameD]
     
@@ -138,7 +208,7 @@ families using the PhiGs algorithm..'''
                     # we've gotten to the point in the seed list with
                     # genes having no match on the other branch
                     break
-                clust=getCluster(seed,simG)
+                clust=getFamily(seed,synThresh,simG,synScoresG)
                 #print(node,"len clust",len(clust),seed)
 
                 if any((geneUsedL[gene] for gene in clust)):
@@ -182,3 +252,14 @@ number.
     print("Number of total families",famNum,file=sys.stderr)
 
     
+def writeG(G,geneNum2NameD,filename):
+    '''Given a graph with genes as nodes, write all edges (pairs of genes)
+to file in three columns. Gene 1, gene 2 and score.'''
+
+    f=open(filename,'w')
+    
+    for gene1Num,gene2Num in G.edges_iter():
+        sc = G.get_edge_data(gene1Num,gene2Num)['score']
+        print(geneNum2NameD[gene1Num],geneNum2NameD[gene2Num],format(sc,".6f"),sep='\t',file=f)
+
+    f.close()
