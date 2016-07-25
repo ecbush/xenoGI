@@ -69,7 +69,7 @@ putting them in a set.'''
 def createGeneOrderTs(geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD):
     '''Go though gene order file and get orderings into a set of tuples.'''
     f = open(geneOrderFN,'r')
-    geneOrderL=[None for x in range(nodeCount(subtreeL[-1]))] # an index for each node
+    geneOrderL=[None for x in range(trees.nodeCount(subtreeL[-1]))] # an index for each node
     while True:
         s = f.readline()
         if s == '':

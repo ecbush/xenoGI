@@ -1,7 +1,7 @@
 import sys
+import genomes,trees,groups
+from Family import *
 from Group import *
-from genomes import *
-from xtrans import *
 
 ## Load groups
 
@@ -9,7 +9,7 @@ def readGroupOut(fn,tree):
     '''Given a file name for an htrans groups output file, load back
 recreating groupL.'''
 
-    groupL=[[] for i in range(nodeCount(tree))]
+    groupL=[[] for i in range(trees.nodeCount(tree))]
     
     f=open(fn,'r')
     while True:
@@ -51,7 +51,7 @@ def vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD):
     print("Group",group.id)
     
     # get species nodes subtended by this mrca
-    speciesNodesL=leafList(subtreeL[group.mrca])
+    speciesNodesL=trees.leafList(subtreeL[group.mrca])
 
     # put everything in lists.
     printL=[]
@@ -62,7 +62,7 @@ def vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD):
         newRow=[]
         newRow.append(str(fam))
         for node in speciesNodesL:
-            ct,genesL = familyStrainT[fam][node]
+            ct,genesL = familyStrainT[fam].famGeneT[node]
             newRow.append(",".join([geneNum2NameD[gene] for gene in genesL]))
         printL.append(newRow)
     printTable(printL,2)
@@ -79,7 +79,7 @@ def createGene2FamD(familyStrainT):
 gene2FamD which maps from gene number to family number.'''
     gene2FamD={}
     for famNum in range(len(familyStrainT)):
-        for gnCt,geneT in familyStrainT[famNum]:
+        for gnCt,geneT in familyStrainT[famNum].famGeneT:
             for gene in geneT:
                 gene2FamD[gene]=famNum
     return gene2FamD
@@ -99,13 +99,13 @@ def printFamNeighb(family,mrca,wsize,subtreeL,familyStrainT,gene2FamD,fam2GroupD
 the families nearby in each of its species and going either direction,
 within wsize of the last gene.'''
 
-    leavesL=leafList(subtreeL[mrca])
+    leavesL=trees.leafList(subtreeL[mrca])
 
     for leaf in leavesL:
 
         print("Neighbors for family",family,"in",strainNum2StrD[leaf])
 
-        geneT=familyStrainT[family][leaf][1]
+        geneT=familyStrainT[family].famGeneT[leaf][1]
         #if geneT[0] > 1:
         #    print("Right now can't handle cases where more than one gene in a species")
         #    return
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     params = __import__(paramFN.replace('.py', ''))
 
-    tree,strainStr2NumD,strainNum2StrD = readTree(params.treeFN)
+    tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
     
     # load groups
     groupL=readGroupOut(params.groupOutFN,tree)
@@ -162,21 +162,21 @@ if __name__ == "__main__":
     # get familyStrainT etc.
     
 
-    geneName2NumD,geneNum2NameD,geneName2StrainNumD = createGeneDs(params.geneOrderFN,strainStr2NumD)
+    geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
 
-    familyStrainT = createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD)
+    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD)
 
     gene2FamD=createGene2FamD(familyStrainT)
     fam2GroupD=createFam2GroupD(groupL)
 
     # subtree list
-    subtreeL=createSubtreeL(tree)
+    subtreeL=trees.createSubtreeL(tree)
     subtreeL.sort()
 
 
-    geneOrderT=createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
+    geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
 
     # Go.
     #vPrintGroups(groupL[2],subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
-    #printFamNeighb(3518,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
+    #printFamNeighb(5269,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
     #printFamNeighb(610,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)

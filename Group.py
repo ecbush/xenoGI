@@ -37,4 +37,4 @@ def str2Group(groupStr):
     id=int(L[0])
     mrca=int(L[1])
     familyL=[int(x) for x in L[2].split()]
-    return Group(id,familyL,mrca=mrca)
+    return Group(id,mrca,familyL)
