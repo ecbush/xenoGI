@@ -130,6 +130,8 @@ def synScore(gn1,gn2,simG,adjG):
     o  g2 o       o g2 o
     where 
     the g's are our starting pair, and the o's are adjacent genes.
+    We divide by two to get an average per adjacent gene, and thus
+    this score is between 0 and 1.
     '''
     gn1AdjL = [y for x,y in adjG.edges_iter(gn1)]
     gn2AdjL = [y for x,y in adjG.edges_iter(gn2)]
@@ -149,7 +151,7 @@ def synScore(gn1,gn2,simG,adjG):
             case1 = pairScore(gn1AdjL[0],gn2AdjL[0],simG) + pairScore(gn1AdjL[1],gn2AdjL[1],simG)
             case2 = pairScore(gn1AdjL[0],gn2AdjL[1],simG) + pairScore(gn1AdjL[1],gn2AdjL[0],simG)
             sc = max(case1,case2)
-    return sc
+    return sc / 2.0
 
 def createSynScoresGraph(simG,adjG):
     '''Create a graph with genes as nodes, and edges representing the sum
@@ -181,8 +183,16 @@ def getFamily(seed,synThresh,simG,synScoresG):
             for edge in simG.edges_iter(gene):
                 newGene=edge[1]
                 if newGene not in alreadySearchedS and newGene not in newGenesS:
-                    if simG.get_edge_data(*edge)['score'] > alThresh or synScoresG.get_edge_data(*edge)['score'] > synThresh:
+                    sc = simG.get_edge_data(*edge)['score']
+                    if sc > alThresh:
                         newGenesS.add(newGene)
+                    else:
+                        synsc = synScoresG.get_edge_data(*edge)['score']
+                        if synsc > synThresh:
+                            adjsc = sc + (1 - sc) * synsc
+                            if adjsc > alThresh:
+                                newGenesS.add(newGene)
+
             alreadySearchedS.add(gene)
         notYetSearchedS = newGenesS
     return alreadySearchedS
@@ -224,18 +234,19 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
     return familyL
 
 
-def printFamilies(familyL,geneNum2NameD,geneName2StrainNumD):
+def printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,fileName):
     '''Print all gene families, one family per line. We number families in
 order in familyL, and then give each gene with no cluster its own
 number.
     '''
     genesInMultiGeneFamsS = set()
+    f=open(fileName,'w')
     
     famNum = 0
     for node,fam in familyL:
         genesInMultiGeneFamsS.update(fam) # add all genes in fam
         genesStr = "\t".join((geneNum2NameD[gene] for gene in fam))
-        print(famNum,node,genesStr,sep='\t')
+        print(famNum,node,genesStr,sep='\t',file=f)
         famNum+=1
 
     multiGeneFamNum=famNum
@@ -245,18 +256,18 @@ number.
     for gene in geneNum2NameD: 
         if not gene in genesInMultiGeneFamsS:
             node = geneName2StrainNumD[geneNum2NameD[gene]]
-            print(famNum,node,geneNum2NameD[gene],sep='\t')
+            print(famNum,node,geneNum2NameD[gene],sep='\t',file=f)
             famNum+=1
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)
     print("Number of total families",famNum,file=sys.stderr)
-
+    f.close()
     
-def writeG(G,geneNum2NameD,filename):
+def writeG(G,geneNum2NameD,fileName):
     '''Given a graph with genes as nodes, write all edges (pairs of genes)
 to file in three columns. Gene 1, gene 2 and score.'''
 
-    f=open(filename,'w')
+    f=open(fileName,'w')
     
     for gene1Num,gene2Num in G.edges_iter():
         sc = G.get_edge_data(gene1Num,gene2Num)['score']
