@@ -10,6 +10,9 @@ class Group:
     def __repr__(self):
         return "<id:"+str(self.id)+", mrca:"+str(self.mrca)+", familyL:"+str(self.familyL)+">"
 
+    def __len__(self):
+        return len(self.familyL)
+    
     def fileStr(self):
         '''Return a string which can be used for saving a group compactly in a
 file.'''

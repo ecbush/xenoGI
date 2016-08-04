@@ -16,15 +16,16 @@ if __name__ == "__main__":
     subtreeL=trees.createSubtreeL(tree)
     subtreeL.sort()
 
-    simG = families.createSimilarityGraph(params.scoresFN,geneName2NumD)
+    simG = scores.createSimilarityGraph(params.scoresFN,geneName2NumD)
 
-    geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
-    adjG = families.createAdjacencyGraph(simG,geneOrderT)
+    #geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
+
+    #neighborTL = families.createNeighborL(geneNum2NameD,geneOrderT,params.synWSize)
     
-    synScoresG = families.createSynScoresGraph(simG,adjG,)
-
+    synScoresG = scores.createSimilarityGraph(params.synScoresFN,geneName2NumD)
+    
     nodeOrderL=families.createNodeProcessOrderList(tree)
 
-    familyL = families.families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,params.synThresh,simG,synScoresG)
+    familyL = families.families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,params.minSynThresh,params.synAdjustThresh)
 
     families.printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,params.familyFN)

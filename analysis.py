@@ -7,9 +7,9 @@ from Group import *
 
 def readGroupOut(fn,tree):
     '''Given a file name for an htrans groups output file, load back
-recreating groupL.'''
+recreating groupByNodeL.'''
 
-    groupL=[[] for i in range(trees.nodeCount(tree))]
+    groupByNodeL=[[] for i in range(trees.nodeCount(tree))]
     
     f=open(fn,'r')
     while True:
@@ -17,10 +17,10 @@ recreating groupL.'''
         if s == '':
             break
         gr=str2Group(s.rstrip())
-        groupL[gr.mrca].append(gr)
+        groupByNodeL[gr.mrca].append(gr)
     f.close()
 
-    return groupL
+    return groupByNodeL
 
 ## Analysis functions
 
@@ -42,13 +42,42 @@ print nicely so columns line up. Indent is an optional number of blank spaces to
             row[col]=row[col]+' ' * (colMax[col]-len(row[col]))
             
     for row in L:
-        print(" "*indent + " | ".join(row))
+        printStr = " "*indent + " | ".join(row)
+        print(printStr.rstrip())
 
-        
+def printGroupLSummary(group):
+    '''Given a list of groups in group (ie a list from a single node),
+print a simple tabular summary indicating how many families they
+have.
+    '''
+    lenL = []
+    for gr in group:
+        lenL.append(len(gr)) # len of group is num families
+
+    # count how many times each length occurs
+    lnCtD = {}
+    for ln in lenL:
+        if ln in lnCtD:
+            lnCtD[ln] += 1
+        else:
+            lnCtD[ln] = 1
+
+    # print out
+    printL = []
+    row = ['Num families in group','Number of occurrences']
+    printL.append(row)
+    
+    for ln,occurrences in sorted(lnCtD.items()):
+        printL.append([str(ln), str(occurrences)])
+
+    printTable(printL,8)
+            
+    
+    
 def vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD):
     '''Verbose print of a group.'''
 
-    print("Group",group.id)
+    print("  Group",group.id)
     
     # get species nodes subtended by this mrca
     speciesNodesL=trees.leafList(subtreeL[group.mrca])
@@ -65,14 +94,17 @@ def vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD):
             ct,genesL = familyStrainT[fam].famGeneT[node]
             newRow.append(",".join([geneNum2NameD[gene] for gene in genesL]))
         printL.append(newRow)
-    printTable(printL,2)
+    printTable(printL,4)
 
 
 def vPrintGroups(groupL,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD):
     '''Print a list of groups.'''
+    print("Summary of groups")
+    printGroupLSummary(groupL)
+    print("Print outs of each group")
     for group in groupL:
         vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
-        print('---')
+        print('  ---')
 
 def createGene2FamD(familyStrainT):
     '''Given the family information in familyStrainT, create a dictionary
@@ -93,12 +125,29 @@ maps family number to group number.'''
             for famNum in group.familyL:
                 fam2GroupD[famNum]=group
     return fam2GroupD
-        
-def printFamNeighb(family,mrca,wsize,subtreeL,familyStrainT,gene2FamD,fam2GroupD):
+
+def printScoreMatrix(family,subtreeL,familyStrainT,G):
+    '''--p'''
+    mrca = familyStrainT[family].mrca
+    leavesL=trees.leafList(subtreeL[mrca])
+
+    genesL=[]
+    for leaf in leavesL:
+
+        geneT=familyStrainT[family].famGeneT[leaf][1]
+        genesL.extend(geneT)
+    return genesL
+
+
+    
+def printFamNeighb(family,wsize,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD):
     '''Family Neighborhood. Given a family and an mrca for it, print out
 the families nearby in each of its species and going either direction,
-within wsize of the last gene.'''
+within wsize of the last gene. If a dict of gene descriptions is
+given, then include these in printout.
+    '''
 
+    mrca = familyStrainT[family].mrca
     leavesL=trees.leafList(subtreeL[mrca])
 
     for leaf in leavesL:
@@ -106,10 +155,6 @@ within wsize of the last gene.'''
         print("Neighbors for family",family,"in",strainNum2StrD[leaf])
 
         geneT=familyStrainT[family].famGeneT[leaf][1]
-        #if geneT[0] > 1:
-        #    print("Right now can't handle cases where more than one gene in a species")
-        #    return
-
         if geneT == ():
             print("  There are no family members in this species.")
 
@@ -128,20 +173,27 @@ within wsize of the last gene.'''
 
             rowsL=[]
             for tempGene in neighbGenesL:
-                try:
+
+                if tempGene not in geneNum2NameD:
+                    # There are genes which are present in the
+                    # ordering files, but not in the sequence
+                    # files. This can lead to key errors here.
+                    infoL = [' geneNum '+str(tempGene),'no family','no group','no mrca','no descrip']
+                else:
                     geneName=geneNum2NameD[tempGene]
-                    if tempGene == gene: # if its the one in the family we're querying, mark with *
+                    famNum=gene2FamD[tempGene]
+                    group=fam2GroupD[famNum]
+                    descrip = geneDescriptionsD[geneName] if geneName in geneDescriptionsD else ''
+
+                    # if its the one in the family we're querying, mark with *
+                    if tempGene == gene:
                         geneName = '*'+geneName
                     else:
                         geneName = ' '+geneName
-                    famNum=gene2FamD[tempGene]
-                    group=fam2GroupD[famNum]
-                    rowsL.append([geneName,str(famNum),str(group)])
-                except KeyError:
-                    # There are genes which are present in the
-                    # ordering files, but not in the sequences
-                    # files. This can lead to key errors here.
-                    rowsL.append([' geneNum '+str(tempGene),'no family','no group'])
+                    infoL = [geneName,"fam:"+str(famNum),"gr:"+str(group.id),"mrca:"+str(group.mrca),descrip]
+
+                rowsL.append(infoL)
+
                     
             printTable(rowsL,2)
 
@@ -156,18 +208,19 @@ if __name__ == "__main__":
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
     
     # load groups
-    groupL=readGroupOut(params.groupOutFN,tree)
+    groupByNodeL=readGroupOut(params.groupOutFN,tree)
 
     
     # get familyStrainT etc.
     
 
     geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
+    geneDescriptionsD = genomes.createGeneDescriptionsD(params.geneDescriptionsFN)
 
     familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD)
 
     gene2FamD=createGene2FamD(familyStrainT)
-    fam2GroupD=createFam2GroupD(groupL)
+    fam2GroupD=createFam2GroupD(groupByNodeL)
 
     # subtree list
     subtreeL=trees.createSubtreeL(tree)
@@ -177,6 +230,6 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
 
     # Go.
-    #vPrintGroups(groupL[2],subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
-    #printFamNeighb(5269,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
-    #printFamNeighb(610,2,5,subtreeL,familyStrainT,gene2FamD,fam2GroupD)
+    #vPrintGroups(groupByNodeL[2],subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
+    #printFamNeighb(2269,5,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD = geneDescriptionsD)
+

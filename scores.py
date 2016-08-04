@@ -1,4 +1,9 @@
-import sys,fasta,parasail
+import parasail,networkx
+from multiprocessing import Pool
+
+## raw similarity scores
+
+# (note, 8/4/16. still need to paralellize the basic score funcs)
 
 def simScore(s1,s2):
     '''Calculate score between a pair of protein sequences, based on a
@@ -68,4 +73,135 @@ percID.
         # also, clearly we need to parallelize this in future.
 
     f.close()
+
+def createSimilarityGraph(scoresFN,geneName2NumD):
+    '''Read scores from the scores file and use to create network
+with genes and nodes and edges representing global alignment score
+between proteins with significant similarity.'''
+
+    G=networkx.Graph()
+    for i in range(len(geneName2NumD)): G.add_node(i)
     
+    f = open(scoresFN,'r')
+
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        g1,g2,sc=s.split('\t')
+        sc = float(sc)
+
+        G.add_edge(geneName2NumD[g1],geneName2NumD[g2],score=sc)
+
+    return G
+
+
+## synteny scores
+
+def createNeighborL(geneNum2NameD,geneOrderT,synWSize):
+    '''Return a list which specifies the neighbors of each gene. Index of
+list corresponds to gene number, and the value located at that index
+is a tuple of all genes within a synWSize window. e.g. synWSize 5 means we
+go 5 genes in either direction.'''
+
+    neighborTL = [None for x in geneNum2NameD]
+
+    for contigT in geneOrderT:
+        if not contigT == None:
+            for geneNumT in contigT:
+                for i in range(len(geneNumT)):
+                    end = i + synWSize
+                    st = i-synWSize if i-synWSize>0 else 0 # st can't be less than 0
+                    L = list(geneNumT[st:end])
+                    L.remove(geneNumT[i])
+                    neighborTL[geneNumT[i]] = tuple(L)
+
+    return neighborTL
+
+def pairScore(gn1,gn2,simG):
+    '''Given a pair of genes, see if there is an edge. If so, return
+score, if not, return 0.'''
+    data=simG.get_edge_data(gn1,gn2)
+    if data == None:
+        return 0
+    else:
+        return data['score']
+
+
+def topScore(L1,L2,simG):
+    '''Find the best score between genes in L1 and L2. Return the index of
+each and the score.'''
+    besti1 = 0
+    besti2 = 0
+    bestSc = 0
+    for i1,gn1 in enumerate(L1):
+        for i2,gn2 in enumerate(L2):
+            sc = pairScore(gn1,gn2,simG)
+            if sc > bestSc:
+                bestSc = sc
+                besti1 = i1
+                besti2 = i2
+    return besti1,besti2,bestSc
+
+def synScore(argsT):
+    '''Given two genes, calculate a synteny score for them. We are given
+    the genes, neighborTL, which contains lists of neighbors for each
+    gene. For the two sets of neighbors, we find the numSynToTake top
+    pairs, and return their average of their scores. This score is
+    between 0 and 1. The approach is greedy. We find the pair with the
+    best score, add it, then remove those genes and iterate.
+    '''
+    gn1,gn2,simG,neighborTL,numSynToTake = argsT
+    
+    L1 = list(neighborTL[gn1])
+    L2 = list(neighborTL[gn2])
+
+    scSum = 0
+    counter = 0
+    while counter < numSynToTake and len(L1) > 0 and len(L2) > 0:
+        ind1,ind2,sc = topScore(L1,L2,simG)
+        scSum += sc
+        del L1[ind1]
+        del L2[ind2]
+        counter += 1
+
+    return gn1, gn2, scSum / numSynToTake
+
+
+def createSynScoresGraph(simG,neighborTL,numSynToTake):
+    '''Create a graph with genes as nodes, and edges representing the
+synteny score between two genes. We only bother making synteny scores
+for those genes that have an edge in simG.
+    '''
+
+    p=Pool(50) # num threads
+    
+    argumentL = []
+    # create and edge for every one in simG. Give it weight of sum of
+    # scores of adjacent genes
+    for gn1,gn2 in simG.edges_iter():
+        argumentL.append((gn1,gn2,simG,neighborTL,numSynToTake))
+
+    synScoresL = p.map(synScore, argumentL)
+
+    # make synteny graph
+    # get same nodes (genes) as sim graph
+    synScoresG=networkx.Graph()
+    for node in simG.nodes_iter(): synScoresG.add_node(node)
+
+    for gn1,gn2,sc in synScoresL:
+        synScoresG.add_edge(gn1,gn2,score=sc)
+    
+    return synScoresG
+
+def writeG(G,geneNum2NameD,fileName):
+    '''Given a graph with genes as nodes, write all edges (pairs of genes)
+to file in three columns. Gene 1, gene 2 and score.'''
+
+    f=open(fileName,'w')
+    
+    for gene1Num,gene2Num in G.edges_iter():
+        sc = G.get_edge_data(gene1Num,gene2Num)['score']
+        print(geneNum2NameD[gene1Num],geneNum2NameD[gene2Num],format(sc,".6f"),sep='\t',file=f)
+
+    f.close()

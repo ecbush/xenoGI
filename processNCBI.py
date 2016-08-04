@@ -10,6 +10,10 @@ def getProtName(aaHd):
 identifier.'''
     return aaHd.split("|")[3].split(".")[0]
 
+def getProtDescription(aaHd):
+    '''Takes a header string from aa fasta file, extracts the gene description.'''
+    return aaHd.split('[')[0].split('|')[-1]
+    
 def getStartEnd(nucHd):
     '''Take header string from nuc fasta file, extracts start and end coords. Assumes there is only one chromosome.'''
     return nucHd.split(":")[1].split()[0]
@@ -18,7 +22,7 @@ def writeSimplifiedAA(aaL,nucL,outFN):
     '''Write out a multi fasta file with the protein name and start and
 stop in headers.'''
     f=open(outFN,"w")
-    for i in xrange(len(aaL)):
+    for i in range(len(aaL)):
         protNm=getProtName(aaL[i][0])
         aasq=aaL[i][1]
         stEnd=getStartEnd(nucL[i][0])
@@ -32,9 +36,18 @@ if __name__ == "__main__":
     aaFileL=[x.rstrip() for x in open(sys.argv[1],'r')]
     nucFileL=[x.rstrip() for x in open(sys.argv[2],'r')]
 
+    descripF = open(sys.argv[3],'a') 
+    
     for i in range(len(aaFileL)):
         
         aaL = fasta.load(aaFileL[i])
         nucL = fasta.load(nucFileL[i])
         stem=aaFileL[i].split(".faa")[0]
         writeSimplifiedAA(aaL,nucL, stem + ".simp.faa" )
+
+        for aaHd,aaSq in aaL:
+            nm = getProtName(aaHd)
+            descrip = getProtDescription(aaHd)
+            print(nm,descrip,sep="\t",file=descripF)
+
+    descripF.close()

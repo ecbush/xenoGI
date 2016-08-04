@@ -41,6 +41,27 @@ numbers, and for giving strain number given a gene string.
             
     return geneName2NumD,geneNum2NameD,geneName2StrainNumD
 
+def createGeneDescriptionsD(geneDescriptionsFN):
+    '''From given file name, create dictionary with gene names as keys and
+descriptions as values.'''
+    f = open(geneDescriptionsFN,'r')
+    D = {}
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        s=s.rstrip()
+        L=s.split('\t')
+        geneName = L[0]
+        if len(L)==2:
+            geneDescription = L[1]
+        else:
+            geneDescription = ''
+        D[geneName] = geneDescription
+        
+    f.close()    
+    return D
+    
 def createAdjacencySet(geneOrderFN,geneName2NumD):
     '''Go though gene order file pulling out pairs of adjacent gene and
 putting them in a set.'''
