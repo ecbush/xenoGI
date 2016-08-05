@@ -77,7 +77,7 @@ we get this closest match, put in a list, sort, and return.'''
     seedL.sort(reverse=True)
     return seedL
 
-def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh):
+def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustExtent):
     '''Based on a seed (seedScore, g1, g2) search for a family.'''
     alreadySearchedS = set()
     notYetSearchedS = set([g1,g2])
@@ -99,7 +99,7 @@ def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh):
                     elif synsc > synAdjustThresh:
                         # its above the syn score adjustment
                         # threshold, use it to adjust the score
-                        adjsc = sc + (1 - sc) * synsc
+                        adjsc = sc + synAdjustExtent * (1 - sc) * synsc
                         if adjsc > seedSimScore:
                             newGenesS.add(newGene)
                     else: continue # nothing worked, don't add it.
@@ -109,7 +109,7 @@ def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh):
     return alreadySearchedS
                 
     
-def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,minSynThresh,synAdjustThresh):
+def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustExtent):
     '''Given a graph of genes and their similarity scores (simG) find
 families using a PhiGs-like algorithm, with synteny also considered.'''
 
@@ -134,7 +134,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
                     # doesn't meet min synteny requirement for family formation
                     continue
                 else:
-                    family=getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh)
+                    family=getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustExtent)
                     #print(node,"len family",len(family),seed)
 
                     if any((geneUsedL[gene] for gene in family)):

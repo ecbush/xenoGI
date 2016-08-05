@@ -3,7 +3,7 @@ from multiprocessing import Pool
 
 ## raw similarity scores
 
-# (note, 8/4/16. still need to paralellize the basic score funcs)
+# (note, 8/4/16. still need to parallelize the basic score funcs)
 
 def simScore(s1,s2):
     '''Calculate score between a pair of protein sequences, based on a
@@ -168,13 +168,13 @@ def synScore(argsT):
     return gn1, gn2, scSum / numSynToTake
 
 
-def createSynScoresGraph(simG,neighborTL,numSynToTake):
+def createSynScoresGraph(simG,neighborTL,numSynToTake,numThreads):
     '''Create a graph with genes as nodes, and edges representing the
 synteny score between two genes. We only bother making synteny scores
 for those genes that have an edge in simG.
     '''
 
-    p=Pool(50) # num threads
+    p=Pool(numThreads) # num threads
     
     argumentL = []
     # create and edge for every one in simG. Give it weight of sum of

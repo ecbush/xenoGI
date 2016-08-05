@@ -22,6 +22,6 @@ if __name__ == "__main__":
 
     neighborTL = scores.createNeighborL(geneNum2NameD,geneOrderT,params.synWSize)
     
-    synScoresG = scores.createSynScoresGraph(simG,neighborTL,params.numSynToTake)
+    synScoresG = scores.createSynScoresGraph(simG,neighborTL,params.numSynToTake,params.numThreads)
 
     scores.writeG(synScoresG,geneNum2NameD,params.synScoresFN)

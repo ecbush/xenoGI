@@ -165,8 +165,13 @@ given, then include these in printout.
     '''
 
     mrca = familyStrainT[family].mrca
-    leavesL=trees.leafList(subtreeL[mrca])
+    print("Family mrca",mrca)
 
+    leavesL=trees.leafList(subtreeL[mrca])
+    print("Tree includes")
+    for leaf in leavesL:
+        print("  ",strainNum2StrD[leaf])
+    
     for leaf in leavesL:
 
         print("Neighbors for family",family,"in",strainNum2StrD[leaf])
