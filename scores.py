@@ -118,10 +118,10 @@ go 5 genes in either direction.'''
 
     return neighborTL
 
-def pairScore(gn1,gn2,simG):
+def pairScore(gn1,gn2,G):
     '''Given a pair of genes, see if there is an edge. If so, return
 score, if not, return 0.'''
-    data=simG.get_edge_data(gn1,gn2)
+    data=G.get_edge_data(gn1,gn2)
     if data == None:
         return 0
     else:

@@ -24,4 +24,4 @@ if __name__ == "__main__":
     
     synScoresG = scores.createSynScoresGraph(simG,neighborTL,params.numSynToTake)
 
-    scores.writeG(synScoresG,geneNum2NameD,params.synScoreFN)
+    scores.writeG(synScoresG,geneNum2NameD,params.synScoresFN)

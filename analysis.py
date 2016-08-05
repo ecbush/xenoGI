@@ -1,5 +1,5 @@
 import sys
-import genomes,trees,groups
+import genomes,trees,groups,scores
 from Family import *
 from Group import *
 
@@ -126,7 +126,7 @@ maps family number to group number.'''
                 fam2GroupD[famNum]=group
     return fam2GroupD
 
-def printScoreMatrix(family,subtreeL,familyStrainT,G):
+def printScoreMatrix(family,subtreeL,familyStrainT,geneNum2NameD,G):
     '''--p'''
     mrca = familyStrainT[family].mrca
     leavesL=trees.leafList(subtreeL[mrca])
@@ -136,7 +136,24 @@ def printScoreMatrix(family,subtreeL,familyStrainT,G):
 
         geneT=familyStrainT[family].famGeneT[leaf][1]
         genesL.extend(geneT)
-    return genesL
+
+    rowsL = []
+    geneNamesL = [geneNum2NameD[gn] for gn in genesL]
+    rowsL.append([''] + geneNamesL)
+    
+    for rowi,gn1 in enumerate(genesL):
+        row = [geneNum2NameD[genesL[rowi]]]
+        for gn2 in genesL:
+            data=G.get_edge_data(gn1,gn2)
+            if data == None:
+                row.append('-')
+            else:
+                row.append(format(data['score'],".3f"))
+        rowsL.append(row)
+
+    print("Printing family",family)
+    printTable(rowsL,2)
+
 
 
     
@@ -229,7 +246,12 @@ if __name__ == "__main__":
 
     geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
 
+    # scores
+    simG = scores.createSimilarityGraph(params.scoresFN,geneName2NumD)
+    synScoresG = scores.createSimilarityGraph(params.synScoresFN,geneName2NumD)
+
+    
     # Go.
     #vPrintGroups(groupByNodeL[2],subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
-    #printFamNeighb(2269,5,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD = geneDescriptionsD)
+    #printFamNeighb(2569,5,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD = geneDescriptionsD)
 

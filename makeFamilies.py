@@ -18,10 +18,6 @@ if __name__ == "__main__":
 
     simG = scores.createSimilarityGraph(params.scoresFN,geneName2NumD)
 
-    #geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
-
-    #neighborTL = families.createNeighborL(geneNum2NameD,geneOrderT,params.synWSize)
-    
     synScoresG = scores.createSimilarityGraph(params.synScoresFN,geneName2NumD)
     
     nodeOrderL=families.createNodeProcessOrderList(tree)
