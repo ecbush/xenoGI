@@ -22,6 +22,6 @@ if __name__ == "__main__":
     
     nodeOrderL=families.createNodeProcessOrderList(tree)
 
-    familyL = families.families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,params.minSynThresh,params.synAdjustThresh,params.synAdjustExtent)
+    familyL = families.families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,params.minSynThresh,params.synAdjustThresh,params.synAdjustMaxExtent)
 
     families.printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,params.familyFN)

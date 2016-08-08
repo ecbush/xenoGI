@@ -77,8 +77,15 @@ we get this closest match, put in a list, sort, and return.'''
     seedL.sort(reverse=True)
     return seedL
 
-def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustExtent):
-    '''Based on a seed (seedScore, g1, g2) search for a family.'''
+def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent):
+    '''Based on a seed (seedScore, g1, g2) search for a family. Using the
+PhiGs approach, we collect all genes which are closer to members of
+the family than the two seeds are from each other. But, we also use
+synteny, by using synteny scores to adjust the sim scores between
+genes we are considering adding. In general, if a gene has syntenic
+connectsions to genes already in the family, this makes us more
+confided that this gene belongs in the family.
+    '''
     alreadySearchedS = set()
     notYetSearchedS = set([g1,g2])
 
@@ -98,8 +105,13 @@ def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,sy
                         newGenesS.add(newGene)
                     elif synsc > synAdjustThresh:
                         # its above the syn score adjustment
-                        # threshold, use it to adjust the score
-                        adjsc = sc + synAdjustExtent * (1 - sc) * synsc
+                        # threshold, use it to adjust the
+                        # score. Adjustment magnitude depends linearly
+                        # on synsc, and ranges between 0 and
+                        # synAdjustMaxExtent.
+                        adjustment = synAdjustMaxExtent * ( synsc - synAdjustThresh ) / (1.0 - synAdjustThresh)
+                        adjsc = sc + adjustment
+                        if adjsc > 1: adjsc = 1 # truncate back to 1
                         if adjsc > seedSimScore:
                             newGenesS.add(newGene)
                     else: continue # nothing worked, don't add it.
@@ -109,7 +121,7 @@ def getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,sy
     return alreadySearchedS
                 
     
-def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustExtent):
+def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent):
     '''Given a graph of genes and their similarity scores (simG) find
 families using a PhiGs-like algorithm, with synteny also considered.'''
 
@@ -134,7 +146,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
                     # doesn't meet min synteny requirement for family formation
                     continue
                 else:
-                    family=getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustExtent)
+                    family=getFamily(seedSimScore,g1,g2,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent)
                     #print(node,"len family",len(family),seed)
 
                     if any((geneUsedL[gene] for gene in family)):

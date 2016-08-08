@@ -3,13 +3,80 @@ from multiprocessing import Pool
 
 ## raw similarity scores
 
-# (note, 8/4/16. still need to parallelize the basic score funcs)
+def createSimScores(blastFnL,seqD,numThreads,scoresFN):
+    '''Given a list of blast file names, get global alignment scores for each entry using multiple threads.'''
 
+    ## first get list of all genes to compare. The blast files have
+    ## redundancies (ie , g1,g2 and also g2,g1). Keep comparisons to
+    ## do in set, and don't add if we already have it in either order.
+    pairsToDoS = set()
+    for fn in blastFnL:
+        f = open(fn,'r')
+        while True:
+            s = f.readline()
+            if s=='':
+                break
+            L = s.split('\t')
+            if len(L) != 12: # we only want lines with 12 columns
+                continue
+
+            g1 = L[0]
+            g2 = L[1]
+
+    
+            if (g1,g2) not in pairsToDoS and (g2,g1) not in pairsToDoS:
+                # we haven't got it yet, add it
+                pairsToDoS.add((g1,g2))
+        f.close()
+
+                
+    # make list of sets of arguments to be passed to p.map. There should be numThreads sets.
+    argumentL = [([],seqD) for i in range(numThreads)]
+    for i,pair in enumerate(pairsToDoS):
+        argumentL[i%numThreads][0].append(pair)
+
+        
+    # run
+    p=Pool(numThreads)
+    scoresLL = p.map(simScoreGroup, argumentL)
+
+    # write to file
+    f = open(scoresFN,'w')
+    for scoresL in scoresLL:
+        for g1,g2,scaled in scoresL:
+            print(g1,g2,format(scaled,".6f"),sep='\t',file=f)
+    f.close()
+
+    
+    
+
+def simScoreGroup(argT):
+    '''Given a file name with blast output, go through each hit and run
+needleman wunch on the sequences. Print gene names, simScore and blast
+percID.
+    '''
+
+    pairL,seqD = argT
+    
+    scoresL = []
+    for g1,g2 in pairL:
+        scaled = simScore(seqD[g1],seqD[g2])
+        scoresL.append((g1,g2,scaled))
+
+    return scoresL
+    
+      
+   
 def simScore(s1,s2):
     '''Calculate score between a pair of protein sequences, based on a
 global alignment. We scale the alignment score to be between 0 and 1,
-based on the max and min possible scores for these sequences..'''
+based on the max and min possible scores for these sequences.'''
 
+    # note. Here we've got a score 0-1 based only on the alignment
+    # score, and not requiring the alignment itself. Right now
+    # parasail doens't give the alignment. It might in the future, and
+    # we could revisit this.
+    
     opn = 12
     ext = 1
     matr = parasail.blosum62
@@ -37,42 +104,8 @@ based on the max and min possible scores for these sequences..'''
     scaled = (sc - mn) / (mx - mn)
     
     return scaled
-    
-def globAlignBlast(fn,seqD,doneSet):
-    '''Given a file name with blast output, go through each hit and run
-needleman wunch on the sequences. Print gene names, simScore and blast
-percID.
-    '''
-    f=open(fn,'r')
-    while True:
-        s = f.readline()
-        if s=='':
-            break
-        L = s.split('\t')
-        if len(L) != 12: # we only want lines with 12 columns
-            continue
 
-        g1 = L[0]
-        g2 = L[1]
-        percID = L[2]
 
-        if (g1,g2) in doneSet: continue
-
-        scaled = simScore(seqD[g1],seqD[g2])
-
-        print(g1,g2,format(scaled,".6f"),sep='\t')
-
-        doneSet.add((g1,g2))
-        doneSet.add((g2,g1))
-
-        # note. parasail stats is currently messed up, giving
-        # wrong length. We'll just use score here. In future, when
-        # that package allows you to get the alignment, we can
-        # work on getting something based on non-gap sites only.
-
-        # also, clearly we need to parallelize this in future.
-
-    f.close()
 
 def createSimilarityGraph(scoresFN,geneName2NumD):
     '''Read scores from the scores file and use to create network

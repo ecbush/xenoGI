@@ -7,10 +7,10 @@ if __name__ == "__main__":
     blastFnL=[fn.rstrip() for fn in open(sys.argv[1])]
     protFnL=[fn.rstrip() for fn in open(sys.argv[2])]    
 
+    paramFN=sys.argv[3]
+    params = __import__(paramFN.replace('.py', ''))
+
+    
     seqD=genomes.loadProt(protFnL)
 
-    doneSet = set()
-    for fn in blastFnL:
-        scores.globAlignBlast(fn,seqD,doneSet)
-
-
+    scores.createSimScores(blastFnL,seqD,params.numThreads,params.scoresFN)
