@@ -19,7 +19,7 @@ if __name__ == "__main__":
     adjacencyS = genomes.createAdjacencySet(params.geneOrderFN,geneName2NumD)
 
     # create group list
-    groupL=groups.createGroupL(familyStrainT,tree)
+    groupByNodeL=groups.createGroupL(familyStrainT,tree)
 
 
     # subtree list
@@ -28,27 +28,27 @@ if __name__ == "__main__":
     
 
     ## cut off the last one, which will always be core families
-    #groupL=groupL[:-1]
+    #groupByNodeL=groupByNodeL[:-1]
 
-    print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupL]))
+    print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupByNodeL]))
     
     # create score matrix
     print("Creating score matrix.",file=sys.stderr)
-    scoreL=groups.createScoreL(groupL,adjacencyS,subtreeL,familyStrainT)
+    scoreL=groups.createScoreL(groupByNodeL,adjacencyS,subtreeL,familyStrainT)
 
     # iteratively merge groups
-    print("Begining merging.",file=sys.stderr)
+    print("Beginning merging.",file=sys.stderr)
     
-    for i in range(len(groupL)-1):
+    for i in range(len(groupByNodeL)-1):
         print("  Merging",i,file=sys.stderr)
-        groups.mergeGroupsAtNode(groupL,scoreL,adjacencyS,subtreeL,i,1,familyStrainT)
+        groups.mergeGroupsAtNode(groupByNodeL,scoreL,adjacencyS,subtreeL,i,params.groupScoreThreshold,familyStrainT)
 
-    print("  Did not merge core groups (last entries in groupL).")
+    print("  Did not merge core groups (last entries in groupByNodeL).")
     print("Merging complete.",file=sys.stderr)
 
-    print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupL]))
+    print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupByNodeL]))
 
     # write groups
-    groups.writeGroups(groupL,params.groupOutFN)
+    groups.writeGroups(groupByNodeL,params.groupOutFN)
 
     print("Groups written.",file=sys.stderr)

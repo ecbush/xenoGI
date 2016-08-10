@@ -41,7 +41,7 @@ is an object of class Family.
 
 def createGroupL(familyStrainT,tree):
     '''Greate groups, one family per group initially store groups
-separately by mrca in a list of lists.  (where the index of the outer
+separately by mrca in a list of lists. (where the index of the outer
 list corresponds to the mrca)'''
     groupL=[[] for i in range(trees.nodeCount(tree))]
 
@@ -87,6 +87,7 @@ rearrangment.
         left = rcost(fam1,fam2,adjacencyS,subtree[1],rootAdjacent)
         chLeft = 1 + rcost(fam1,fam2,adjacencyS,subtree[1],not rootAdjacent)
 
+        # right subtree
         right = rcost(fam1,fam2,adjacencyS,subtree[2],rootAdjacent)
         chRight = 1 + rcost(fam1,fam2,adjacencyS,subtree[2],not rootAdjacent)
 
@@ -161,14 +162,14 @@ in scoreD should always have the lower group id first.'''
     scoreD[key]=(max(tempScoreT),tempScoreT)
 
     
-def createScoreL(groupL,adjacencyS,subtreeL,familyStrainT):
+def createScoreL(groupByNodeL,adjacencyS,subtreeL,familyStrainT):
     '''Create list of scores, organized by mcra node. We only compare
 groups with the same mrca. These scores are in a dictionary, which is
 located at the index of the list corresponding to that mrca node.'''
 
     scoreL=[]
-    for mrcaNode in range(len(groupL)-1): # -1 to skip core genes
-        mrcaG=groupL[mrcaNode]
+    for mrcaNode in range(len(groupByNodeL)-1): # -1 to skip core genes
+        mrcaG=groupByNodeL[mrcaNode]
         scoreD={}
         for i in range(len(mrcaG)-1):
             for j in range(i+1,len(mrcaG)):
@@ -222,13 +223,11 @@ first we find, and None if their isn't one.
     return None,None
 
     
-def mergeGroupsAtNode(groupL,scoreL,adjacencyS,subtreeL,mrcaNode,threshold,familyStrainT):
+def mergeGroupsAtNode(groupByNodeL,scoreL,adjacencyS,subtreeL,mrcaNode,groupScoreThreshold,familyStrainT):
     '''Iteratively merge groups at mrcaNode.'''
 
-    if len(groupL[mrcaNode]) < 2: return # nothing to merge
+    if len(groupByNodeL[mrcaNode]) < 2: return # nothing to merge
     
-    sc=threshold
-
     iteration=0
     while True:
         #print("----iter",iteration)
@@ -236,13 +235,13 @@ def mergeGroupsAtNode(groupL,scoreL,adjacencyS,subtreeL,mrcaNode,threshold,famil
         scoreD=scoreL[mrcaNode]
         sc,groupPairT,scoreT=maxScore(scoreD)
 
-        if sc < threshold:
+        if sc < groupScoreThreshold:
             break
         
         #print(sc,groupPairT,scoreT)
 
-        ind0,g0 = searchGroupsByID(groupL[mrcaNode],groupPairT[0])
-        ind1,g1 = searchGroupsByID(groupL[mrcaNode],groupPairT[1])
+        ind0,g0 = searchGroupsByID(groupByNodeL[mrcaNode],groupPairT[0])
+        ind1,g1 = searchGroupsByID(groupByNodeL[mrcaNode],groupPairT[1])
 
         #print("  group pair 0:",groupPairT[0],ind0,g0)
         #print("  group pair 1:",groupPairT[1],ind1,g1)
@@ -252,14 +251,14 @@ def mergeGroupsAtNode(groupL,scoreL,adjacencyS,subtreeL,mrcaNode,threshold,famil
         #print("merged group",g0)
         
         # delete g1
-        del groupL[mrcaNode][ind1]
+        del groupByNodeL[mrcaNode][ind1]
 
         
         # remove all scores in scoreL that involve g0 or g1
         delScores(scoreD,g0.id,g1.id)
 
         # calculate new scores for g0 against all other groups
-        addScores(scoreD,g0,groupL[mrcaNode],adjacencyS,subtreeL[mrcaNode],familyStrainT)
+        addScores(scoreD,g0,groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],familyStrainT)
 
         iteration+=1
 
@@ -267,12 +266,12 @@ def mergeGroupsAtNode(groupL,scoreL,adjacencyS,subtreeL,mrcaNode,threshold,famil
 
 ## Output
 
-def writeGroups(groupL,groupOutFN):
+def writeGroups(groupByNodeL,groupOutFN):
     '''Write the groups to a file'''
     f=open(groupOutFN,"w")
-    for branch in range(len(groupL)):
-        for group in groupL[branch]:
+    for branch in range(len(groupByNodeL)):
+        for group in groupByNodeL[branch]:
             print(group.fileStr(),file=f)
-
+    f.close()
 
 
