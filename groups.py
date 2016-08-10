@@ -1,7 +1,8 @@
+import sys
 import trees
-
 from Group import *
 from Family import *
+from multiprocessing import Pool
 
 # Families
 
@@ -162,22 +163,15 @@ in scoreD should always have the lower group id first.'''
     scoreD[key]=(max(tempScoreT),tempScoreT)
 
     
-def createScoreL(groupByNodeL,adjacencyS,subtreeL,familyStrainT):
-    '''Create list of scores, organized by mcra node. We only compare
-groups with the same mrca. These scores are in a dictionary, which is
-located at the index of the list corresponding to that mrca node.'''
-
-    scoreL=[]
-    for mrcaNode in range(len(groupByNodeL)-1): # -1 to skip core genes
-        mrcaG=groupByNodeL[mrcaNode]
-        scoreD={}
-        for i in range(len(mrcaG)-1):
-            for j in range(i+1,len(mrcaG)):
-                if i == j: print("!")
-                storeScore(mrcaG[i],mrcaG[j],adjacencyS,subtreeL[mrcaNode],scoreD,familyStrainT)
-                
-        scoreL.append(scoreD)
-    return scoreL
+def createScoreD(groupL,adjacencyS,subtree,familyStrainT):
+    '''Create dictionary of scores between all groups at a single node
+(and thus with the same mrca).'''
+    scoreD={}
+    for i in range(len(groupL)-1):
+        for j in range(i+1,len(groupL)):
+            if i == j: print("!")
+            storeScore(groupL[i],groupL[j],adjacencyS,subtree,scoreD,familyStrainT)
+    return scoreD
 
 
 ## Iterative merging
@@ -223,16 +217,22 @@ first we find, and None if their isn't one.
     return None,None
 
     
-def mergeGroupsAtNode(groupByNodeL,scoreL,adjacencyS,subtreeL,mrcaNode,groupScoreThreshold,familyStrainT):
-    '''Iteratively merge groups at mrcaNode.'''
+def mergeGroupsAtNode(argT):
+    '''Given a list of groups at one node (groupL) iteratively merge until
+there are no more pairwise scores above groupScoreThreshold.'''
 
-    if len(groupByNodeL[mrcaNode]) < 2: return # nothing to merge
+    groupL,adjacencyS,subtree,groupScoreThreshold,familyStrainT = argT
     
-    iteration=0
+    if len(groupL) < 2:
+        # nothing to merge
+        return groupL
+
+    scoreD = createScoreD(groupL,adjacencyS,subtree,familyStrainT)
+    
+    #iteration=0
     while True:
         #print("----iter",iteration)
         
-        scoreD=scoreL[mrcaNode]
         sc,groupPairT,scoreT=maxScore(scoreD)
 
         if sc < groupScoreThreshold:
@@ -240,8 +240,8 @@ def mergeGroupsAtNode(groupByNodeL,scoreL,adjacencyS,subtreeL,mrcaNode,groupScor
         
         #print(sc,groupPairT,scoreT)
 
-        ind0,g0 = searchGroupsByID(groupByNodeL[mrcaNode],groupPairT[0])
-        ind1,g1 = searchGroupsByID(groupByNodeL[mrcaNode],groupPairT[1])
+        ind0,g0 = searchGroupsByID(groupL,groupPairT[0])
+        ind1,g1 = searchGroupsByID(groupL,groupPairT[1])
 
         #print("  group pair 0:",groupPairT[0],ind0,g0)
         #print("  group pair 1:",groupPairT[1],ind1,g1)
@@ -251,18 +251,18 @@ def mergeGroupsAtNode(groupByNodeL,scoreL,adjacencyS,subtreeL,mrcaNode,groupScor
         #print("merged group",g0)
         
         # delete g1
-        del groupByNodeL[mrcaNode][ind1]
+        del groupL[ind1]
 
         
-        # remove all scores in scoreL that involve g0 or g1
+        # remove all scores in scoreD that involve g0 or g1
         delScores(scoreD,g0.id,g1.id)
 
         # calculate new scores for g0 against all other groups
-        addScores(scoreD,g0,groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],familyStrainT)
+        addScores(scoreD,g0,groupL,adjacencyS,subtree,familyStrainT)
 
-        iteration+=1
+        #iteration+=1
 
-    return
+    return groupL
 
 ## Output
 
@@ -275,3 +275,34 @@ def writeGroups(groupByNodeL,groupOutFN):
     f.close()
 
 
+## Main function
+
+def makeGroups(adjacencyS,tree,groupScoreThreshold,familyStrainT,numThreads,groupOutFN):
+    '''Parallelized wrapper to merge groups at different nodes.'''
+        
+    # subtree list
+    subtreeL=trees.createSubtreeL(tree)
+    subtreeL.sort()
+    groupByNodeL=createGroupL(familyStrainT,tree)
+
+    print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupByNodeL]))
+
+
+    ## create argumentL to be passed to p.map and mergeGroupsAtNode
+    argumentL = []
+    for mrcaNode in range(len(groupByNodeL)): # -1 to skip core genes
+        argumentL.append((groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],groupScoreThreshold,familyStrainT))
+
+    # run it
+    p=Pool(numThreads)
+    groupByNodeLMerged = p.map(mergeGroupsAtNode, argumentL) 
+
+    
+    #print("Did not merge core groups (last entries in groupByNodeL).",file=sys.stderr)
+    print("Merging complete.",file=sys.stderr)
+    print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupByNodeLMerged]),file=sys.stderr)
+    
+    # write groups
+    writeGroups(groupByNodeLMerged,groupOutFN)
+
+    print("Groups written.",file=sys.stderr)

@@ -35,4 +35,13 @@ with for the project.
         super(Family, self).__setattr__('famGeneT', tuple(newFamilyL))
 
     def __repr__(self):
-        return "Family: "+str(self.id)+' '+str(self.mrca)+' '+str(self.famGeneT)
+        outStr = "<Family: "+str(self.id) + "|"
+        outStr += "  mrca: "+str(self.mrca) + "|"
+        outStr += "  genes: "
+        outGeneL =[]
+        for i,(ct,geneT) in enumerate(self.famGeneT):
+            if ct > 0:
+                outGeneL.append("(node" + str(i) + ") " +" ".join([str(gn) for gn in geneT]))
+
+        outStr += ",".join(outGeneL)+">"
+        return outStr
