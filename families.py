@@ -105,8 +105,10 @@ confident that this gene belongs in the family.
                         if synsc < minSynThresh:
                             # doesn't meet min synteny requirement for family formation
                             continue
-                        elif sc > seedSimScore:
-                            # if its above the regular score threshold, add it
+                        elif sc >= seedSimScore:
+                            # if its above the regular score
+                            # threshold, add it. we have the = there
+                            # in case seedSimScore is 1.
                             newGenesS.add(newGene)
                         elif synsc > synAdjustThresh:
                             # its above the syn score adjustment
