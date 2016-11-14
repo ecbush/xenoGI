@@ -14,10 +14,10 @@ if __name__ == "__main__":
     geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
 
     
-    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD)
+    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD,strainStr2NumD)
 
     adjacencyS = genomes.createAdjacencySet(params.geneOrderFN,geneName2NumD)
 
 
     # run
-    groups.makeGroups(adjacencyS,tree,params.groupScoreThreshold,familyStrainT,params.numThreads,params.groupOutFN)
+    groups.makeGroups(adjacencyS,tree,params.groupScoreThreshold,familyStrainT,params.numThreads,strainNum2StrD,params.groupOutFN)

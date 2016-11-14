@@ -5,7 +5,7 @@ from Group import *
 
 ## Load groups
 
-def readGroupOut(fn,tree):
+def readGroupOut(fn,tree,strainStr2NumD):
     '''Given a file name for an htrans groups output file, load back
 recreating groupByNodeL.'''
 
@@ -16,7 +16,7 @@ recreating groupByNodeL.'''
         s=f.readline()
         if s == '':
             break
-        gr=str2Group(s.rstrip())
+        gr=str2Group(s.rstrip(),strainStr2NumD)
         groupByNodeL[gr.mrca].append(gr)
     f.close()
 
@@ -281,12 +281,13 @@ species.
     print("Synteny information")
     printFamNeighb(family,synWSize,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD)
 
-def printGroupsAtNode(node):
+def printGroupsAtNode(nodeStr):
     '''This is a wrapper to provide an easy way to print all the groups at
 a particular node in the tree. For ease of use, we take only a node
 number as argument, assuming all the other required stuff is available
 at the top level.
     '''
+    node = strainStr2NumD[nodeStr]
     vPrintGroups(groupByNodeL[node],subtreeL,familyStrainT,strainNum2StrD,geneNum2NameD)
 
     
@@ -299,7 +300,7 @@ if __name__ == "__main__":
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
     
     # load groups
-    groupByNodeL=readGroupOut(params.groupOutFN,tree)
+    groupByNodeL=readGroupOut(params.groupOutFN,tree,strainStr2NumD)
 
     
     # get familyStrainT etc.
@@ -308,7 +309,7 @@ if __name__ == "__main__":
     geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
     geneDescriptionsD = genomes.createGeneDescriptionsD(params.geneDescriptionsFN)
 
-    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD)
+    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD,strainStr2NumD)
 
     gene2FamD=createGene2FamD(familyStrainT)
     fam2GroupD=createFam2GroupD(groupByNodeL)
@@ -326,6 +327,6 @@ if __name__ == "__main__":
 
     
     # Usage
-    # printGroupsAtNode(2)
+    # printGroupsAtNode('i0')
     # printFam(10,6782)
     

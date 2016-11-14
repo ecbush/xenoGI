@@ -6,7 +6,7 @@ from multiprocessing import Pool
 
 # Families
 
-def createFamilyStrainT(familyFN,tree,geneName2NumD,geneName2StrainNumD):
+def createFamilyStrainT(familyFN,tree,geneName2NumD,geneName2StrainNumD,strainStr2NumD):
     '''Create a tuple representation of families. Input file consists of
 one family per line. Family number, mcra node number, and genes in
 family. We create a tuple, where the index is family number. The value
@@ -22,7 +22,7 @@ is an object of class Family.
             break
         L=s.split()
         famNum=int(L[0])
-        mrca = int(L[1])
+        mrca = strainStr2NumD[L[1]]
         genesL = L[2:]
 
         rawFamL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneName2NumD,geneName2StrainNumD))
@@ -266,18 +266,18 @@ there are no more pairwise scores above groupScoreThreshold.'''
 
 ## Output
 
-def writeGroups(groupByNodeL,groupOutFN):
+def writeGroups(groupByNodeL,strainNum2StrD,groupOutFN):
     '''Write the groups to a file'''
     f=open(groupOutFN,"w")
     for branch in range(len(groupByNodeL)):
         for group in groupByNodeL[branch]:
-            print(group.fileStr(),file=f)
+            print(group.fileStr(strainNum2StrD),file=f)
     f.close()
 
 
 ## Main function
 
-def makeGroups(adjacencyS,tree,groupScoreThreshold,familyStrainT,numThreads,groupOutFN):
+def makeGroups(adjacencyS,tree,groupScoreThreshold,familyStrainT,numThreads,strainNum2StrD,groupOutFN):
     '''Parallelized wrapper to merge groups at different nodes.'''
         
     # subtree list
@@ -303,6 +303,6 @@ def makeGroups(adjacencyS,tree,groupScoreThreshold,familyStrainT,numThreads,grou
     print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupByNodeLMerged]),file=sys.stderr)
     
     # write groups
-    writeGroups(groupByNodeLMerged,groupOutFN)
+    writeGroups(groupByNodeLMerged,strainNum2StrD,groupOutFN)
 
     print("Groups written.",file=sys.stderr)

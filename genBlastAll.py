@@ -2,13 +2,15 @@ import sys
 
 strainProtFNL = [line.rstrip() for line in open(sys.argv[1],'r')]
 
+suffixToRemove = sys.argv[2]
+
 for query in strainProtFNL:
     for db in strainProtFNL:
         if query != db:
-            qstem=query.split('.simp.faa')[0]
+            qstem=query.split(suffixToRemove)[0]
             qstem=qstem.split("blast/databases/")[1]
             
-            dbstem=db.split('.simp.faa')[0]
+            dbstem=db.split(suffixToRemove)[0]
             dbstem=dbstem.split("blast/databases/")[1]
             
             file_out = "blast/out/" + qstem + '-' + dbstem + ".out"

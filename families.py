@@ -38,7 +38,7 @@ the left branch of tree.'''
     leftS=set()
     rightS=set()
     outgroupS=set()
-    for geneNum in range(len(geneNum2NameD)): # all genes
+    for geneNum in geneNum2NameD: # all genes
         strain=geneName2StrainNumD[geneNum2NameD[geneNum]]
         if strain in leftSpeciesS:
             leftS.add(geneNum)
@@ -167,7 +167,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
     return familyL
 
 
-def printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,fileName):
+def printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,strainNum2StrD,fileName):
     '''Print all gene families, one family per line. We number families in
 order in familyL, and then give each gene with no cluster its own
 number.
@@ -179,7 +179,7 @@ number.
     for node,fam in familyL:
         genesInMultiGeneFamsS.update(fam) # add all genes in fam
         genesStr = "\t".join((geneNum2NameD[gene] for gene in fam))
-        print(famNum,node,genesStr,sep='\t',file=f)
+        print(famNum,strainNum2StrD[node],genesStr,sep='\t',file=f)
         famNum+=1
 
     multiGeneFamNum=famNum
@@ -188,8 +188,8 @@ number.
     
     for gene in geneNum2NameD: 
         if not gene in genesInMultiGeneFamsS:
-            node = geneName2StrainNumD[geneNum2NameD[gene]]
-            print(famNum,node,geneNum2NameD[gene],sep='\t',file=f)
+            nodeStr = strainNum2StrD[geneName2StrainNumD[geneNum2NameD[gene]]]
+            print(famNum,nodeStr,geneNum2NameD[gene],sep='\t',file=f)
             famNum+=1
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)

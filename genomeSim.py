@@ -1,7 +1,7 @@
 ## Genome evolution simulation
 ## Eliot Bush
 import sys,random,copy
-#random.seed(9)
+import trees
 import pyvolve
 from pyvolve import Model, Genetics
 import numpy as np
@@ -171,11 +171,11 @@ eovlution model in self.params.model.
             seqD[gene] = self.mutSeq(seqD[gene],transition_matrix,aaFreq)
         return geneL,seqD
 
-    def fastaString(self):
+    def fastaString(self,speciesString):
         '''Return a string in fasta format.'''
         L=[]
         for gene in self.geneL:
-            L.append(">"+str(gene))
+            L.append(">"+str(gene)+speciesString)
             L.append(integers_to_protein(self.seqD[gene]))
         return "\n".join(L)
         
@@ -226,7 +226,7 @@ value given by geneCounter. Returns a Genome object.'''
         seqD[gene]=seq
     return Genome(geneL,seqD,params),geneCounter
 
-def sim(tree,genome,params,geneCounter,eventLogD,aaFreq,model):
+def sim(tree,genome,params,geneCounter,eventLogD,aaFreq,model,strainNum2StrD):
     '''Recursive function to simulate evolution of genome starting from
 the root of tree. Returns a list of Genome objects. eventLogD is a
 dict (keyed by branch) where we keep track of events in the
@@ -234,19 +234,19 @@ simulation.
     '''
     if tree[1] == ():
         tipGenome,geneCounter,logL=genome.evolve(tree[3],geneCounter,aaFreq,model)
-        eventLogD[tree[0]] = logL
+        eventLogD[strainNum2StrD[tree[0]]] = logL
         return [(tree[0],tipGenome)],geneCounter
     else:
         # simulate on branch leading to this node
         newGenome,geneCounter,logL=genome.evolve(tree[3],geneCounter,aaFreq,model)
-        eventLogD[tree[0]] = logL
+        eventLogD[strainNum2StrD[tree[0]]] = logL
 
         # left and right subtrees
         tipGenomeL = []
-        leftTreeGenomesL,geneCounter = sim(tree[1],newGenome,params,geneCounter,eventLogD,aaFreq,model)
+        leftTreeGenomesL,geneCounter = sim(tree[1],newGenome,params,geneCounter,eventLogD,aaFreq,model,strainNum2StrD)
         tipGenomeL.extend(leftTreeGenomesL)
 
-        rightTreeGenomesL,geneCounter = sim(tree[2],newGenome,params,geneCounter,eventLogD,aaFreq,model)
+        rightTreeGenomesL,geneCounter = sim(tree[2],newGenome,params,geneCounter,eventLogD,aaFreq,model,strainNum2StrD)
         tipGenomeL.extend(rightTreeGenomesL)
         
         return tipGenomeL,geneCounter
@@ -292,19 +292,20 @@ def writeLog(logD,fileName):
             print("\n".join(L),file=f)
     f.close()
 
-def writeGenome(genome,fileName):
+def writeGenome(genome,speciesString,fileName):
     '''Given the Genome object genome, write to the file fileName in fasta
 format.
     '''
     f = open(fileName,'w')
-    print(genome.fastaString(),file=f)
+    print(genome.fastaString(speciesString),file=f)
     f.close()
 
-def writeTipSeqs(tipGenomesL,genomeFilePrefix):
+def writeTipSeqs(tipGenomesL,strainNum2StrD):
     '''Write the genomes of the final species to file in fasta format.'''
 
     for branchNum,genome in tipGenomesL:
-        writeGenome(genome,genomeFilePrefix+str(branchNum)+'.fa')
+        branchName = strainNum2StrD[branchNum]
+        writeGenome(genome,branchName,branchName+'.fa')
     
 ## Main
 
@@ -313,6 +314,9 @@ if __name__ == "__main__":
     paramFN=sys.argv[1]
     params = __import__(paramFN.replace('.py', ''))
 
+    tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
+
+    
     eventLogD = {}
     geneCounter = 0
 
@@ -327,8 +331,8 @@ if __name__ == "__main__":
     
     initialGenome,geneCounter = createInitialGenome(params,aaFreq,geneCounter)
     
-    tipGenomesL,geneCounter=sim(params.tree,initialGenome,params,geneCounter,eventLogD,aaFreq,model)
+    tipGenomesL,geneCounter=sim(tree,initialGenome,params,geneCounter,eventLogD,aaFreq,model,strainNum2StrD)
 
 
     writeLog(eventLogD,params.logFile)
-    writeTipSeqs(tipGenomesL,params.genomeFilePrefix)
+    writeTipSeqs(tipGenomesL,strainNum2StrD)

@@ -15,27 +15,25 @@ number of ( as ) before it. Return the index.'''
 
 def newick2TupleTree(s):
     '''Given a Newick type string representation of a tree, return in
-tuple tree format. If no branch length specified, makes it 0 length.'''
+tuple tree format. The root should have a branch of len 0 leading to it.'''
     if "(" not in s and ")" not in s:
         # its a tip
         name,brLen=s.split(":")
         brLen=float(brLen)
         return(name,(),(),brLen)
     else:
-        # if there is a ':' on the right, outside the parens, split on
-        # this for branch laength
+        # there should be a ':' on the right, outside the parens. split on
+        # this for branch length
         firstColonInd=len(s)-(s[::-1].index(":")+1)
         firstParenInd=len(s)-(s[::-1].index(")")+1)
-        if firstColonInd>firstParenInd:
-            brLen=float(s[firstColonInd+1:])
-            s=s[:firstColonInd]
-        else:
-            brLen=0
-        s=s[1:-1] # strip of outer perens
+        brLen=float(s[firstColonInd+1:])
+        name=s[firstParenInd+1:firstColonInd]
+        s=s[:firstParenInd+1]
+        s=s[1:-1] # strip off outer parens
         mci=middleComma(s)
-        leftTree=newick2TupleTree(s[:mci].strip()) # strip any leading or
+        leftTree=newick2TupleTree(s[:mci].strip())    # strip any leading or
         rightTree=newick2TupleTree(s[mci+1:].strip()) # trailing white space
-        return('anc',leftTree,rightTree,brLen)
+        return(name,leftTree,rightTree,brLen)
 
 def nodeCount(tree):
     '''How many nodes in tree?'''
@@ -79,13 +77,15 @@ def readTree(filename):
     f=open(filename,"r")
     s=f.read().rstrip()
     f.close()
-    if s[-1]==';': s=s[:-1] # strip off ';'
+    # we assume an outser set of parens followed by ;
+    s=s[:-1] # strip off ';'
+    s=s+':0' # add 0 len branch leading to root
     stringTree=newick2TupleTree(s)
     counter=0
     numTree,counter=strTree2numTree(stringTree,counter)
 
     # make dictionaries for converting between number and string strain names
-    strainStr2NumD={} # will be shorter due to collisions on 'anc'
+    strainStr2NumD={}
     makeTreeD(stringTree,numTree,strainStr2NumD)
     strainNum2StrD={}
     makeTreeD(numTree,stringTree,strainNum2StrD)
