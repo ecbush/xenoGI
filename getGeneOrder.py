@@ -5,6 +5,8 @@ if __name__ == "__main__":
     outFileName = sys.argv[1]
     outFile = open(outFileName, 'w')
     genbankFileList = sys.argv[2:]
+
+    seenDict = {}
     
     # iterate through list of genbank files
     for fileName in genbankFileList:
@@ -17,9 +19,13 @@ if __name__ == "__main__":
             for feature in record.features:
                 # choose only the features that are protein coding genes
                 if feature.type == "CDS" and 'protein_id' in feature.qualifiers:
-                    start = int(feature.location.start)
                     key = feature.qualifiers['protein_id'][0]
-                    startCodonDict[key] = start
+                    #check if the protein has been seen before
+                    if key not in seenDict:
+                        start = int(feature.location.start)
+                        key = feature.qualifiers['protein_id'][0]
+                        startCodonDict[key] = start
+                        seenDict[key] = True
             # make a list of entries in the dict and sort them by start position
             keyValL = list(startCodonDict.items())
             # make a string with all the gene names in order of start position
