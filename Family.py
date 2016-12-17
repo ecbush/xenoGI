@@ -5,7 +5,7 @@ class Family:
          raise TypeError("can't modify immutable instance")
     __delattr__ = __setattr__
 
-    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneName2NumD,geneName2StrainNumD):
+    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneNames):
         '''Given an family ID number, a most recent common ancestor, and a
 list of genes (in string form) create an immutable family object. numNodesInTree
 is the number of nodes found in the tree (the full tree) we're working
@@ -21,8 +21,8 @@ with for the project.
 
         familyL = [[0,[]] for j in range(numNodesInTree)]
         for gene in genesL:
-            geneNum=geneName2NumD[gene]
-            strainNum=geneName2StrainNumD[gene]
+            geneNum=geneNames.nameToNum(gene)
+            strainNum=geneNames.nameToStrainNum(gene)
             familyL[strainNum][0]+=1
             familyL[strainNum][1].append(geneNum)
 

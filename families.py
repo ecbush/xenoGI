@@ -27,7 +27,7 @@ process in the PhiGs algorithm. For each node we give a tuple
     L.sort()
     return L
 
-def createLRSets(tree,geneNum2NameD,geneName2StrainNumD):
+def createLRSets(tree,geneNames):
     '''For every gene in our data, put it into one of three sets. Left,
 right, or outgroup. Genes in the left set are found in a species on
 the left branch of tree.'''
@@ -38,8 +38,8 @@ the left branch of tree.'''
     leftS=set()
     rightS=set()
     outgroupS=set()
-    for geneNum in geneNum2NameD: # all genes
-        strain=geneName2StrainNumD[geneNum2NameD[geneNum]]
+    for geneNum in geneNames.nums: # all genes
+        strain=geneNames.numToStrainNum(geneNum)
         if strain in leftSpeciesS:
             leftS.add(geneNum)
         elif strain in rightSpeciesS:
@@ -54,7 +54,6 @@ def closestMatch(gene,S,simG,synScoresG,minSynThresh):
 graph simG. Eliminate any matches that have a synteny score below
 minSynThresh
     '''
-
     bestGene=None
     bestEdgeScore = -float('inf')
     for edge in simG.edges_iter(gene):
@@ -128,11 +127,11 @@ confident that this gene belongs in the family.
     return alreadySearchedS
                 
     
-def families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent):
+def families(nodeOrderL,subtreeL,geneNames,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent):
     '''Given a graph of genes and their similarity scores (simG) find
 families using a PhiGs-like algorithm, with synteny also considered.'''
 
-    geneUsedL = [False for x in geneNum2NameD]
+    geneUsedL = [False for x in geneNames.nums]
     
     familyL=[]
     
@@ -140,11 +139,12 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
         if lnode != None:
             # not a tip
             subtree=subtreeL[node]
-            leftS,rightS,outgroupS = createLRSets(subtree,geneNum2NameD,geneName2StrainNumD)
+            leftS,rightS,outgroupS = createLRSets(subtree,geneNames)
             seedL = createSeedL(leftS,rightS,simG,synScoresG,minSynThresh)
-
+            #print(len(seedL),len(leftS),len(rightS),len(outgroupS),'xx')
             for seed in seedL:
                 seedSimScore,g1,g2 = seed
+                #print(seedSimScore,g1,g2,'xx')
 
                 if seedSimScore == -float('inf'):
                     # we've gotten to the point in the seed list with
@@ -167,7 +167,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
     return familyL
 
 
-def printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,strainNum2StrD,fileName):
+def printFamilies(familyL,geneNames,fileName):
     '''Print all gene families, one family per line. We number families in
 order in familyL, and then give each gene with no cluster its own
 number.
@@ -178,18 +178,18 @@ number.
     famNum = 0
     for node,fam in familyL:
         genesInMultiGeneFamsS.update(fam) # add all genes in fam
-        genesStr = "\t".join((geneNum2NameD[gene] for gene in fam))
-        print(famNum,strainNum2StrD[node],genesStr,sep='\t',file=f)
+        genesStr = "\t".join((geneNames.numToName(gene) for gene in fam))
+        print(famNum,node,genesStr,sep='\t',file=f)
         famNum+=1
 
     multiGeneFamNum=famNum
     print("Number of multigene families",multiGeneFamNum,file=sys.stderr)
 
     
-    for gene in geneNum2NameD: 
+    for gene in geneNames.nums: 
         if not gene in genesInMultiGeneFamsS:
-            nodeStr = strainNum2StrD[geneName2StrainNumD[geneNum2NameD[gene]]]
-            print(famNum,nodeStr,geneNum2NameD[gene],sep='\t',file=f)
+            nodeStr = geneNames.numToStrainNum(gene)
+            print(famNum,nodeStr,geneNames.numToName(gene),sep='\t',file=f)
             famNum+=1
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)

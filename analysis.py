@@ -306,7 +306,11 @@ if __name__ == "__main__":
     # get familyStrainT etc.
     
 
-    geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
+    #geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
+
+    geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
+
+    
     geneDescriptionsD = genomes.createGeneDescriptionsD(params.geneDescriptionsFN)
 
     familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD,strainStr2NumD)

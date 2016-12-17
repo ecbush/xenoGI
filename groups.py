@@ -6,7 +6,7 @@ from multiprocessing import Pool
 
 # Families
 
-def createFamilyStrainT(familyFN,tree,geneName2NumD,geneName2StrainNumD,strainStr2NumD):
+def createFamilyStrainT(familyFN,tree,geneNames):
     '''Create a tuple representation of families. Input file consists of
 one family per line. Family number, mcra node number, and genes in
 family. We create a tuple, where the index is family number. The value
@@ -22,10 +22,10 @@ is an object of class Family.
             break
         L=s.split()
         famNum=int(L[0])
-        mrca = strainStr2NumD[L[1]]
+        mrca = int(L[1])
         genesL = L[2:]
 
-        rawFamL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneName2NumD,geneName2StrainNumD))
+        rawFamL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames))
 
         if famNum > maxFamNum:
             maxFamNum = famNum

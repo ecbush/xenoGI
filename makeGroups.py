@@ -11,12 +11,13 @@ if __name__ == "__main__":
     # load data
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
 
-    geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
-
+    #geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
     
-    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneName2NumD,geneName2StrainNumD,strainStr2NumD)
-
-    adjacencyS = genomes.createAdjacencySet(params.geneOrderFN,geneName2NumD)
+    geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
+    
+    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneNames)
+    
+    adjacencyS = genomes.createAdjacencySet(params.geneOrderFN,geneNames)
 
 
     # run

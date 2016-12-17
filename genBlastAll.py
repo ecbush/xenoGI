@@ -8,13 +8,13 @@ for query in strainProtFNL:
     for db in strainProtFNL:
         if query != db:
             qstem=query.split(suffixToRemove)[0]
-            qstem=qstem.split("blast/databases/")[1]
+            qstem=qstem.split("fasta/")[1]
             
             dbstem=db.split(suffixToRemove)[0]
-            dbstem=dbstem.split("blast/databases/")[1]
+            dbstem=dbstem.split("fasta/")[1]
             
-            file_out = "blast/out/" + qstem + '-' + dbstem + ".out"
-            file_err = "blast/out/" + qstem + '-' + dbstem + ".err"
+            file_out = "blast/" + qstem + '-' + dbstem + ".out"
+            file_err = "blast/" + qstem + '-' + dbstem + ".err"
 
 
             print('qsub -cwd -V -e ' + file_err +\

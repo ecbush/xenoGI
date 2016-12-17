@@ -107,13 +107,13 @@ based on the max and min possible scores for these sequences.'''
 
 
 
-def createSimilarityGraph(scoresFN,geneName2NumD):
+def createSimilarityGraph(scoresFN,geneNames):
     '''Read scores from the scores file and use to create network
 with genes and nodes and edges representing global alignment score
 between proteins with significant similarity.'''
 
     G=networkx.Graph()
-    for i in range(len(geneName2NumD)): G.add_node(i)
+    for geneNum in geneNames.nums: G.add_node(geneNum)
     
     f = open(scoresFN,'r')
 
@@ -123,21 +123,20 @@ between proteins with significant similarity.'''
             break
         g1,g2,sc=s.split('\t')
         sc = float(sc)
-
-        G.add_edge(geneName2NumD[g1],geneName2NumD[g2],score=sc)
-
+        G.add_edge(geneNames.nameToNum(g1),geneNames.nameToNum(g2),score=sc)
+    f.close()
     return G
 
 
 ## synteny scores
 
-def createNeighborL(geneNum2NameD,geneOrderT,synWSize):
+def createNeighborL(geneNames,geneOrderT,synWSize):
     '''Return a list which specifies the neighbors of each gene. Index of
 list corresponds to gene number, and the value located at that index
 is a tuple of all genes within a synWSize window. e.g. synWSize 5 means we
 go 5 genes in either direction.'''
 
-    neighborTL = [None for x in geneNum2NameD]
+    neighborTL = [None for x in geneNames.nums]
 
     for contigT in geneOrderT:
         if not contigT == None:
@@ -227,7 +226,7 @@ for those genes that have an edge in simG.
     
     return synScoresG
 
-def writeG(G,geneNum2NameD,fileName):
+def writeG(G,geneNames,fileName):
     '''Given a graph with genes as nodes, write all edges (pairs of genes)
 to file in three columns. Gene 1, gene 2 and score.'''
 
@@ -235,6 +234,6 @@ to file in three columns. Gene 1, gene 2 and score.'''
     
     for gene1Num,gene2Num in G.edges_iter():
         sc = G.get_edge_data(gene1Num,gene2Num)['score']
-        print(geneNum2NameD[gene1Num],geneNum2NameD[gene2Num],format(sc,".6f"),sep='\t',file=f)
+        print(geneNames.numToName(gene1Num),geneNames.numToName(gene2Num),format(sc,".6f"),sep='\t',file=f)
 
     f.close()

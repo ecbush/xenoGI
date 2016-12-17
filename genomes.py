@@ -1,5 +1,5 @@
 # Functions for loading genes and gene order
-import trees,fasta
+import trees,fasta,sys
 
 def loadProt(protFnL):
     '''Given a list of file names of simp.faa type fasta files, load the
@@ -12,35 +12,77 @@ sequences and store in a dictionary keyed by protein name.
             seqD[gn]=seq
     return seqD
 
-def createGeneDs(geneOrderFN,strainStr2NumD):
-    '''Load the gene order file, and give each gene a unique
-number. Returns 3 dictionaries for interconverting between names and
-numbers, and for giving strain number given a gene string.
-    '''
-    num=0
-    geneName2NumD={}
-    geneNum2NameD={}
-    geneName2StrainNumD={}
-    f = open(geneOrderFN,'r')
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        L=s.split()
-        strain = L[0]
+class geneNames:
+    def __init__(self, geneOrderFN,strainNameToNumD,strainNumToNameD):
+        '''Create a geneName object with lists of genes and methods to interconvert.'''
 
-        for geneName in L[1:]:
-            
-            geneName2NumD[geneName]=num
-            geneNum2NameD[num]=geneName
-            geneName2StrainNumD[geneName]=strainStr2NumD[strain]
-            
-            num+=1
+        self.strainNameToNumD = strainNameToNumD
+        self.strainNumToNameD = strainNumToNameD
+        
+        # get lists of genes
+        names=[]
+        num=0
+        geneNumToStrainNumD={}
+        f = open(geneOrderFN,'r')
+        while True:
+            s = f.readline()
+            if s == '':
+                break
+            L=s.split()
+            strain = L[0]
+        
+            for i in range(1,len(L)): 
+                geneName=L[i]
+                names.append(geneName)
+                geneNumToStrainNumD[num] = strainNameToNumD[strain]
 
-    f.close()
-            
-    return geneName2NumD,geneNum2NameD,geneName2StrainNumD
+                num+=1
 
+        f.close()
+
+        namesS=set(names)
+        if len(namesS) < len(names):
+            raise ValueError("There appear to be redudancies in the gene order file.")
+
+        self.geneNumToStrainNumD = geneNumToStrainNumD
+        self.names=tuple(names)
+        self.nums=tuple(range(len(names))) # these will be the gene numbers for the genes
+        
+        # create dictionaries for interconverting
+        geneNameToNumD={}
+        geneNumToNameD={}
+        for i in range(len(self.names)):
+            geneName=self.names[i]
+            num = self.nums[i]
+        
+            geneNameToNumD[geneName]=num
+            geneNumToNameD[num]=geneName
+
+        self.geneNameToNumD = geneNameToNumD
+        self.geneNumToNameD = geneNumToNameD
+
+
+    def nameToNum(self,geneName):
+        return self.geneNameToNumD[geneName]
+
+    def numToName(self,geneNumber):
+        return self.geneNumToNameD[geneNumber]
+
+    def numToStrainNum(self,geneNumber):
+        return self.geneNumToStrainNumD[geneNumber]
+
+    def nameToStrainNum(self,geneName):
+        return self.geneNumToStrainNumD[self.nameToNum(geneName)]
+
+    def numToStrainName(self,geneNumber):
+        return self.strainNumToNameD[self.geneNumToStrainNumD[geneNumber]]
+
+    def nameToStrainName(self,geneName):
+        return self.strainNumToNameD[self.geneNumToStrainNumD[self.nameToNum(geneName)]]
+    
+    def __repr__(self):
+        return "<geneName object with "+str(len(self.names))+" genes.>"
+    
 def createGeneDescriptionsD(geneDescriptionsFN):
     '''From given file name, create dictionary with gene names as keys and
 descriptions as values.'''
@@ -62,8 +104,8 @@ descriptions as values.'''
     f.close()    
     return D
     
-def createAdjacencySet(geneOrderFN,geneName2NumD):
-    '''Go though gene order file pulling out pairs of adjacent gene and
+def createAdjacencySet(geneOrderFN,geneNames):
+    '''Go though gene order file pulling out pairs of adjacent genes and
 putting them in a set.'''
     adjacencyS=set()
     f = open(geneOrderFN,'r')
@@ -79,15 +121,15 @@ putting them in a set.'''
         for contig in L[1:]:
             geneNameL=contig.split(' ')
             for i in range(len(geneNameL)-1):
-                gnA=geneName2NumD[geneNameL[i]]
-                gnB=geneName2NumD[geneNameL[i+1]]
+                gnA=geneNames.nameToNum(geneNameL[i])
+                gnB=geneNames.nameToNum(geneNameL[i+1])
                 if gnA<gnB: # always put lower gene number first
                     adjacencyS.add((gnA,gnB))
                 else:
                     adjacencyS.add((gnB,gnA))
     return adjacencyS
 
-def createGeneOrderTs(geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD):
+def createGeneOrderTs(geneOrderFN,geneNames,subtreeL,strainStr2NumD):
     '''Go though gene order file and get orderings into a set of tuples.'''
     f = open(geneOrderFN,'r')
     geneOrderL=[None for x in range(trees.nodeCount(subtreeL[-1]))] # an index for each node
@@ -102,9 +144,10 @@ def createGeneOrderTs(geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD):
         strain = L[0]
         contigL=[]
         for contig in L[1:]:
-            geneNumT=tuple((geneName2NumD[g] for g in contig.split(' ')))
+            geneNumT=tuple((geneNames.nameToNum(g) for g in contig.split(' ')))
             contigL.append(geneNumT)
             
         geneOrderL[strainStr2NumD[strain]]=tuple(contigL)
+    f.close()
     return tuple(geneOrderL)
 

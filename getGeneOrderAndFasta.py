@@ -1,53 +1,105 @@
+# Juliet Forman, Eliot Bush 12/2016
 from Bio import SeqIO
 import sys
 
-if __name__ == "__main__":
-    outFileName = sys.argv[1] #name for gene order file
-    redundancyFileName = sys.argv[2] #name for file of redundant proteins
-    fastaFileDir = sys.argv[3] #relative directory to send fasta files
-    outFile = open(outFileName, 'w')
-    redundFile = open(redundancyFileName, 'w')
-    genbankFileList = sys.argv[4:]
+def getUniqueRedundSets(fileName,speciesName):
+    '''Run through genbank file fileName, get set of unique genes (with no
+redundancies), and set with redundancies.'''
+    f = open(fileName, 'rU')
+    geneL=[]
+    for record in SeqIO.parse(f, "genbank"):
+        # iterate through the genes on the chromosome
+        for feature in record.features:
+            # choose only the features that are protein coding genes
+            if feature.type == "CDS" and 'protein_id' in feature.qualifiers:
+                geneName = speciesName + '-' + feature.qualifiers['protein_id'][0]
+                geneL.append(geneName)
+                
+    f.close()
 
-    #initialize dictionary to keep track of proteins we've seen already
-    seenDict = {}
+    # now figure out which ones are unique
+    uniqueS = set()
+    redundS = set()
+    for gene in geneL:
+        if geneL.count(gene)>1:
+            redundS.add(gene)
+        else:
+            uniqueS.add(gene)
+    return uniqueS,redundS
+    
+
+if __name__ == "__main__":
+
+    '''We pass through each genbank file twice. Once to identify redundant
+genes, so we can avoid them. And another time to get the stuff we
+want.'''
+    
+    geneOrderOutFileName = sys.argv[1] #name for gene order file
+    redundancyFileName = sys.argv[2] #name for file of redundant proteins
+    geneDescriptionsFileName = sys.argv[3]
+    fastaFileDir = sys.argv[4] #relative directory to send fasta files
+    genbankFileList = sys.argv[5:]
+
+    geneOrderOutFile = open(geneOrderOutFileName, 'w')
+    redundFile = open(redundancyFileName, 'w')
+    geneDescriptionsFile = open(geneDescriptionsFileName, 'w')
     
     # iterate through list of genbank files
     for fileName in genbankFileList:
-        file = open(fileName, 'rU')
+
         speciesName = fileName.split("/")[-1][:-5]
+        uniqueS,redundS=getUniqueRedundSets(fileName,speciesName)
+
+        # write the redundant ones for this species to our redund file
+        for gene in redundS:
+            redundFile.write(gene + "\n")
+            
+        inFile = open(fileName, 'rU')
         fastaOutName = fastaFileDir + speciesName + ".fa"
-        fastaFile = open(fastaOutName, 'w')
-        outFile.write(speciesName + "\t")
-        redundFile.write("\n" + speciesName + ":" + "\n")
+        fastaOutFile = open(fastaOutName, 'w')
+
+        # start next line in geneOrderOutFile
+        geneOrderOutFile.write(speciesName)
+        
         # iterate through chromosomes in the genbank file
-        for record in SeqIO.parse(file, "genbank"):
-            startCodonDict = {}
-            #iterate through the genes on the crhomosome
+        for record in SeqIO.parse(inFile, "genbank"):
+            geneStartSeqL = []
+            #iterate through the genes on the chromosome
             for feature in record.features:
                 # choose only the features that are protein coding genes
                 if feature.type == "CDS" and 'protein_id' in feature.qualifiers:
-                    key = speciesName + feature.qualifiers['protein_id'][0]
-                    #check if the protein has been seen before
-                    if key not in seenDict:
+                    geneName = speciesName + '-' + feature.qualifiers['protein_id'][0]
+                    # verify not in set of genes that appear more than once
+                    if geneName in uniqueS:
                         start = int(feature.location.start)
-                        #key = feature.qualifiers['protein_id'][0]
-                        startCodonDict[key] = start
-                        seenDict[key] = True
                         aaSeq = feature.qualifiers['translation'][0]
-                        fastaFile.write(">" + key + "\n" + aaSeq + "\n")
-                    #if it has, write it to the redundancy file and remove it from the dict
-                    else:
-                        if key in startCodonDict:
-                            del startCodonDict[key]
-                            redundFile.write(key + "\n")
-            # make a list of entries in the dict and sort them by start position
-            keyValL = list(startCodonDict.items())
-            # make a string with all the gene names in order of start position
-            geneL = [gene for gene,str in keyValL]
-            # write the string to the out file
-            outFile.write(" ".join(geneL))
-            outFile.write("\t")
-        file.close()
-        outFile.write("\n")
-    outFile.close()
+
+                        # get description
+                        if 'product' in feature.qualifiers:
+                            descrip = feature.qualifiers['product'][0]
+                        else:
+                            descrip = ''
+
+                        geneStartSeqL.append((geneName,start,aaSeq,descrip))
+
+            if geneStartSeqL != []: # if its not empty
+                # sort by start position
+                geneStartSeqL.sort(key=lambda x: x[1])
+                geneL=[]
+                for geneName,start,aaSeq,descrip in geneStartSeqL:
+                    # write to fastaOutFile
+                    fastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
+                    geneDescriptionsFile.write(geneName + "\t" + descrip + "\n")
+                    geneL.append(geneName)
+                    
+                # write this chromosome to geneOrderFile                    
+                geneOrderOutFile.write("\t"+" ".join(geneL))
+                
+        geneOrderOutFile.write("\n")
+                    
+        inFile.close()
+        fastaOutFile.close()
+
+    geneOrderOutFile.close()
+    redundFile.close()
+    geneDescriptionsFile.close()

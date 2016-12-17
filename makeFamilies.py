@@ -10,18 +10,21 @@ if __name__ == "__main__":
     # load data
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
    
-    geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
+    geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
 
     # subtree list
     subtreeL=trees.createSubtreeL(tree)
     subtreeL.sort()
 
-    simG = scores.createSimilarityGraph(params.scoresFN,geneName2NumD)
+    simG = scores.createSimilarityGraph(params.scoresFN,geneNames)
 
-    synScoresG = scores.createSimilarityGraph(params.synScoresFN,geneName2NumD)
+    synScoresG = scores.createSimilarityGraph(params.synScoresFN,geneNames)
     
     nodeOrderL=families.createNodeProcessOrderList(tree)
 
-    familyL = families.families(nodeOrderL,subtreeL,geneNum2NameD,geneName2StrainNumD,simG,synScoresG,params.minSynThresh,params.synAdjustThresh,params.synAdjustMaxExtent)
 
-    families.printFamilies(familyL,geneNum2NameD,geneName2StrainNumD,strainNum2StrD,params.familyFN)
+
+    familyL = families.families(nodeOrderL,subtreeL,geneNames,simG,synScoresG,params.minSynThresh,params.synAdjustThresh,params.synAdjustMaxExtent)
+
+    families.printFamilies(familyL,geneNames,params.familyFN)
+

@@ -9,19 +9,19 @@ if __name__ == "__main__":
 
     # load data
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
-   
-    geneName2NumD,geneNum2NameD,geneName2StrainNumD = genomes.createGeneDs(params.geneOrderFN,strainStr2NumD)
 
+    geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
+    
     # subtree list
     subtreeL=trees.createSubtreeL(tree)
     subtreeL.sort()
 
-    simG = scores.createSimilarityGraph(params.scoresFN,geneName2NumD)
+    simG = scores.createSimilarityGraph(params.scoresFN,geneNames)
 
-    geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneName2NumD,subtreeL,strainStr2NumD)
+    geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneNames,subtreeL,strainStr2NumD)
 
-    neighborTL = scores.createNeighborL(geneNum2NameD,geneOrderT,params.synWSize)
+    neighborTL = scores.createNeighborL(geneNames,geneOrderT,params.synWSize)
     
     synScoresG = scores.createSynScoresGraph(simG,neighborTL,params.numSynToTake,params.numThreads)
 
-    scores.writeG(synScoresG,geneNum2NameD,params.synScoresFN)
+    scores.writeG(synScoresG,geneNames,params.synScoresFN)
