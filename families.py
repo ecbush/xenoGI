@@ -167,7 +167,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
     return familyL
 
 
-def printFamilies(familyL,geneNames,fileName):
+def printFamilies(familyL,geneNames,strainNum2StrD,fileName):
     '''Print all gene families, one family per line. We number families in
 order in familyL, and then give each gene with no cluster its own
 number.
@@ -179,7 +179,7 @@ number.
     for node,fam in familyL:
         genesInMultiGeneFamsS.update(fam) # add all genes in fam
         genesStr = "\t".join((geneNames.numToName(gene) for gene in fam))
-        print(famNum,node,genesStr,sep='\t',file=f)
+        print(famNum,strainNum2StrD[node],genesStr,sep='\t',file=f)
         famNum+=1
 
     multiGeneFamNum=famNum
@@ -188,7 +188,7 @@ number.
     
     for gene in geneNames.nums: 
         if not gene in genesInMultiGeneFamsS:
-            nodeStr = geneNames.numToStrainNum(gene)
+            nodeStr = geneNames.numToStrainName(gene)
             print(famNum,nodeStr,geneNames.numToName(gene),sep='\t',file=f)
             famNum+=1
 

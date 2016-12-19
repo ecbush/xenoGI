@@ -15,7 +15,7 @@ if __name__ == "__main__":
     
     geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
     
-    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneNames)
+    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneNames,strainStr2NumD)
     
     adjacencyS = genomes.createAdjacencySet(params.geneOrderFN,geneNames)
 

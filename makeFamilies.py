@@ -26,5 +26,5 @@ if __name__ == "__main__":
 
     familyL = families.families(nodeOrderL,subtreeL,geneNames,simG,synScoresG,params.minSynThresh,params.synAdjustThresh,params.synAdjustMaxExtent)
 
-    families.printFamilies(familyL,geneNames,params.familyFN)
+    families.printFamilies(familyL,geneNames,strainNum2StrD,params.familyFN)
 
