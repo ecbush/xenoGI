@@ -29,9 +29,9 @@ Code for detecting horizontal transfer events in a clade of bacteria.
 
 - You run the code from within your working directory. If your parameter file was called params.py, and if the xenoGI code was in a parallel directory, you would do this:
 
-python3 ../xtrans/parseGenbank.py params.py
-python3 ../xtrans/runBlast.py params.py
-python3 ../xtrans/xenoGI.py params.py
+python3 ../xenoGI/parseGenbank.py params.py
+python3 ../xenoGI/runBlast.py params.py
+python3 ../xenoGI/xenoGI.py params.py
 
 - parseGenbank.py runs through the genbank files and produces input files that are used by subsequent code.
 - runBlast.py does an all vs. all blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
