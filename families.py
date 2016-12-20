@@ -1,7 +1,6 @@
 # Functions for a modiefied version of the PhiGs algorithm
 # http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
 # (We've added the use of synteny)
-# Eliot Bush 8/2016
 import sys
 import trees
 from Family import *

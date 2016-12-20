@@ -1,4 +1,3 @@
-# Eliot Bush, Juliet Forman 12/2016
 from Bio import SeqIO
 
 def getUniqueRedundSets(fileName,speciesName):

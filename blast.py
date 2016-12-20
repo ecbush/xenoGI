@@ -8,8 +8,6 @@ executable.'''
         subprocess.call(['makeblastdb', '-dbtype' ,'prot', '-in', dbFileName],stdout=subprocess.PIPE)
     return
 
-# blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -evalue 0.01 -seg yes -outfmt 6 -db fasta/Citrobacter.fa -query fasta/Klebsiella.fa
-
 def makeBlastClineList(dbFileL,fastaFilePath,blastFilePath,blastCLine):
     '''Create a list of lists, where the sublists have the command line
 needed to run blastp on a pair of databases.'''
