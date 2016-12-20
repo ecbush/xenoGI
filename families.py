@@ -4,6 +4,7 @@
 # Eliot Bush 8/2016
 import sys
 import trees
+from Family import *
 
 def nodeDetails(tree,timeOnBrLeadingHere):
     '''Given a tree, return list of (time,node #, left node #, right node
@@ -86,7 +87,8 @@ the family than the two seeds are from each other. But, we also use
 synteny, by using synteny scores to adjust the sim scores between
 genes we are considering adding. In general, if a gene has syntenic
 connectsions to genes already in the family, this makes us more
-confident that this gene belongs in the family.
+confident that this gene belongs in the family. Returns a set
+containing genes in the family.
     '''
     alreadySearchedS = set()
     notYetSearchedS = set([g1,g2])
@@ -127,13 +129,15 @@ confident that this gene belongs in the family.
     return alreadySearchedS
                 
     
-def families(nodeOrderL,subtreeL,geneNames,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent):
+def families(tree,subtreeL,geneNames,simG,synScoresG,minSynThresh,synAdjustThresh,synAdjustMaxExtent,familyFN,strainNum2StrD):
     '''Given a graph of genes and their similarity scores (simG) find
 families using a PhiGs-like algorithm, with synteny also considered.'''
 
+    nodeOrderL=createNodeProcessOrderList(tree)
+    
     geneUsedL = [False for x in geneNames.nums]
     
-    familyL=[]
+    multiGeneFamilyL=[]
     
     for t,node,lnode,rnode in nodeOrderL:
         if lnode != None:
@@ -162,36 +166,58 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
                         # none of the genes in this family used yet
                         for gene in family:
                             geneUsedL[gene] = True
-                        familyL.append((node,family))
-                        
-    return familyL
+                        multiGeneFamilyL.append((node,family))
 
-
-def printFamilies(familyL,geneNames,strainNum2StrD,fileName):
-    '''Print all gene families, one family per line. We number families in
-order in familyL, and then give each gene with no cluster its own
-number.
-    '''
+    # Create Family objects 
     genesInMultiGeneFamsS = set()
-    f=open(fileName,'w')
-    
+    familyL=[]
     famNum = 0
-    for node,fam in familyL:
-        genesInMultiGeneFamsS.update(fam) # add all genes in fam
-        genesStr = "\t".join((geneNames.numToName(gene) for gene in fam))
-        print(famNum,strainNum2StrD[node],genesStr,sep='\t',file=f)
+    for mrca,famS in multiGeneFamilyL:
+        genesInMultiGeneFamsS.update(famS) # add all genes in fam
+        familyL.append(Family(famNum,mrca,famS,trees.nodeCount(tree),geneNames))
         famNum+=1
 
     multiGeneFamNum=famNum
     print("Number of multigene families",multiGeneFamNum,file=sys.stderr)
 
-    
+    # Add on remaining genes as single gene families.
     for gene in geneNames.nums: 
         if not gene in genesInMultiGeneFamsS:
-            nodeStr = geneNames.numToStrainName(gene)
-            print(famNum,nodeStr,geneNames.numToName(gene),sep='\t',file=f)
+            mrca = geneNames.numToStrainNum(gene)
+            familyL.append(Family(famNum,mrca,[gene],trees.nodeCount(tree),geneNames))
             famNum+=1
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)
     print("Number of total families",famNum,file=sys.stderr)
+    
+    writeFamilies(familyL,geneNames,strainNum2StrD,familyFN)
+
+    return tuple(familyL)
+
+
+def writeFamilies(familyL,geneNames,strainNum2StrD,fileName):
+    '''Write all gene families to fileName, one family per line.'''
+    f=open(fileName,'w')
+    for fam in familyL:
+        f.write(fam.fileStr(geneNames,strainNum2StrD)+'\n')
     f.close()
+
+
+def readFamilies(familyFN,tree,geneNames,strainStr2NumD):
+    '''Read the family file named familyFN, creating a list of family
+objects.'''
+    
+    famL=[]
+    maxFamNum=0
+    f=open(familyFN,'r')
+    while True:
+        s=f.readline()
+        if s=='':
+            break
+        L=s.split()
+        famNum=int(L[0])
+        mrca = strainStr2NumD[L[1]]
+        genesL = L[2:]
+
+        famL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames))
+    return tuple(famL)

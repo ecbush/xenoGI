@@ -1,14 +1,24 @@
-import parasail,networkx
+import parasail,networkx,glob
 from multiprocessing import Pool
+import genomes
 
 ## raw similarity scores
 
-def createSimScores(blastFnL,seqD,numThreads,scoresFN):
-    '''Given a list of blast file names, get global alignment scores for each entry using multiple threads.'''
+def createSimScoresGraph(blastFilePath,fastaFilePath,numThreads,scoresFN,geneNames,gapOpen, gapExtend, matrix):
+    '''Find gene pairs with significant blast hits, and get global
+alignment scores for each using multiple threads.'''
 
-    ## first get list of all genes to compare. The blast files have
-    ## redundancies (ie , g1,g2 and also g2,g1). Keep comparisons to
-    ## do in set, and don't add if we already have it in either order.
+    # get list of blast files
+    blastFnL=glob.glob(blastFilePath)
+    protFnL=glob.glob(fastaFilePath)
+
+    # load sequences
+    seqD=genomes.loadProt(protFnL)
+    
+    # Run through blast files getting list of all genes to compare. The
+    # blast files have redundancies (ie , g1,g2 and also g2,g1). Keep
+    # comparisons to do in set, and don't add if we already have it in
+    # either order.
     pairsToDoS = set()
     for fn in blastFnL:
         f = open(fn,'r')
@@ -30,8 +40,9 @@ def createSimScores(blastFnL,seqD,numThreads,scoresFN):
         f.close()
 
                 
-    # make list of sets of arguments to be passed to p.map. There should be numThreads sets.
-    argumentL = [([],seqD) for i in range(numThreads)]
+    # make list of sets of arguments to be passed to p.map. There
+    # should be numThreads sets.
+    argumentL = [([],seqD,gapOpen, gapExtend, matrix) for i in range(numThreads)]
     for i,pair in enumerate(pairsToDoS):
         argumentL[i%numThreads][0].append(pair)
 
@@ -40,34 +51,34 @@ def createSimScores(blastFnL,seqD,numThreads,scoresFN):
     p=Pool(numThreads)
     scoresLL = p.map(simScoreGroup, argumentL)
 
-    # write to file
-    f = open(scoresFN,'w')
+    # convert to Graph
+    G=networkx.Graph()
+    for geneNum in geneNames.nums: G.add_node(geneNum)
+
     for scoresL in scoresLL:
-        for g1,g2,scaled in scoresL:
-            print(g1,g2,format(scaled,".6f"),sep='\t',file=f)
-    f.close()
+        for g1,g2,sc in scoresL:
+            G.add_edge(geneNames.nameToNum(g1),geneNames.nameToNum(g2),score=sc)
+
+    # write scores to file
+    writeGraph(G,geneNames,scoresFN)
+    
+    return G
 
     
-    
-
 def simScoreGroup(argT):
-    '''Given a file name with blast output, go through each hit and run
-needleman wunch on the sequences. Print gene names, simScore and blast
-percID.
+    '''Given a dictionary of sequences and a list of gene pairs, go
+through each pair and get a needleman wunch based score.
     '''
-
-    pairL,seqD = argT
-    
+    pairL,seqD,gapOpen, gapExtend, matrix = argT
+    matrix = eval(matrix) # turn it from string to parasail matrix object
     scoresL = []
     for g1,g2 in pairL:
-        scaled = simScore(seqD[g1],seqD[g2])
+        scaled = simScore(seqD[g1],seqD[g2],gapOpen, gapExtend, matrix)
         scoresL.append((g1,g2,scaled))
-
     return scoresL
-    
       
    
-def simScore(s1,s2):
+def simScore(s1,s2,gapOpen, gapExtend, matrix):
     '''Calculate score between a pair of protein sequences, based on a
 global alignment. We scale the alignment score to be between 0 and 1,
 based on the max and min possible scores for these sequences.'''
@@ -77,20 +88,12 @@ based on the max and min possible scores for these sequences.'''
     # parasail doens't give the alignment. It might in the future, and
     # we could revisit this.
     
-    opn = 12
-    ext = 1
-    matr = parasail.blosum62
-    # note, since parasail doesn't charge extend on the first base its
-    # like emboss, and not like ncbi blast. NCBI blast uses existance 11,
-    # extend 1 for blosum 62, thus we should use open 12 ext 1 here.
-
-    
-    r_s1s2 = parasail.nw_scan(s1,s2, opn, ext, matr)
+    r_s1s2 = parasail.nw_scan(s1,s2, gapOpen, gapExtend, matrix)
 
     if len(s1) < len(s2):
-        r_self = parasail.nw_scan(s1,s1, opn, ext, matr)
+        r_self = parasail.nw_scan(s1,s1, gapOpen, gapExtend, matrix)
     else:
-        r_self = parasail.nw_scan(s2,s2, opn, ext, matr)
+        r_self = parasail.nw_scan(s2,s2, gapOpen, gapExtend, matrix)
 
     sc = r_s1s2.score
     mx = r_self.score # max possible is shorter seq against itself.
@@ -99,33 +102,10 @@ based on the max and min possible scores for these sequences.'''
     # two opens. Note parasail does not count gap extend for the
     # residue where a gap is opened, hence the -2 in the extend
     # formula below.
-    mn = - ( 2 * opn + ( (len(s1)+len(s2) -2 ) * ext ) )
-
+    mn = - ( 2 * gapOpen + ( (len(s1)+len(s2) -2 ) * gapExtend ) )
     scaled = (sc - mn) / (mx - mn)
     
     return scaled
-
-
-
-def createSimilarityGraph(scoresFN,geneNames):
-    '''Read scores from the scores file and use to create network
-with genes and nodes and edges representing global alignment score
-between proteins with significant similarity.'''
-
-    G=networkx.Graph()
-    for geneNum in geneNames.nums: G.add_node(geneNum)
-    
-    f = open(scoresFN,'r')
-
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        g1,g2,sc=s.split('\t')
-        sc = float(sc)
-        G.add_edge(geneNames.nameToNum(g1),geneNames.nameToNum(g2),score=sc)
-    f.close()
-    return G
 
 
 ## synteny scores
@@ -200,12 +180,15 @@ def synScore(argsT):
     return gn1, gn2, scSum / numSynToTake
 
 
-def createSynScoresGraph(simG,neighborTL,numSynToTake,numThreads):
+def createSynScoresGraph(simG,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
     '''Create a graph with genes as nodes, and edges representing the
 synteny score between two genes. We only bother making synteny scores
 for those genes that have an edge in simG.
     '''
 
+    neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
+
+    
     p=Pool(numThreads) # num threads
     
     argumentL = []
@@ -223,10 +206,35 @@ for those genes that have an edge in simG.
 
     for gn1,gn2,sc in synScoresL:
         synScoresG.add_edge(gn1,gn2,score=sc)
-    
+
+    writeGraph(synScoresG,geneNames,synScoresFN)
+        
     return synScoresG
 
-def writeG(G,geneNames,fileName):
+
+## Graph I/O
+
+def readGraph(scoresFN,geneNames):
+    '''Read scores from the scores file and use to create network
+with genes and nodes and edges representing global alignment score
+between proteins with significant similarity.'''
+
+    G=networkx.Graph()
+    for geneNum in geneNames.nums: G.add_node(geneNum)
+    
+    f = open(scoresFN,'r')
+
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        g1,g2,sc=s.split('\t')
+        sc = float(sc)
+        G.add_edge(geneNames.nameToNum(g1),geneNames.nameToNum(g2),score=sc)
+    f.close()
+    return G
+
+def writeGraph(G,geneNames,fileName):
     '''Given a graph with genes as nodes, write all edges (pairs of genes)
 to file in three columns. Gene 1, gene 2 and score.'''
 

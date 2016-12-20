@@ -104,33 +104,27 @@ descriptions as values.'''
     f.close()    
     return D
     
-def createAdjacencySet(geneOrderFN,geneNames):
-    '''Go though gene order file pulling out pairs of adjacent genes and
+def createAdjacencySet(geneOrderT,geneNames):
+    '''Go though a gene order tuple pulling out pairs of adjacent genes and
 putting them in a set.'''
     adjacencyS=set()
-    f = open(geneOrderFN,'r')
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        s=s.rstrip()
-        # note, our gene order format has contigs separated by \t, and
-        # genes within them separated by a space character.
-        L=s.split('\t')
-        strain = L[0]
-        for contig in L[1:]:
-            geneNameL=contig.split(' ')
-            for i in range(len(geneNameL)-1):
-                gnA=geneNames.nameToNum(geneNameL[i])
-                gnB=geneNames.nameToNum(geneNameL[i+1])
-                if gnA<gnB: # always put lower gene number first
-                    adjacencyS.add((gnA,gnB))
-                else:
-                    adjacencyS.add((gnB,gnA))
+    for contigT in geneOrderT:
+        if contigT != None:
+            # internal nodes are None, having no genes to be adjacent
+            for geneNumT in contigT:
+                for i in range(len(geneNumT)-1):
+                    gnA=geneNumT[i]
+                    gnB=geneNumT[i+1]
+                    if gnA<gnB: # always put lower gene number first
+                        adjacencyS.add((gnA,gnB))
+                    else:
+                        adjacencyS.add((gnB,gnA))
     return adjacencyS
 
 def createGeneOrderTs(geneOrderFN,geneNames,subtreeL,strainStr2NumD):
-    '''Go though gene order file and get orderings into a set of tuples.'''
+    '''Go though gene order file and get orderings into a set of
+tuples. Returns a tuple whose index is strain number, and the value at
+that index is a set of tuples representing the contigs.'''
     f = open(geneOrderFN,'r')
     geneOrderL=[None for x in range(trees.nodeCount(subtreeL[-1]))] # an index for each node
     while True:

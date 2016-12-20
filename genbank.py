@@ -1,6 +1,5 @@
-# Juliet Forman, Eliot Bush 12/2016
+# Eliot Bush, Juliet Forman 12/2016
 from Bio import SeqIO
-import sys
 
 def getUniqueRedundSets(fileName,speciesName):
     '''Run through genbank file fileName, get set of unique genes (with no
@@ -28,21 +27,14 @@ redundancies), and set with redundancies.'''
     return uniqueS,redundS
     
 
-if __name__ == "__main__":
-
+def parseGenbank(geneOrderOutFileName,redundancyOutFileName,geneDescriptionsOutFileName,fastaOutFileDir,genbankFileList):
     '''We pass through each genbank file twice. Once to identify redundant
 genes, so we can avoid them. And another time to get the stuff we
 want.'''
     
-    geneOrderOutFileName = sys.argv[1] #name for gene order file
-    redundancyFileName = sys.argv[2] #name for file of redundant proteins
-    geneDescriptionsFileName = sys.argv[3]
-    fastaFileDir = sys.argv[4] #relative directory to send fasta files
-    genbankFileList = sys.argv[5:]
-
     geneOrderOutFile = open(geneOrderOutFileName, 'w')
-    redundFile = open(redundancyFileName, 'w')
-    geneDescriptionsFile = open(geneDescriptionsFileName, 'w')
+    redundFile = open(redundancyOutFileName, 'w')
+    geneDescriptionsFile = open(geneDescriptionsOutFileName, 'w')
     
     # iterate through list of genbank files
     for fileName in genbankFileList:
@@ -55,7 +47,7 @@ want.'''
             redundFile.write(gene + "\n")
             
         inFile = open(fileName, 'rU')
-        fastaOutName = fastaFileDir + speciesName + ".fa"
+        fastaOutName = fastaOutFileDir + speciesName + ".fa"
         fastaOutFile = open(fastaOutName, 'w')
 
         # start next line in geneOrderOutFile

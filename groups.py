@@ -1,52 +1,17 @@
 import sys
-import trees
+from multiprocessing import Pool
+import trees,genomes
 from Group import *
 from Family import *
-from multiprocessing import Pool
-
-# Families
-
-def createFamilyStrainT(familyFN,tree,geneNames,strainStr2NumD):
-    '''Create a tuple representation of families. Input file consists of
-one family per line. Family number, mcra node number, and genes in
-family. We create a tuple, where the index is family number. The value
-is an object of class Family.
-    '''
-
-    rawFamL=[]
-    maxFamNum=0
-    f=open(familyFN,'r')
-    while True:
-        s=f.readline()
-        if s=='':
-            break
-        L=s.split()
-        famNum=int(L[0])
-        mrca = strainStr2NumD[L[1]]
-        genesL = L[2:]
-
-        rawFamL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames))
-
-        if famNum > maxFamNum:
-            maxFamNum = famNum
-
-    # ensure each family is put at index corresponding to its fam num
-    famL = [None for i in range(maxFamNum+1)]
-    for fam in rawFamL:
-        famL[fam.id] = fam
-    
-    return tuple(famL)
 
 
-## Group functions
-
-def createGroupL(familyStrainT,tree):
+def createGroupL(familyT,tree):
     '''Greate groups, one family per group initially store groups
 separately by mrca in a list of lists. (where the index of the outer
 list corresponds to the mrca)'''
     groupL=[[] for i in range(trees.nodeCount(tree))]
 
-    for fam in familyStrainT:
+    for fam in familyT:
         gr = Group(fam.id, fam.mrca, [fam.id])
         groupL[gr.mrca].append(gr)
 
@@ -105,7 +70,7 @@ fam2 are family tuples specifying the genes present in a family.
 
 
     
-def score(g0,g1,adjacencyS,subtree,familyStrainT):
+def score(g0,g1,adjacencyS,subtree,familyT):
     '''Returns the score between groups g0 and g1. Considers all four ways
 these groups could join (since there are two groups each with two
 ends). This is the rcost given we start not adjacent minus the rcost
@@ -119,19 +84,19 @@ given we start adjacent.
         caseL = [-float('inf')]*4
 
         # case 0: last fam in g0 vs. first fam in g1
-        caseL[0] = costDiff(familyStrainT[g0.familyL[-1]],familyStrainT[g1.familyL[0]],adjacencyS,subtree)
+        caseL[0] = costDiff(familyT[g0.familyL[-1]],familyT[g1.familyL[0]],adjacencyS,subtree)
 
         # case 1: last fam in g0 vs. last fam in g1
         if len(g1.familyL) == 1:
             caseL[1] = caseL[0] # since first and last of g1 are same
         else:
-            caseL[1] = costDiff(familyStrainT[g0.familyL[-1]],familyStrainT[g1.familyL[-1]],adjacencyS,subtree)
+            caseL[1] = costDiff(familyT[g0.familyL[-1]],familyT[g1.familyL[-1]],adjacencyS,subtree)
 
         # case 2: first fam in g0 vs. first fam in g1
         if len(g0.familyL) == 1:
             caseL[2] = caseL[0] # since first and last of g0 are same
         else:
-            caseL[2] = costDiff(familyStrainT[g0.familyL[0]],familyStrainT[g1.familyL[0]],adjacencyS,subtree)
+            caseL[2] = costDiff(familyT[g0.familyL[0]],familyT[g1.familyL[0]],adjacencyS,subtree)
 
         # case 3: first fam in g0 vs. last fam in g1
         if len(g0.familyL) == 1 and len(g1.familyL) > 1:
@@ -141,21 +106,21 @@ given we start adjacent.
         elif len(g0.familyL) == 1 and len(g1.familyL) == 1:
             caseL[3] = caseL[0]
         else: # both longer than 1
-            caseL[3] = costDiff(familyStrainT[g0.familyL[0]],familyStrainT[g1.familyL[-1]],adjacencyS,subtree)
+            caseL[3] = costDiff(familyT[g0.familyL[0]],familyT[g1.familyL[-1]],adjacencyS,subtree)
 
         return tuple(caseL)
 
-def storeScore(g0,g1,adjacencyS,subtree,scoreD,familyStrainT):
+def storeScore(g0,g1,adjacencyS,subtree,scoreD,familyT):
     '''Calculate and store score in scoreD. We follow convention that key
 in scoreD should always have the lower group id first.'''
     if g0.id < g1.id:
         key = g0.id,g1.id
-        tempScoreT=score(g0,g1,adjacencyS,subtree,familyStrainT)
+        tempScoreT=score(g0,g1,adjacencyS,subtree,familyT)
         # score returns different things depending on order
         # so we must be consisstent with what we do in key.
     else:
         key = g1.id,g0.id
-        tempScoreT=score(g1,g0,adjacencyS,subtree,familyStrainT)
+        tempScoreT=score(g1,g0,adjacencyS,subtree,familyT)
     #if g1.id == 717:
     #    print(717,tempScoreT)
     #    print(g0)
@@ -163,14 +128,14 @@ in scoreD should always have the lower group id first.'''
     scoreD[key]=(max(tempScoreT),tempScoreT)
 
     
-def createScoreD(groupL,adjacencyS,subtree,familyStrainT):
+def createScoreD(groupL,adjacencyS,subtree,familyT):
     '''Create dictionary of scores between all groups at a single node
 (and thus with the same mrca).'''
     scoreD={}
     for i in range(len(groupL)-1):
         for j in range(i+1,len(groupL)):
             if i == j: print("!")
-            storeScore(groupL[i],groupL[j],adjacencyS,subtree,scoreD,familyStrainT)
+            storeScore(groupL[i],groupL[j],adjacencyS,subtree,scoreD,familyT)
     return scoreD
 
 
@@ -202,11 +167,11 @@ score D that come from them.'''
     for key in toDelL:
         del scoreD[key]
 
-def addScores(scoreD,g0,groupsAtThisNodeL,adjacencyS,subtree,familyStrainT):
+def addScores(scoreD,g0,groupsAtThisNodeL,adjacencyS,subtree,familyT):
     '''Get scores for group g0 against all other groups and add to scoreD.'''
     for gr in groupsAtThisNodeL:
         if gr.id != g0.id:
-            storeScore(g0,gr,adjacencyS,subtree,scoreD,familyStrainT)
+            storeScore(g0,gr,adjacencyS,subtree,scoreD,familyT)
 
 def searchGroupsByID(listOfGroups,id):
     '''Search for a group with id equal to id. Return the index of the
@@ -221,13 +186,13 @@ def mergeGroupsAtNode(argT):
     '''Given a list of groups at one node (groupL) iteratively merge until
 there are no more pairwise scores above groupScoreThreshold.'''
 
-    groupL,adjacencyS,subtree,groupScoreThreshold,familyStrainT = argT
+    groupL,adjacencyS,subtree,groupScoreThreshold,familyT = argT
     
     if len(groupL) < 2:
         # nothing to merge
         return groupL
 
-    scoreD = createScoreD(groupL,adjacencyS,subtree,familyStrainT)
+    scoreD = createScoreD(groupL,adjacencyS,subtree,familyT)
     
     #iteration=0
     while True:
@@ -258,7 +223,7 @@ there are no more pairwise scores above groupScoreThreshold.'''
         delScores(scoreD,g0.id,g1.id)
 
         # calculate new scores for g0 against all other groups
-        addScores(scoreD,g0,groupL,adjacencyS,subtree,familyStrainT)
+        addScores(scoreD,g0,groupL,adjacencyS,subtree,familyT)
 
         #iteration+=1
 
@@ -277,13 +242,11 @@ def writeGroups(groupByNodeL,strainNum2StrD,groupOutFN):
 
 ## Main function
 
-def makeGroups(adjacencyS,tree,groupScoreThreshold,familyStrainT,numThreads,strainNum2StrD,groupOutFN):
+def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,numThreads,strainNum2StrD,groupOutFN):
     '''Parallelized wrapper to merge groups at different nodes.'''
-        
-    # subtree list
-    subtreeL=trees.createSubtreeL(tree)
-    subtreeL.sort()
-    groupByNodeL=createGroupL(familyStrainT,tree)
+
+    adjacencyS = genomes.createAdjacencySet(geneOrderT,geneNames)
+    groupByNodeL=createGroupL(familyT,tree)
 
     print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupByNodeL]))
 
@@ -291,7 +254,7 @@ def makeGroups(adjacencyS,tree,groupScoreThreshold,familyStrainT,numThreads,stra
     ## create argumentL to be passed to p.map and mergeGroupsAtNode
     argumentL = []
     for mrcaNode in range(len(groupByNodeL)): # -1 to skip core genes
-        argumentL.append((groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],groupScoreThreshold,familyStrainT))
+        argumentL.append((groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],groupScoreThreshold,familyT))
 
     # run it
     p=Pool(numThreads)
