@@ -4,7 +4,7 @@
 #### Input files ####
 
 # tree file
-treeFN='testB.tre'
+treeFN='example.tre'
 
 # unix style file path to genbank gbff files
 genbankFilePath = 'genbank/*.gbff'
