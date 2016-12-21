@@ -66,10 +66,11 @@ want.'''
                         aaSeq = feature.qualifiers['translation'][0]
 
                         # get description
+                        descrip=''
+                        if 'gene' in feature.qualifiers:
+                            descrip += feature.qualifiers['gene'][0]+' - '
                         if 'product' in feature.qualifiers:
-                            descrip = feature.qualifiers['product'][0]
-                        else:
-                            descrip = ''
+                            descrip += feature.qualifiers['product'][0]
 
                         geneStartSeqL.append((geneName,start,aaSeq,descrip))
 

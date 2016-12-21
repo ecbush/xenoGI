@@ -49,3 +49,7 @@ From within python, you can then run functions such as
 printGroupsAtNode('i0')
 or
 printFam(10,6782)
+
+If you want to know the family that corresponds to a gene, that can be done like this:
+
+gene2FamD[geneNames.nameToNum('E_coli_K12-AAC76537.1')]
