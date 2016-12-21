@@ -203,8 +203,8 @@ def writeFamilies(familyL,geneNames,strainNum2StrD,fileName):
 
 
 def readFamilies(familyFN,tree,geneNames,strainStr2NumD):
-    '''Read the family file named familyFN, creating a list of family
-objects.'''
+    '''Read the family file named familyFN, creating a tuple of family
+objects where the index corresponds to family number.'''
     
     famL=[]
     maxFamNum=0

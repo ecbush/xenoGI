@@ -1,12 +1,12 @@
 import sys
-import genomes,trees,groups,scores
+import genomes,trees,families,scores
 from Family import *
 from Group import *
 
 ## Load groups
 
 def readGroupOut(fn,tree,strainStr2NumD):
-    '''Given a file name for an htrans groups output file, load back
+    '''Given a file name for a groups output file, load back
 recreating groupByNodeL.'''
 
     groupByNodeL=[[] for i in range(trees.nodeCount(tree))]
@@ -74,7 +74,7 @@ have.
             
     
     
-def vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNames):
+def vPrintGroup(group,subtreeL,familyT,strainNum2StrD,geneNames):
     '''Verbose print of a group.'''
 
     print("  Group",group.id)
@@ -91,27 +91,27 @@ def vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNames):
         newRow=[]
         newRow.append(str(fam))
         for node in speciesNodesL:
-            ct,genesL = familyStrainT[fam].famGeneT[node]
+            ct,genesL = familyT[fam].famGeneT[node]
             newRow.append(",".join([geneNames.numToName(gene) for gene in genesL]))
         printL.append(newRow)
     printTable(printL,4)
 
 
-def vPrintGroups(groupL,subtreeL,familyStrainT,strainNum2StrD,geneNames):
+def vPrintGroups(groupL,subtreeL,familyT,strainNum2StrD,geneNames):
     '''Print a list of groups.'''
     print("Summary of groups")
     printGroupLSummary(groupL)
     print("Print outs of each group")
     for group in groupL:
-        vPrintGroup(group,subtreeL,familyStrainT,strainNum2StrD,geneNames)
+        vPrintGroup(group,subtreeL,familyT,strainNum2StrD,geneNames)
         print('  ---')
 
-def createGene2FamD(familyStrainT):
-    '''Given the family information in familyStrainT, create a dictionary
+def createGene2FamD(familyT):
+    '''Given the family information in familyT, create a dictionary
 gene2FamD which maps from gene number to family number.'''
     gene2FamD={}
-    for famNum in range(len(familyStrainT)):
-        for gnCt,geneT in familyStrainT[famNum].famGeneT:
+    for famNum in range(len(familyT)):
+        for gnCt,geneT in familyT[famNum].famGeneT:
             for gene in geneT:
                 gene2FamD[gene]=famNum
     return gene2FamD
@@ -127,25 +127,25 @@ family number to group number.
                 fam2GroupD[famNum]=group
     return fam2GroupD
 
-def getGenesInFamily(family,subtreeL,familyStrainT):
+def getGenesInFamily(family,subtreeL,familyT):
     '''Given a family, return a list of all genes in it (in numerical form).'''
-    mrca = familyStrainT[family].mrca
+    mrca = familyT[family].mrca
     leavesL=trees.leafList(subtreeL[mrca])
 
     genesL=[]
     for leaf in leavesL:
 
-        geneT=familyStrainT[family].famGeneT[leaf][1]
+        geneT=familyT[family].famGeneT[leaf][1]
         genesL.extend(geneT)
 
     return genesL
 
     
-def printScoreMatrix(family,subtreeL,familyStrainT,geneNames,G):
+def printScoreMatrix(family,subtreeL,familyT,geneNames,G):
     '''Print a matrix of scores between all the genes in a family. Scores
 are provided by the graph G.'''
 
-    familyGenesL = getGenesInFamily(family,subtreeL,familyStrainT)
+    familyGenesL = getGenesInFamily(family,subtreeL,familyT)
 
     rowsL = []
     geneNamesL = [geneNames.numToName(gn) for gn in familyGenesL]
@@ -163,13 +163,13 @@ are provided by the graph G.'''
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(family,subtreeL,familyStrainT,geneNames,simG,synScoresG):
+def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,simG,synScoresG):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 simG.
     '''
     
-    familyGenesL = getGenesInFamily(family,subtreeL,familyStrainT)
+    familyGenesL = getGenesInFamily(family,subtreeL,familyT)
 
     rowL = []
     for gene in familyGenesL:
@@ -191,14 +191,14 @@ simG.
     printTable(rowL,2)
 
                 
-def printFamNeighb(family,synWSize,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD,geneNames,strainNum2StrD):
+def printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD,geneNames,strainNum2StrD):
     '''Family Neighborhood. Given a family and an mrca for it, print out
 the families nearby in each of its species and going either direction,
 within synWSize of the last gene. If a dict of gene descriptions is
 given, then include these in printout.
     '''
 
-    mrca = familyStrainT[family].mrca
+    mrca = familyT[family].mrca
     print("  Family mrca:",strainNum2StrD[mrca])
 
     leavesL=trees.leafList(subtreeL[mrca])
@@ -210,7 +210,7 @@ given, then include these in printout.
 
         print("  Neighbors for family",family,"in",strainNum2StrD[leaf])
 
-        geneT=familyStrainT[family].famGeneT[leaf][1]
+        geneT=familyT[family].famGeneT[leaf][1]
         if geneT == ():
             print("    There are no family members in this species.")
 
@@ -259,21 +259,21 @@ species.
 
     print()
     print("Matrix of similarity scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyStrainT,geneNames,simG)
+    printScoreMatrix(family,subtreeL,familyT,geneNames,simG)
     print()
     print()
         
     print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyStrainT,geneNames,synScoresG)
+    printScoreMatrix(family,subtreeL,familyT,geneNames,synScoresG)
     print()
     print()
     
-    printOutsideFamilyScores(family,subtreeL,familyStrainT,geneNames,simG,synScoresG)
+    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,simG,synScoresG)
     print()
     print()
 
     print("Synteny information")
-    printFamNeighb(family,synWSize,subtreeL,familyStrainT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD,geneNames,strainNum2StrD)
+    printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD,geneNames,strainNum2StrD)
 
 def printGroupsAtNode(nodeStr):
     '''This is a wrapper to provide an easy way to print all the groups at
@@ -282,7 +282,7 @@ number as argument, assuming all the other required stuff is available
 at the top level.
     '''
     node = strainStr2NumD[nodeStr]
-    vPrintGroups(groupByNodeL[node],subtreeL,familyStrainT,strainNum2StrD,geneNames)
+    vPrintGroups(groupByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
 
     
 if __name__ == "__main__":
@@ -296,15 +296,16 @@ if __name__ == "__main__":
     # load groups
     groupByNodeL=readGroupOut(params.groupOutFN,tree,strainStr2NumD)
     
-    # get familyStrainT etc.
+    # get familyT etc.
     geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
 
     
     geneDescriptionsD = genomes.createGeneDescriptionsD(params.geneDescriptionsFN)
 
-    familyStrainT = groups.createFamilyStrainT(params.familyFN,tree,geneNames,strainStr2NumD)
+    familyT = families.readFamilies(params.familyFN,tree,geneNames,strainStr2NumD)
 
-    gene2FamD=createGene2FamD(familyStrainT)
+    
+    gene2FamD=createGene2FamD(familyT)
     fam2GroupD=createFam2GroupD(groupByNodeL)
 
     # subtree list
@@ -315,6 +316,6 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneNames,subtreeL,strainStr2NumD)
 
     # scores
-    simG = scores.createSimilarityGraph(params.scoresFN,geneNames)
-    synScoresG = scores.createSimilarityGraph(params.synScoresFN,geneNames)
+    simG = scores.readGraph(params.scoresFN,geneNames)
+    synScoresG = scores.readGraph(params.synScoresFN,geneNames)
     
