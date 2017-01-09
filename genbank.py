@@ -63,6 +63,15 @@ want.'''
                     # verify not in set of genes that appear more than once
                     if geneName in uniqueS:
                         start = int(feature.location.start)
+                        end = int(feature.location.end)
+                        # strand
+                        if feature.location.strand == 1:
+                            strand = "+"
+                        elif feature.location.strand == -1:
+                            strand = "-"
+                        else:
+                            strand = "?"
+                        
                         aaSeq = feature.qualifiers['translation'][0]
 
                         # get description
@@ -72,16 +81,16 @@ want.'''
                         if 'product' in feature.qualifiers:
                             descrip += feature.qualifiers['product'][0]
 
-                        geneStartSeqL.append((geneName,start,aaSeq,descrip))
+                        geneStartSeqL.append((geneName,descrip,start,end,strand,aaSeq))
 
             if geneStartSeqL != []: # if its not empty
                 # sort by start position
-                geneStartSeqL.sort(key=lambda x: x[1])
+                geneStartSeqL.sort(key=lambda x: x[2])
                 geneL=[]
-                for geneName,start,aaSeq,descrip in geneStartSeqL:
+                for geneName,descrip,start,end,strand,aaSeq in geneStartSeqL:
                     # write to fastaOutFile
                     fastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
-                    geneDescriptionsFile.write(geneName + "\t" + descrip + "\n")
+                    geneDescriptionsFile.write("\t".join([geneName,descrip,str(start),str(end),strand]) + "\n")
                     geneL.append(geneName)
                     
                 # write this chromosome to geneOrderFile                    
