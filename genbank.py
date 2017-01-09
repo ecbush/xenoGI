@@ -55,6 +55,7 @@ want.'''
         # iterate through chromosomes in the genbank file
         for record in SeqIO.parse(inFile, "genbank"):
             geneStartSeqL = []
+            chrom = record.name # .name lacks the version id. (.1 etc).
             #iterate through the genes on the chromosome
             for feature in record.features:
                 # choose only the features that are protein coding genes
@@ -81,16 +82,16 @@ want.'''
                         if 'product' in feature.qualifiers:
                             descrip += feature.qualifiers['product'][0]
 
-                        geneStartSeqL.append((geneName,descrip,start,end,strand,aaSeq))
+                        geneStartSeqL.append((geneName,descrip,chrom,start,end,strand,aaSeq))
 
             if geneStartSeqL != []: # if its not empty
                 # sort by start position
-                geneStartSeqL.sort(key=lambda x: x[2])
+                geneStartSeqL.sort(key=lambda x: x[3])
                 geneL=[]
-                for geneName,descrip,start,end,strand,aaSeq in geneStartSeqL:
+                for geneName,descrip,chrom,start,end,strand,aaSeq in geneStartSeqL:
                     # write to fastaOutFile
                     fastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
-                    geneDescriptionsFile.write("\t".join([geneName,descrip,str(start),str(end),strand]) + "\n")
+                    geneDescriptionsFile.write("\t".join([geneName,descrip,chrom,str(start),str(end),strand]) + "\n")
                     geneL.append(geneName)
                     
                 # write this chromosome to geneOrderFile                    
