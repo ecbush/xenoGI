@@ -240,6 +240,25 @@ def writeGroups(groupByNodeL,strainNum2StrD,groupOutFN):
     f.close()
 
 
+def readGroups(groupFN,tree,strainStr2NumD):
+    '''Given a file name for a groups output file, load back
+recreating groupByNodeL.'''
+
+    groupByNodeL=[[] for i in range(trees.nodeCount(tree))]
+    
+    f=open(groupFN,'r')
+    while True:
+        s=f.readline()
+        if s == '':
+            break
+        gr=str2Group(s.rstrip(),strainStr2NumD)
+        groupByNodeL[gr.mrca].append(gr)
+    f.close()
+
+    return groupByNodeL
+
+
+    
 ## Main function
 
 def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,numThreads,strainNum2StrD,groupOutFN):

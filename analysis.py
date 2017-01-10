@@ -1,26 +1,7 @@
 import sys
-import genomes,trees,families,scores
+import genomes,trees,families,scores,groups
 from Family import *
 from Group import *
-
-## Load groups
-
-def readGroupOut(fn,tree,strainStr2NumD):
-    '''Given a file name for a groups output file, load back
-recreating groupByNodeL.'''
-
-    groupByNodeL=[[] for i in range(trees.nodeCount(tree))]
-    
-    f=open(fn,'r')
-    while True:
-        s=f.readline()
-        if s == '':
-            break
-        gr=str2Group(s.rstrip(),strainStr2NumD)
-        groupByNodeL[gr.mrca].append(gr)
-    f.close()
-
-    return groupByNodeL
 
 ## Analysis functions
 
@@ -294,7 +275,7 @@ if __name__ == "__main__":
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
     
     # load groups
-    groupByNodeL=readGroupOut(params.groupOutFN,tree,strainStr2NumD)
+    groupByNodeL=groups.readGroups(params.groupOutFN,tree,strainStr2NumD)
     
     # get familyT etc.
     geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)

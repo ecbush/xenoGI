@@ -219,4 +219,5 @@ objects where the index corresponds to family number.'''
         genesL = L[2:]
 
         famL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames))
+    f.close()
     return tuple(famL)

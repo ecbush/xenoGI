@@ -16,7 +16,7 @@ class Group:
     def fileStr(self,strainNum2StrD):
         '''Return a string which can be used for saving a group compactly in a
 file.'''
-        return str(self.id)+", "+strainNum2StrD[self.mrca]+", "+" ".join(map(str,self.familyL))
+        return str(self.id)+"\t"+strainNum2StrD[self.mrca]+"\t"+",".join(map(str,self.familyL))
         
     def merge(self,other,orientation):
         '''Merge group other into self. The argument orientation tells us
@@ -36,8 +36,8 @@ score function.
             
 def str2Group(groupStr,strainStr2NumD):
     '''Given a group string (e.g. produced by the fileStr method) parse to produce a group.'''
-    L=groupStr.split(', ')
+    L=groupStr.split('\t')
     id=int(L[0])
     mrca=strainStr2NumD[L[1]]
-    familyL=[int(x) for x in L[2].split()]
+    familyL=[int(x) for x in L[2].split(',')]
     return Group(id,mrca,familyL)
