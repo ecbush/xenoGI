@@ -83,26 +83,21 @@ class geneNames:
     def __repr__(self):
         return "<geneName object with "+str(len(self.names))+" genes.>"
     
-def createGeneDescriptionsD(geneDescriptionsFN):
-    '''From given file name, create dictionary with gene names as keys and
-descriptions as values.'''
-    f = open(geneDescriptionsFN,'r')
-    D = {}
+def readGeneInfoD(geneInfoFN):
+    '''Read gene info from file, returning a dict keyed by gene name with
+information such as description, start position and so on.
+    '''
+    geneInfoD = {}
+    f = open(geneInfoFN,'r')
     while True:
         s = f.readline()
         if s == '':
             break
-        s=s.rstrip()
-        L=s.split('\t')
-        geneName = L[0]
-        if len(L)==2:
-            geneDescription = L[1]
-        else:
-            geneDescription = ''
-        D[geneName] = geneDescription
-        
-    f.close()    
-    return D
+        geneName,commonName,descrip,chrom,start,end,strand=s.rstrip().split('\t')
+        geneInfoD[geneName]=(commonName,descrip,chrom,start,end,strand)
+    f.close()
+    return geneInfoD
+
     
 def createAdjacencySet(geneOrderT,geneNames):
     '''Go though a gene order tuple pulling out pairs of adjacent genes and

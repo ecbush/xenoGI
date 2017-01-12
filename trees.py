@@ -49,6 +49,10 @@ def leafList(tree):
     else:
         return leafList(tree[1]) + leafList(tree[2])
     
+def isRootNode(tree,mrcaNum):
+    '''Is mrcaNum the root node?'''
+    # root node is tree[0] in our tuple trees
+    return mrcaNum == tree[0]
     
 def strTree2numTree(tree,counter):
     '''Given a tuple tree with nodes specified by strings, convert to

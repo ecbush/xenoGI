@@ -13,4 +13,4 @@ if __name__ == "__main__":
     os.mkdir(fastaDir)
 
     # parse
-    genbank.parseGenbank(params.geneOrderFN,params.redundProtsFN,params.geneDescriptionsFN,fastaDir,genbankFileList)
+    genbank.parseGenbank(params.geneOrderFN,params.redundProtsFN,params.geneInfoFN,fastaDir,genbankFileList)

@@ -4,7 +4,7 @@
 #### Input files ####
 
 # tree file
-treeFN='example.tre'
+treeFN='testB.tre'
 
 # unix style file path to genbank gbff files
 genbankFilePath = 'genbank/*.gbff'
@@ -19,7 +19,7 @@ geneOrderFN = 'geneOrder.txt'
 redundProtsFN = 'redundProts.txt'
 
 # gene descriptions (for use in analysis)
-geneDescriptionsFN = 'geneDescriptions.txt'
+geneInfoFN = 'geneInfo.txt'
 
 # unix style file path to fasta files
 fastaFilePath = 'fasta/*.fa'
@@ -52,9 +52,13 @@ familyFN='fam.out'
 groupOutFN = 'groups.out'
 
 
+#### Visualization and analysis output files ####
+
+# unix style file path to gff output files
+gffFilePath = 'gff/*-group.gff'
 
 
-#### Parameters ####
+#### Algorithm parameters ####
 
 # in parallel code, how many threads to use
 numThreads = 50
@@ -94,3 +98,18 @@ groupScoreThreshold = 0
 gapOpen = 12
 gapExtend = 1
 matrix = 'parasail.blosum62'
+
+
+#### Visualization and analysis ####
+
+# Creating gff files of groups for visualization in the IGB browser we
+# do this by giving different 'score' values to different
+# groups. Scores can range from 1 to 1000, but we only give certain
+# discrete scores.
+
+scoreForMRCAatRoot = 1 # special score for core groups
+
+# this is score for rest. This was made with
+# createGroupGffs.createPotentialScoresL(100,1001,200,100)
+potentialScoresL=[100, 300, 500, 700, 900, 200, 400, 600, 800, 1000]
+

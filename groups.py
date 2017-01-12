@@ -272,7 +272,7 @@ def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,nu
 
     ## create argumentL to be passed to p.map and mergeGroupsAtNode
     argumentL = []
-    for mrcaNode in range(len(groupByNodeL)): # -1 to skip core genes
+    for mrcaNode in range(len(groupByNodeL)):
         argumentL.append((groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],groupScoreThreshold,familyT))
 
     # run it

@@ -171,8 +171,8 @@ simG.
     print("Printing all scores with non-family members")
     printTable(rowL,2)
 
-                
-def printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD,geneNames,strainNum2StrD):
+
+def printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneInfoD,geneNames,strainNum2StrD):
     '''Family Neighborhood. Given a family and an mrca for it, print out
 the families nearby in each of its species and going either direction,
 within synWSize of the last gene. If a dict of gene descriptions is
@@ -215,7 +215,11 @@ given, then include these in printout.
                 geneName=geneNames.numToName(tempGene)
                 famNum=gene2FamD[tempGene]
                 group=fam2GroupD[famNum]
-                descrip = geneDescriptionsD[geneName] if geneName in geneDescriptionsD else ''
+
+                if geneName in geneInfoD:
+                    descrip = geneInfoD[geneName][1]
+                else:
+                    descrip = ''
 
                 # if its the one in the family we're querying, mark with *
                 if tempGene == gene:
@@ -254,7 +258,7 @@ species.
     print()
 
     print("Synteny information")
-    printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneDescriptionsD,geneNames,strainNum2StrD)
+    printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneInfoD,geneNames,strainNum2StrD)
 
 def printGroupsAtNode(nodeStr):
     '''This is a wrapper to provide an easy way to print all the groups at
@@ -281,7 +285,7 @@ if __name__ == "__main__":
     geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
 
     
-    geneDescriptionsD = genomes.createGeneDescriptionsD(params.geneDescriptionsFN)
+    geneInfoD = genomes.readGeneInfoD(params.geneInfoFN)
 
     familyT = families.readFamilies(params.familyFN,tree,geneNames,strainStr2NumD)
 
