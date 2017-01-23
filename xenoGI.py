@@ -21,6 +21,9 @@ if __name__ == "__main__":
     
     ## similarity scores
     simG = scores.createSimScoresGraph(params.blastFilePath,params.fastaFilePath,params.numThreads,params.scoresFN,geneNames,params.gapOpen,params.gapExtend,params.matrix)
+
+    ## normalized scores
+    normScoresG=scores.createNormScoreGraph(tree,strainNum2StrD,params.blastFilePath,params.evalueThresh,simG,geneNames,params.normScoresFN)    
     
     ## synteny scores
     synScoresG = scores.createSynScoresGraph(simG,geneNames,geneOrderT,params.synWSize,params.numSynToTake,params.numThreads,params.synScoresFN)

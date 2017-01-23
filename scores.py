@@ -1,6 +1,6 @@
-import parasail,networkx,glob
+import parasail,networkx,glob,statistics
 from multiprocessing import Pool
-import genomes
+import genomes,trees
 
 ## raw similarity scores
 
@@ -107,6 +107,265 @@ based on the max and min possible scores for these sequences.'''
     
     return scaled
 
+
+
+## normalized scores
+
+# get reciprocal hits matrix
+
+def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh):
+    '''return an upper-diagonal (N-1)xN matrix where each entry
+    [i][j] (j > i) contains a dictionary of best reciprocal hits
+    between species i and species j, as indexed in list strainNamesL;
+    key is always gene in species i, and value gene in species j'''
+
+    rHitsL = []
+    
+    for i in range(len(strainNamesL)): 
+        rHitsL.append([])
+        # fill in the rest of the row with the dictionary of best
+        # reciprocal hits between species i and j (keyed by species i)
+        for j in range(len(strainNamesL)):
+            if j > i:
+                rHitsL[i].append(getReciprocalHits(strainNamesL[i], strainNamesL[j], blastDir, evalueThresh))
+            else:
+                rHitsL[i].append(None)
+    return rHitsL
+
+
+def getReciprocalHits(strainName1, strainName2, blastDir, evalueThresh):
+    '''Given strain names and blast file directory name, load hits between
+two strains in each direction, then go through and keep only the
+reciprocal hits. Returns dictionary where keys are genes in strain 1
+and values are corresponding genes in strain 2.'''
+    # get best hits of 1 blasted against 2...
+    hits1D = getHits(blastDir+strainName1+'-'+strainName2+'.out', evalueThresh)
+    # ...and 2 blasted against 1
+    hits2D = getHits(blastDir+strainName2+'-'+strainName1+'.out', evalueThresh)
+
+    # then store only the reciprocal best hits
+    recipHitsD = {}
+    for query in hits1D:
+        hit = hits1D[query]
+        nextHit = hits2D.get(hit)
+        if nextHit == query:
+            recipHitsD[query] = hit
+
+    return recipHitsD
+
+def getHits(fileName, evalueThresh):
+    """Given a BLAST output file, returns a dictionary keyed by the genes
+    in the query species, with the values being the top hit (if any)
+    for those genes. Assumes the blast hits for each query are given
+    from most to least significant. which appears to be the
+    case. Thresholds for minimum similarity and maximum length
+    difference are globally defined.
+    """
+
+    f = open(fileName, 'r')
+    hitsD = {}
+
+    queryGene = ""
+
+    # read through entire file
+    line = f.readline()
+
+    while line != '':
+        # break the line up into its components
+        L = line.split('\t')
+
+        if len(L)<12:
+            # its not an info line (likely header)
+            line = f.readline()
+            continue
+
+        # gene names come first
+        queryGene = L[0]
+        hit = L[1]
+        evalue = float(L[10])
+
+        if evalue < evalueThresh:
+            # store the query and hit if they meet thresholds
+            hitsD[queryGene] = hit
+
+        # we only want the first hit for any query gene. EB CHANGE THIS LATER to check to get best score even if doesn't come first.
+        while line.split('\t')[0] == queryGene:
+            line = f.readline()
+
+    f.close()
+    return hitsD
+
+
+# find set of all around best reciprocal hits
+
+def getPossibleGenesD(rHitsL):
+    '''return dict containing an entry for each gene in species 0 that has
+    a best reciprocal hit in all other species.  format of an entry is
+    gene:(tuple of recip hit genes in other species). We do this to
+    quickly eliminate things we aren't interested in.
+    '''
+    possibleGenesD = {}
+    firstRow = rHitsL[0]
+    firstDict = firstRow[1]
+    # we just look at first dict, since the all around brh sets will
+    # have a gene in this with matches in all strains.
+    for gene in firstDict:
+        isPossible = True
+        hitsL = [firstDict[gene]]
+        for colInd in range(2, len(firstRow)):
+            compareDict = firstRow[colInd]
+            hit = compareDict.get(gene)
+            if hit == None:
+                isPossible = False
+                break
+            else:
+                hitsL.append(hit)
+        if isPossible:
+            possibleGenesD[gene] = tuple(hitsL)
+    return possibleGenesD
+
+
+def getAllAroundBRHL(possibleGenesD, rHitsL):
+    '''Given a matrix of reciprocal hit dictionaries in rHitsL, and a dict
+of possible hits, return a list of all around best reciprocal hits. In
+the form of a list of lists, where each sublist is one set of
+orthologs.'''
+    
+    aabrhL = []
+
+    genesL = list(possibleGenesD.keys())
+    genesL.sort() # sort so we get consistent order
+    
+    for gene in genesL:
+        hitsT = possibleGenesD[gene]
+
+        # check that each gene in the list of hitsT is best reciprocal 
+        # hit of all following genes
+        isOrth = True
+        for hit1Index in range(len(hitsT)):
+            hit1 = hitsT[hit1Index]
+
+            # check that current gene in list is best reciprocal hit
+            # of all following genes in list
+            for hit2Index in range(hit1Index+1, len(hitsT)): # j always > i
+                hit2 = hitsT[hit2Index]
+                sp1sp2Dict = rHitsL[hit1Index+1][hit2Index+1]
+                match = sp1sp2Dict.get(hit1)
+                if match != hit2: # oh noes! not reciprocal!
+                    isOrth = False
+                    break
+
+            # if any pair not reciprocal best hits, then we fail
+            if not isOrth:
+                break
+
+        # if we get through all genes without finding that some aren't
+        # reciprocal best hits, then we keep this list of genes
+        if isOrth:
+            aabrhL.append((gene,)+hitsT)
+    return aabrhL
+
+def getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,geneNames):
+    '''Given raw scores and a directory with blast output, finds the sets of all around best reciprocal hits. Then for each pair of species, calculates the mean and standard deviation of scores and stores in a dictionary.'''
+
+    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
+    blastDir = blastFilePath.split("*")[0]
+    rHitsL=getAllReciprocalHits(blastDir,strainNamesL,evalueThresh)
+    
+    # get sets of genes in first species that have a reciprocal best
+    # hit in each other species. this is to save time in next step.
+    possibleGenesD = getPossibleGenesD(rHitsL)
+
+    # then, out of the possible genes, get those that are all
+    # pairwise reciprocal bets hits
+    aabrhL = getAllAroundBRHL(possibleGenesD, rHitsL)
+
+    # now loop through these, sorting scores into a dict keyed by species pair.
+
+    # create dictionary, (representing an upper triangular matrix)
+    spScoreD={}
+    for i in range(len(strainNamesL)-1):
+        strain1 = strainNamesL[i]
+        for j in range(i+1,len(strainNamesL)):
+            strain2 = strainNamesL[j]
+            spScoreD[(strain1,strain2)]=[]
+
+    # loop through aabrhL and populate
+    for orthoT in aabrhL:
+        spScoreD = addPairwiseScores(spScoreD,orthoT,simG,geneNames)
+
+    # get mean and standard deviation
+    summaryD = {}
+    for sp1,sp2 in spScoreD:
+        mean = statistics.mean(spScoreD[(sp1,sp2)])
+        std = statistics.stdev(spScoreD[(sp1,sp2)])
+        if (sp1,sp2) in summaryD or (sp2,sp1) in summaryD:
+            print("!!!!!")
+        summaryD[(sp1,sp2)] = (mean,std)
+        summaryD[(sp2,sp1)] = (mean,std)
+        
+    return summaryD
+
+def addPairwiseScores(spScoreD,orthoT,simG,geneNames):
+    '''Given a dictionary for storing pairwise scores, and ortholog set in
+orthoT, and a network of scores, simG, pull out all species pairs, and
+add score for each in appropriate place ins spScoreD.'''
+
+    for i in range(len(orthoT)-1):
+        gene1 = orthoT[i]
+        sp1,restOfName1=gene1.split('-')
+        geneNum1=geneNames.nameToNum(gene1)
+        for j in range(i+1,len(orthoT)):
+            gene2 = orthoT[j]
+            geneNum2=geneNames.nameToNum(gene2)
+            sp2,restOfName1=gene2.split('-')
+            data=simG.get_edge_data(geneNum1,geneNum2)
+            sc = data['score']
+            key = tuple(sorted([sp1,sp2]))
+            spScoreD[key].append(sc)
+    return spScoreD
+
+
+def createNormScoreGraph(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,geneNames,normScoresFN):
+    '''Given directory of blast output and a graph of raw similarity
+scores, calculate normalized similarity scores by comparing each score
+with the range of scores in in all around best reciprocal hits in that
+pair of strains.'''
+
+    summaryD=getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,geneNames)
+   
+    # make norm scores graph
+    # get same nodes (genes) as sim graph
+    normScoresG=networkx.Graph()
+    for node in simG.nodes_iter(): normScoresG.add_node(node)
+
+    # loop over each edge, normalizing score and putting in normScoresG
+    for gn1,gn2 in simG.edges_iter():
+            data=simG.get_edge_data(gn1,gn2)
+
+            # find mean,std from summaryD.
+            gnName1 = geneNames.numToName(gn1)
+            sp1,restOfName1 = gnName1.split('-')
+            gnName2 = geneNames.numToName(gn2)
+            sp2,restOfName1 = gnName2.split('-')
+            mean,std = summaryD[(sp1,sp2)]
+            sc = normScore(data['score'],mean,std)
+            normScoresG.add_edge(gn1,gn2,score=sc)
+
+    writeGraph(normScoresG,geneNames,normScoresFN)
+ 
+        
+    return normScoresG
+
+def normScore(rawScore,mean,std):
+    '''Given a raw score and mean and std of all raw scores, return a
+score normalized by std and scaled to the interval [0,1].'''
+    norm = ( rawScore - mean ) / std
+    # scale norm to [0,1]
+    normMin = -mean/std
+    normMax = mean/std
+    scaledNorm = ( norm - normMin ) / ( normMax - normMin )
+    return scaledNorm
 
 ## synteny scores
 
