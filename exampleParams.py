@@ -40,7 +40,10 @@ blastFilePath = 'blast/*.out'
 #### Algorithm output files ####
 
 # alignment based similarity scores file
-scoresFN = 'scores.out'
+rawScoresFN = 'rawScores.out'
+
+# normalized scores file
+normScoresFN = 'normScores.out'
 
 # synteny based scores file
 synScoresFN = 'synScores.out'
@@ -63,29 +66,43 @@ gffFilePath = 'gff/*-group.gff'
 # in parallel code, how many threads to use
 numThreads = 50
 
+
+# in calculation of normalized scores, we get set of all around best
+# reciprocal hits. This is the evalue threshold used there.
+evalueThresh = 0.001
+
+
 # Synteny window size, that is the size of the neighborhood of each
 # gene to consider when calculating synteny scores. (measured in
 # number of genes)
 synWSize = 20
 
-# when calculating synteny score between two genes, the number of
+# When calculating synteny score between two genes, the number of
 # pairs of scores to take (and average) from the neighborhoods of
 # those two genes
 numSynToTake = 10
 
-# minimum synteny score value we'll accept when putting a gene in a
-# family. Also applies to seeds.
-minSynThresh = 0.5
+# Minimum normalized score for family formation. This should be used
+# as an extreme lower bound, to eliminate those things that are so
+# obiously dissimilar that they could not be homologous by descent
+# from the node under consideration. In units of standard deviation,
+# centered around 0.
+minNormThresh = -4.0
 
-# Synteny score threshold for using synteny to adjust a similarity
+# Minimum synteny score value we'll accept when putting a gene in a
+# family. Also applies to seeds. Note synteny scores are based on
+# normalized scores
+minSynThresh = -3.0
+
+# Synteny score threshold for using synteny to adjust a raw
 # score. Setting this lower makes us use synteny more, and thus will
 # tend to make us put more genes in families.
-synAdjustThresh = 0.8
+synAdjustThresh = -0.5
 
 # We use syntenty scores to adjust similarity scores in family
-# finding. This parameter specifies the maximum amount we can
-# add to sim scores
-synAdjustMaxExtent = 0.1
+# finding. This parameter specifies the amount we multiply a rawScore
+# by during this adjustment.
+synAdjustExtent = 1.05
 
 # Threshold for group scores. Below this we do not merge groups. These
 # scores theoretically range from -2 to 2 inclusive.

@@ -144,10 +144,10 @@ are provided by the graph G.'''
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,simG,synScoresG):
+def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,synScoresG):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
-simG.
+rawScoresG.
     '''
     
     familyGenesL = getGenesInFamily(family,subtreeL,familyT)
@@ -155,17 +155,17 @@ simG.
     rowL = []
     for gene in familyGenesL:
         geneName = geneNames.numToName(gene)
-        for edge in simG.edges_iter(gene):
+        for edge in rawScoresG.edges_iter(gene):
             if not edge[1] in familyGenesL:
                 # this connection is with a gene outside the family
                 otherGeneName = geneNames.numToName(edge[1])
-                simData=simG.get_edge_data(gene,edge[1])
+                simData=rawScoresG.get_edge_data(gene,edge[1])
                 synScoresData=synScoresG.get_edge_data(gene,edge[1])
                 rowL.append([geneName,otherGeneName,format(simData['score'],".3f"),format(synScoresData['score'],".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
-    rowL.insert(0,['----------','-----------','----------','-------'])
-    rowL.insert(0,['Inside fam','Outside fam','Similarity','Synteny'])
+    rowL.insert(0,['----------','-----------','---','-------'])
+    rowL.insert(0,['Inside fam','Outside fam','Raw','Synteny'])
 
                 
     print("Printing all scores with non-family members")
@@ -244,7 +244,7 @@ species.
 
     print()
     print("Matrix of similarity scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,simG)
+    printScoreMatrix(family,subtreeL,familyT,geneNames,rawScoresG)
     print()
     print()
         
@@ -253,7 +253,7 @@ species.
     print()
     print()
     
-    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,simG,synScoresG)
+    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,synScoresG)
     print()
     print()
 
@@ -301,6 +301,7 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneNames,subtreeL,strainStr2NumD)
 
     # scores
-    simG = scores.readGraph(params.scoresFN,geneNames)
+    rawScoresG = scores.readGraph(params.rawScoresFN,geneNames)
+    normScoresG = scores.readGraph(params.normScoresFN,geneNames)
     synScoresG = scores.readGraph(params.synScoresFN,geneNames)
     

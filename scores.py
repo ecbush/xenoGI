@@ -4,7 +4,7 @@ import genomes,trees
 
 ## raw similarity scores
 
-def createSimScoresGraph(blastFilePath,fastaFilePath,numThreads,scoresFN,geneNames,gapOpen, gapExtend, matrix):
+def createSimScoresGraph(blastFilePath,fastaFilePath,numThreads,rawScoresFN,geneNames,gapOpen, gapExtend, matrix):
     '''Find gene pairs with significant blast hits, and get global
 alignment scores for each using multiple threads.'''
 
@@ -60,7 +60,7 @@ alignment scores for each using multiple threads.'''
             G.add_edge(geneNames.nameToNum(g1),geneNames.nameToNum(g2),score=sc)
 
     # write scores to file
-    writeGraph(G,geneNames,scoresFN)
+    writeGraph(G,geneNames,rawScoresFN)
     
     return G
 
@@ -265,7 +265,7 @@ orthologs.'''
             aabrhL.append((gene,)+hitsT)
     return aabrhL
 
-def getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,geneNames):
+def getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,rawScoresG,geneNames):
     '''Given raw scores and a directory with blast output, finds the sets of all around best reciprocal hits. Then for each pair of species, calculates the mean and standard deviation of scores and stores in a dictionary.'''
 
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
@@ -292,7 +292,7 @@ def getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,gen
 
     # loop through aabrhL and populate
     for orthoT in aabrhL:
-        spScoreD = addPairwiseScores(spScoreD,orthoT,simG,geneNames)
+        spScoreD = addPairwiseScores(spScoreD,orthoT,rawScoresG,geneNames)
 
     # get mean and standard deviation
     summaryD = {}
@@ -306,9 +306,9 @@ def getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,gen
         
     return summaryD
 
-def addPairwiseScores(spScoreD,orthoT,simG,geneNames):
+def addPairwiseScores(spScoreD,orthoT,rawScoresG,geneNames):
     '''Given a dictionary for storing pairwise scores, and ortholog set in
-orthoT, and a network of scores, simG, pull out all species pairs, and
+orthoT, and a network of scores, rawScoresG, pull out all species pairs, and
 add score for each in appropriate place ins spScoreD.'''
 
     for i in range(len(orthoT)-1):
@@ -319,29 +319,29 @@ add score for each in appropriate place ins spScoreD.'''
             gene2 = orthoT[j]
             geneNum2=geneNames.nameToNum(gene2)
             sp2,restOfName1=gene2.split('-')
-            data=simG.get_edge_data(geneNum1,geneNum2)
+            data=rawScoresG.get_edge_data(geneNum1,geneNum2)
             sc = data['score']
             key = tuple(sorted([sp1,sp2]))
             spScoreD[key].append(sc)
     return spScoreD
 
 
-def createNormScoreGraph(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,geneNames,normScoresFN):
+def createNormScoreGraph(tree,strainNum2StrD,blastFilePath,evalueThresh,rawScoresG,geneNames,normScoresFN):
     '''Given directory of blast output and a graph of raw similarity
 scores, calculate normalized similarity scores by comparing each score
 with the range of scores in in all around best reciprocal hits in that
 pair of strains.'''
 
-    summaryD=getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,simG,geneNames)
+    summaryD=getSummaryRBHScoresD(tree,strainNum2StrD,blastFilePath,evalueThresh,rawScoresG,geneNames)
    
     # make norm scores graph
     # get same nodes (genes) as sim graph
     normScoresG=networkx.Graph()
-    for node in simG.nodes_iter(): normScoresG.add_node(node)
+    for node in rawScoresG.nodes_iter(): normScoresG.add_node(node)
 
     # loop over each edge, normalizing score and putting in normScoresG
-    for gn1,gn2 in simG.edges_iter():
-            data=simG.get_edge_data(gn1,gn2)
+    for gn1,gn2 in rawScoresG.edges_iter():
+            data=rawScoresG.get_edge_data(gn1,gn2)
 
             # find mean,std from summaryD.
             gnName1 = geneNames.numToName(gn1)
@@ -359,13 +359,17 @@ pair of strains.'''
 
 def normScore(rawScore,mean,std):
     '''Given a raw score and mean and std of all raw scores, return a
-score normalized by std and scaled to the interval [0,1].'''
+score normalized by std and centered around zero.'''
     norm = ( rawScore - mean ) / std
+
+    # OLD
     # scale norm to [0,1]
-    normMin = -mean/std
-    normMax = mean/std
-    scaledNorm = ( norm - normMin ) / ( normMax - normMin )
-    return scaledNorm
+    #normMin = -mean/std
+    #normMax = mean/std
+    #scaledNorm = ( norm - normMin ) / ( normMax - normMin )
+    #return scaledNorm
+
+    return norm
 
 ## synteny scores
 
@@ -391,23 +395,23 @@ go 5 genes in either direction.'''
 
 def pairScore(gn1,gn2,G):
     '''Given a pair of genes, see if there is an edge. If so, return
-score, if not, return 0.'''
+score, if not, return -infinit.'''
     data=G.get_edge_data(gn1,gn2)
     if data == None:
-        return 0
+        return -float('inf')
     else:
         return data['score']
 
 
-def topScore(L1,L2,simG):
+def topScore(L1,L2,G):
     '''Find the best score between genes in L1 and L2. Return the index of
 each and the score.'''
     besti1 = 0
     besti2 = 0
-    bestSc = 0
+    bestSc = pairScore(L1[0],L2[0],G)
     for i1,gn1 in enumerate(L1):
         for i2,gn2 in enumerate(L2):
-            sc = pairScore(gn1,gn2,simG)
+            sc = pairScore(gn1,gn2,G)
             if sc > bestSc:
                 bestSc = sc
                 besti1 = i1
@@ -418,11 +422,11 @@ def synScore(argsT):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
-    pairs, and return their average of their scores. This score is
-    between 0 and 1. The approach is greedy. We find the pair with the
-    best score, add it, then remove those genes and iterate.
+    pairs, and return the average of their scores. The approach is
+    greedy. We find the pair with the best score, add it, then remove
+    those genes and iterate.
     '''
-    gn1,gn2,simG,neighborTL,numSynToTake = argsT
+    gn1,gn2,G,neighborTL,numSynToTake = argsT
     
     L1 = list(neighborTL[gn1])
     L2 = list(neighborTL[gn2])
@@ -430,7 +434,7 @@ def synScore(argsT):
     scSum = 0
     counter = 0
     while counter < numSynToTake and len(L1) > 0 and len(L2) > 0:
-        ind1,ind2,sc = topScore(L1,L2,simG)
+        ind1,ind2,sc = topScore(L1,L2,G)
         scSum += sc
         del L1[ind1]
         del L2[ind2]
@@ -439,10 +443,10 @@ def synScore(argsT):
     return gn1, gn2, scSum / numSynToTake
 
 
-def createSynScoresGraph(simG,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
+def createSynScoresGraph(G,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
     '''Create a graph with genes as nodes, and edges representing the
 synteny score between two genes. We only bother making synteny scores
-for those genes that have an edge in simG.
+for those genes that have an edge in G.
     '''
 
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
@@ -451,17 +455,17 @@ for those genes that have an edge in simG.
     p=Pool(numThreads) # num threads
     
     argumentL = []
-    # create and edge for every one in simG. Give it weight of sum of
+    # create and edge for every one in G. Give it weight of sum of
     # scores of adjacent genes
-    for gn1,gn2 in simG.edges_iter():
-        argumentL.append((gn1,gn2,simG,neighborTL,numSynToTake))
+    for gn1,gn2 in G.edges_iter():
+        argumentL.append((gn1,gn2,G,neighborTL,numSynToTake))
 
     synScoresL = p.map(synScore, argumentL)
 
     # make synteny graph
     # get same nodes (genes) as sim graph
     synScoresG=networkx.Graph()
-    for node in simG.nodes_iter(): synScoresG.add_node(node)
+    for node in G.nodes_iter(): synScoresG.add_node(node)
 
     for gn1,gn2,sc in synScoresL:
         synScoresG.add_edge(gn1,gn2,score=sc)
