@@ -42,6 +42,9 @@ blastFilePath = 'blast/*.out'
 # alignment based similarity scores file
 rawScoresFN = 'rawScores.out'
 
+# sets of all around best reciprocal hits
+aabrhFN = 'aabrh.out'
+
 # normalized scores file
 normScoresFN = 'normScores.out'
 
@@ -80,7 +83,7 @@ synWSize = 20
 # When calculating synteny score between two genes, the number of
 # pairs of scores to take (and average) from the neighborhoods of
 # those two genes
-numSynToTake = 10
+numSynToTake = 15
 
 # Minimum normalized score for family formation. This should be used
 # as an extreme lower bound, to eliminate those things that are so
@@ -96,8 +99,9 @@ minSynThresh = -3.0
 
 # Synteny score threshold for using synteny to adjust a raw
 # score. Setting this lower makes us use synteny more, and thus will
-# tend to make us put more genes in families.
-synAdjustThresh = -0.5
+# tend to make us put more genes in families. This is a normScore type
+# score
+synAdjustThresh = 0
 
 # We use syntenty scores to adjust similarity scores in family
 # finding. This parameter specifies the amount we multiply a rawScore

@@ -20,13 +20,13 @@ if __name__ == "__main__":
 
     
     ## similarity scores
-    rawScoresG = scores.createSimScoresGraph(params.blastFilePath,params.fastaFilePath,params.numThreads,params.rawScoresFN,geneNames,params.gapOpen,params.gapExtend,params.matrix)
+    rawScoresG = scores.createRawScoresGraph(params.blastFilePath,params.fastaFilePath,params.numThreads,params.rawScoresFN,geneNames,params.gapOpen,params.gapExtend,params.matrix)
 
     ## normalized scores
-    normScoresG=scores.createNormScoreGraph(tree,strainNum2StrD,params.blastFilePath,params.evalueThresh,rawScoresG,geneNames,params.normScoresFN)    
+    normScoresG,aabrhRawScoreSummmaryD=scores.createNormScoreGraph(tree,strainNum2StrD,params.blastFilePath,params.evalueThresh,rawScoresG,geneNames,params.aabrhFN,params.normScoresFN)    
     
     ## synteny scores
-    synScoresG = scores.createSynScoresGraph(normScoresG,geneNames,geneOrderT,params.synWSize,params.numSynToTake,params.numThreads,params.synScoresFN)
+    synScoresG = scores.createSynScoresGraph(normScoresG,aabrhRawScoreSummmaryD,geneNames,geneOrderT,params.synWSize,params.numSynToTake,params.numThreads,params.synScoresFN)
 
     
     ## make gene families
