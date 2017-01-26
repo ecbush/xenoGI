@@ -54,7 +54,6 @@ at the top level.
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-
     params = __import__(paramFN.replace('.py', ''))
 
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)

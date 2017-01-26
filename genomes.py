@@ -2,8 +2,9 @@
 import trees,fasta,sys
 
 def loadProt(protFnL):
-    '''Given a list of file names of simp.faa type fasta files, load the
-sequences and store in a dictionary keyed by protein name.
+    '''Given a list of file names of fasta files with the gene name as
+header, load the sequences and store in a dictionary keyed by protein
+name.
     '''
     seqD={}
     for fn in protFnL:
@@ -93,8 +94,8 @@ information such as description, start position and so on.
         s = f.readline()
         if s == '':
             break
-        geneName,commonName,descrip,chrom,start,end,strand=s.rstrip().split('\t')
-        geneInfoD[geneName]=(commonName,descrip,chrom,start,end,strand)
+        geneName,commonName,locusTag,descrip,chrom,start,end,strand=s.rstrip().split('\t')
+        geneInfoD[geneName]=(commonName,locusTag,descrip,chrom,start,end,strand)
     f.close()
     return geneInfoD
 

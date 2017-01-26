@@ -218,7 +218,7 @@ given, then include these in printout.
                 group=fam2GroupD[famNum]
 
                 if geneName in geneInfoD:
-                    descrip = geneInfoD[geneName][1]
+                    descrip = geneInfoD[geneName][2]
                 else:
                     descrip = ''
 

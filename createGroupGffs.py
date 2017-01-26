@@ -72,7 +72,7 @@ return its chrom,start,end.
     geneMidpointL=[]
     for fam,geneL in familyL:
         for gene in geneL:
-            commonName,descrip,chrom,start,end,strand=geneInfoD[gene]
+            commonName,locusTag,descrip,chrom,start,end,strand=geneInfoD[gene]
             chromL.append(chrom)
             start = int(start)
             end = int(end)
@@ -112,7 +112,7 @@ we've done already.
     # loop over families to get genes
     for fam,geneL in familyL:
         for gene in geneL:
-            commonName,descrip,chrom,start,end,strand=geneInfoD[gene]
+            commonName,locusTag,descrip,chrom,start,end,strand=geneInfoD[gene]
             if commonName != '':
                 Name=commonName
             else:

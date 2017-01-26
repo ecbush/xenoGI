@@ -79,7 +79,12 @@ want.'''
                         commonName=''
                         if 'gene' in feature.qualifiers:
                             commonName=feature.qualifiers['gene'][0]
+
+                        locusTag=''
+                        if 'locus_tag' in feature.qualifiers:
+                            locusTag = feature.qualifiers['locus_tag'][0]
                         
+                            
                         # get description
                         descrip=''
                         if 'gene' in feature.qualifiers:
@@ -87,16 +92,16 @@ want.'''
                         if 'product' in feature.qualifiers:
                             descrip += feature.qualifiers['product'][0]
 
-                        geneStartSeqL.append((geneName,commonName,descrip,chrom,start,end,strand,aaSeq))
+                        geneStartSeqL.append((geneName,commonName,locusTag,descrip,chrom,start,end,strand,aaSeq))
 
             if geneStartSeqL != []: # if its not empty
                 # sort by start position
                 geneStartSeqL.sort(key=lambda x: x[3])
                 geneL=[]
-                for geneName,commonName,descrip,chrom,start,end,strand,aaSeq in geneStartSeqL:
+                for geneName,commonName,locusTag,descrip,chrom,start,end,strand,aaSeq in geneStartSeqL:
                     # write to fastaOutFile
                     fastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
-                    geneInfoFile.write("\t".join([geneName,commonName,descrip,chrom,str(start),str(end),strand]) + "\n")
+                    geneInfoFile.write("\t".join([geneName,commonName,locusTag,descrip,chrom,str(start),str(end),strand]) + "\n")
                     geneL.append(geneName)
                     
                 # write this chromosome to geneOrderFile                    
