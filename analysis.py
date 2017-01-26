@@ -1,5 +1,6 @@
 from Family import *
 from Group import *
+import trees
 import matplotlib.pyplot as pyplot
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -143,7 +144,7 @@ are provided by the graph G.'''
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,synScoresG):
+def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,normScoresG,synScoresG):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 rawScoresG.
@@ -158,13 +159,14 @@ rawScoresG.
             if not edge[1] in familyGenesL:
                 # this connection is with a gene outside the family
                 otherGeneName = geneNames.numToName(edge[1])
-                simData=rawScoresG.get_edge_data(gene,edge[1])
+                rawData=rawScoresG.get_edge_data(gene,edge[1])
+                normScoresData=normScoresG.get_edge_data(gene,edge[1])
                 synScoresData=synScoresG.get_edge_data(gene,edge[1])
-                rowL.append([geneName,otherGeneName,format(simData['score'],".3f"),format(synScoresData['score'],".3f")])
+                rowL.append([geneName,otherGeneName,format(rawData['score'],".3f"),format(normScoresData['score'],".3f"),format(synScoresData['score'],".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
-    rowL.insert(0,['----------','-----------','---','-------'])
-    rowL.insert(0,['Inside fam','Outside fam','Raw','Synteny'])
+    rowL.insert(0,['----------','-----------','---','----','-------'])
+    rowL.insert(0,['Inside fam','Outside fam','Raw','Norm','Synteny'])
 
                 
     print("Printing all scores with non-family members")
@@ -232,45 +234,7 @@ given, then include these in printout.
             printTable(rowsL,4)
 
 
-def printFam(synWSize,family):
-    '''This is a wrapper to provide an easy way to print relevant info on
-a family. For ease of use, we take only two arguments, assuming all
-the other required stuff is available at the top level. Family is the
-numerical identifier of a family. synWSize is the size of the genomic
-window we will include when printing out genomic context in each
-species.
-    '''
-
-    print()
-    print("Matrix of similarity scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,rawScoresG)
-    print()
-    print()
-        
-    print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,synScoresG)
-    print()
-    print()
-    
-    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,synScoresG)
-    print()
-    print()
-
-    print("Synteny information")
-    printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneInfoD,geneNames,strainNum2StrD)
-
-def printGroupsAtNode(nodeStr):
-    '''This is a wrapper to provide an easy way to print all the groups at
-a particular node in the tree. For ease of use, we take only a node
-number as argument, assuming all the other required stuff is available
-at the top level.
-    '''
-    node = strainStr2NumD[nodeStr]
-    vPrintGroups(groupByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
-
-    
 # Plots of scores
-
 
 def scoreHists(scoreFN,outFN,numBins):
     '''Read through a scores file, and separate into all pairwise comparisons. Then plot hist of each.'''

@@ -1,5 +1,55 @@
 import sys
-import analysis,genomes,trees,families,scores,groups
+import genomes,trees,families,scores,groups
+from analysis import *
+
+## Wrapper functions
+#  these should be here, as they assume a bunch of global variables.
+
+def printFam(synWSize,family):
+    '''This is a wrapper to provide an easy way to print relevant info on
+a family. For ease of use, we take only two arguments, assuming all
+the other required stuff is available at the top level. Family is the
+numerical identifier of a family. synWSize is the size of the genomic
+window we will include when printing out genomic context in each
+species.
+    '''
+
+    print()
+    print("Matrix of raw similarity scores [0,1] between genes in the family")
+    printScoreMatrix(family,subtreeL,familyT,geneNames,rawScoresG)
+    print()
+    print()
+
+    print()
+    print("Matrix of normalized similarity scores (z scores) between genes in the family")
+    printScoreMatrix(family,subtreeL,familyT,geneNames,normScoresG)
+    print()
+    print()
+    
+    print("Matrix of synteny scores (z scores) between genes in the family")
+    printScoreMatrix(family,subtreeL,familyT,geneNames,synScoresG)
+    print()
+    print()
+    
+    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,normScoresG,synScoresG)
+    print()
+    print()
+
+    print("Synteny information")
+    printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneInfoD,geneNames,strainNum2StrD)
+
+def printGroupsAtNode(nodeStr):
+    '''This is a wrapper to provide an easy way to print all the groups at
+a particular node in the tree. For ease of use, we take only a node
+number as argument, assuming all the other required stuff is available
+at the top level.
+    '''
+    node = strainStr2NumD[nodeStr]
+    vPrintGroups(groupByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
+
+    
+
+
 
 if __name__ == "__main__":
 
@@ -21,8 +71,8 @@ if __name__ == "__main__":
     familyT = families.readFamilies(params.familyFN,tree,geneNames,strainStr2NumD)
 
     
-    gene2FamD=analysis.createGene2FamD(familyT)
-    fam2GroupD=analysis.createFam2GroupD(groupByNodeL)
+    gene2FamD=createGene2FamD(familyT)
+    fam2GroupD=createFam2GroupD(groupByNodeL)
 
     # subtree list
     subtreeL=trees.createSubtreeL(tree)
