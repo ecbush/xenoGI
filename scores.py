@@ -112,13 +112,12 @@ based on the max and min possible scores for these sequences.'''
 ## normalized scores
 
 
-def createNormScoreGraph(tree,strainNum2StrD,blastFilePath,evalueThresh,rawScoresG,geneNames,aabrhFN,normScoresFN):
+def createNormScoreGraph(strainNamesL,blastFilePath,evalueThresh,rawScoresG,geneNames,aabrhFN,normScoresFN):
     '''Given directory of blast output and a graph of raw similarity
 scores, calculate normalized similarity scores by comparing each score
 with the range of scores in in all around best reciprocal hits in that
 pair of strains.'''
 
-    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
 
     aabrhRawScoreSummmaryD=getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,rawScoresG,geneNames)
@@ -381,13 +380,13 @@ score normalized by std and centered around zero.'''
 
 ## synteny scores
 
-def createSynScoresGraph(G,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
+def createSynScoresGraph(G,aabrhRawScoreSummmaryD,geneNames,geneOrderD,synWSize,numSynToTake,numThreads,synScoresFN):
     '''Create a graph with genes as nodes, and edges representing the
 synteny score between two genes. We only bother making synteny scores
 for those genes that have an edge in G.
     '''
 
-    neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
+    neighborTL = createNeighborL(geneNames,geneOrderD,synWSize)
 
 
     # prepare argument list for map
@@ -411,7 +410,7 @@ for those genes that have an edge in G.
         
     return synScoresG
 
-def createNeighborL(geneNames,geneOrderT,synWSize):
+def createNeighborL(geneNames,geneOrderD,synWSize):
     '''Return a list which specifies the neighbors of each gene. Index of
 list corresponds to gene number, and the value located at that index
 is a tuple of all genes within a synWSize window. e.g. synWSize 5 means we
@@ -419,15 +418,14 @@ go 5 genes in either direction.'''
 
     neighborTL = [None for x in geneNames.nums]
 
-    for contigT in geneOrderT:
-        if not contigT == None:
-            for geneNumT in contigT:
-                for i in range(len(geneNumT)):
-                    end = i + synWSize
-                    st = i-synWSize if i-synWSize>0 else 0 # st can't be less than 0
-                    L = list(geneNumT[st:end])
-                    L.remove(geneNumT[i])
-                    neighborTL[geneNumT[i]] = tuple(L)
+    for contigT in geneOrderD.values():
+        for geneNumT in contigT:
+            for i in range(len(geneNumT)):
+                end = i + synWSize
+                st = i-synWSize if i-synWSize>0 else 0 # st can't be less than 0
+                L = list(geneNumT[st:end])
+                L.remove(geneNumT[i])
+                neighborTL[geneNumT[i]] = tuple(L)
 
     return neighborTL
 

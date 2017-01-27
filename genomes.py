@@ -14,16 +14,14 @@ name.
     return seqD
 
 class geneNames:
-    def __init__(self, geneOrderFN,strainNameToNumD,strainNumToNameD):
-        '''Create a geneName object with lists of genes and methods to interconvert.'''
+    def __init__(self, geneOrderFN):
+        '''Create a geneName object with lists of genes and methods to
+interconvert.'''
 
-        self.strainNameToNumD = strainNameToNumD
-        self.strainNumToNameD = strainNumToNameD
-        
         # get lists of genes
         names=[]
         num=0
-        geneNumToStrainNumD={}
+        geneNumToStrainNameD={}
         f = open(geneOrderFN,'r')
         while True:
             s = f.readline()
@@ -35,7 +33,7 @@ class geneNames:
             for i in range(1,len(L)): 
                 geneName=L[i]
                 names.append(geneName)
-                geneNumToStrainNumD[num] = strainNameToNumD[strain]
+                geneNumToStrainNameD[num] = strain
 
                 num+=1
 
@@ -45,7 +43,7 @@ class geneNames:
         if len(namesS) < len(names):
             raise ValueError("There appear to be redudancies in the gene order file.")
 
-        self.geneNumToStrainNumD = geneNumToStrainNumD
+        self.geneNumToStrainNameD = geneNumToStrainNameD
         self.names=tuple(names)
         self.nums=tuple(range(len(names))) # these will be the gene numbers for the genes
         
@@ -117,8 +115,34 @@ putting them in a set.'''
                         adjacencyS.add((gnB,gnA))
     return adjacencyS
 
-def createGeneOrderTs(geneOrderFN,geneNames,subtreeL,strainStr2NumD):
+def createGeneOrderD(geneOrderFN,geneNames):
     '''Go though gene order file and get orderings into a set of
+tuples. Returns a dict keyed by strain name. Value is a set of tuples
+representing the contigs.
+    '''
+    f = open(geneOrderFN,'r')
+    geneOrderD={}
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        s=s.rstrip()
+        # note, our gene order format has contigs separated by \t, and
+        # genes within them separated by a space character.
+        L=s.split('\t')
+        strain = L[0]
+        contigL=[]
+        for contig in L[1:]:
+            geneNumT=tuple((geneNames.nameToNum(g) for g in contig.split(' ')))
+            contigL.append(geneNumT)
+
+        geneOrderD[strain] = tuple(contigL)
+    f.close()
+    return geneOrderD
+
+
+def createGeneOrderTs(geneOrderFN,geneNames,subtreeL,strainStr2NumD):
+    '''GET RID OF THIS ONCE WE DO IT ALL with DICTS. Go though gene order file and get orderings into a set of
 tuples. Returns a tuple whose index is strain number, and the value at
 that index is a set of tuples representing the contigs.'''
     f = open(geneOrderFN,'r')
