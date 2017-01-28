@@ -67,17 +67,11 @@ interconvert.'''
     def numToName(self,geneNumber):
         return self.geneNumToNameD[geneNumber]
 
-    def numToStrainNum(self,geneNumber):
-        return self.geneNumToStrainNumD[geneNumber]
-
-    def nameToStrainNum(self,geneName):
-        return self.geneNumToStrainNumD[self.nameToNum(geneName)]
-
     def numToStrainName(self,geneNumber):
-        return self.strainNumToNameD[self.geneNumToStrainNumD[geneNumber]]
+        return self.geneNumToStrainNameD[geneNumber]
 
     def nameToStrainName(self,geneName):
-        return self.strainNumToNameD[self.geneNumToStrainNumD[self.nameToNum(geneName)]]
+        return self.geneNumToStrainNameD[self.nameToNum(geneName)]
     
     def __repr__(self):
         return "<geneName object with "+str(len(self.names))+" genes.>"

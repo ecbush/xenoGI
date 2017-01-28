@@ -120,8 +120,6 @@ pair of strains.'''
 
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
 
-    aabrhRawScoreSummmaryD=getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,rawScoresG,geneNames)
-   
     # make norm scores graph
     # get same nodes (genes) as sim graph
     normScoresG=networkx.Graph()
@@ -143,7 +141,7 @@ pair of strains.'''
     writeGraph(normScoresG,geneNames,normScoresFN)
  
         
-    return normScoresG,aabrhRawScoreSummmaryD
+    return normScoresG
 
 
 def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
@@ -168,6 +166,21 @@ def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
         
     return aabrhL
 
+def readTabDelim(fileName):
+    '''Read in a tab delimited file, convert each line to a tuple and
+return a list of tuples.'''
+    outL=[]
+    f=open(fileName,'r')
+    while True:
+        s = f.readline()
+        if s=='':
+            break
+        L=s.rstrip().split('\t')
+    
+        outL.append(tuple(L))
+    f.close()
+    return outL
+    
 def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh):
     '''return an upper-diagonal (N-1)xN matrix where each entry
     [i][j] (j > i) contains a dictionary of best reciprocal hits
@@ -319,8 +332,6 @@ orthologs.'''
 
 def getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,rawScoresG,geneNames):
     '''Given raw scores and a directory with blast output, finds the sets of all around best reciprocal hits. Then for each pair of species, calculates the mean and standard deviation of scores and stores in a dictionary.'''
-
-    # now loop through these, sorting scores into a dict keyed by species pair.
 
     # create dictionary, (representing an upper triangular matrix)
     spScoreD={}
