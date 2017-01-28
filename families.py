@@ -39,7 +39,7 @@ the left branch of tree.'''
     rightS=set()
     outgroupS=set()
     for geneNum in geneNames.nums: # all genes
-        strain=geneNames.numToStrainName(geneNum)
+        strain=geneNames.numToStrainNum(geneNum)
         if strain in leftSpeciesS:
             leftS.add(geneNum)
         elif strain in rightSpeciesS:

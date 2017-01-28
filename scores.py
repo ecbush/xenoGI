@@ -112,14 +112,17 @@ based on the max and min possible scores for these sequences.'''
 ## normalized scores
 
 
-def createNormScoreGraph(strainNamesL,blastFilePath,evalueThresh,rawScoresG,geneNames,aabrhFN,normScoresFN):
+def createNormScoreGraph(tree,strainNum2StrD,blastFilePath,evalueThresh,rawScoresG,geneNames,aabrhFN,normScoresFN):
     '''Given directory of blast output and a graph of raw similarity
 scores, calculate normalized similarity scores by comparing each score
 with the range of scores in in all around best reciprocal hits in that
 pair of strains.'''
 
+    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
 
+    aabrhRawScoreSummmaryD=getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,rawScoresG,geneNames)
+   
     # make norm scores graph
     # get same nodes (genes) as sim graph
     normScoresG=networkx.Graph()
@@ -139,9 +142,8 @@ pair of strains.'''
             normScoresG.add_edge(gn1,gn2,score=sc)
 
     writeGraph(normScoresG,geneNames,normScoresFN)
- 
         
-    return normScoresG
+    return normScoresG,aabrhRawScoreSummmaryD
 
 
 def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
@@ -166,21 +168,6 @@ def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
         
     return aabrhL
 
-def readTabDelim(fileName):
-    '''Read in a tab delimited file, convert each line to a tuple and
-return a list of tuples.'''
-    outL=[]
-    f=open(fileName,'r')
-    while True:
-        s = f.readline()
-        if s=='':
-            break
-        L=s.rstrip().split('\t')
-    
-        outL.append(tuple(L))
-    f.close()
-    return outL
-    
 def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh):
     '''return an upper-diagonal (N-1)xN matrix where each entry
     [i][j] (j > i) contains a dictionary of best reciprocal hits
@@ -333,6 +320,8 @@ orthologs.'''
 def getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,rawScoresG,geneNames):
     '''Given raw scores and a directory with blast output, finds the sets of all around best reciprocal hits. Then for each pair of species, calculates the mean and standard deviation of scores and stores in a dictionary.'''
 
+    # now loop through these, sorting scores into a dict keyed by species pair.
+
     # create dictionary, (representing an upper triangular matrix)
     spScoreD={}
     for i in range(len(strainNamesL)-1):
@@ -391,13 +380,13 @@ score normalized by std and centered around zero.'''
 
 ## synteny scores
 
-def createSynScoresGraph(G,aabrhRawScoreSummmaryD,geneNames,geneOrderD,synWSize,numSynToTake,numThreads,synScoresFN):
+def createSynScoresGraph(G,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
     '''Create a graph with genes as nodes, and edges representing the
 synteny score between two genes. We only bother making synteny scores
 for those genes that have an edge in G.
     '''
 
-    neighborTL = createNeighborL(geneNames,geneOrderD,synWSize)
+    neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
 
     # prepare argument list for map
@@ -421,7 +410,7 @@ for those genes that have an edge in G.
         
     return synScoresG
 
-def createNeighborL(geneNames,geneOrderD,synWSize):
+def createNeighborL(geneNames,geneOrderT,synWSize):
     '''Return a list which specifies the neighbors of each gene. Index of
 list corresponds to gene number, and the value located at that index
 is a tuple of all genes within a synWSize window. e.g. synWSize 5 means we
@@ -429,14 +418,15 @@ go 5 genes in either direction.'''
 
     neighborTL = [None for x in geneNames.nums]
 
-    for contigT in geneOrderD.values():
-        for geneNumT in contigT:
-            for i in range(len(geneNumT)):
-                end = i + synWSize
-                st = i-synWSize if i-synWSize>0 else 0 # st can't be less than 0
-                L = list(geneNumT[st:end])
-                L.remove(geneNumT[i])
-                neighborTL[geneNumT[i]] = tuple(L)
+    for contigT in geneOrderT:
+        if not contigT == None:
+            for geneNumT in contigT:
+                for i in range(len(geneNumT)):
+                    end = i + synWSize
+                    st = i-synWSize if i-synWSize>0 else 0 # st can't be less than 0
+                    L = list(geneNumT[st:end])
+                    L.remove(geneNumT[i])
+                    neighborTL[geneNumT[i]] = tuple(L)
 
     return neighborTL
 
