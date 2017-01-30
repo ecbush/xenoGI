@@ -1,4 +1,4 @@
-import sys,glob,os
+import sys,glob,os,random
 import genomes,fasta
 
 ## funcs
@@ -46,8 +46,9 @@ if __name__ == "__main__":
     # write these to alignmentFN
     f=open(aabrhAlignmentFN,"w")
 
-    intempAlignFN="/tmp/tempAlign.fa"
-    outtempAlignFN="/tmp/tempAlign.afa"
+    randStr = str(random.randrange(1e5))
+    intempAlignFN="/tmp/tempAlign"+randStr+".fa"
+    outtempAlignFN="/tmp/tempAlign"+randStr+".afa"
    
     for orthos in aabrhL:
         tempf = open(intempAlignFN,"w")
