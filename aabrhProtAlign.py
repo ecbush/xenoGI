@@ -70,6 +70,10 @@ if __name__ == "__main__":
             f.write(">"+gene+" "+locusTag+"\n")
             f.write(alSeqD[gene]+"\n")
         f.write("\n")
-       
+
+    # delete the temp files
+    os.system("rm "+intempAlignFN)
+    os.system("rm "+outtempAlignFN)
+    
     f.close()
 

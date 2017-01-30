@@ -1,5 +1,5 @@
 import sys
-import genbank,blast,trees,genomes,scores,families,groups
+import genbank,trees,genomes,scores,families,groups
 
 
 if __name__ == "__main__":
