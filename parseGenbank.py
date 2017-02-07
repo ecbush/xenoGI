@@ -1,16 +1,17 @@
 import sys, glob, os
-import genbank
+import genbank, parameters
 
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
+    paramD = parameters.loadParametersD(paramFN)
     
-    genbankFileList=glob.glob(params.genbankFilePath)
+    genbankFileList=glob.glob(paramD['genbankFilePath'])
 
-    # make directory for fasta output
-    fastaDir = params.fastaFilePath.split('*')[0]
-    os.mkdir(fastaDir)
-
+    # if directory for fastas doesn't exist yet, make it
+    fastaDir = paramD['fastaFilePath'].split('*')[0]
+    if glob.glob(fastaDir)==[]:
+        os.mkdir(fastaDir)
+        
     # parse
-    genbank.parseGenbank(params.geneOrderFN,params.redundProtsFN,params.geneInfoFN,fastaDir,genbankFileList)
+    genbank.parseGenbank(paramD['geneOrderFN'],paramD['redundProtsFN'],paramD['geneInfoFN'],fastaDir,genbankFileList)

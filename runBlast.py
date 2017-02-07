@@ -1,9 +1,9 @@
 import sys
-import blast
+import blast,parameters
 
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
+    paramD = parameters.loadParametersD(paramFN)
 
-    blast.runBlast(params.fastaFilePath,params.blastFilePath,params.blastCLine,params.numThreads)
+    blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastCLine'],paramD['numThreads'])

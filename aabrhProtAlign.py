@@ -1,5 +1,5 @@
 import sys,glob,os,random
-import genomes,fasta
+import genomes,fasta,parameters
 
 ## funcs
 
@@ -34,14 +34,15 @@ subdict from seqD.'''
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
+    paramD = parameters.loadParametersD(paramFN)
+
 
     aabrhAlignmentFN = sys.argv[2]
     
-    aabrhL = loadOrthos(params.aabrhFN)
-    protFnL=glob.glob(params.fastaFilePath)
+    aabrhL = loadOrthos(paramD['aabrhFN'])
+    protFnL=glob.glob(paramD['fastaFilePath'])
     seqD=genomes.loadProt(protFnL)
-    geneInfoD = genomes.readGeneInfoD(params.geneInfoFN)
+    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
     
     # write these to alignmentFN
     f=open(aabrhAlignmentFN,"w")

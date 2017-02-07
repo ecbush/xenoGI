@@ -1,5 +1,5 @@
-import sys,statistics,os
-import trees, genomes, families, groups
+import sys,statistics,os,glob
+import trees, genomes, families, groups, parameters
 
 
 def createGroupByStrainD(leafNodesL,strainNum2StrD,groupByNodeL,familyT,geneNames,geneInfoD):
@@ -134,13 +134,13 @@ def writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileNa
     f.close()
 
 def createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,scoreForMRCAatRoot,potentialScoresL):
-    
-    # create gff directory
-    gffDir = params.gffFilePath.split("*")[0]
-    os.mkdir(gffDir)
 
-    gffDir = params.gffFilePath.split("*")[0]
-    gffExtension = params.gffFilePath.split("*")[1]
+    # if directory for gffss doesn't exist yet, make it
+    gffDir = gffFilePath.split("*")[0]
+    if glob.glob(gffDir)==[]:
+        os.mkdir(gffDir)
+
+    gffExtension = gffFilePath.split("*")[1]
     
     for strain in groupByStrainD:
         gffFileName = gffDir+strain+gffExtension
@@ -166,19 +166,18 @@ file. Doubtless there's a better way to make this list.
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
-
+    paramD = parameters.loadParametersD(paramFN)
 
     ## load data structures we'll use below
-    tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
+    tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
     leafNodesL = trees.leafList(tree)
-    geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
-    familyT = families.readFamilies(params.familyFN,tree,geneNames,strainStr2NumD)
-    groupByNodeL=groups.readGroups(params.groupOutFN,tree,strainStr2NumD)
-    geneInfoD = genomes.readGeneInfoD(params.geneInfoFN)    
+    geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
+    familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    groupByNodeL=groups.readGroups(paramD['groupOutFN'],tree,strainStr2NumD)
+    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
 
     
     # get groups organized by strain
     groupByStrainD = createGroupByStrainD(leafNodesL,strainNum2StrD,groupByNodeL,familyT,geneNames,geneInfoD)
 
-    createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,params.gffFilePath,params.scoreForMRCAatRoot,params.potentialScoresL)
+    createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreForMRCAatRoot'],paramD['potentialScoresL'])

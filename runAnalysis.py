@@ -1,5 +1,5 @@
 import sys
-import genomes,trees,families,scores,groups
+import genomes,trees,families,scores,groups,parameters
 from analysis import *
 
 ## Wrapper functions
@@ -54,20 +54,20 @@ at the top level.
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
+    paramD = parameters.loadParametersD(paramFN)
 
-    tree,strainStr2NumD,strainNum2StrD = trees.readTree(params.treeFN)
+    tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
     
     # load groups
-    groupByNodeL=groups.readGroups(params.groupOutFN,tree,strainStr2NumD)
+    groupByNodeL=groups.readGroups(paramD['groupOutFN'],tree,strainStr2NumD)
     
     # get familyT etc.
-    geneNames = genomes.geneNames(params.geneOrderFN,strainStr2NumD,strainNum2StrD)
+    geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
 
     
-    geneInfoD = genomes.readGeneInfoD(params.geneInfoFN)
+    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
 
-    familyT = families.readFamilies(params.familyFN,tree,geneNames,strainStr2NumD)
+    familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
     
     gene2FamD=createGene2FamD(familyT)
@@ -78,10 +78,10 @@ if __name__ == "__main__":
     subtreeL.sort()
 
 
-    geneOrderT=genomes.createGeneOrderTs(params.geneOrderFN,geneNames,subtreeL,strainStr2NumD)
+    geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
     # scores
-    rawScoresG = scores.readGraph(params.rawScoresFN,geneNames)
-    normScoresG = scores.readGraph(params.normScoresFN,geneNames)
-    synScoresG = scores.readGraph(params.synScoresFN,geneNames)
+    rawScoresG = scores.readGraph(paramD['rawScoresFN'],geneNames)
+    normScoresG = scores.readGraph(paramD['normScoresFN'],geneNames)
+    synScoresG = scores.readGraph(paramD['synScoresFN'],geneNames)
     

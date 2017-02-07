@@ -17,7 +17,7 @@ is strain name.'''
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    params = __import__(paramFN.replace('.py', ''))
+    paramD = parameters.loadParametersD(paramFN)
 
-    strainNamesL = loadStrainNames(params.geneOrderFN)
-    aabrhL = scores.createAabrhL(params.blastFilePath,strainNamesL,params.evalueThresh,params.aabrhFN)
+    strainNamesL = loadStrainNames(paramD['geneOrderFN'])
+    aabrhL = scores.createAabrhL(paramD['blastFilePath'],strainNamesL,paramD['evalueThresh'],paramD['aabrhFN'])

@@ -53,9 +53,13 @@ the blast parameters in blastCLine.'''
     formatDb(dbFileL)
 
     # create blast directory
+
+
+    # if directory for blast doesn't exist yet, make it
     blastDir = blastFilePath.split("*")[0]
-    os.mkdir(blastDir)
-    
+    if glob.glob(blastDir)==[]:
+        os.mkdir(blastDir)
+
     clineL =  makeBlastClineList(dbFileL,fastaFilePath,blastFilePath,blastCLine)
 
     p=Pool(numThreads)
