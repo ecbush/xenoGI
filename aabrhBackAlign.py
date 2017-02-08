@@ -1,4 +1,3 @@
-
 import sys,glob
 import fasta
 
@@ -14,24 +13,60 @@ def loadCdsSeq(codingSeqFnL):
             seqD[locusTag]=seq
     return seqD
 
+def blockReader(f):
+    """given a block fasta file, reads in the first block and prints a list
+    with elements that are 2 element lists.  The first element of a sublist
+    is the name of the gene and the second element is the sequence."""
+    blockL = []
+    Str = f.readline()
 
-def printNucAlign(block, geneDic):
+    # loop until we hit the end of a block
+    while Str != "\n":
+        strain=[]
+        if Str=="":
+            return []
+
+        # grab the header
+        firstPart,locusTag = Str.rstrip().split(" ")
+        xgiGeneName=firstPart[1:]
+        
+        Str = f.readline() # get sequence, which always follows header
+        protSeq=Str.rstrip()
+        blockL.append((xgiGeneName,locusTag,protSeq))
+        Str = f.readline()
+        
+    return blockL
+
+def backAlign(protSeqFN, codingSeqD):
+    """prints out blocks of nucleotide alignments based on back alignments from
+    the protein alignments."""
+    f = open(protSeqFN, 'r')
+
+    # Going through each block of the protein alignment file
+    flag = True
+    while flag:
+        blockL = blockReader(f)
+        if len(blockL) == 0:
+            flag = False
+        printNucAlign(blockL, codingSeqD)
+    f.close()
+
+def printNucAlign(blockL, codingSeqD):
     """Prints the nucleotide alignments given by one block of protein
     alignments."""
 
     noMissing = True
     printBlock = ""
-    for x in block:
-        #print x
-        name = x[0].split(">")[1]
-        sequence = geneDic[name]
-        lenProtein = protLength(x[1])
+    for xgiGeneName,locusTag,protSeq in blockL:
+
+        codeSeq = codingSeqD[locusTag]
+        lenProtein = protLength(protSeq)
 
         # if the protein and sequence don't match in length, throw it out 
         # we have to check two cases because some proteins include the stop
         # codon and some don't
-        if lenProtein * 3 != len(sequence) and \
-                (lenProtein + 1) * 3 != len(sequence):
+        if lenProtein * 3 != len(codeSeq) and \
+                (lenProtein + 1) * 3 != len(codeSeq):
             #sys.stderr.write("The protein was not equal to 3 times the length")
             #sys.stderr.write(" of the nucleotide sequence for the gene: \n")
             #sys.stderr.write(result[0] + "\n")
@@ -42,13 +77,13 @@ def printNucAlign(block, geneDic):
             
         else:
             # printing the header
-            printBlock += x[0] + "\n"
+            printBlock += ">" + xgiGeneName +" " + locusTag + "\n"
 
             # adding gaps to the nucleotide sequence corresponding to gaps in 
             # the protein sequence and printing the nucleotide sequence
-            printBlock += fixSeq(sequence, x[1]) + "\n"
+            printBlock += fixSeq(codeSeq, protSeq) + "\n"
     if noMissing:
-        print printBlock
+        print(printBlock)
 
 def protLength(prot):
     """returns the length of an aligned protein minus the number of gaps."""
@@ -84,6 +119,9 @@ def fixSeq(sequence, protAlignment):
 
 if __name__ == "__main__":
 
-    codingSeqFilePath = 'fasta/*.fna'
-    codingSeqFnL=glob.glob(codingSeqFilePath)
+    numStrains = int(sys.argv[1])
+    protAlignFN = sys.argv[2]
+    codingSeqFnL= sys.argv[3:]
     codingSeqD = loadCdsSeq(codingSeqFnL)
+
+    backAlign(protAlignFN, codingSeqD)
