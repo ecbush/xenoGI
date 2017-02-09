@@ -1,5 +1,5 @@
 import sys
-import genomes,scores
+import genomes,scores,parameters
 
 def loadStrainNames(geneOrderFN):
     '''Load gene order file, and keep the first thing on each line, which
