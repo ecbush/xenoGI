@@ -117,7 +117,7 @@ we've done already.
                 Name=commonName
             else:
                 Name=gene
-            gffL.append('\t'.join([chrom,'.','gene',start,end,str(score),strand,'.','ID='+gene+';Name='+Name+';gene='+Name+';Note='+groupID+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip]))
+            gffL.append('\t'.join([chrom,'.','gene',start,end,str(score),strand,'.','ID='+gene+';Name='+Name+';gene='+Name+';Note= | group_'+groupID+" | fam_+"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip]))
 
     gffStr = '\n'.join(gffL)
     return gffStr
