@@ -95,8 +95,7 @@ want.'''
                         geneStartSeqL.append((geneName,commonName,locusTag,descrip,chrom,start,end,strand,aaSeq))
 
             if geneStartSeqL != []: # if its not empty
-                # sort by start position
-                #geneStartSeqL.sort(key=lambda x: x[3])
+                # no need to sort, it's in order in the file
                 geneL=[]
                 for geneName,commonName,locusTag,descrip,chrom,start,end,strand,aaSeq in geneStartSeqL:
                     # write to fastaOutFile
