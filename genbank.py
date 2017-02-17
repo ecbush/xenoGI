@@ -96,7 +96,7 @@ want.'''
 
             if geneStartSeqL != []: # if its not empty
                 # sort by start position
-                geneStartSeqL.sort(key=lambda x: x[3])
+                #geneStartSeqL.sort(key=lambda x: x[3])
                 geneL=[]
                 for geneName,commonName,locusTag,descrip,chrom,start,end,strand,aaSeq in geneStartSeqL:
                     # write to fastaOutFile

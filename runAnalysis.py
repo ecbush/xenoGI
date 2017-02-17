@@ -21,12 +21,12 @@ species.
     print()
 
     print()
-    print("Matrix of normalized similarity scores (z scores) between genes in the family")
+    print("Matrix of normalized similarity scores between genes in the family")
     printScoreMatrix(family,subtreeL,familyT,geneNames,normScoresG)
     print()
     print()
     
-    print("Matrix of synteny scores (z scores) between genes in the family")
+    print("Matrix of synteny scores between genes in the family")
     printScoreMatrix(family,subtreeL,familyT,geneNames,synScoresG)
     print()
     print()
