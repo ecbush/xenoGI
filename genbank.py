@@ -26,7 +26,7 @@ redundancies), and set with redundancies.'''
     return uniqueS,redundS
     
 
-def parseGenbank(geneOrderOutFileName,redundancyOutFileName,geneInfoOutFileName,fastaOutFileDir,genbankFileList):
+def parseGenbank(geneOrderOutFileName,redundancyOutFileName,geneInfoOutFileName,fastaOutFileDir,genbankFileList,fileNameMapD):
     '''We pass through each genbank file twice. Once to identify redundant
 genes, so we can avoid them. And another time to get the stuff we
 want.'''
@@ -37,8 +37,14 @@ want.'''
     
     # iterate through list of genbank files
     for fileName in genbankFileList:
+        
+        genbankName = fileName.split("/")[-1].split('.gbff')[0]
 
-        speciesName = fileName.split("/")[-1][:-5]
+        if fileNameMapD == {}:
+            speciesName = genbankName # not renaming in this case
+        else:
+            speciesName = fileNameMapD[genbankName]
+
         uniqueS,redundS=getUniqueRedundSets(fileName,speciesName)
 
         # write the redundant ones for this species to our redund file

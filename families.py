@@ -140,7 +140,7 @@ family.
     return alreadySearchedS
                 
     
-def families(tree,subtreeL,geneNames,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD):
+def families(tree,subtreeL,geneNames,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD, outputSummaryF):
     '''Given a graph of genes and their similarity scores (rawScoresG) find
 families using a PhiGs-like algorithm, with synteny also considered.'''
 
@@ -156,10 +156,8 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
             subtree=subtreeL[node]
             leftS,rightS,outgroupS = createLRSets(subtree,geneNames)
             seedL = createSeedL(leftS,rightS,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh)
-            #print(len(seedL),len(leftS),len(rightS),len(outgroupS),'xx')
             for seed in seedL:
                 seedSimScore,g1,g2 = seed
-                #print(seedSimScore,g1,g2,'xx')
 
                 if seedSimScore == -float('inf'):
                     # we've gotten to the point in the seed list with
@@ -189,7 +187,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
         famNum+=1
 
     multiGeneFamNum=famNum
-    print("Number of multigene families",multiGeneFamNum,file=sys.stderr)
+    print("Number of multigene families",multiGeneFamNum,file=outputSummaryF)
 
     # Add on remaining genes as single gene families.
     for gene in geneNames.nums: 
@@ -198,8 +196,8 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
             familyL.append(Family(famNum,mrca,[gene],trees.nodeCount(tree),geneNames))
             famNum+=1
 
-    print("Number of single gene families",famNum-multiGeneFamNum,file=sys.stderr)
-    print("Number of total families",famNum,file=sys.stderr)
+    print("Number of single gene families",famNum-multiGeneFamNum,file=outputSummaryF)
+    print("Number of total families",famNum,file=outputSummaryF)
     
     writeFamilies(familyL,geneNames,strainNum2StrD,familyFN)
 

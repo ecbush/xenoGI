@@ -12,6 +12,8 @@ if __name__ == "__main__":
     fastaDir = paramD['fastaFilePath'].split('*')[0]
     if glob.glob(fastaDir)==[]:
         os.mkdir(fastaDir)
-        
+
+    fileNameMapD = parameters.loadFileNameMapD(paramD['fileNameMapFN'])
+
     # parse
-    genbank.parseGenbank(paramD['geneOrderFN'],paramD['redundProtsFN'],paramD['geneInfoFN'],fastaDir,genbankFileList)
+    genbank.parseGenbank(paramD['geneOrderFN'],paramD['redundProtsFN'],paramD['geneInfoFN'],fastaDir,genbankFileList,fileNameMapD)

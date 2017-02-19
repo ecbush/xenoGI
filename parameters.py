@@ -24,3 +24,17 @@ of python assignment statements.'''
     f.close()
 
     return paramD
+
+def loadFileNameMapD(fileNameMapFN):
+    '''Load file containing the mappings between genbank file names and
+the human readable names we use. Return as dictionary. If
+fileNameMapFN is None, return empty dictionary. Expects file with one species per line: genbank name -  white space - human name.'''
+    fileNameMapD = {}
+    f = open(fileNameMapFN,'r')
+    while True:
+        s = f.readline()
+        if s == '':
+            break
+        genbankStem,human = s.rstrip().split()
+        fileNameMapD[genbankStem] = human
+    return fileNameMapD

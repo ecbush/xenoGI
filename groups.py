@@ -261,13 +261,13 @@ recreating groupByNodeL.'''
     
 ## Main function
 
-def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,numThreads,strainNum2StrD,groupOutFN):
+def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,numThreads,strainNum2StrD,groupOutFN, outputSummaryF):
     '''Parallelized wrapper to merge groups at different nodes.'''
 
     adjacencyS = genomes.createAdjacencySet(geneOrderT,geneNames)
     groupByNodeL=createGroupL(familyT,tree)
 
-    print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupByNodeL]))
+    print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupByNodeL]),file=outputSummaryF)
 
 
     ## create argumentL to be passed to p.map and mergeGroupsAtNode
@@ -282,7 +282,7 @@ def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,nu
     
     #print("Did not merge core groups (last entries in groupByNodeL).",file=sys.stderr)
     print("Merging complete.",file=sys.stderr)
-    print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupByNodeLMerged]),file=sys.stderr)
+    print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupByNodeLMerged]),file=outputSummaryF)
     
     # write groups
     writeGroups(groupByNodeLMerged,strainNum2StrD,groupOutFN)

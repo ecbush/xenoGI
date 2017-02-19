@@ -168,6 +168,22 @@ def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
         
     return aabrhL
 
+def loadOrthos(aabrhFN):
+    '''Reads the all around best reciprocal hits orthologs file. One set
+per line.'''
+    f= open(aabrhFN,'r')
+
+    orthoL=[]
+    while True:
+        s=f.readline()
+        if s=='':
+            break
+        L=s.rstrip().split('\t')
+        orthoL.append(tuple(L))
+            
+    f.close()
+    return orthoL
+
 def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh):
     '''return an upper-diagonal (N-1)xN matrix where each entry
     [i][j] (j > i) contains a dictionary of best reciprocal hits
@@ -450,10 +466,8 @@ def synScore(argsT):
     mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
 
     minNormScore = normScore(0,mean,std) # min raw score is 0
-    
     L1 = list(neighborTL[gn1])
     L2 = list(neighborTL[gn2])
-
 
     topScL= [minNormScore] * numSynToTake
 
@@ -462,7 +476,9 @@ def synScore(argsT):
         if sc == -float('inf'):
             break
         topScL[i] = sc
-
+        del(L1[ind1]) # remove this index
+        del(L2[ind2])
+        
     synSc = sum(topScL) / numSynToTake
     
     return gn1, gn2, synSc

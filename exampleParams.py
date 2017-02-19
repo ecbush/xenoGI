@@ -4,10 +4,10 @@
 #### Input files ####
 
 # tree file
-treeFN='testB.tre'
+treeFN='testD.tre'
 
 # unix style file path to genbank gbff files
-genbankFilePath = 'genbank/*.gbff'
+genbankFilePath = 'ncbi/*.gbff'
 
 #### Parse output files ####
 
@@ -20,6 +20,9 @@ redundProtsFN = 'redundProts.txt'
 
 # gene descriptions (for use in analysis)
 geneInfoFN = 'geneInfo.txt'
+
+# a file specifying the mapping between genbank file names and human readable names. If we don't want to rename and will use NCBI file names in later analysis, set to None.
+fileNameMapFN = 'fileNameMap.txt'
 
 # unix style file path to fasta files
 fastaFilePath = 'fasta/*.fa'
@@ -34,7 +37,6 @@ blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -evalue 0.01 -seg
 
 # unix style file path to blast output files
 blastFilePath = 'blast/*.out'
-
 
 
 #### Algorithm output files ####
@@ -57,11 +59,13 @@ familyFN='fam.out'
 # group file
 groupOutFN = 'groups.out'
 
+# file with summary info about family and group formation
+outputSummaryFN = 'outputSummary.txt'
 
 #### Visualization and analysis output files ####
 
 # unix style file path to gff output files
-gffFilePath = 'gff/*-group.gff'
+gffFilePath = 'gff/*-testD-group.gff'
 
 
 #### Algorithm parameters ####
@@ -95,7 +99,7 @@ minNormThresh = -4.0
 # Minimum synteny score value we'll accept when putting a gene in a
 # family. Also applies to seeds. Note synteny scores are based on
 # normalized scores
-minSynThresh = -3.0
+minSynThresh = -2.0
 
 # Synteny score threshold for using synteny to adjust a raw
 # score. Setting this lower makes us use synteny more, and thus will

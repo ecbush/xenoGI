@@ -1,4 +1,5 @@
 import sys,statistics,os,glob
+from urllib import parse
 import trees, genomes, families, groups, parameters
 
 
@@ -117,7 +118,11 @@ we've done already.
                 Name=commonName
             else:
                 Name=gene
-            gffL.append('\t'.join([chrom,'.','gene',start,end,str(score),strand,'.','ID='+gene+';Name='+Name+';gene='+Name+';Note= | group_'+groupID+" | fam_+"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip]))
+
+            escapedDescrip = parse.quote(descrip) # escape some characters
+            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | group_'+groupID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+escapedDescrip
+            
+            gffL.append('\t'.join([chrom,'.','gene',start,end,str(score),strand,'.',attributes]))
 
     gffStr = '\n'.join(gffL)
     return gffStr

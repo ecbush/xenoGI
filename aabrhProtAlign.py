@@ -1,24 +1,7 @@
 import sys,glob,os,random
-import genomes,fasta,parameters
+import genomes,fasta,parameters,scores
 
 ## funcs
-
-def loadOrthos(aabrhFN):
-    '''Reads the all around best reciprocal hits orthologs file. One set
-per line.'''
-    f= open(aabrhFN,'r')
-
-    orthoL=[]
-    while True:
-        s=f.readline()
-        if s=='':
-            break
-        L=s.rstrip().split('\t')
-        orthoL.append(tuple(L))
-            
-    f.close()
-    return orthoL
-
 
 def writeSeqBlock(f,orthos,seqD):
     '''writes a multifasta block. seqs are specified in
@@ -39,7 +22,7 @@ if __name__ == "__main__":
 
     aabrhAlignmentFN = sys.argv[2]
     
-    aabrhL = loadOrthos(paramD['aabrhFN'])
+    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
     protFnL=glob.glob(paramD['fastaFilePath'])
     seqD=genomes.loadProt(protFnL)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
