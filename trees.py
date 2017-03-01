@@ -1,40 +1,21 @@
 # functions for loading and manipulating phylogenetic trees
+from Bio import Phylo
 
-def middleComma(s):
-    '''Find the 'middle' comma. This is the one which has had the same
-number of ( as ) before it. Return the index.'''
-    parenBalance=0
-    for i in range(len(s)):
-        if s[i]=='(':
-            parenBalance+=1
-        elif s[i]==')':
-            parenBalance-=1
-        elif s[i]==',' and parenBalance==0:
-            return i
-    return None
+def bioPhyloToTupleTree(bpTree):
+    '''Convert a biopython tree object to 4 tuple tree.'''
+    return bioPhyloCladeToTupleTree(bpTree.root)
 
-def newick2TupleTree(s):
-    '''Given a Newick type string representation of a tree, return in
-tuple tree format. The root should have a branch of len 0 leading to it.'''
-    if "(" not in s and ")" not in s:
-        # its a tip
-        name,brLen=s.split(":")
-        brLen=float(brLen)
-        return(name,(),(),brLen)
+def bioPhyloCladeToTupleTree(clade):
+    '''Convert a biopython clade object to 4 tuple tree.'''
+    nm = clade.name
+    br = 0 if clade.branch_length == None else clade.branch_length
+    if clade.is_terminal():
+        return (nm,(),(),br)
     else:
-        # there should be a ':' on the right, outside the parens. split on
-        # this for branch length
-        firstColonInd=len(s)-(s[::-1].index(":")+1)
-        firstParenInd=len(s)-(s[::-1].index(")")+1)
-        brLen=float(s[firstColonInd+1:])
-        name=s[firstParenInd+1:firstColonInd]
-        s=s[:firstParenInd+1]
-        s=s[1:-1] # strip off outer parens
-        mci=middleComma(s)
-        leftTree=newick2TupleTree(s[:mci].strip())    # strip any leading or
-        rightTree=newick2TupleTree(s[mci+1:].strip()) # trailing white space
-        return(name,leftTree,rightTree,brLen)
-
+        lt = bioPhyloCladeToTupleTree(clade[0])
+        rt = bioPhyloCladeToTupleTree(clade[1])
+        return (nm,lt,rt,br)
+    
 def nodeCount(tree):
     '''How many nodes in tree?'''
     if tree[1]==():
@@ -75,16 +56,11 @@ in the identically shaped tree2.'''
         makeTreeD(tree1[2],tree2[2],treeD)
         return
     
-    
 def readTree(filename):
     '''Read Newick tree from file and convert it to tuple format.'''
-    f=open(filename,"r")
-    s=f.read().rstrip()
-    f.close()
-    # we assume an outser set of parens followed by ;
-    s=s[:-1] # strip off ';'
-    s=s+':0' # add 0 len branch leading to root
-    stringTree=newick2TupleTree(s)
+
+    bpTree = Phylo.read(filename, 'newick', rooted=True)
+    stringTree=bioPhyloToTupleTree(bpTree)
     counter=0
     numTree,counter=strTree2numTree(stringTree,counter)
 
