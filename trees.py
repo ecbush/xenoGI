@@ -8,7 +8,7 @@ def bioPhyloToTupleTree(bpTree):
 def bioPhyloCladeToTupleTree(clade):
     '''Convert a biopython clade object to 4 tuple tree.'''
     nm = clade.name
-    br = 0 if clade.branch_length == None else clade.branch_length
+    br = clade.branch_length
     if clade.is_terminal():
         return (nm,(),(),br)
     else:

@@ -38,7 +38,7 @@ want.'''
     # iterate through list of genbank files
     for fileName in genbankFileList:
         
-        genbankName = fileName.split("/")[-1].split('.gbff')[0]
+        genbankName = fileName.split("/")[-1]
 
         if fileNameMapD == {}:
             speciesName = genbankName # not renaming in this case
