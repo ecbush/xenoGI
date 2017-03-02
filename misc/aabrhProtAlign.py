@@ -1,4 +1,5 @@
 import sys,glob,os,random
+sys.path.append(os.path.join(sys.path[0],'..'))
 import genomes,fasta,parameters,scores
 
 ## funcs

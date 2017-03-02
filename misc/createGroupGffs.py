@@ -1,5 +1,6 @@
 import sys,statistics,os,glob
 from urllib import parse
+sys.path.append(os.path.join(sys.path[0],'..'))
 import trees, genomes, families, groups, parameters
 
 

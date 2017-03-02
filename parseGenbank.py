@@ -1,5 +1,5 @@
 import sys, glob, os
-import genbank, parameters
+import parameters,genbank
 
 if __name__ == "__main__":
 

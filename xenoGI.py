@@ -1,5 +1,5 @@
 import sys
-import genbank,trees,genomes,scores,families,groups,parameters
+import parameters,genbank,trees,genomes,scores,families,groups
 
 
 if __name__ == "__main__":

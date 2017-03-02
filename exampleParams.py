@@ -3,7 +3,9 @@
 
 #### Input files ####
 
-# tree file
+# Tree file in newick format. This should have named internal
+# nodes. It does not need to have branch lengths (if it has them, they
+# will be ignored).
 treeFN='testD.tre'
 
 # unix style file path to genbank gbff files
@@ -21,16 +23,18 @@ redundProtsFN = 'redundProts.txt'
 # gene descriptions (for use in analysis)
 geneInfoFN = 'geneInfo.txt'
 
-# a file specifying the mapping between genbank file names and human readable names. If we don't want to rename and will use NCBI file names in later analysis, set to None.
-fileNameMapFN = 'fileNameMap.txt'
+# A file specifying the mapping between genbank file names and human
+# readable names. These human readable names are then used to to refer
+# to the various species in subsequent analysis. They should match
+# what's in the tree. If we don't want to rename and will use NCBI
+# file names in later analysis, set to None.
+fileNameMapFN = 'ncbiHumanMap.txt'
 
 # unix style file path to fasta files
 fastaFilePath = 'fasta/*.fa'
 
 
 #### Blast output ####
-
-#blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -evalue 0.01 -seg yes -outfmt 6 -db fasta/Citrobacter.fa -query fasta/Klebsiella.fa -out aa
 
 # blast command line (except for db,query and outfiles)
 blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -evalue 0.01 -seg yes -outfmt 6'
@@ -62,12 +66,6 @@ groupOutFN = 'groups.out'
 # file with summary info about family and group formation
 outputSummaryFN = 'outputSummary.txt'
 
-#### Visualization and analysis output files ####
-
-# unix style file path to gff output files
-gffFilePath = 'gff/*-testD-group.gff'
-
-
 #### Algorithm parameters ####
 
 # in parallel code, how many threads to use
@@ -94,7 +92,7 @@ numSynToTake = 15
 # obiously dissimilar that they could not be homologous by descent
 # from the node under consideration. In units of standard deviation,
 # centered around 0.
-minNormThresh = -4.0
+minNormThresh = -7.0
 
 # Minimum synteny score value we'll accept when putting a gene in a
 # family. Also applies to seeds. Note synteny scores are based on
@@ -135,6 +133,12 @@ matrix = 'parasail.blosum62'
 scoreForMRCAatRoot = 1 # special score for core groups
 
 # this is score for rest. This was made with
-# createGroupGffs.createPotentialScoresL(100,1001,200,100)
-potentialScoresL=[100, 300, 500, 700, 900, 200, 400, 600, 800, 1000]
+# createGroupGffs.createPotentialScoresL(100,1001,200,50)
+potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 600, 800, 1000, 250, 450, 650, 850]
+
+#### Visualization and analysis output files ####
+
+# unix style file path to gff output files
+gffFilePath = 'gff/*-testD-group.gff'
+
 

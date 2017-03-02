@@ -1,5 +1,5 @@
 import sys
-import blast,parameters
+import parameters,blast
 
 if __name__ == "__main__":
 

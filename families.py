@@ -5,27 +5,18 @@ import sys
 import trees
 from Family import *
 
-def nodeDetails(tree,timeOnBrLeadingHere):
-    '''Given a tree, return list of (time,node #, left node #, right node
-#) for each node. timeOnBrLeadingHere gives the time which should be
-added to the time values in the tuple we're making.
+def createNodeProcessOrderList(tree):
+    '''Given a tree, output a list specifying nodes in pre-order (ancestors
+before their descendants). For each node we give a tuple (node #, left
+node #, right node #).
     '''
     if tree[1] == ():
-        return [(tree[3] + timeOnBrLeadingHere , tree[0], None, None)]
+        return [(tree[0], None, None)]
     else:
-        l = nodeDetails(tree[1], tree[3] + timeOnBrLeadingHere)
-        r = nodeDetails(tree[2], tree[3] + timeOnBrLeadingHere)
-        return l + r + [(tree[3] + timeOnBrLeadingHere , tree[0], tree[1][0], tree[2][0])]
+        l = createNodeProcessOrderList(tree[1])
+        r = createNodeProcessOrderList(tree[2])
+        return [(tree[0], tree[1][0], tree[2][0])] + l + r
 
-        
-def createNodeProcessOrderList(tree):
-    '''Given a tree, output a list specifying the order of nodes we should
-process in the PhiGs algorithm. For each node we give a tuple
-(time,node #, left node #, right node #)
-    '''
-    L=nodeDetails(tree,0)
-    L.sort()
-    return L
 
 def createLRSets(tree,geneNames):
     '''For every gene in our data, put it into one of three sets. Left,
@@ -150,7 +141,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
     
     multiGeneFamilyL=[]
     
-    for t,node,lnode,rnode in nodeOrderL:
+    for node,lnode,rnode in nodeOrderL:
         if lnode != None:
             # not a tip
             subtree=subtreeL[node]
