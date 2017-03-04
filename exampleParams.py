@@ -6,7 +6,7 @@
 # Tree file in newick format. This should have named internal
 # nodes. It does not need to have branch lengths (if it has them, they
 # will be ignored).
-treeFN='testD.tre'
+treeFN='testE.tre'
 
 # unix style file path to genbank gbff files
 genbankFilePath = 'ncbi/*.gbff'
@@ -139,6 +139,6 @@ potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 60
 #### Visualization and analysis output files ####
 
 # unix style file path to gff output files
-gffFilePath = 'gff/*-testD-group.gff'
+gffFilePath = 'gff/*-testE-group.gff'
 
 

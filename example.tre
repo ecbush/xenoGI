@@ -1,1 +1,1 @@
-((((((E_coli_O157H7:.02,E_coli_K12:.02)i0:.04,E_albertii:.06)i1:.04,E_fergusonii:.1)i2:.1,(S_enterica:.04,S_bongori:.04)i3:.16)i4:.1,Citrobacter:.30)i5:.1,Klebsiella:.4)i6;
+((((((((E_coli_O157H7,E_coli_K12)i0,E_albertii)i1,E_fergusonii)i2,((S_enterica_LT2,S_enterica_AZ)i3,S_bongori)i4)i5,C_rodentium)i6,E_cloacae)i7,K_pneumoniae)i8,S_marcescens)i9;
