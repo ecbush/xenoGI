@@ -14,6 +14,9 @@ directory names we'll use in igbQuickLoad. Return as a list of tuples.'''
         s=f.readline()
         if s == '':
             break
+        if s == '\n':
+            # in case of blank lines, e.g. at end
+            continue
         stem,igbStem = s.rstrip().split()
         L.append((stem,igbStem))
     return L
@@ -84,5 +87,5 @@ if __name__ == "__main__":
     os.mkdir(igbMaindir) # make main dir
     
     for ncbiStem,igbStem in ncbiIgbDirMapL:
-        humanStem = ncbiHumanMapD[ncbiStem]
+        humanStem = ncbiHumanMapD[ncbiStem+'_genomic.gbff']
         createOneDir(igbMaindir, igbStem, ncbiDir, ncbiStem, humanStem, projectName)
