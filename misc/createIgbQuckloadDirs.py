@@ -47,7 +47,7 @@ for the annotations inserted.'''
 
     a="""<files>
       <file name="""
-    b="""	title="xenoGI testD annotations"
+    b="""	title="xenoGI annotations"
             description="Results from xenoGI annotation pipeline"
             load_hint="Whole Sequence"
             label_field="id"

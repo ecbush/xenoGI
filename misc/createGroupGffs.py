@@ -93,7 +93,7 @@ return its chrom,start,end.
     
     return chrom,groupMedianMidpoint,groupMin,groupMax
     
-def groupToGff(groupT,geneInfoD,tree,strainNum2StrD,scoreForMRCAatRoot,potentialScoresL,counter):
+def groupToGff(groupT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter):
     '''Given a groupT (the values of groupByStrainD are lists of these)
 convert into a string suitable for writing in a gff file. Return
 this. Note that we're using the score field to color the genes in
@@ -106,8 +106,8 @@ we've done already.
     groupID = 'group'+str(grNum)
 
     # create score for coloring groups
-    if trees.isRootNode(tree,mrcaNum):
-        score = scoreForMRCAatRoot
+    if strainNum2StrD[mrcaNum] in scoreNodeMapD:
+        score = scoreNodeMapD[strainNum2StrD[mrcaNum]]
     else:
         score = potentialScoresL[counter%len(potentialScoresL)]
     
@@ -128,18 +128,18 @@ we've done already.
     gffStr = '\n'.join(gffL)
     return gffStr
     
-def writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreForMRCAatRoot,potentialScoresL):
+def writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreNodeMapD,potentialScoresL):
     '''For a given strain, Write gff file.'''
     counter=0
     f=open(gffFileName,'w')
     f.write('##gff-version 3\n')
     for groupT in groupByStrainD[strain]:
-        gffStr = groupToGff(groupT,geneInfoD,tree,strainNum2StrD,scoreForMRCAatRoot,potentialScoresL,counter)
+        gffStr = groupToGff(groupT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter)
         f.write(gffStr+'\n')
         counter+=1
     f.close()
 
-def createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,scoreForMRCAatRoot,potentialScoresL):
+def createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,scoreNodeMapD,potentialScoresL):
 
     # if directory for gffss doesn't exist yet, make it
     gffDir = gffFilePath.split("*")[0]
@@ -150,7 +150,7 @@ def createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,score
     
     for strain in groupByStrainD:
         gffFileName = gffDir+strain+gffExtension
-        writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreForMRCAatRoot,potentialScoresL)
+        writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreNodeMapD,potentialScoresL)
     
 def createPotentialScoresL(mn,mx,stride,offset):
     '''This function creates a list of potential scores. We use score to
@@ -186,4 +186,4 @@ if __name__ == "__main__":
     # get groups organized by strain
     groupByStrainD = createGroupByStrainD(leafNodesL,strainNum2StrD,groupByNodeL,familyT,geneNames,geneInfoD)
 
-    createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreForMRCAatRoot'],paramD['potentialScoresL'])
+    createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreNodeMapD'],paramD['potentialScoresL'])
