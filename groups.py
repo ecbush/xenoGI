@@ -67,19 +67,19 @@ fam2 are family tuples specifying the genes present in a family.
     t=rcost(fam1,fam2,adjacencyS,subtree,True)
     f=rcost(fam1,fam2,adjacencyS,subtree,False)
     return(f-t)
-
-
     
-def score(g0,g1,adjacencyS,subtree,familyT):
-    '''Returns the score between groups g0 and g1. Considers all four ways
-these groups could join (since there are two groups each with two
-ends). This is the rcost given we start not adjacent minus the rcost
-given we start adjacent.
+def rscore(g0,g1,adjacencyS,subtree,familyT):
+    '''Returns the rearrangement score between groups g0 and g1. Considers
+all four ways these groups could join (since there are two groups each
+with two ends). This is the rcost given we start not adjacent minus
+the rcost given we start adjacent.
     '''
     if g0.mrca != g1.mrca:
         return -float('inf')
     else:
-        # we try combining in each of the 4 orientations (but if group only has 1 family, then we can skip the reverse orientation for that one.
+        # we try combining in each of the 4 orientations (but if group
+        # only has 1 family, then we can skip the reverse orientation
+        # for that one.
 
         caseL = [-float('inf')]*4
 
@@ -115,16 +115,13 @@ def storeScore(g0,g1,adjacencyS,subtree,scoreD,familyT):
 in scoreD should always have the lower group id first.'''
     if g0.id < g1.id:
         key = g0.id,g1.id
-        tempScoreT=score(g0,g1,adjacencyS,subtree,familyT)
+        tempScoreT=rscore(g0,g1,adjacencyS,subtree,familyT)
         # score returns different things depending on order
         # so we must be consisstent with what we do in key.
     else:
         key = g1.id,g0.id
-        tempScoreT=score(g1,g0,adjacencyS,subtree,familyT)
-    #if g1.id == 717:
-    #    print(717,tempScoreT)
-    #    print(g0)
-    #    print(g1)
+        tempScoreT=rscore(g1,g0,adjacencyS,subtree,familyT)
+        
     scoreD[key]=(max(tempScoreT),tempScoreT)
 
     
@@ -194,30 +191,19 @@ there are no more pairwise scores above groupScoreThreshold.'''
 
     scoreD = createScoreD(groupL,adjacencyS,subtree,familyT)
     
-    #iteration=0
     while True:
-        #print("----iter",iteration)
-        
         sc,groupPairT,scoreT=maxScore(scoreD)
 
         if sc < groupScoreThreshold:
             break
         
-        #print(sc,groupPairT,scoreT)
-
         ind0,g0 = searchGroupsByID(groupL,groupPairT[0])
         ind1,g1 = searchGroupsByID(groupL,groupPairT[1])
 
-        #print("  group pair 0:",groupPairT[0],ind0,g0)
-        #print("  group pair 1:",groupPairT[1],ind1,g1)
-        
         g0.merge(g1,scoreT.index(sc))
 
-        #print("merged group",g0)
-        
         # delete g1
         del groupL[ind1]
-
         
         # remove all scores in scoreD that involve g0 or g1
         delScores(scoreD,g0.id,g1.id)

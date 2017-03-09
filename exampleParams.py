@@ -80,12 +80,12 @@ evalueThresh = 0.001
 # Synteny window size, that is the size of the neighborhood of each
 # gene to consider when calculating synteny scores. (measured in
 # number of genes)
-synWSize = 20
+synWSize = 30
 
 # When calculating synteny score between two genes, the number of
 # pairs of scores to take (and average) from the neighborhoods of
 # those two genes
-numSynToTake = 15
+numSynToTake = 25
 
 # Minimum normalized score for family formation. This should be used
 # as an extreme lower bound, to eliminate those things that are so
@@ -125,14 +125,14 @@ matrix = 'parasail.blosum62'
 
 #### Visualization and analysis ####
 
-# Creating gff files of groups for visualization in the IGB browser we
-# do this by giving different 'score' values to different
-# groups. Scores can range from 1 to 1000, but we only give certain
-# discrete scores.
+# Creating gff files of groups for visualization in the IGB browser.
+# We want to display different groups with different colors. We do
+# this by giving different 'score' values to different groups. Scores
+# can range from 1 to 1000, but we only give certain discrete scores.
 
-scoreForMRCAatRoot = 1 # special score for core groups
+scoreNodeMapD = {'i9':1, 'i8':10} # groups with these mrca values always get this score
 
-# this is score for rest. This was made with
+# The score for rest is based on the list below. It was made with
 # createGroupGffs.createPotentialScoresL(100,1001,200,50)
 potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 600, 800, 1000, 250, 450, 650, 850]
 
