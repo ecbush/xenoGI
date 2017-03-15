@@ -99,23 +99,36 @@ information such as description, start position and so on.
     f.close()
     return geneInfoD
 
-    
-def createAdjacencySet(geneOrderT,geneNames):
-    '''Go though a gene order tuple pulling out pairs of adjacent genes and
-putting them in a set.'''
-    adjacencyS=set()
+def getProximityInWindow(geneWinT,geneProximityD):
+    '''Given a window of genes, calculate the distances between each pair
+(in number of genes) and store in geneProximityD. Updates
+geneProximityD in place, returning None.'''
+    for i in range(len(geneWinT)-1):
+        for j in range(i+1,len(geneWinT)):
+            gnA=geneWinT[i]
+            gnB=geneWinT[j]
+
+            if gnA<gnB: # always put lower gene number first
+                geneProximityD[(gnA,gnB)]=j-i
+            else:
+                geneProximityD[(gnB,gnA)]=j-i
+
+def createGeneProximityD(geneOrderT,geneProximityForGroup):
+    '''Go though a gene order tuple pulling out pairs of genes that are
+within geneProximityForGroup genes of each other. Store in a dict keyed by
+gene pair, with value equal to the distance between the two genes,
+measured in number of genes.'''
+    geneProximityD = {}
     for contigT in geneOrderT:
         if contigT != None:
             # internal nodes are None, having no genes to be adjacent
             for geneNumT in contigT:
-                for i in range(len(geneNumT)-1):
-                    gnA=geneNumT[i]
-                    gnB=geneNumT[i+1]
-                    if gnA<gnB: # always put lower gene number first
-                        adjacencyS.add((gnA,gnB))
-                    else:
-                        adjacencyS.add((gnB,gnA))
-    return adjacencyS
+                for i in range(len(geneNumT)-geneProximityForGroup):
+                    # slide over genes w/win geneProximityForGroup+1
+                    # wide.
+                    getProximityInWindow(geneNumT[i:i+(geneProximityForGroup+1)],geneProximityD)
+                    
+    return geneProximityD
 
 def createGeneOrderTs(geneOrderFN,geneNames,subtreeL,strainStr2NumD):
     '''Go though gene order file and get orderings into a set of

@@ -24,55 +24,57 @@ list corresponds to the mrca)'''
             
 ## Distance calculations
 
-def isAdjacent(fam1,fam2,adjacencyS,node):
-    '''Return True if any of the genes at node from fam1 are adjacent to
-genes at that node for fam2.'''
+def proximity(fam1,fam2,geneProximityD,proximityThreshold,node):
+    '''Return True if any of the genes at node from fam1 are within
+proximityThreshold of genes at that node for fam2. proximityThreshold
+is measured in genes, e.g. 1 means the adjacent gene.
+    '''
     for gn1 in fam1.famGeneT[node][1]:
         for gn2 in fam2.famGeneT[node][1]:
             if gn1<gn2: key = (gn1,gn2)
             else: key = (gn2,gn1)
-            if key in adjacencyS:
+            if key in geneProximityD and geneProximityD[key] <= proximityThreshold:
                 return True
     return False
   
-def rcost(fam1,fam2,adjacencyS,subtree,rootAdjacent):
+def rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree,rootProximate):
     '''Parsimony based calculation of cost of evolutionary rearrangement
-given fam1 and fam2 begin at root of subtree. Assume either adjacent
-or not at root (specificed by rootAdjacent). Charge 1 for each
-rearrangment.
+given fam1 and fam2 begin at root of subtree. Assume either proximate
+(nearby) or not at root (specificed by rootProximate). Charge 1 for
+each rearrangment.
     '''
     if subtree[1]==():
-        isAdj=isAdjacent(fam1,fam2,adjacencyS,subtree[0])
-        if (isAdj and rootAdjacent) or (not isAdj and not rootAdjacent):
-            # state given by rootAdjacent matches adjacency info in our data
+        prox=proximity(fam1,fam2,geneProximityD,proximityThreshold,subtree[0])
+        if (prox and rootProximate) or (not prox and not rootProximate):
+            # state given by rootProximate matches adjacency info in our data
             return 0
         else:
             return 1
     else:
         # left subtree
-        left = rcost(fam1,fam2,adjacencyS,subtree[1],rootAdjacent)
-        chLeft = 1 + rcost(fam1,fam2,adjacencyS,subtree[1],not rootAdjacent)
+        left = rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree[1],rootProximate)
+        chLeft = 1 + rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree[1],not rootProximate)
 
         # right subtree
-        right = rcost(fam1,fam2,adjacencyS,subtree[2],rootAdjacent)
-        chRight = 1 + rcost(fam1,fam2,adjacencyS,subtree[2],not rootAdjacent)
+        right = rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree[2],rootProximate)
+        chRight = 1 + rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree[2],not rootProximate)
 
         return min(left,chLeft) + min(right,chRight)
 
-def costDiff(fam1,fam2,adjacencyS,subtree):
+def costDiff(fam1,fam2,geneProximityD,proximityThreshold,subtree):
     '''Given two families calculate the difference in rcost depending on
-whether we assume the root is not adjacent or adjacent. fam1 and
+whether we assume the root is not proximate or proximate. fam1 and
 fam2 are family tuples specifying the genes present in a family.
     '''
-    t=rcost(fam1,fam2,adjacencyS,subtree,True)
-    f=rcost(fam1,fam2,adjacencyS,subtree,False)
+    t=rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree,True)
+    f=rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree,False)
     return(f-t)
     
-def rscore(g0,g1,adjacencyS,subtree,familyT):
+def rscore(g0,g1,geneProximityD,proximityThreshold,subtree,familyT):
     '''Returns the rearrangement score between groups g0 and g1. Considers
 all four ways these groups could join (since there are two groups each
-with two ends). This is the rcost given we start not adjacent minus
-the rcost given we start adjacent.
+with two ends). This is the rcost given we start not proximate minus
+the rcost given we start proximate.
     '''
     if g0.mrca != g1.mrca:
         return -float('inf')
@@ -84,19 +86,19 @@ the rcost given we start adjacent.
         caseL = [-float('inf')]*4
 
         # case 0: last fam in g0 vs. first fam in g1
-        caseL[0] = costDiff(familyT[g0.familyL[-1]],familyT[g1.familyL[0]],adjacencyS,subtree)
+        caseL[0] = costDiff(familyT[g0.familyL[-1]],familyT[g1.familyL[0]],geneProximityD,proximityThreshold,subtree)
 
         # case 1: last fam in g0 vs. last fam in g1
         if len(g1.familyL) == 1:
             caseL[1] = caseL[0] # since first and last of g1 are same
         else:
-            caseL[1] = costDiff(familyT[g0.familyL[-1]],familyT[g1.familyL[-1]],adjacencyS,subtree)
+            caseL[1] = costDiff(familyT[g0.familyL[-1]],familyT[g1.familyL[-1]],geneProximityD,proximityThreshold,subtree)
 
         # case 2: first fam in g0 vs. first fam in g1
         if len(g0.familyL) == 1:
             caseL[2] = caseL[0] # since first and last of g0 are same
         else:
-            caseL[2] = costDiff(familyT[g0.familyL[0]],familyT[g1.familyL[0]],adjacencyS,subtree)
+            caseL[2] = costDiff(familyT[g0.familyL[0]],familyT[g1.familyL[0]],geneProximityD,proximityThreshold,subtree)
 
         # case 3: first fam in g0 vs. last fam in g1
         if len(g0.familyL) == 1 and len(g1.familyL) > 1:
@@ -106,33 +108,32 @@ the rcost given we start adjacent.
         elif len(g0.familyL) == 1 and len(g1.familyL) == 1:
             caseL[3] = caseL[0]
         else: # both longer than 1
-            caseL[3] = costDiff(familyT[g0.familyL[0]],familyT[g1.familyL[-1]],adjacencyS,subtree)
+            caseL[3] = costDiff(familyT[g0.familyL[0]],familyT[g1.familyL[-1]],geneProximityD,proximityThreshold,subtree)
 
         return tuple(caseL)
 
-def storeScore(g0,g1,adjacencyS,subtree,scoreD,familyT):
+def storeScore(g0,g1,geneProximityD,proximityThreshold,subtree,scoreD,familyT):
     '''Calculate and store score in scoreD. We follow convention that key
 in scoreD should always have the lower group id first.'''
     if g0.id < g1.id:
         key = g0.id,g1.id
-        tempScoreT=rscore(g0,g1,adjacencyS,subtree,familyT)
-        # score returns different things depending on order
-        # so we must be consisstent with what we do in key.
+        tempScoreT=rscore(g0,g1,geneProximityD,proximityThreshold,subtree,familyT)
+        # rscore returns different things depending on order
+        # so we must be consistent with what we do in key.
     else:
         key = g1.id,g0.id
-        tempScoreT=rscore(g1,g0,adjacencyS,subtree,familyT)
+        tempScoreT=rscore(g1,g0,geneProximityD,proximityThreshold,subtree,familyT)
         
     scoreD[key]=(max(tempScoreT),tempScoreT)
 
     
-def createScoreD(groupL,adjacencyS,subtree,familyT):
+def createScoreD(groupL,geneProximityD,proximityThreshold,subtree,familyT):
     '''Create dictionary of scores between all groups at a single node
 (and thus with the same mrca).'''
     scoreD={}
     for i in range(len(groupL)-1):
         for j in range(i+1,len(groupL)):
-            if i == j: print("!")
-            storeScore(groupL[i],groupL[j],adjacencyS,subtree,scoreD,familyT)
+            storeScore(groupL[i],groupL[j],geneProximityD,proximityThreshold,subtree,scoreD,familyT)
     return scoreD
 
 
@@ -164,11 +165,11 @@ score D that come from them.'''
     for key in toDelL:
         del scoreD[key]
 
-def addScores(scoreD,g0,groupsAtThisNodeL,adjacencyS,subtree,familyT):
+def addScores(scoreD,g0,groupsAtThisNodeL,geneProximityD,proximityThreshold,subtree,familyT):
     '''Get scores for group g0 against all other groups and add to scoreD.'''
     for gr in groupsAtThisNodeL:
         if gr.id != g0.id:
-            storeScore(g0,gr,adjacencyS,subtree,scoreD,familyT)
+            storeScore(g0,gr,geneProximityD,proximityThreshold,subtree,scoreD,familyT)
 
 def searchGroupsByID(listOfGroups,id):
     '''Search for a group with id equal to id. Return the index of the
@@ -181,37 +182,46 @@ first we find, and None if their isn't one.
     
 def mergeGroupsAtNode(argT):
     '''Given a list of groups at one node (groupL) iteratively merge until
-there are no more pairwise scores above groupScoreThreshold.'''
+there are no more pairwise scores above threshold. We consider pairs
+of (proximity threshold, rscore threshold) which are specified in the
+list proxThreshL inside argT. So we might first do all merging for
+proximity threshold 1 (adjacent genes), merging until there are no
+groups whose pairwise rscore is >= to rscore threshold. Then we
+proceed to the next (proximity threshold, rscore threshold) pair,
+which might have for example proximity threshold 2 (we consider genes
+nearby that are separated by 1 gene).
+    '''
 
-    groupL,adjacencyS,subtree,groupScoreThreshold,familyT = argT
+    groupL,geneProximityD,proxThreshL,subtree,familyT = argT
     
     if len(groupL) < 2:
         # nothing to merge
         return groupL
 
-    scoreD = createScoreD(groupL,adjacencyS,subtree,familyT)
-    
-    while True:
-        sc,groupPairT,scoreT=maxScore(scoreD)
+    # we consider every pair of proximity threshold and rscore
+    # threshold in proxThreshL
+    for proximityThreshold,rscThreshold in proxThreshL:
 
-        if sc < groupScoreThreshold:
-            break
+        scoreD = createScoreD(groupL,geneProximityD,proximityThreshold,subtree,familyT)
         
-        ind0,g0 = searchGroupsByID(groupL,groupPairT[0])
-        ind1,g1 = searchGroupsByID(groupL,groupPairT[1])
+        while True:
+            sc,groupPairT,scoreT=maxScore(scoreD)
+            if sc < rscThreshold:
+                break
 
-        g0.merge(g1,scoreT.index(sc))
+            ind0,g0 = searchGroupsByID(groupL,groupPairT[0])
+            ind1,g1 = searchGroupsByID(groupL,groupPairT[1])
 
-        # delete g1
-        del groupL[ind1]
-        
-        # remove all scores in scoreD that involve g0 or g1
-        delScores(scoreD,g0.id,g1.id)
+            g0.merge(g1,scoreT.index(sc))
 
-        # calculate new scores for g0 against all other groups
-        addScores(scoreD,g0,groupL,adjacencyS,subtree,familyT)
+            # delete g1
+            del groupL[ind1]
 
-        #iteration+=1
+            # remove all scores in scoreD that involve g0 or g1
+            delScores(scoreD,g0.id,g1.id)
+
+            # calculate new scores for g0 against all other groups
+            addScores(scoreD,g0,groupL,geneProximityD,proximityThreshold,subtree,familyT)
 
     return groupL
 
@@ -243,14 +253,14 @@ recreating groupByNodeL.'''
 
     return groupByNodeL
 
-
     
 ## Main function
 
-def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,numThreads,strainNum2StrD,groupOutFN, outputSummaryF):
+def makeGroups(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyT,numThreads,strainNum2StrD,groupOutFN, outputSummaryF):
     '''Parallelized wrapper to merge groups at different nodes.'''
 
-    adjacencyS = genomes.createAdjacencySet(geneOrderT,geneNames)
+    maxGeneProximityForGroup = max([thresh for thresh,rsc in proxThreshL])
+    geneProximityD = genomes.createGeneProximityD(geneOrderT,maxGeneProximityForGroup)
     groupByNodeL=createGroupL(familyT,tree)
 
     print("Number of groups per node before merging: ", ' '.join([str(len(x)) for x in groupByNodeL]),file=outputSummaryF)
@@ -259,13 +269,12 @@ def makeGroups(geneOrderT,geneNames,subtreeL,tree,groupScoreThreshold,familyT,nu
     ## create argumentL to be passed to p.map and mergeGroupsAtNode
     argumentL = []
     for mrcaNode in range(len(groupByNodeL)):
-        argumentL.append((groupByNodeL[mrcaNode],adjacencyS,subtreeL[mrcaNode],groupScoreThreshold,familyT))
+        argumentL.append((groupByNodeL[mrcaNode],geneProximityD,proxThreshL,subtreeL[mrcaNode],familyT))
 
     # run it
     p=Pool(numThreads)
     groupByNodeLMerged = p.map(mergeGroupsAtNode, argumentL) 
 
-    
     #print("Did not merge core groups (last entries in groupByNodeL).",file=sys.stderr)
     print("Merging complete.",file=sys.stderr)
     print("Number of groups per node after merging: ", ' '.join([str(len(x)) for x in groupByNodeLMerged]),file=outputSummaryF)
