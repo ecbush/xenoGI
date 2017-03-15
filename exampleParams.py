@@ -76,6 +76,13 @@ numThreads = 50
 # reciprocal hits. This is the evalue threshold used there.
 evalueThresh = 0.001
 
+# alignment parameters for making scores
+# note, since parasail doesn't charge extend on the first base its
+# like emboss, and not like ncbi blast. NCBI blast uses existance 11,
+# extend 1 for blosum 62, thus we should use open 12 gapExtend 1 here.
+gapOpen = 12
+gapExtend = 1
+matrix = 'parasail.blosum62'
 
 # Synteny window size, that is the size of the neighborhood of each
 # gene to consider when calculating synteny scores. (measured in
@@ -110,17 +117,15 @@ synAdjustThresh = 0
 # by during this adjustment.
 synAdjustExtent = 1.05
 
-# Threshold for group scores. Below this we do not merge groups. These
-# scores theoretically range from -2 to 2 inclusive.
-groupScoreThreshold = 0
-
-# alignment parameters for making scores
-# note, since parasail doesn't charge extend on the first base its
-# like emboss, and not like ncbi blast. NCBI blast uses existance 11,
-# extend 1 for blosum 62, thus we should use open 12 gapExtend 1 here.
-gapOpen = 12
-gapExtend = 1
-matrix = 'parasail.blosum62'
+# In deciding whether to merge two groups, we judge partly based on
+# the proximity of their genes. The elements of this list are tuples
+# of the form (proximity threshold, rscore level). For example (1,0)
+# says we'll consider proximity to mean adjacency (proximity 1 means
+# adjacent genes), and we'll join groups if the rscore values is 0 or
+# above. The algorithm loops through the list, using the criteria in
+# the first tuple first, then proceeding to the second if there is on
+# and so on.
+proxThreshL = [(1,0),(2,2)]
 
 
 #### Visualization and analysis ####
