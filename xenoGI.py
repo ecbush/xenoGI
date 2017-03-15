@@ -27,5 +27,5 @@ if __name__ == "__main__":
     familyT = families.families(tree,subtreeL,geneNames,rawScoresG,normScoresG,synScoresG,paramD['minNormThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
     
     ## group gene families
-    groups.makeGroups(geneOrderT,geneNames,subtreeL,tree,paramD['groupScoreThreshold'],familyT,paramD['numThreads'],strainNum2StrD,paramD['groupOutFN'],outputSummaryF)
+    groups.makeGroups(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainNum2StrD,paramD['groupOutFN'],outputSummaryF)
     outputSummaryF.close()
