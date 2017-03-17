@@ -55,11 +55,29 @@ in the identically shaped tree2.'''
         makeTreeD(tree1[1],tree2[1],treeD)
         makeTreeD(tree1[2],tree2[2],treeD)
         return
+
+def checkTree(bpTree):
+    '''Check that a biopython tree is rooted and has named internal
+nodes. Throw error if not. Returns None.'''
+
+    # Check to make sure there are only two clades at the root of this
+    # tree. otherwise, its going to mess up bioPhyloToTupleTree
+    if len(bpTree.clade) > 2:
+        raise ValueError("readTree requires a rooted tree with exactly two clades at the root. This input tree has more than two. This typically means that it is intended to be read as an unrooted tree.")
+
+    # Make sure the internal nodes are labelled.
+    predictedNumIntNodes = bpTree.count_terminals() - 1
+    internalL = bpTree.get_nonterminals()
+    if len(internalL) != predictedNumIntNodes or any((n.name==None for n in internalL)):
+        raise ValueError("All the internal nodes of the input tree must have names.")
     
 def readTree(filename):
     '''Read Newick tree from file and convert it to tuple format.'''
 
     bpTree = Phylo.read(filename, 'newick', rooted=True)
+
+    checkTree(bpTree)
+    
     stringTree=bioPhyloToTupleTree(bpTree)
     counter=0
     numTree,counter=strTree2numTree(stringTree,counter)
