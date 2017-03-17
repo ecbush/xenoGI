@@ -19,10 +19,13 @@ if __name__ == "__main__":
 
     
     ## similarity scores
-    rawScoresG = scores.createRawScoresGraph(paramD['blastFilePath'],paramD['fastaFilePath'],paramD['numThreads'],paramD['rawScoresFN'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'])
+    rawScoresG = scores.readGraph(paramD['rawScoresFN'],geneNames)
 
     ## normalized scores
-    normScoresG,aabrhRawScoreSummmaryD=scores.createNormScoreGraph(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],rawScoresG,geneNames,paramD['aabrhFN'],paramD['normScoresFN'])    
+    normScoresG = scores.readGraph(paramD['normScoresFN'],geneNames)
+    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
+    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
+    aabrhRawScoreSummmaryD=scores.getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,rawScoresG,geneNames)
 
     del rawScoresG # don't need anymore, save RAM
     
