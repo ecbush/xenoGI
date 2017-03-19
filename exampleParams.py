@@ -45,17 +45,22 @@ blastFilePath = 'blast/*.out'
 
 #### Algorithm output files ####
 
-# alignment based similarity scores file
-rawScoresFN = 'rawScores.out'
+# Note: for scores output files, if the extension we use here is
+# .bout, the output will be saved in binary format (a pickle of a
+# networkx graph). Otherwise it will be a less compact text based
+# format
+
+#alignment based similarity scores file
+rawScoresFN = 'rawScores.bout'
+
+# normalized scores file
+normScoresFN = 'normScores.bout'
+
+# synteny based scores file
+synScoresFN = 'synScores.bout'
 
 # sets of all around best reciprocal hits
 aabrhFN = 'aabrh.out'
-
-# normalized scores file
-normScoresFN = 'normScores.out'
-
-# synteny based scores file
-synScoresFN = 'synScores.out'
 
 # family file
 familyFN='fam.out'

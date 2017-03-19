@@ -1,6 +1,8 @@
 import parasail,networkx,glob,statistics,pickle
-from multiprocessing import Pool
+from multiprocessing import set_start_method, Pool
+set_start_method('forkserver')
 import genomes,trees
+
 
 #### Global variables
 
