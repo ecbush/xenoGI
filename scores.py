@@ -1,6 +1,14 @@
-import parasail,networkx,glob,statistics
+import parasail,networkx,glob,statistics,pickle
 from multiprocessing import Pool
 import genomes,trees
+
+#### Global variables
+
+normScoresG = None # we'll actually put something in it in functions below
+
+
+#### Functions
+
 
 ## raw similarity scores
 
@@ -396,19 +404,24 @@ score normalized by std and centered around zero.'''
 
 ## synteny scores
 
-def createSynScoresGraph(G,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
+def createSynScoresGraph(normScoresGArg,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads,synScoresFN):
     '''Create a graph with genes as nodes, and edges representing the
 synteny score between two genes. We only bother making synteny scores
-for those genes that have an edge in G.
+for those genes that have an edge in normScoresG.
     '''
 
+    # Put the norm scores graph into a global in this namespace so it
+    # will be available in other functions to be called below.
+    global normScoresG
+    normScoresG = normScoresGArg
+    
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
 
     # prepare argument list for map
     argumentL = []
-    for gn1,gn2 in G.edges_iter():
-        argumentL.append((gn1,gn2,G,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
+    for gn1,gn2 in normScoresG.edges_iter():
+        argumentL.append((gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
 
             
     p=Pool(numThreads) # num threads
@@ -417,7 +430,7 @@ for those genes that have an edge in G.
     # make synteny graph
     # get same nodes (genes) as sim graph
     synScoresG=networkx.Graph()
-    for node in G.nodes_iter(): synScoresG.add_node(node)
+    for node in normScoresG.nodes_iter(): synScoresG.add_node(node)
 
     for gn1,gn2,sc in synScoresL:
         synScoresG.add_edge(gn1,gn2,score=sc)
@@ -454,7 +467,9 @@ def synScore(argsT):
     greedy. We find the pair with the best score, add it, then remove
     those genes and iterate.
     '''
-    gn1,gn2,G,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD = argsT
+
+    global normScoresG
+    gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD = argsT
 
     # get the min possible score for these two species (this is
     # really for the case of using normalized scores, where it
@@ -472,7 +487,7 @@ def synScore(argsT):
     topScL= [minNormScore] * numSynToTake
 
     for i in range(numSynToTake):
-        ind1,ind2,sc = topScore(L1,L2,G)
+        ind1,ind2,sc = topScore(L1,L2,normScoresG)
         if sc == -float('inf'):
             break
         topScL[i] = sc
@@ -503,10 +518,50 @@ each and the score.'''
 
 ## Graph I/O
 
+def writeGraph(G,geneNames,scoresFN):
+    '''Write graph G to file. If scoresFN has the .bout extension, write
+binary pickle of G, otherwise write in text output format.'''
+
+    if scoresFN.split('.')[-1] == 'bout':
+        writeGraphBinary(G,scoresFN)
+    else:
+        writeGraphText(G,geneNames,scoresFN)
+
+def writeGraphText(G,geneNames,scoresFN):
+    '''Given a graph with genes as nodes, write all edges (pairs of genes)
+to a text file in three columns. Gene 1, gene 2 and score.
+    '''
+
+    f=open(scoresFN,'w')
+    
+    for gene1Num,gene2Num in G.edges_iter():
+        sc = G.get_edge_data(gene1Num,gene2Num)['score']
+        print(geneNames.numToName(gene1Num),geneNames.numToName(gene2Num),format(sc,".6f"),sep='\t',file=f)
+
+    f.close()
+
+def writeGraphBinary(G,scoresFN):
+    '''Given a graph with genes as nodes, pickle and write to scoresFN.'''
+    f = open(scoresFN, "wb" )
+    pickle.dump(G,f)
+    f.close()
+
+
 def readGraph(scoresFN,geneNames):
-    '''Read scores from the scores file and use to create network
+    '''Read scores from file creating a networkx graph of scores. If
+scoresFN has the .bout extension, read binary pickle of graph,
+otherwise read text format.'''
+    if scoresFN.split('.')[-1] == 'bout':
+        G = readGraphBinary(scoresFN)
+    else:
+        G = readGraphText(scoresFN,geneNames)
+    return G
+    
+def readGraphText(scoresFN,geneNames):
+    '''Read scores from a text file of scores and use to create network
 with genes and nodes and edges representing global alignment score
-between proteins with significant similarity.'''
+between proteins with significant similarity.
+    '''
 
     G=networkx.Graph()
     for geneNum in geneNames.nums: G.add_node(geneNum)
@@ -523,14 +578,10 @@ between proteins with significant similarity.'''
     f.close()
     return G
 
-def writeGraph(G,geneNames,fileName):
-    '''Given a graph with genes as nodes, write all edges (pairs of genes)
-to file in three columns. Gene 1, gene 2 and score.'''
-
-    f=open(fileName,'w')
-    
-    for gene1Num,gene2Num in G.edges_iter():
-        sc = G.get_edge_data(gene1Num,gene2Num)['score']
-        print(geneNames.numToName(gene1Num),geneNames.numToName(gene2Num),format(sc,".6f"),sep='\t',file=f)
-
+def readGraphBinary(scoresFN):
+    '''Read scores from a binary file, containing a pickled networkx graph
+of scores.'''
+    f = open(scoresFN, "rb" )
+    G = pickle.load(f)
     f.close()
+    return G
