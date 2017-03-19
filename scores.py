@@ -1,6 +1,5 @@
 import parasail,networkx,glob,statistics,pickle
 from multiprocessing import set_start_method, Pool
-set_start_method('forkserver')
 import genomes,trees
 
 
@@ -412,6 +411,9 @@ synteny score between two genes. We only bother making synteny scores
 for those genes that have an edge in normScoresG.
     '''
 
+    #set_start_method('forkserver')
+
+    
     # Put the norm scores graph into a global in this namespace so it
     # will be available in other functions to be called below.
     global normScoresG
@@ -425,10 +427,12 @@ for those genes that have an edge in normScoresG.
     for gn1,gn2 in normScoresG.edges_iter():
         argumentL.append((gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
 
-            
+    # find size of chunks map should give to individual processes
+    chunkSize = int(len(argumentL) / numThreads)
+    
     p=Pool(numThreads) # num threads
-    synScoresL = p.map(synScore, argumentL)
-
+    synScoresL = p.map(synScore, argumentL, chunksize = chunkSize)
+    
     # make synteny graph
     # get same nodes (genes) as sim graph
     synScoresG=networkx.Graph()
@@ -544,10 +548,7 @@ to a text file in three columns. Gene 1, gene 2 and score.
 
 def writeGraphBinary(G,scoresFN):
     '''Given a graph with genes as nodes, pickle and write to scoresFN.'''
-    f = open(scoresFN, "wb" )
-    pickle.dump(G,f)
-    f.close()
-
+    networkx.write_gpickle(G,scoresFN)
 
 def readGraph(scoresFN,geneNames):
     '''Read scores from file creating a networkx graph of scores. If
@@ -583,7 +584,5 @@ between proteins with significant similarity.
 def readGraphBinary(scoresFN):
     '''Read scores from a binary file, containing a pickled networkx graph
 of scores.'''
-    f = open(scoresFN, "rb" )
-    G = pickle.load(f)
-    f.close()
+    G = networkx.read_gpickle(scoresFN)
     return G
