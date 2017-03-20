@@ -1,4 +1,4 @@
-import parasail,networkx,glob,statistics,pickle
+import parasail,networkx,glob,statistics
 from multiprocessing import set_start_method, Pool
 import genomes,trees
 
@@ -59,7 +59,10 @@ alignment scores for each using multiple threads.'''
     # run
     p=Pool(numThreads)
     scoresLL = p.map(rawScoreGroup, argumentL)
+    p.close()
+    p.join()
 
+    
     # convert to Graph
     G=networkx.Graph()
     for geneNum in geneNames.nums: G.add_node(geneNum)
@@ -432,6 +435,8 @@ for those genes that have an edge in normScoresG.
     
     p=Pool(numThreads) # num threads
     synScoresL = p.map(synScore, argumentL, chunksize = chunkSize)
+    p.close()
+    p.join()
     
     # make synteny graph
     # get same nodes (genes) as sim graph
