@@ -1,6 +1,6 @@
 from Family import *
 from Group import *
-import trees
+import trees,scores
 import matplotlib.pyplot as pyplot
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -236,13 +236,13 @@ given, then include these in printout.
 
 # Plots of scores
 
-def scoreHists(scoreFN,outFN,numBins):
+def scoreHists(scoresFN,outFN,numBins,geneNames):
     '''Read through a scores file, and separate into all pairwise comparisons. Then plot hist of each.'''
 
     # currently, this seems to require a display for interactive
     # plots. would be nice to make it run without that...
 
-    pairD = readScorePairs(scoreFN)
+    pairD = readScorePairs(scoresFN,geneNames)
 
     pyplot.ioff() # turn off interactive mode
     with PdfPages(outFN) as pdf:
@@ -256,30 +256,23 @@ def scoreHists(scoreFN,outFN,numBins):
     #pyplot.show()
             
 
-def readScorePairs(scoreFN):
+def readScorePairs(scoresFN,geneNames):
     '''Read through a scores file, and separate into all pairwise
 comparisons. Return as dict.'''
     
     pairD = {}
 
-    f = open(scoreFN,'r')
+    scoreG = scores.readGraph(scoresFN,geneNames=None)
+    
+    for gn1,gn2,sc in scoreG.edges_iter(data='score'):
 
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        g1,g2,sc = s.rstrip().split('\t')
-        sc = float(sc)
-
-        sp1,restOfGene1 = g1.split('-')
-        sp2,restOfGene2 = g2.split('-')
-
+        sp1 = geneNames.numToStrainName(gn1)
+        sp2 = geneNames.numToStrainName(gn2)
         key = tuple(sorted([sp1,sp2]))
-
+        
         if key in pairD:
             pairD[key].append(sc)
         else:
             pairD[key] = [sc]
         
-    f.close()
     return pairD

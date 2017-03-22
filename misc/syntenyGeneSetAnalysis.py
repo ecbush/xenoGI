@@ -29,8 +29,6 @@ the minimum possible.'''
 
     scSum = sum((subgr.get_edge_data(gn1,gn2)['score'] for gn1,gn2 in subgr.edges()))
 
-    # still must consider missing edges. Will need to have min possible score for that.
-
     # if there was an edge between every node, there would be
     # len(geneT) choose 2.
     maxPossibleNumEdges = len(list(itertools.combinations(geneT,2)))
