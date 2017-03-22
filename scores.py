@@ -555,7 +555,7 @@ def writeGraphBinary(G,scoresFN):
     '''Given a graph with genes as nodes, pickle and write to scoresFN.'''
     networkx.write_gpickle(G,scoresFN)
 
-def readGraph(scoresFN,geneNames):
+def readGraph(scoresFN,geneNames=None):
     '''Read scores from file creating a networkx graph of scores. If
 scoresFN has the .bout extension, read binary pickle of graph,
 otherwise read text format.'''
