@@ -60,8 +60,13 @@ def checkTree(bpTree):
     '''Check that a biopython tree is rooted and has named internal
 nodes. Throw error if not. Returns None.'''
 
-    # Check to make sure there are only two clades at the root of this
-    # tree. otherwise, its going to mess up bioPhyloToTupleTree
+    # check its bifurcating. This actually ignors the root, but checks
+    # for non-bifurcating nodes below that.
+    if not bpTree.is_bifurcating():
+        raise ValueError("This tree is not bifurcating.")
+    
+    # Now check to make sure there are only two clades at the root of
+    # this tree. Otherwise, its going to mess up bioPhyloToTupleTree
     if len(bpTree.clade) > 2:
         raise ValueError("readTree requires a rooted tree with exactly two clades at the root. This input tree has more than two. This typically means that it is intended to be read as an unrooted tree.")
 
