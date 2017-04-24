@@ -122,9 +122,9 @@ def getGenesInFamily(family,subtreeL,familyT):
     return genesL
 
     
-def printScoreMatrix(family,subtreeL,familyT,geneNames,G):
+def printScoreMatrix(family,subtreeL,familyT,geneNames,G,scoreType):
     '''Print a matrix of scores between all the genes in a family. Scores
-are provided by the graph G.'''
+are provided by the graph G, and we're extracting the values associated with scoreType in the edges of this graph.'''
 
     familyGenesL = getGenesInFamily(family,subtreeL,familyT)
 
@@ -139,12 +139,12 @@ are provided by the graph G.'''
             if data == None:
                 row.append('-')
             else:
-                row.append(format(data['score'],".3f"))
+                row.append(format(data[scoreType],".3f"))
         rowsL.append(row)
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,normScoresG,synScoresG):
+def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresG):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 rawScoresG.
@@ -155,14 +155,14 @@ rawScoresG.
     rowL = []
     for gene in familyGenesL:
         geneName = geneNames.numToName(gene)
-        for edge in rawScoresG.edges_iter(gene):
+        for edge in scoresG.edges_iter(gene):
             if not edge[1] in familyGenesL:
                 # this connection is with a gene outside the family
                 otherGeneName = geneNames.numToName(edge[1])
-                rawData=rawScoresG.get_edge_data(gene,edge[1])
-                normScoresData=normScoresG.get_edge_data(gene,edge[1])
-                synScoresData=synScoresG.get_edge_data(gene,edge[1])
-                rowL.append([geneName,otherGeneName,format(rawData['score'],".3f"),format(normScoresData['score'],".3f"),format(synScoresData['score'],".3f")])
+                rawSc=scoresG.get_edge_data(gene,edge[1])['rawSc']
+                normSc=scoresG.get_edge_data(gene,edge[1])['normSc']
+                synSc=scoresG.get_edge_data(gene,edge[1])['synSc']
+                rowL.append([geneName,otherGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(synSc,".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
     rowL.insert(0,['----------','-----------','---','----','-------'])
@@ -236,13 +236,13 @@ given, then include these in printout.
 
 # Plots of scores
 
-def scoreHists(scoresFN,outFN,numBins,geneNames):
+def scoreHists(scoresFN,outFN,numBins,geneNames,scoreType):
     '''Read through a scores file, and separate into all pairwise comparisons. Then plot hist of each.'''
 
     # currently, this seems to require a display for interactive
     # plots. would be nice to make it run without that...
 
-    pairD = readScorePairs(scoresFN,geneNames)
+    pairD = readScorePairs(scoresFN,geneNames,scoreType)
 
     pyplot.ioff() # turn off interactive mode
     with PdfPages(outFN) as pdf:
@@ -256,7 +256,7 @@ def scoreHists(scoresFN,outFN,numBins,geneNames):
     #pyplot.show()
             
 
-def readScorePairs(scoresFN,geneNames):
+def readScorePairs(scoresFN,geneNames,scoreType):
     '''Read through a scores file, and separate into all pairwise
 comparisons. Return as dict.'''
     
@@ -264,7 +264,7 @@ comparisons. Return as dict.'''
 
     scoreG = scores.readGraph(scoresFN,geneNames=None)
     
-    for gn1,gn2,sc in scoreG.edges_iter(data='score'):
+    for gn1,gn2,sc in scoreG.edges_iter(data=scoreType):
 
         sp1 = geneNames.numToStrainName(gn1)
         sp2 = geneNames.numToStrainName(gn2)

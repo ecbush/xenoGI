@@ -18,13 +18,11 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
     ## read scores
-    rawScoresG = scores.readGraph(paramD['rawScoresFN'],geneNames)
-    normScoresG = scores.readGraph(paramD['normScoresFN'],geneNames)
-    synScoresG = scores.readGraph(paramD['synScoresFN'],geneNames)
+    scoresG = scores.readGraph(paramD['scoresFN'],geneNames)
 
     ## make gene families
     outputSummaryF = open(paramD['outputSummaryFN'],'w')
-    familyT = families.families(tree,subtreeL,geneNames,rawScoresG,normScoresG,synScoresG,paramD['minNormThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
+    familyT = families.families(tree,subtreeL,geneNames,scoresG,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
     
     ## group gene families
     groups.makeGroups(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainNum2StrD,paramD['groupOutFN'],outputSummaryF)

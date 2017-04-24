@@ -32,6 +32,7 @@ Code for detecting horizontal transfer events in a clade of bacteria.
 
 python3 ../xenoGI/parseGenbank.py params.py
 python3 ../xenoGI/runBlast.py params.py
+python3 ../xenoGI/calcScores.py params.py
 python3 ../xenoGI/xenoGI.py params.py
 
 - parseGenbank.py runs through the genbank files and produces input files that are used by subsequent code.

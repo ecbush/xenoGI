@@ -40,38 +40,41 @@ the left branch of tree.'''
 
     return(leftS,rightS,outgroupS)
 
-def closestMatch(gene,S,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh):
+def closestMatch(gene,S,scoresG,minNormThresh,minCoreSynThresh,minSynThresh):
     '''Find the closest match to gene among the genes in the set S in the
 graph rawScoresG. Eliminate any matches that have a norm score below
-minNormThresh or a synteny score below minSynThresh.
+minNormThresh, a coreSynSc below minCoreSynThresh, or a synteny score
+below minSynThresh.
     '''
     bestGene=None
     bestEdgeScore = -float('inf')
-    for edge in rawScoresG.edges_iter(gene):
+    for edge in scoresG.edges_iter(gene):
         if edge[1] in S:
-            if rawScoresG.get_edge_data(*edge)['score'] > bestEdgeScore:
-                if normScoresG.get_edge_data(*edge)['score'] > minNormThresh:
-                    if synScoresG.get_edge_data(*edge)['score'] > minSynThresh:
-                        bestEdgeScore =  rawScoresG.get_edge_data(*edge)['score']
-                        bestGene = edge[1]
+            if scoresG.get_edge_data(*edge)['rawSc'] > bestEdgeScore:
+                if scoresG.get_edge_data(*edge)['normSc'] > minNormThresh:
+                    if scoresG.get_edge_data(*edge)['coreSynSc'] > minCoreSynThresh:
+                        if scoresG.get_edge_data(*edge)['synSc'] > minSynThresh:
+                            bestEdgeScore =  scoresG.get_edge_data(*edge)['rawSc']
+                            bestGene = edge[1]
     return bestEdgeScore, gene, bestGene
     
-def createSeedL(leftS,rightS,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh):
+def createSeedL(leftS,rightS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh):
     '''Create a list which has the closest match for each gene on the
 opposite side of the tree. e.g. if a gene is in tree[1] then we're
 looking for the gene in tree[2] with the closest match. We eliminate
-any matches that have a synteny score below minSynThresh. For each
-gene we get this closest match, put in a list, sort, and return.
+any matches that are below threshold for normalized or syntenty
+scores. For each gene we get this closest match, put in a list, sort,
+and return.
     '''
     seedL=[]
     for gene in leftS:
-        seedL.append(closestMatch(gene,rightS,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh))
+        seedL.append(closestMatch(gene,rightS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh))
     for gene in rightS:
-        seedL.append(closestMatch(gene,leftS,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh))
+        seedL.append(closestMatch(gene,leftS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh))
     seedL.sort(reverse=True)
     return seedL
 
-def getFamily(seedSimScore,g1,g2,rawScoresG,normScoresG,synScoresG,leftS,rightS,minNormThresh,minSynThresh,synAdjustThresh,synAdjustExtent):
+def getFamily(seedSimScore,g1,g2,scoresG,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
 the family than the two seeds are from each other. But, we also have a
@@ -88,18 +91,23 @@ family.
     while len(notYetSearchedS) > 0:
         newGenesS=set()
         for gene in notYetSearchedS:
-            for edge in rawScoresG.edges_iter(gene):
+            for edge in scoresG.edges_iter(gene):
                 newGene=edge[1]
                 if newGene in leftS or newGene in rightS:
                     # it is from a species descended from the node
                     # we're working on
                     if newGene not in alreadySearchedS and newGene not in newGenesS:
-                        rawSc = rawScoresG.get_edge_data(*edge)['score']
-                        normSc = normScoresG.get_edge_data(*edge)['score']
-                        synSc = synScoresG.get_edge_data(*edge)['score']
+                        rawSc = scoresG.get_edge_data(*edge)['rawSc']
+                        normSc = scoresG.get_edge_data(*edge)['normSc']
+                        coreSynSc = scoresG.get_edge_data(*edge)['coreSynSc']
+                        synSc = scoresG.get_edge_data(*edge)['synSc']
                         if normSc < minNormThresh:
                             # doesn't meet score threshold for family
                             # formation. (Modification of PhiGs)
+                            continue
+                        elif coreSynSc < minCoreSynThresh:
+                            # doesn't meet min core synteny requirement for
+                            # family formation. (Modification of PhiGs)
                             continue
                         elif synSc < minSynThresh:
                             # doesn't meet min synteny requirement for
@@ -131,9 +139,10 @@ family.
     return alreadySearchedS
                 
     
-def families(tree,subtreeL,geneNames,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD, outputSummaryF):
-    '''Given a graph of genes and their similarity scores (rawScoresG) find
-families using a PhiGs-like algorithm, with synteny also considered.'''
+def families(tree,subtreeL,geneNames,scoresG,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD, outputSummaryF):
+    '''Given a graph of genes and their similarity scores find families
+using a PhiGs-like algorithm, with synteny also considered.
+    '''
 
     nodeOrderL=createNodeProcessOrderList(tree)
     
@@ -146,7 +155,7 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
             # not a tip
             subtree=subtreeL[node]
             leftS,rightS,outgroupS = createLRSets(subtree,geneNames)
-            seedL = createSeedL(leftS,rightS,rawScoresG,normScoresG,synScoresG,minNormThresh,minSynThresh)
+            seedL = createSeedL(leftS,rightS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh)
             for seed in seedL:
                 seedSimScore,g1,g2 = seed
 
@@ -154,11 +163,8 @@ families using a PhiGs-like algorithm, with synteny also considered.'''
                     # we've gotten to the point in the seed list with
                     # genes having no match on the other branch
                     break
-                elif synScoresG.get_edge_data(g1,g2)['score'] < minSynThresh:
-                    # doesn't meet min synteny requirement for family formation
-                    continue
                 else:
-                    family=getFamily(seedSimScore,g1,g2,rawScoresG,normScoresG,synScoresG,leftS,rightS,minNormThresh,minSynThresh,synAdjustThresh,synAdjustExtent)
+                    family=getFamily(seedSimScore,g1,g2,scoresG,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent)
                     
                     if any((geneUsedL[gene] for gene in family)):
                         continue

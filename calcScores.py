@@ -1,4 +1,4 @@
-import sys,glob
+import sys,glob,networkx
 import genbank,blast,trees,genomes,scores,families,groups,parameters
 
 
@@ -17,14 +17,23 @@ if __name__ == "__main__":
     subtreeL.sort()
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
+    # graph for storing scores
+    scoresG=networkx.Graph()
+    for geneNum in geneNames.nums: scoresG.add_node(geneNum)
     
     ## similarity scores
-    rawScoresG = scores.createRawScoresGraph(paramD['blastFilePath'],paramD['fastaFilePath'],paramD['numThreads'],paramD['rawScoresFN'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'])
+    scoresG = scores.calcRawScores(paramD['blastFilePath'],paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresG)
 
     ## normalized scores
-    normScoresG,aabrhRawScoreSummmaryD=scores.createNormScoreGraph(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],rawScoresG,geneNames,paramD['aabrhFN'],paramD['normScoresFN'])    
+    scoresG,aabrhL,aabrhRawScoreSummmaryD=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresG,geneNames,paramD['aabrhFN'])
 
-    del rawScoresG # don't need anymore, save RAM
-    
     ## synteny scores
-    synScoresG = scores.createSynScoresGraph(normScoresG,aabrhRawScoreSummmaryD,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'],paramD['synScoresFN'])
+    scoresG = scores.calcSynScores(scoresG,aabrhRawScoreSummmaryD,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
+
+    ## core synteny scores
+    scoresG = scores.calcCoreSynScores(scoresG,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])
+
+    # write scores to file
+    scores.writeGraph(scoresG,geneNames,paramD['scoresFN'])
+    
+

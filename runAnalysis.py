@@ -16,22 +16,22 @@ species.
 
     print()
     print("Matrix of raw similarity scores [0,1] between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,rawScoresG)
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'rawSc')
     print()
     print()
 
     print()
     print("Matrix of normalized similarity scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,normScoresG)
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'normSc')
     print()
     print()
     
     print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,synScoresG)
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'synSc')
     print()
     print()
     
-    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,rawScoresG,normScoresG,synScoresG)
+    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresG)
     print()
     print()
 
@@ -81,7 +81,5 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
     # scores
-    rawScoresG = scores.readGraph(paramD['rawScoresFN'],geneNames)
-    normScoresG = scores.readGraph(paramD['normScoresFN'],geneNames)
-    synScoresG = scores.readGraph(paramD['synScoresFN'],geneNames)
+    scoresG = scores.readGraph(paramD['scoresFN'],geneNames)
     
