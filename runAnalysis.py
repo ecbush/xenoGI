@@ -26,11 +26,16 @@ species.
     print()
     print()
     
+    print("Matrix of core synteny scores between genes in the family")
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'coreSynSc')
+    print()
+    print()
+
     print("Matrix of synteny scores between genes in the family")
     printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'synSc')
     print()
     print()
-    
+
     printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresG)
     print()
     print()

@@ -161,13 +161,13 @@ rawScoresG.
                 otherGeneName = geneNames.numToName(edge[1])
                 rawSc=scoresG.get_edge_data(gene,edge[1])['rawSc']
                 normSc=scoresG.get_edge_data(gene,edge[1])['normSc']
+                coreSynSc=scoresG.get_edge_data(gene,edge[1])['coreSynSc']
                 synSc=scoresG.get_edge_data(gene,edge[1])['synSc']
-                rowL.append([geneName,otherGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(synSc,".3f")])
+                rowL.append([geneName,otherGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(coreSynSc,".3f"),format(synSc,".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
-    rowL.insert(0,['----------','-----------','---','----','-------'])
-    rowL.insert(0,['Inside fam','Outside fam','Raw','Norm','Synteny'])
-
+    rowL.insert(0,['----------','-----------','---','----','-------','---'])
+    rowL.insert(0,['Inside fam','Outside fam','Raw','Norm','CoreSyn','Syn'])
                 
     print("Printing all scores with non-family members")
     printTable(rowL,2)
