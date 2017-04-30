@@ -1,5 +1,5 @@
 import sys
-import parameters,genbank,trees,genomes,scores,families,groups
+import parameters,genbank,trees,genomes,scores,families,islands
 
 
 if __name__ == "__main__":
@@ -24,6 +24,6 @@ if __name__ == "__main__":
     outputSummaryF = open(paramD['outputSummaryFN'],'w')
     familyT = families.families(tree,subtreeL,geneNames,scoresG,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
     
-    ## group gene families
-    groups.makeGroups(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainNum2StrD,paramD['groupOutFN'],outputSummaryF)
+    ## group gene families into islands
+    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainNum2StrD,paramD['islandOutFN'],outputSummaryF)
     outputSummaryF.close()

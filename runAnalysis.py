@@ -1,18 +1,15 @@
 import sys
-import genomes,trees,families,scores,groups,parameters
+import parameters,genomes,trees,families,scores,islands
 from analysis import *
 
 ## Wrapper functions
 #  these should be here, as they assume a bunch of global variables.
 
-def printFam(synWSize,family):
+def printFam(family):
     '''This is a wrapper to provide an easy way to print relevant info on
 a family. For ease of use, we take only two arguments, assuming all
 the other required stuff is available at the top level. Family is the
-numerical identifier of a family. synWSize is the size of the genomic
-window we will include when printing out genomic context in each
-species.
-    '''
+numerical identifier of a family.'''
 
     print()
     print("Matrix of raw similarity scores [0,1] between genes in the family")
@@ -40,20 +37,25 @@ species.
     print()
     print()
 
-    print("Synteny information")
-    printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2GroupD,geneInfoD,geneNames,strainNum2StrD)
 
-def printGroupsAtNode(nodeStr):
-    '''This is a wrapper to provide an easy way to print all the groups at
+def printIsland(islandNum,synWSize):
+    '''Print the island and its genomic context in each species. We include synWSize/2 genes in either direction beyond the island.
+    '''
+    print("Synteny information")
+    printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
+
+    
+def printIslandsAtNode(nodeStr):
+    '''This is a wrapper to provide an easy way to print all the islands at
 a particular node in the tree. For ease of use, we take only a node
 number as argument, assuming all the other required stuff is available
 at the top level.
     '''
     node = strainStr2NumD[nodeStr]
-    vPrintGroups(groupByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
+    vPrintIslands(islandByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
 
     
-
+# printFamNeighb(famNum,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
 
 
 if __name__ == "__main__":
@@ -63,8 +65,8 @@ if __name__ == "__main__":
 
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
     
-    # load groups
-    groupByNodeL=groups.readGroups(paramD['groupOutFN'],tree,strainStr2NumD)
+    # load islands
+    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     
     # get familyT etc.
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
@@ -76,7 +78,7 @@ if __name__ == "__main__":
 
     
     gene2FamD=createGene2FamD(familyT)
-    fam2GroupD=createFam2GroupD(groupByNodeL)
+    fam2IslandD=createFam2IslandD(islandByNodeL)
 
     # subtree list
     subtreeL=trees.createSubtreeL(tree)

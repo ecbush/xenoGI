@@ -69,7 +69,7 @@ for the annotations inserted.'''
             show2tracks="false"/>
     </files>"""
 
-    outStr = a+'"'+humanStem+'-'+projectName+'-group.gff"\n'+b+'"'+ncbiStem+'_genomic.gff"\n'+c
+    outStr = a+'"'+humanStem+'-'+projectName+'-island.gff"\n'+b+'"'+ncbiStem+'_genomic.gff"\n'+c
     
     return outStr
     

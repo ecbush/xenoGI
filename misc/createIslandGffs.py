@@ -1,24 +1,24 @@
 import sys,statistics,os,glob
 from urllib import parse
 sys.path.append(os.path.join(sys.path[0],'..'))
-import trees, genomes, families, groups, parameters
+import trees, genomes, families, islands, parameters
 
 
-def createGroupByStrainD(leafNodesL,strainNum2StrD,groupByNodeL,familyT,geneNames,geneInfoD):
+def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyT,geneNames,geneInfoD):
     '''Return a dict keyed by strain name. Values are lists of tuples
-    (groupNum, familyL) where familyL is a list of tuples in the group
+    (islandNum, familyL) where familyL is a list of tuples in the island
     present in that strain. Family tuples are (family,[genes in
     family]).
     '''
-    groupByStrainD = {}
+    islandByStrainD = {}
     for leaf in leafNodesL:
-        groupByStrainD[strainNum2StrD[leaf]]=[]
+        islandByStrainD[strainNum2StrD[leaf]]=[]
 
-    # loop over every node in tree. examine each group. from each
+    # loop over every node in tree. examine each island. from each
     # extract the genes present in each strain and put in right entry
-    # in groupByStrainD
-    for mrcaNum in range(len(groupByNodeL)):
-        for gr in groupByNodeL[mrcaNum]:
+    # in islandByStrainD
+    for mrcaNum in range(len(islandByNodeL)):
+        for gr in islandByNodeL[mrcaNum]:
 
             # make dict to collect fams for each strain
             tempStrainD = {}
@@ -45,32 +45,32 @@ def createGroupByStrainD(leafNodesL,strainNum2StrD,groupByNodeL,familyT,geneName
                         tempStrainD[strainNum2StrD[leaf]].append((fam,geneNamesL))
 
 
-            # now make group tuple (minStart,group, familyL) where
+            # now make island tuple (minStart,island, familyL) where
             # minStart is the lowest start coord we've seen in the
-            # group, group is the group id, and familyL is the thing
+            # island, island is the island id, and familyL is the thing
             # in tempStrainD
-            for strain in groupByStrainD:
-                # only add if the group is present in this strain
+            for strain in islandByStrainD:
+                # only add if the island is present in this strain
 
                 if tempStrainD[strain] != []:
                     #print(gr.id,mrcaNum,strain)
-                    chrom,groupMedianMidpoint,groupMin,groupMax = getGroupPositions(tempStrainD[strain],geneInfoD,strainNum2StrD,gr.id,mrcaNum,strain)
-                    grT = (chrom,groupMedianMidpoint,groupMin,groupMax,mrcaNum,gr.id,tempStrainD[strain])
-                    groupByStrainD[strain].append(grT)
+                    chrom,islandMedianMidpoint,islandMin,islandMax = getIslandPositions(tempStrainD[strain],geneInfoD,strainNum2StrD,gr.id,mrcaNum,strain)
+                    grT = (chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,gr.id,tempStrainD[strain])
+                    islandByStrainD[strain].append(grT)
                     
-    # sort each list in groupByStrainD by chrom and groupMedianMidpoint
-    for strain in groupByStrainD:
-        groupByStrainD[strain].sort(key=lambda x: x[:2])
+    # sort each list in islandByStrainD by chrom and islandMedianMidpoint
+    for strain in islandByStrainD:
+        islandByStrainD[strain].sort(key=lambda x: x[:2])
     
-    return groupByStrainD
+    return islandByStrainD
 
-def getGroupPositions(familyL,geneInfoD,strainNum2StrD,grID,mrcaNum,strain):
-    '''Given a list of families (from a single group in a single strain),
+def getIslandPositions(familyL,geneInfoD,strainNum2StrD,grID,mrcaNum,strain):
+    '''Given a list of families (from a single island in a single strain),
 return its chrom,start,end.
     '''
     chromL=[]
-    groupMin=float('inf')
-    groupMax=-float('inf')
+    islandMin=float('inf')
+    islandMax=-float('inf')
     geneMidpointL=[]
     for fam,geneL in familyL:
         for gene in geneL:
@@ -78,34 +78,34 @@ return its chrom,start,end.
             chromL.append(chrom)
             start = int(start)
             end = int(end)
-            if start<groupMin:
-                groupMin=start
-            if end>groupMax:
-                groupMax=end
+            if start<islandMin:
+                islandMin=start
+            if end>islandMax:
+                islandMax=end
 
             geneMidpointL.append(int((end-start)/2))
                 
     # sanity check: all entries in chromL should be same
     if not all((c==chromL[0] for c in chromL)):
-        print("Genes in group",grID,"at mrca",strainNum2StrD[mrcaNum],"in strain",strain,"are not all on the same chromosome.",file=sys.stderr)
+        print("Genes in island",grID,"at mrca",strainNum2StrD[mrcaNum],"in strain",strain,"are not all on the same chromosome.",file=sys.stderr)
 
-    groupMedianMidpoint = statistics.median(geneMidpointL)
+    islandMedianMidpoint = statistics.median(geneMidpointL)
     
-    return chrom,groupMedianMidpoint,groupMin,groupMax
+    return chrom,islandMedianMidpoint,islandMin,islandMax
     
-def groupToGff(groupT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter):
-    '''Given a groupT (the values of groupByStrainD are lists of these)
+def islandToGff(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter):
+    '''Given a islandT (the values of islandByStrainD are lists of these)
 convert into a string suitable for writing in a gff file. Return
 this. Note that we're using the score field to color the genes in
-IGB. So, we give genes in a group the same score, and give different
-scores to adjacent groups. Counter keeps track of how many groups
+IGB. So, we give genes in a island the same score, and give different
+scores to adjacent islands. Counter keeps track of how many islands
 we've done already.
     '''
     gffL=[]
-    chrom,groupMedianMidpoint,groupMin,groupMax,mrcaNum,grNum,familyL = groupT
-    groupID = 'group'+str(grNum)
+    chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,grNum,familyL = islandT
+    islandID = 'island_'+str(grNum)
 
-    # create score for coloring groups
+    # create score for coloring islands
     if strainNum2StrD[mrcaNum] in scoreNodeMapD:
         score = scoreNodeMapD[strainNum2StrD[mrcaNum]]
     else:
@@ -121,25 +121,25 @@ we've done already.
                 Name=gene
 
             escapedDescrip = parse.quote(descrip) # escape some characters
-            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | group_'+groupID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+escapedDescrip
+            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+islandID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+escapedDescrip
             
             gffL.append('\t'.join([chrom,'.','gene',start,end,str(score),strand,'.',attributes]))
 
     gffStr = '\n'.join(gffL)
     return gffStr
     
-def writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreNodeMapD,potentialScoresL):
+def writeStrainGff(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreNodeMapD,potentialScoresL):
     '''For a given strain, Write gff file.'''
     counter=0
     f=open(gffFileName,'w')
     f.write('##gff-version 3\n')
-    for groupT in groupByStrainD[strain]:
-        gffStr = groupToGff(groupT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter)
+    for islandT in islandByStrainD[strain]:
+        gffStr = islandToGff(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter)
         f.write(gffStr+'\n')
         counter+=1
     f.close()
 
-def createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,scoreNodeMapD,potentialScoresL):
+def createAllGffs(islandByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,scoreNodeMapD,potentialScoresL):
 
     # if directory for gffss doesn't exist yet, make it
     gffDir = gffFilePath.split("*")[0]
@@ -148,13 +148,13 @@ def createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,score
 
     gffExtension = gffFilePath.split("*")[1]
     
-    for strain in groupByStrainD:
+    for strain in islandByStrainD:
         gffFileName = gffDir+strain+gffExtension
-        writeStrainGff(groupByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreNodeMapD,potentialScoresL)
+        writeStrainGff(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileName,scoreNodeMapD,potentialScoresL)
     
 def createPotentialScoresL(mn,mx,stride,offset):
     '''This function creates a list of potential scores. We use score to
-color our groups in IGB. We want adjacent groups to look different,
+color our islands in IGB. We want adjacent islands to look different,
 and thus get different scores. So we need a list of scores to march
 though, where adjacent things are different. This function produces
 such a list. Its not intended to be used every time we run, but rather
@@ -179,11 +179,11 @@ if __name__ == "__main__":
     leafNodesL = trees.leafList(tree)
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
     familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-    groupByNodeL=groups.readGroups(paramD['groupOutFN'],tree,strainStr2NumD)
+    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
 
     
-    # get groups organized by strain
-    groupByStrainD = createGroupByStrainD(leafNodesL,strainNum2StrD,groupByNodeL,familyT,geneNames,geneInfoD)
+    # get islands organized by strain
+    islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyT,geneNames,geneInfoD)
 
-    createAllGffs(groupByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreNodeMapD'],paramD['potentialScoresL'])
+    createAllGffs(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreNodeMapD'],paramD['potentialScoresL'])

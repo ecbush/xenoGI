@@ -19,15 +19,18 @@ def readGeneLists(fileName):
     return geneTL
         
 
-def syntenyGeneSet(geneT,synScoresG,geneNames):
+def scoreGeneSet(geneT,scoresG,geneNames,scoreStr):
     '''Given a tuple of genes in geneT, calculate the average score
 between them. If there are some genes that lack a score, we give it
-the minimum possible.'''
+the minimum possible. The kind of score we use is indicated by
+scoreStr, which corresponds to the type of score in the scores
+graph.
+    '''
 
     subGrNums = (geneNames.nameToNum(name) for name in geneT)
-    subgr = synScoresG.subgraph(subGrNums)
+    subgr = scoresG.subgraph(subGrNums)
 
-    scSum = sum((subgr.get_edge_data(gn1,gn2)['score'] for gn1,gn2 in subgr.edges()))
+    scSum = sum((subgr.get_edge_data(gn1,gn2)[scoreStr] for gn1,gn2 in subgr.edges()))
 
     # if there was an edge between every node, there would be
     # len(geneT) choose 2.
@@ -36,13 +39,13 @@ the minimum possible.'''
 
     return scSum,maxPossibleNumEdges,actualNumEdges
 
-def printSyntenyGeneList(geneTL,synScoresG,geneNames):
-    '''Given a list of gene sets, and a synteny scores graph, print the syntency score for each.'''
+def printScoreGeneList(geneTL,scoresG,geneNames,scoreStr):
+    '''Given a list of gene sets, and a scores graph, print the score for each.'''
     for geneT in geneTL:
         # first element in geneT is name, which we print but don't
-        # pass to syntenyGeneSet
+        # pass to scoreGeneSet
 
-        sc,maxPossibleNumEdges,actualNumEdges = syntenyGeneSet(geneT[1:],synScoresG,geneNames)
+        sc,maxPossibleNumEdges,actualNumEdges = scoreGeneSet(geneT[1:],scoresG,geneNames,scoreStr)
         print(geneT[0],format(sc,'.4f'),maxPossibleNumEdges,actualNumEdges)
     
 
@@ -55,8 +58,13 @@ if __name__ == "__main__":
     
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
-    synScoresG = scores.readGraph(paramD['synScoresFN'],geneNames)
+    scoresG = scores.readGraph(paramD['scoresFN'],geneNames)
     
     geneTL = readGeneLists(geneListFN)
     
-    printSyntenyGeneList(geneTL,synScoresG,geneNames)
+    printScoreGeneList(geneTL,scoresG,geneNames,'synSc')
+    # Key to score strings:
+    # 'rawSc' - raw similarity score
+    # 'normSc' - normalized similarity score
+    # 'synSc' - synteny score
+    # 'coreSynSc' - core synteny score

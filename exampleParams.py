@@ -50,14 +50,7 @@ blastFilePath = 'blast/*.out'
 # networkx graph). Otherwise it will be a less compact text based
 # format
 
-#alignment based similarity scores file
-rawScoresFN = 'rawScores.bout'
-
-# normalized scores file
-normScoresFN = 'normScores.bout'
-
-# synteny based scores file
-synScoresFN = 'synScores.bout'
+scoresFN = 'scores.bout'
 
 # sets of all around best reciprocal hits
 aabrhFN = 'aabrh.out'
@@ -65,17 +58,16 @@ aabrhFN = 'aabrh.out'
 # family file
 familyFN='fam.out'
 
-# group file
-groupOutFN = 'groups.out'
+# island file
+islandOutFN = 'islands.out'
 
-# file with summary info about family and group formation
+# file with summary info about family and island formation
 outputSummaryFN = 'outputSummary.txt'
 
 #### Algorithm parameters ####
 
 # in parallel code, how many threads to use
 numThreads = 50
-
 
 # in calculation of normalized scores, we get set of all around best
 # reciprocal hits. This is the evalue threshold used there.
@@ -91,13 +83,24 @@ matrix = 'parasail.blosum62'
 
 # Synteny window size, that is the size of the neighborhood of each
 # gene to consider when calculating synteny scores. (measured in
-# number of genes)
-synWSize = 30
+# number of genes). We go half this distance in either direction.
+synWSize = 60
 
 # When calculating synteny score between two genes, the number of
 # pairs of scores to take (and average) from the neighborhoods of
 # those two genes
 numSynToTake = 25
+
+
+# Core synteny window size, that is the number of core genes from the
+# neighborhood of each gene to consider when calculating core synteny
+# scores. (measured in number of genes). We go half this distance in
+# each direction.
+coreSynWsize = 8
+
+# Threshold for the core gene synteny score required for family
+# formation. (These scores range from 0 to 1).
+minCoreSynThresh = 0.25
 
 # Minimum normalized score for family formation. This should be used
 # as an extreme lower bound, to eliminate those things that are so
@@ -122,11 +125,11 @@ synAdjustThresh = 0
 # by during this adjustment.
 synAdjustExtent = 1.05
 
-# In deciding whether to merge two groups, we judge partly based on
+# In deciding whether to merge two islands, we judge partly based on
 # the proximity of their genes. The elements of this list are tuples
 # of the form (proximity threshold, rscore level). For example (1,0)
 # says we'll consider proximity to mean adjacency (proximity 1 means
-# adjacent genes), and we'll join groups if the rscore values is 0 or
+# adjacent genes), and we'll join islands if the rscore values is 0 or
 # above. The algorithm loops through the list, using the criteria in
 # the first tuple first, then proceeding to the second if there is on
 # and so on.
@@ -135,20 +138,20 @@ proxThreshL = [(1,0),(2,2)]
 
 #### Visualization and analysis ####
 
-# Creating gff files of groups for visualization in the IGB browser.
-# We want to display different groups with different colors. We do
-# this by giving different 'score' values to different groups. Scores
+# Creating gff files of islands for visualization in the IGB browser.
+# We want to display different islands with different colors. We do
+# this by giving different 'score' values to different islands. Scores
 # can range from 1 to 1000, but we only give certain discrete scores.
 
-scoreNodeMapD = {'i9':1, 'i8':10} # groups with these mrca values always get this score
+scoreNodeMapD = {'i9':1, 'i8':10} # islands with these mrca values always get this score
 
 # The score for rest is based on the list below. It was made with
-# createGroupGffs.createPotentialScoresL(100,1001,200,50)
+# createIslandGffs.createPotentialScoresL(100,1001,200,50)
 potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 600, 800, 1000, 250, 450, 650, 850]
 
 #### Visualization and analysis output files ####
 
 # unix style file path to gff output files
-gffFilePath = 'gff/*-testE-group.gff'
+gffFilePath = 'gff/*-testE-island.gff'
 
 

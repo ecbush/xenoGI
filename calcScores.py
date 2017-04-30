@@ -1,5 +1,5 @@
 import sys,glob,networkx
-import genbank,blast,trees,genomes,scores,families,groups,parameters
+import parameters,genbank,blast,trees,genomes,scores
 
 
 if __name__ == "__main__":
