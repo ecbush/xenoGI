@@ -183,7 +183,67 @@ def getGenesInFamily(familyNum,subtreeL,familyT):
 
 ## Print neighborhood of an island
 
-def getIslandGenesinStrain(island,strainNum,familyT):
+def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD):
+    '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
+
+    print("  Island:",islandNum)
+    
+    genesInEitherDirec = int(synWSize/2)
+
+    # get the island object for this islandNum
+    for listOfIslands in islandByNodeL:
+        _,island = islands.searchIslandsByID(listOfIslands,islandNum)
+        if island != None: break
+
+    mrca = island.mrca
+    print("  mrca:",strainNum2StrD[mrca])
+
+    leavesL=trees.leafList(subtreeL[mrca])
+
+    for strainNum in leavesL:
+
+        print("  In",strainNum2StrD[strainNum],end=' ')
+
+        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyT)
+
+        if islandGenesInStrainL == []:
+            print("the island is not found.")
+        else:
+
+            neighbGenesL,firstIslandGene,lastIslandGene=getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,genesInEitherDirec)
+
+            # print coordinates of island in this strain
+            chrom=geneInfoD[geneNames.numToName(islandGenesInStrainL[0])][3]
+            startPos = geneInfoD[geneNames.numToName(firstIslandGene)][4]
+            endPos = geneInfoD[geneNames.numToName(lastIslandGene)][5]
+
+            print("(Coordinates",chrom+":"+str(startPos)+"-"+str(endPos)+")")
+
+            # now print the neighbors
+            rowsL=[]
+            for tempGene in neighbGenesL:
+                tempGeneName=geneNames.numToName(tempGene)
+                tempFamNum=gene2FamD[tempGene]
+                tempGeneIsland=fam2IslandD[tempFamNum]
+
+                if tempGeneName in geneInfoD:
+                    descrip = geneInfoD[tempGeneName][2]
+                else:
+                    descrip = ''
+
+                # mark genes in the island with a *
+                if tempGene in islandGenesInStrainL:
+                    tempGeneName = '* '+tempGeneName
+                else:
+                    tempGeneName = '  '+tempGeneName
+
+                infoL = [tempGeneName,"isl:"+str(tempGeneIsland.id),"fam:"+str(tempFamNum),"mrca:"+strainNum2StrD[tempGeneIsland.mrca],descrip]
+
+                rowsL.append(infoL)
+
+            printTable(rowsL,4)
+
+def getIslandGenesInStrain(island,strainNum,familyT):
     '''Given an island, a strain number, and our tuple of family
 objects, return all the genes in the island for that strain.'''
     genesL=[]
@@ -200,129 +260,19 @@ def getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,genesInEither
             # get index of all of these. We're assuming they're on
             # the same contig and in the same area.
             indL=[contig.index(gene) for gene in islandGenesInStrainL]
-            end = max(indL) + genesInEitherDirec +1
-            st = min(indL)-genesInEitherDirec if min(indL)-genesInEitherDirec>0 else 0 # st can't be less than 0
+            maxInd = max(indL)
+            minInd = min(indL)
+            end = maxInd + genesInEitherDirec +1
+            st = minInd-genesInEitherDirec if minInd-genesInEitherDirec>0 else 0 # st can't be less than 0
             neighbGenesL=contig[st:end]
-            return neighbGenesL
+
+            # get gene numbers of first and last genes in island
+            firstGene = contig[minInd]
+            lastGene = contig[maxInd]
+            
+            return neighbGenesL,firstGene,lastGene
         except ValueError:
             continue
-
-    
-def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD):
-    '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
-
-    genesInEitherDirec = int(synWSize/2)
-
-    # get the island object for this islandNum
-    for listOfIslands in islandByNodeL:
-        _,island = islands.searchIslandsByID(listOfIslands,islandNum)
-        if island != None: break
-
-    mrca = island.mrca
-    print("  Island mrca:",strainNum2StrD[mrca])
-
-    leavesL=trees.leafList(subtreeL[mrca])
-    print("  Island found in the following species:")
-    for strainNum in leavesL:
-        print("    ",strainNum2StrD[strainNum])
-    
-    for strainNum in leavesL:
-
-        print("  Neighbors for island",islandNum,"in",strainNum2StrD[strainNum])
-
-        islandGenesInStrainL = getIslandGenesinStrain(island,strainNum,familyT)
-        
-        if islandGenesInStrainL == []:
-            print("    There are no island members in this species.")
-
-        neighbGenesL=getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,genesInEitherDirec)
-            
-        rowsL=[]
-        for tempGene in neighbGenesL:
-            tempGeneName=geneNames.numToName(tempGene)
-            tempFamNum=gene2FamD[tempGene]
-            tempGeneIsland=fam2IslandD[tempFamNum]
-
-            if tempGeneName in geneInfoD:
-                descrip = geneInfoD[tempGeneName][2]
-            else:
-                descrip = ''
-
-            # mark genes in the island with a *
-            if tempGene in islandGenesInStrainL:
-                tempGeneName = '* '+tempGeneName
-            else:
-                tempGeneName = '  '+tempGeneName
-                
-            infoL = [tempGeneName,"isl:"+str(tempGeneIsland.id),"fam:"+str(tempFamNum),"mrca:"+strainNum2StrD[tempGeneIsland.mrca],descrip]
-
-            rowsL.append(infoL)
-
-        printTable(rowsL,4)
-
-    
-def printFamNeighb(family,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD):
-    '''Family Neighborhood. Given a family, print out
-the families nearby in each of its species and going either direction,
-within synWSize/2.
-    '''
-
-    genesInEitherDirec = int(synWSize/2)
-    
-    mrca = familyT[family].mrca
-    print("  Family mrca:",strainNum2StrD[mrca])
-
-    leavesL=trees.leafList(subtreeL[mrca])
-    print("  Tree includes")
-    for leaf in leavesL:
-        print("    ",strainNum2StrD[leaf])
-    
-    for leaf in leavesL:
-
-        print("  Neighbors for family",family,"in",strainNum2StrD[leaf])
-
-        geneT=familyT[family].famGeneT[leaf][1]
-        if geneT == ():
-            print("    There are no family members in this species.")
-
-        for gene in geneT:
-
-            print("    For",geneNames.numToName(gene))
-            
-            neighbGenesL=[]
-            for contig in geneOrderT[leaf]:
-                try:
-                    ind=contig.index(gene)
-                    end = ind + genesInEitherDirec
-                    st = ind-genesInEitherDirec if ind-genesInEitherDirec>0 else 0 # st can't be less than 0
-                    neighbGenesL=contig[st:end]
-                    break
-                except ValueError:
-                    continue
-
-            rowsL=[]
-            for tempGene in neighbGenesL:
-                geneName=geneNames.numToName(tempGene)
-                famNum=gene2FamD[tempGene]
-                island=fam2IslandD[famNum]
-
-                if geneName in geneInfoD:
-                    descrip = geneInfoD[geneName][2]
-                else:
-                    descrip = ''
-
-                # if its the one in the family we're querying, mark with *
-                if tempGene == gene:
-                    geneName = '*'+geneName
-                else:
-                    geneName = ' '+geneName
-                infoL = [geneName,"fam:"+str(famNum),"gr:"+str(island.id),"mrca:"+strainNum2StrD[island.mrca],descrip]
-
-                rowsL.append(infoL)
-
-            printTable(rowsL,4)
-
-
 
 # Plots of scores
 
@@ -343,8 +293,6 @@ def scoreHists(scoresFN,outFN,numBins,geneNames,scoreType):
             pdf.savefig()
             pyplot.close()
 
-    #pyplot.show()
-            
 
 def readScorePairs(scoresFN,geneNames,scoreType):
     '''Read through a scores file, and separate into all pairwise

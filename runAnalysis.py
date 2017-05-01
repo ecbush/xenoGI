@@ -39,23 +39,20 @@ numerical identifier of a family.'''
 
 
 def printIsland(islandNum,synWSize):
-    '''Print the island and its genomic context in each species. We include synWSize/2 genes in either direction beyond the island.
+    '''Print the island and its genomic context in each species. We
+    include synWSize/2 genes in either direction beyond the island.
     '''
-    print("Synteny information")
     printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
 
     
 def printIslandsAtNode(nodeStr):
-    '''This is a wrapper to provide an easy way to print all the islands at
-a particular node in the tree. For ease of use, we take only a node
+    '''This is a wrapper to provide an easy way to print all the islands
+at a particular node in the tree. For ease of use, we take only a node
 number as argument, assuming all the other required stuff is available
 at the top level.
     '''
     node = strainStr2NumD[nodeStr]
     vPrintIslands(islandByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
-
-    
-# printFamNeighb(famNum,synWSize,subtreeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
 
 
 if __name__ == "__main__":
