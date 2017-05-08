@@ -1,5 +1,5 @@
 import sys,glob,networkx
-import parameters,genbank,blast,trees,genomes,scores
+import parameters,genbank,blast,trees,genomes,Score,scores
 
 
 if __name__ == "__main__":
@@ -17,23 +17,22 @@ if __name__ == "__main__":
     subtreeL.sort()
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
-    # graph for storing scores
-    scoresG=networkx.Graph()
-    for geneNum in geneNames.nums: scoresG.add_node(geneNum)
+    # object for storing scores
+    scoresO=Score.Score()
+    scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames)
     
     ## similarity scores
-    scoresG = scores.calcRawScores(paramD['blastFilePath'],paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresG)
+    scoresO = scores.calcRawScores(paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresO)
 
     ## normalized scores
-    scoresG,aabrhL,aabrhRawScoreSummmaryD=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresG,geneNames,paramD['aabrhFN'])
+    scoresO,aabrhL,aabrhRawScoreSummmaryD=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresO,geneNames,paramD['aabrhFN'])
 
     ## synteny scores
-    scoresG = scores.calcSynScores(scoresG,aabrhRawScoreSummmaryD,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
+    scoresO = scores.calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
 
     ## core synteny scores
-    scoresG = scores.calcCoreSynScores(scoresG,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])
+    scoresO = scores.calcCoreSynScores(scoresO,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])
 
     # write scores to file
-    scores.writeGraph(scoresG,geneNames,paramD['scoresFN'])
-    
+    scores.writeScores(scoresO,geneNames,paramD['scoresFN'])
 

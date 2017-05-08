@@ -300,9 +300,9 @@ comparisons. Return as dict.'''
     
     pairD = {}
 
-    scoreG = scores.readGraph(scoresFN,geneNames=None)
+    scoresG = scores.readGraph(scoresFN,geneNames=None)
     
-    for gn1,gn2,sc in scoreG.edges_iter(data=scoreType):
+    for gn1,gn2,sc in scoresG.edges_iter(data=scoreType):
 
         sp1 = geneNames.numToStrainName(gn1)
         sp2 = geneNames.numToStrainName(gn2)
