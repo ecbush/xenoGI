@@ -24,15 +24,18 @@ if __name__ == "__main__":
     ## similarity scores
     scoresO = scores.calcRawScores(paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresO)
 
+    """
     ## normalized scores
     scoresO,aabrhL,aabrhRawScoreSummmaryD=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresO,geneNames,paramD['aabrhFN'])
+
 
     ## synteny scores
     scoresO = scores.calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
 
     ## core synteny scores
     scoresO = scores.calcCoreSynScores(scoresO,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])
-
+    """
+    
     # write scores to file
     scores.writeScores(scoresO,geneNames,paramD['scoresFN'])
 
