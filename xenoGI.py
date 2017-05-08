@@ -18,11 +18,11 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
     ## read scores
-    scoresG = scores.readGraph(paramD['scoresFN'],geneNames)
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
     ## make gene families
     outputSummaryF = open(paramD['outputSummaryFN'],'w')
-    familyT = families.families(tree,subtreeL,geneNames,scoresG,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
+    familyT = families.families(tree,subtreeL,geneNames,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
     
     ## group gene families into islands
     islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainNum2StrD,paramD['islandOutFN'],outputSummaryF)

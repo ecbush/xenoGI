@@ -40,25 +40,26 @@ the left branch of tree.'''
 
     return(leftS,rightS,outgroupS)
 
-def closestMatch(gene,S,scoresG,minNormThresh,minCoreSynThresh,minSynThresh):
+## Should change closest match in future. rather than for geneInS in S, ideally we'd just look at genes that connect to gene. Add this capability to Score.py.
+def closestMatch(gene,S,scoresO,minNormThresh,minCoreSynThresh,minSynThresh):
     '''Find the closest match to gene among the genes in the set S in the
-graph rawScoresG. Eliminate any matches that have a norm score below
+graph scoresO. Eliminate any matches that have a norm score below
 minNormThresh, a coreSynSc below minCoreSynThresh, or a synteny score
 below minSynThresh.
     '''
     bestGene=None
     bestEdgeScore = -float('inf')
-    for edge in scoresG.edges_iter(gene):
-        if edge[1] in S:
-            if scoresG.get_edge_data(*edge)['rawSc'] > bestEdgeScore:
-                if scoresG.get_edge_data(*edge)['normSc'] > minNormThresh:
-                    if scoresG.get_edge_data(*edge)['coreSynSc'] > minCoreSynThresh:
-                        if scoresG.get_edge_data(*edge)['synSc'] > minSynThresh:
-                            bestEdgeScore =  scoresG.get_edge_data(*edge)['rawSc']
-                            bestGene = edge[1]
+    for geneInS in S:
+        if scoresO.isEdgePresentByEndNodes(gene,geneInS):
+            if scoresO.getScoreByEndNodes(gene,geneInS,'rawSc') > bestEdgeScore:
+                if scoresO.getScoreByEndNodes(gene,geneInS,'normSc') > minNormThresh:
+                    if scoresO.getScoreByEndNodes(gene,geneInS,'corSynSc') > minCoreSynThresh:
+                        if scoresO.getScoreByEndNodes(gene,geneInS,'synSc') > minSynThresh:
+                            bestEdgeScore = scoresO.getScoreByEndNodes(gene,geneInS,'rawSc')
+                            bestGene = geneInS
     return bestEdgeScore, gene, bestGene
     
-def createSeedL(leftS,rightS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh):
+def createSeedL(leftS,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh):
     '''Create a list which has the closest match for each gene on the
 opposite side of the tree. e.g. if a gene is in tree[1] then we're
 looking for the gene in tree[2] with the closest match. We eliminate
@@ -68,13 +69,20 @@ and return.
     '''
     seedL=[]
     for gene in leftS:
-        seedL.append(closestMatch(gene,rightS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh))
+        seedL.append(closestMatch(gene,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh))
     for gene in rightS:
-        seedL.append(closestMatch(gene,leftS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh))
+        seedL.append(closestMatch(gene,leftS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh))
     seedL.sort(reverse=True)
     return seedL
 
-def getFamily(seedSimScore,g1,g2,scoresG,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent):
+
+## This needs to be updated. Remove networkx syntax. Need Score method iterateOverConnections.
+## This is where I stopped updating scoresG in this file.
+###
+###
+###
+
+def getFamily(seedSimScore,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
 the family than the two seeds are from each other. But, we also have a
@@ -91,16 +99,16 @@ family.
     while len(notYetSearchedS) > 0:
         newGenesS=set()
         for gene in notYetSearchedS:
-            for edge in scoresG.edges_iter(gene):
+            for edge in scoresO.edges_iter(gene):
                 newGene=edge[1]
                 if newGene in leftS or newGene in rightS:
                     # it is from a species descended from the node
                     # we're working on
                     if newGene not in alreadySearchedS and newGene not in newGenesS:
-                        rawSc = scoresG.get_edge_data(*edge)['rawSc']
-                        normSc = scoresG.get_edge_data(*edge)['normSc']
-                        coreSynSc = scoresG.get_edge_data(*edge)['coreSynSc']
-                        synSc = scoresG.get_edge_data(*edge)['synSc']
+                        rawSc = scoresO.get_edge_data(*edge)['rawSc']
+                        normSc = scoresO.get_edge_data(*edge)['normSc']
+                        coreSynSc = scoresO.get_edge_data(*edge)['coreSynSc']
+                        synSc = scoresO.get_edge_data(*edge)['synSc']
                         if normSc < minNormThresh:
                             # doesn't meet score threshold for family
                             # formation. (Modification of PhiGs)
