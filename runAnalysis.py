@@ -85,5 +85,5 @@ if __name__ == "__main__":
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
     # scores
-    scoresG = scores.readGraph(paramD['scoresFN'],geneNames)
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
     

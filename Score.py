@@ -1,4 +1,4 @@
-import numpy,glob,pickle
+import numpy,glob,struct
 
 class Score:
 
@@ -106,15 +106,27 @@ corresponding to scoreType.'''
     def iterateEdgesByEndNodes(self):
         '''Returns an iterator which goes over edges by end nodes.'''
         return self.endNodesToEdgeD.keys()
+
+    def __eq__(self,other):
+        '''Compare two Score objects to see if they have the same values.'''
+        
+        c1 = self.endNodesToEdgeD == other.endNodesToEdgeD
+        c2 = all(self.scoreD['rawSc'] == other.scoreD['rawSc'])
+        c3 = all(self.scoreD['normSc'] == other.scoreD['normSc'])
+        c4 = all(self.scoreD['synSc'] == other.scoreD['synSc'])
+        c5 = all(self.scoreD['coreSynSc'] == other.scoreD['coreSynSc'])
+
+        if c1 and c2 and c3 and c4 and c5:
+            return True
+        else:
+            return False
         
     def writeScoresText(self,geneNames,scoresFN):
         '''Save all edges (pairs of genes) to a tab delimited text file with a
     header line.
         '''
 
-        # get header line
-        scoreTypeL = list(self.scoreD.keys())
-        scoreTypeL.sort()
+        scoreTypeL = ['rawSc','normSc','synSc','coreSynSc']
 
         # open file
         f=open(scoresFN,'w')
@@ -136,9 +148,25 @@ corresponding to scoreType.'''
         f.close()
 
     def writeScoresBinary(self,scoresFN):
-        '''Write scores to scoresFN as a binary pickle.'''
+        '''Write scores to scoresFN as a binary file.'''
+
+        scoreTypeL = ['rawSc','normSc','synSc','coreSynSc']
         f=open(scoresFN,'wb')
-        pickle.dump(self,f)
+
+        # first 8 bytes are int, telling us how many edges
+        f.write(self.numEdges.to_bytes(8,'little'))
+
+        # write a block of bytes for each edge.
+        # g1 g2 edge
+        for g1,g2 in self.endNodesToEdgeD:
+            edge = self.endNodesToEdgeD[(g1,g2)]
+            f.write(g1.to_bytes(8,'little'))
+            f.write(g2.to_bytes(8,'little'))
+            f.write(edge.to_bytes(8,'little'))
+            for scoreType in scoreTypeL:
+                val = float(self.getScoreByEndNodes(g1,g2,scoreType))
+                f.write(struct.pack('<d',val))
+        
         f.close()
         
     def readScoresText(scoresFN,geneNames):
@@ -185,10 +213,31 @@ corresponding to scoreType.'''
         return scoresO
 
     def readScoresBinary(scoresFN):
-        '''Read scores from a binary file, containing a pickled object of
-    scores.
-        '''
+        '''Read scores from a binary files.'''
+
+        scoresO=Score()
         f=open(scoresFN,'rb')
-        scoresO = pickle.load(f)
+
+        # read first 8 bytes to get numEdges
+        b = f.read(8)
+        scoresO.numEdges = int.from_bytes(b,'little')
+
+        # initialize score arrays
+        scoresO.initializeScoreD()
+        
+        # loop over blocks of bytes where each block is an edge
+        for i in range(scoresO.numEdges):
+            g1 = int.from_bytes(f.read(8),'little')
+            g2 = int.from_bytes(f.read(8),'little')
+            edge = int.from_bytes(f.read(8),'little')
+            
+            scoresO.endNodesToEdgeD[(g1,g2)] = edge
+
+            # fill array
+            scoresO.scoreD['rawSc'][edge] = struct.unpack('<d',f.read(8))[0]
+            scoresO.scoreD['normSc'][edge] = struct.unpack('<d',f.read(8))[0]
+            scoresO.scoreD['synSc'][edge] = struct.unpack('<d',f.read(8))[0]
+            scoresO.scoreD['coreSynSc'][edge] = struct.unpack('<d',f.read(8))[0]            
+            
         f.close()
         return scoresO
