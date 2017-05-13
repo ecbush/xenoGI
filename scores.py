@@ -235,7 +235,8 @@ def getHits(fileName, evalueThresh):
             # store the query and hit if they meet thresholds
             hitsD[queryGene] = hit
 
-        # we only want the first hit for any query gene. EB CHANGE THIS LATER to check to get best score even if doesn't come first.
+        # we only want the first hit for any query gene. Change this
+        # later to check to get best score even if doesn't come first.
         while line.split('\t')[0] == queryGene:
             line = f.readline()
 
@@ -374,22 +375,25 @@ genes that have an edge in scoresO.
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
-    # prepare argument list for map
-    argumentL = []
-    for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-        argumentL.append((gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
+    # make list of groups of arguments to be passed to p.map. There
+    # should be numThreads groups.
+    argumentL = [([],neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD) for i in range(numThreads)]
 
-    # find size of chunks map should give to individual processes
-    chunkSize = int(len(argumentL) / numThreads)
-    
+    i=0
+    for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
+        argumentL[i%numThreads][0].append((gn1,gn2))
+        i+=1
+
     p=Pool(numThreads) # num threads
-    synScoresL = p.map(synScore, argumentL, chunksize = chunkSize)
+    synScoresLL = p.map(synScoreGroup, argumentL)
     p.close()
     p.join()
+
     
-    # add to graph
-    for gn1,gn2,sc in synScoresL:
-        scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
+    # add to scores object
+    for synScoresL in synScoresLL:
+        for gn1,gn2,sc in synScoresL:
+            scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
 
     return scoresO
 
@@ -415,7 +419,21 @@ go 5 genes in either direction.'''
 
     return neighborTL
 
-def synScore(argsT):
+def synScoreGroup(argsT):
+    '''Given an argument list, including pairs of genes, calculate synteny
+    scores. This function is intended to be called by p.map.
+    '''
+
+    global scoresO
+    edgeL,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD = argsT
+
+    outL=[]
+    for gn1,gn2 in edgeL:
+        outL.append(synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
+        
+    return outL
+        
+def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
@@ -423,9 +441,6 @@ def synScore(argsT):
     greedy. We find the pair with the best score, add it, then remove
     those genes and iterate.
     '''
-
-    global scoresO
-    gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD = argsT
 
     # get the min possible score for these two species (this is
     # really for the case of using normalized scores, where it
