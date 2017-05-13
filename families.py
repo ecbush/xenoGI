@@ -40,7 +40,6 @@ the left branch of tree.'''
 
     return(leftS,rightS,outgroupS)
 
-## Should change closest match in future. rather than for geneInS in S, ideally we'd just look at genes that connect to gene. Add this capability to Score.py.
 def closestMatch(gene,S,scoresO,minNormThresh,minCoreSynThresh,minSynThresh):
     '''Find the closest match to gene among the genes in the set S in the
 graph scoresO. Eliminate any matches that have a norm score below
@@ -49,14 +48,14 @@ below minSynThresh.
     '''
     bestGene=None
     bestEdgeScore = -float('inf')
-    for geneInS in S:
-        if scoresO.isEdgePresentByEndNodes(gene,geneInS):
-            if scoresO.getScoreByEndNodes(gene,geneInS,'rawSc') > bestEdgeScore:
-                if scoresO.getScoreByEndNodes(gene,geneInS,'normSc') > minNormThresh:
-                    if scoresO.getScoreByEndNodes(gene,geneInS,'corSynSc') > minCoreSynThresh:
-                        if scoresO.getScoreByEndNodes(gene,geneInS,'synSc') > minSynThresh:
-                            bestEdgeScore = scoresO.getScoreByEndNodes(gene,geneInS,'rawSc')
-                            bestGene = geneInS
+    for otherGene in scoresO.getConnections(gene):
+        if otherGene in S:
+            if scoresO.getScoreByEndNodes(gene,otherGene,'rawSc') > bestEdgeScore:
+                if scoresO.getScoreByEndNodes(gene,otherGene,'normSc') > minNormThresh:
+                    if scoresO.getScoreByEndNodes(gene,otherGene,'coreSynSc') > minCoreSynThresh:
+                        if scoresO.getScoreByEndNodes(gene,otherGene,'synSc') > minSynThresh:
+                            bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
+                            bestGene = otherGene
     return bestEdgeScore, gene, bestGene
     
 def createSeedL(leftS,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh):
@@ -75,13 +74,6 @@ and return.
     seedL.sort(reverse=True)
     return seedL
 
-
-## This needs to be updated. Remove networkx syntax. Need Score method iterateOverConnections.
-## This is where I stopped updating scoresG in this file.
-###
-###
-###
-
 def getFamily(seedSimScore,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
@@ -99,16 +91,15 @@ family.
     while len(notYetSearchedS) > 0:
         newGenesS=set()
         for gene in notYetSearchedS:
-            for edge in scoresO.edges_iter(gene):
-                newGene=edge[1]
+            for newGene in scoresO.getConnections(gene):
                 if newGene in leftS or newGene in rightS:
                     # it is from a species descended from the node
                     # we're working on
                     if newGene not in alreadySearchedS and newGene not in newGenesS:
-                        rawSc = scoresO.get_edge_data(*edge)['rawSc']
-                        normSc = scoresO.get_edge_data(*edge)['normSc']
-                        coreSynSc = scoresO.get_edge_data(*edge)['coreSynSc']
-                        synSc = scoresO.get_edge_data(*edge)['synSc']
+                        rawSc = scoresO.getScoreByEndNodes(gene,newGene,'rawSc')
+                        normSc = scoresO.getScoreByEndNodes(gene,newGene,'normSc')
+                        synSc = scoresO.getScoreByEndNodes(gene,newGene,'synSc')
+                        coreSynSc = scoresO.getScoreByEndNodes(gene,newGene,'coreSynSc')
                         if normSc < minNormThresh:
                             # doesn't meet score threshold for family
                             # formation. (Modification of PhiGs)
@@ -147,15 +138,17 @@ family.
     return alreadySearchedS
                 
     
-def families(tree,subtreeL,geneNames,scoresG,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD, outputSummaryF):
+def families(tree,subtreeL,geneNames,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD, outputSummaryF):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
     '''
 
     nodeOrderL=createNodeProcessOrderList(tree)
+
+    # initialize scoresO.nodeConnectL for use below
+    scoresO.createNodeConnectL(geneNames)
     
     geneUsedL = [False for x in geneNames.nums]
-    
     multiGeneFamilyL=[]
     
     for node,lnode,rnode in nodeOrderL:
@@ -163,7 +156,7 @@ using a PhiGs-like algorithm, with synteny also considered.
             # not a tip
             subtree=subtreeL[node]
             leftS,rightS,outgroupS = createLRSets(subtree,geneNames)
-            seedL = createSeedL(leftS,rightS,scoresG,minNormThresh,minCoreSynThresh,minSynThresh)
+            seedL = createSeedL(leftS,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh)
             for seed in seedL:
                 seedSimScore,g1,g2 = seed
 
@@ -172,7 +165,7 @@ using a PhiGs-like algorithm, with synteny also considered.
                     # genes having no match on the other branch
                     break
                 else:
-                    family=getFamily(seedSimScore,g1,g2,scoresG,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent)
+                    family=getFamily(seedSimScore,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent)
                     
                     if any((geneUsedL[gene] for gene in family)):
                         continue
