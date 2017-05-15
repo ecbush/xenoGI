@@ -120,10 +120,28 @@ be recalculated before it will be used (e.g. in family formation).'''
             self.nodeConnectL[gn1].append(gn2)
             self.nodeConnectL[gn2].append(gn1)
 
-    def getConnections(self,gene):
+    def getConnectionsGene(self,gene):
         '''Return a list containing all the genes connected to gene.'''
         return self.nodeConnectL[gene]
-        
+
+    def createNodeEdgeL(self,geneNames):
+        '''Create an attribute nodeEdgeL. Index in this list corresponds to
+gene. Value at that index is a list of the edges which a give gene
+connects to. This attribute is not saved in our file formats. It must
+be recalculated before it will be used.'''
+
+        self.nodeEdgeL = [[] for gn in geneNames.nums]
+
+        # loop over endNodesToEdgeD populating nodeEdgeL
+        for gn1,gn2 in self.endNodesToEdgeD:
+            edge = self.endNodesToEdge(gn1,gn2)
+            self.nodeEdgeL[gn1].append(edge)
+            self.nodeEdgeL[gn2].append(edge)
+
+    def getConnectionsEdge(self,gene):
+        '''Return a list containing all the edges connected to gene.'''
+        return self.nodeEdgeL[gene]
+    
     def __eq__(self,other):
         '''Compare two Score objects to see if they have the same values.'''
         

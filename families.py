@@ -48,7 +48,7 @@ below minSynThresh.
     '''
     bestGene=None
     bestEdgeScore = -float('inf')
-    for otherGene in scoresO.getConnections(gene):
+    for otherGene in scoresO.getConnectionsGene(gene):
         if otherGene in S:
             if scoresO.getScoreByEndNodes(gene,otherGene,'rawSc') > bestEdgeScore:
                 if scoresO.getScoreByEndNodes(gene,otherGene,'normSc') > minNormThresh:
@@ -91,7 +91,7 @@ family.
     while len(notYetSearchedS) > 0:
         newGenesS=set()
         for gene in notYetSearchedS:
-            for newGene in scoresO.getConnections(gene):
+            for newGene in scoresO.getConnectionsGene(gene):
                 if newGene in leftS or newGene in rightS:
                     # it is from a species descended from the node
                     # we're working on
