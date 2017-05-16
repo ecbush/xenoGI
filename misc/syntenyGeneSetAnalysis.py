@@ -18,16 +18,23 @@ def readGeneLists(fileName):
     f.close()
     return geneTL
 
-def getEdges(geneNumsL,scoresO):
-    '''Given a list of gene numbers, get a non-redudant list of the edges
-that exist between them.'''
+def getInternalEdges(geneNumsL,scoresO):
+    '''Given a list of gene numbers, get a non-redudant list of the
+internal edges, that is the edges that have a member of geneNumsL on
+both ends.'''
     edgeL = []
     for gn in geneNumsL:
         for edge in scoresO.getConnectionsEdge(gn):
-            # remove redudancies
-            if edge not in edgeL:
-                edgeL.append(edge)
-    return edgeL
+            edgeL.append(edge)
+
+    # those edges that appear twice in this are 'internal', meaning
+    # both ends of that edge are in geneNumsL
+    internalEdgeL=[]
+    for edge in edgeL:
+        if edgeL.count(edge) == 2 and edge not in internalEdgeL:
+            internalEdgeL.append(edge)
+
+    return internalEdgeL
     
 def scoreGeneSet(geneT,scoresO,geneNames,scoreType):
     '''Given a tuple of genes in geneT, calculate the average score
@@ -38,7 +45,7 @@ graph.
     '''
 
     geneNumsL = [geneNames.nameToNum(name) for name in geneT]
-    edgeL = getEdges(geneNumsL,scoresO)
+    edgeL = getInternalEdges(geneNumsL,scoresO)
     
     scSum = sum((scoresO.getScoreByEdge(edge,scoreType) for edge in edgeL))
 

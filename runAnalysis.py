@@ -37,6 +37,14 @@ numerical identifier of a family.'''
     print()
     print()
 
+def findIsland(searchStr):
+    '''Print the gene, family and island associated with searchStr. This
+is a wrapper that assumes various required objects are present at the
+top level.'''
+    L=matchFamilyIsland(geneInfoD,geneNames,gene2FamD,fam2IslandD,searchStr)
+    for geneName,fam,isl in L:
+        print("<gene:"+str(geneName)+">","<family:"+str(fam)+">","<island:"+str(isl)+">")
+    
 
 def printIsland(islandNum,synWSize):
     '''Print the island and its genomic context in each species. We

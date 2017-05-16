@@ -29,7 +29,29 @@ print nicely so columns line up. Indent is an optional number of blank spaces to
         printStr = " "*indent + " | ".join(row)
         print(printStr.rstrip())
 
+def matchFamilyIsland(geneInfoD,geneNames,gene2FamD,fam2IslandD,searchStr):
+    '''Return the island number, family number, and gene name(s)
+associated with searchStr in geneInfoD. Searches for a match in all
+fields of geneInfoD.'''
+    # find matching gene names
+    geneMatchL=[]
+    for geneName in geneInfoD:
+        valueT=geneInfoD[geneName]
+        for value in (geneName,)+valueT:
+            if type(value)==str:
+                if searchStr in value:
+                    geneMatchL.append(geneName)
+                    break
 
+    # get family numbers and island numbers
+    outL=[]
+    for geneName in geneMatchL:
+        geneNum = geneNames.nameToNum(geneName)
+        fam=gene2FamD[geneNum]
+        isl=fam2IslandD[fam]
+        outL.append((geneName,fam,isl.id))
+    return outL
+        
 ## Print scores associated with a family
 
 def printScoreMatrix(family,subtreeL,familyT,geneNames,G,scoreType):
