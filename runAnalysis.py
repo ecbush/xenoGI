@@ -13,27 +13,27 @@ numerical identifier of a family.'''
 
     print()
     print("Matrix of raw similarity scores [0,1] between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'rawSc')
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'rawSc')
     print()
     print()
 
     print()
     print("Matrix of normalized similarity scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'normSc')
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'normSc')
     print()
     print()
     
     print("Matrix of core synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'coreSynSc')
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'coreSynSc')
     print()
     print()
 
     print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresG,'synSc')
+    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'synSc')
     print()
     print()
 
-    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresG)
+    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresO)
     print()
     print()
 
@@ -94,4 +94,4 @@ if __name__ == "__main__":
 
     # scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-    
+    scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute

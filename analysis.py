@@ -54,9 +54,11 @@ fields of geneInfoD.'''
         
 ## Print scores associated with a family
 
-def printScoreMatrix(family,subtreeL,familyT,geneNames,G,scoreType):
+def printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,scoreType):
     '''Print a matrix of scores between all the genes in a family. Scores
-are provided by the graph G, and we're extracting the values associated with scoreType in the edges of this graph.'''
+are provided by scoresO, and we're extracting the values associated
+with scoreType in the edges of this graph.
+    '''
 
     familyGenesL = getGenesInFamily(family,subtreeL,familyT)
 
@@ -67,19 +69,18 @@ are provided by the graph G, and we're extracting the values associated with sco
     for rowi,gn1 in enumerate(familyGenesL):
         row = [geneNames.numToName(familyGenesL[rowi])]
         for gn2 in familyGenesL:
-            data=G.get_edge_data(gn1,gn2)
-            if data == None:
-                row.append('-')
+            if scoresO.isEdgePresentByEndNodes(gn1,gn2):
+                row.append(format(scoresO.getScoreByEndNodes(gn1,gn2,scoreType),".3f"))
             else:
-                row.append(format(data[scoreType],".3f"))
+                row.append('-')
         rowsL.append(row)
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresG):
+def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresO):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
-rawScoresG.
+scoresO.
     '''
     
     familyGenesL = getGenesInFamily(family,subtreeL,familyT)
@@ -87,14 +88,14 @@ rawScoresG.
     rowL = []
     for gene in familyGenesL:
         geneName = geneNames.numToName(gene)
-        for edge in scoresG.edges_iter(gene):
-            if not edge[1] in familyGenesL:
+        for otherGene in scoresO.getConnectionsGene(gene):
+            if not otherGene in familyGenesL:
                 # this connection is with a gene outside the family
-                otherGeneName = geneNames.numToName(edge[1])
-                rawSc=scoresG.get_edge_data(gene,edge[1])['rawSc']
-                normSc=scoresG.get_edge_data(gene,edge[1])['normSc']
-                coreSynSc=scoresG.get_edge_data(gene,edge[1])['coreSynSc']
-                synSc=scoresG.get_edge_data(gene,edge[1])['synSc']
+                otherGeneName = geneNames.numToName(otherGene)
+                rawSc=scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
+                normSc=scoresO.getScoreByEndNodes(gene,otherGene,'normSc')
+                coreSynSc=scoresO.getScoreByEndNodes(gene,otherGene,'coreSynSc')
+                synSc=scoresO.getScoreByEndNodes(gene,otherGene,'synSc')
                 rowL.append([geneName,otherGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(coreSynSc,".3f"),format(synSc,".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
@@ -103,8 +104,6 @@ rawScoresG.
                 
     print("Printing all scores with non-family members")
     printTable(rowL,2)
-
-
 
 
 ## Print all islands at node
@@ -322,10 +321,10 @@ comparisons. Return as dict.'''
     
     pairD = {}
 
-    scoresG = scores.readGraph(scoresFN,geneNames=None)
+    scoresO = scores.readGraph(scoresFN,geneNames=None)
     
-    for gn1,gn2,sc in scoresG.edges_iter(data=scoreType):
-
+    for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
+        sc = scoresO.getScoreByEndNodes(gn1,gn2,scoreType)
         sp1 = geneNames.numToStrainName(gn1)
         sp2 = geneNames.numToStrainName(gn2)
         key = tuple(sorted([sp1,sp2]))
