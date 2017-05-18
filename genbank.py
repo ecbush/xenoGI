@@ -30,6 +30,9 @@ def parseGenbank(geneOrderOutFileName,redundancyOutFileName,geneInfoOutFileName,
     '''We pass through each genbank file twice. Once to identify redundant
 genes, so we can avoid them. And another time to get the stuff we
 want.'''
+
+    if genbankFileList == []:
+        raise ValueError("List of genbank files to parse is empty.")
     
     geneOrderOutFile = open(geneOrderOutFileName, 'w')
     redundFile = open(redundancyOutFileName, 'w')

@@ -54,7 +54,13 @@ graph.
     maxPossibleNumEdges = len(list(itertools.combinations(geneT,2)))
     actualNumEdges = len(edgeL)
 
-    return scSum,maxPossibleNumEdges,actualNumEdges
+    numMissEdge=maxPossibleNumEdges-actualNumEdges
+
+    scSum += numMissEdge * min(scoresO.scoreD[scoreType])
+
+    avSc = scSum / maxPossibleNumEdges
+    
+    return avSc,maxPossibleNumEdges,actualNumEdges
 
 def printScoreGeneList(geneTL,scoresO,geneNames,scoreType):
     '''Given a list of gene sets, and a scores graph, print the score for
