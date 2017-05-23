@@ -141,7 +141,23 @@ be recalculated before it will be used.'''
     def getConnectionsEdge(self,gene):
         '''Return a list containing all the edges connected to gene.'''
         return self.nodeEdgeL[gene]
-    
+
+    def createEdgeToEndNodeL(self):
+        '''Create an attribute edgeToEndNodeL where the index is edge number,
+and the value is a tuple giving the two genes on either end of the
+edge. This attribute is not saved in our file formats. It must be
+recalculated before it will be used.
+        '''
+        self.edgeToEndNodeL = [None for x in range(len(self.endNodesToEdgeD))]
+        
+        for endPairT in self.endNodesToEdgeD:
+            edge = self.endNodesToEdgeD[endPairT]
+            self.edgeToEndNodeL[edge] = endPairT
+
+    def getEndNodesByEdge(self,edge):
+        '''Given and edge, return the numbers for the two genes on either end.'''
+        return self.edgeToEndNodeL[edge]
+        
     def __eq__(self,other):
         '''Compare two Score objects to see if they have the same values.'''
         

@@ -72,8 +72,26 @@ each.'''
         sc,maxPossibleNumEdges,actualNumEdges = scoreGeneSet(geneT[1:],scoresO,geneNames,scoreType)
         print(geneT[0],format(sc,'.4f'),maxPossibleNumEdges,actualNumEdges)
     
+def saveAllPairwiseScores(geneT,scoresO,geneNames,scoreType):
+    '''Given a set of genes in geneT, save all scores of scoreType that
+occur between genes in this set. Saves to a file whose name is based
+on the first element of geneT (a name for the set) and the
+scoreType.
+    '''
 
+    fn = geneT[0]+'-'+scoreType+'.txt'
+    f=open(fn,'w')
     
+    geneNumsL = [geneNames.nameToNum(name) for name in geneT[1:]]
+    edgeL = getInternalEdges(geneNumsL,scoresO)
+    for edge in edgeL:
+        sc = scoresO.getScoreByEdge(edge,scoreType)
+
+        gn1,gn2 = scoresO.getEndNodesByEdge(edge)
+        print(geneNames.numToName(gn1)+"\t"+geneNames.numToName(gn2)+"\t"+format(sc,'.4f'),file=f)
+
+    f.close()
+        
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
@@ -87,9 +105,15 @@ if __name__ == "__main__":
 
     geneTL = readGeneLists(geneListFN)
     
-    printScoreGeneList(geneTL,scoresO,geneNames,'synSc')
     # Key to scoreType:
     # 'rawSc' - raw similarity score
     # 'normSc' - normalized similarity score
     # 'synSc' - synteny score
     # 'coreSynSc' - core synteny score
+
+    # average synteny score for each geneT in geneTL
+    # printScoreGeneList(geneTL,scoresO,geneNames,'synSc')
+
+    # print all pairwise synteny scores for one geneT
+    scoresO.createEdgeToEndNodeL()
+    saveAllPairwiseScores(geneTL[0],scoresO,geneNames,'synSc')
