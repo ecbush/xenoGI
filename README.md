@@ -15,9 +15,6 @@ Code for detecting horizontal transfer events in a clade of bacteria.
   https://github.com/jeffdaily/parasail
   This is an optimized alignment library, used in calculating scores between proteins.
 
-  . networkx
-  https://networkx.github.io/
- 
 
 ## How to use
 

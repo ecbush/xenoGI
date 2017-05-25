@@ -21,7 +21,7 @@ directory names we'll use in igbQuickLoad. Return as a list of tuples.'''
         L.append((stem,igbStem))
     return L
 
-def createOneDir(igbMaindir, igbStem, ncbiDir, ncbiStem, humanStem, projectName):
+def createOneDir(igbMaindir, igbStem, ncbiDir, ncbiStem, humanStem):
     '''Create a subdirectory and put 2bit, genome.txt and ncib .gff annotation in it.'''
     # make igbStem as subdirectory of igbMaindir
     subdir = igbMaindir + '/' + igbStem
@@ -38,10 +38,10 @@ def createOneDir(igbMaindir, igbStem, ncbiDir, ncbiStem, humanStem, projectName)
 
     # make annots.xml file
     f=open(subdir+'/annots.xml','w')
-    f.write(annotsString(humanStem,projectName,ncbiStem))
+    f.write(annotsString(humanStem,ncbiStem))
     f.close()
     
-def annotsString(humanStem,projectName,ncbiStem):
+def annotsString(humanStem,ncbiStem):
     '''Return a string for the annots.xml file, with the proper file names
 for the annotations inserted.'''
 
@@ -69,7 +69,7 @@ for the annotations inserted.'''
             show2tracks="false"/>
     </files>"""
 
-    outStr = a+'"'+humanStem+'-'+projectName+'-island.gff"\n'+b+'"'+ncbiStem+'_genomic.gff"\n'+c
+    outStr = a+'"'+humanStem+'-island.gff"\n'+b+'"'+ncbiStem+'_genomic.gff"\n'+c
     
     return outStr
     
@@ -77,9 +77,8 @@ if __name__ == "__main__":
 
     ncbiIgbDirMapFN = sys.argv[1]
     ncbiHumanMapFN =  sys.argv[2]
-    projectName = sys.argv[3]
-    ncbiDir = sys.argv[4]
-    igbMaindir =  sys.argv[5] # the path to the main quickLoadDir we're making
+    ncbiDir = sys.argv[3]
+    igbMaindir =  sys.argv[4] # the path to the main quickLoadDir we're making
 
     ncbiHumanMapD = parameters.loadFileNameMapD(ncbiHumanMapFN)
     ncbiIgbDirMapL = loadNcbiIgbDirMap(ncbiIgbDirMapFN)
@@ -88,4 +87,4 @@ if __name__ == "__main__":
     
     for ncbiStem,igbStem in ncbiIgbDirMapL:
         humanStem = ncbiHumanMapD[ncbiStem+'_genomic.gbff']
-        createOneDir(igbMaindir, igbStem, ncbiDir, ncbiStem, humanStem, projectName)
+        createOneDir(igbMaindir, igbStem, ncbiDir, ncbiStem, humanStem)
