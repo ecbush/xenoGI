@@ -73,6 +73,8 @@ if __name__ == "__main__":
     synWSize = paramD['synWSize']
     coreSynWsize = paramD['coreSynWsize']
 
+    #synWSize=8
+    #coreSynWsize=20
     
     ## load data structures we'll use below
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])

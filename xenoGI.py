@@ -25,5 +25,5 @@ if __name__ == "__main__":
     familyT = families.families(tree,subtreeL,geneNames,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
     
     ## group gene families into islands
-    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainNum2StrD,paramD['islandOutFN'],outputSummaryF)
+    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyT,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],outputSummaryF)
     outputSummaryF.close()

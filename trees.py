@@ -23,8 +23,29 @@ def nodeCount(tree):
     else:
         return 1+ nodeCount(tree[1]) + nodeCount(tree[2])
 
-def leafList(tree):
+def nodeList(tree):
     '''Return list of nodes in tree.'''
+    if tree[1]==():
+        return [tree[0]]
+    else:
+        return [tree[0]] + nodeList(tree[1]) + nodeList(tree[2])
+    
+def subtree(tree,node):
+    '''Return the subtree with node at its root. Assume node is in tree.'''
+    if tree[0]==node:
+        return tree
+    elif tree[1]==():
+        return None
+    else:
+        l=subtree(tree[1],node)
+        r=subtree(tree[2],node)
+        if l==None:
+            return r
+        else:
+            return l
+    
+def leafList(tree):
+    '''Return list of leaves in tree.'''
     if tree[1]==():
         return [tree[0]]
     else:
