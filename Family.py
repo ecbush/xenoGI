@@ -1,20 +1,21 @@
 
 class Family:
 
-    def __setattr__(self, *args):
-         raise TypeError("can't modify immutable instance")
-    __delattr__ = __setattr__
-
-    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneNames):
+    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneNames,possibleErrorCt):
         '''Given an family ID number, a most recent common ancestor, and a
-list of genes create an immutable family object. Handles genes
-specified either numerically or by name. numNodesInTree is the number
-of nodes found in the tree (the full tree) we're working with for the
-project.
+list of genes create a family object. Handles genes specified either
+numerically or by name. numNodesInTree is the number of nodes found in
+the tree (the full tree) we're working with for the
+project. possibleErrorCt is a count of near miss genes, that either
+were added but almost weren't, or were not added but almost were.
         '''
 
-        super(Family, self).__setattr__('id', idnum)
-        super(Family, self).__setattr__('mrca', mrca)
+        self.id = idnum
+        self.mrca = mrca
+
+        # possibleErrorCt applies to multi-gene families. For single
+        # gene families it is None.
+        self.possibleErrorCt = possibleErrorCt 
         
         # create the family gene tuple, This has indexes corresponding
         # to nodes on the tree. At each position we have another tuple
@@ -38,8 +39,7 @@ project.
         for ct,L in familyL:
             newFamilyL.append((ct,tuple(L)))
         
-
-        super(Family, self).__setattr__('famGeneT', tuple(newFamilyL))
+        self.famGeneT = tuple(newFamilyL)
 
     def __repr__(self):
         '''String representation of a family containing family number.'''
@@ -51,7 +51,7 @@ file. Genes and mrca are expressed in word form.'''
 
         outL =[str(self.id)]
         outL.append(strainNum2StrD[self.mrca])
-        
+        outL.append(str(self.possibleErrorCt))
         for ct,geneT in self.famGeneT:
             for gene in geneT:
                 outL.append(geneNames.numToName(gene))

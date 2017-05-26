@@ -321,7 +321,7 @@ comparisons. Return as dict.'''
     
     pairD = {}
 
-    scoresO = scores.readGraph(scoresFN,geneNames=None)
+    scoresO = scores.readScores(scoresFN,geneNames=None)
     
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
         sc = scoresO.getScoreByEndNodes(gn1,gn2,scoreType)

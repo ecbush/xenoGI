@@ -1,4 +1,5 @@
-import sys
+import sys,os
+sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genbank,trees,genomes,scores,families,islands
 
 
