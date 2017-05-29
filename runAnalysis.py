@@ -5,35 +5,36 @@ from analysis import *
 ## Wrapper functions
 #  these should be here, as they assume a bunch of global variables.
 
-def printFam(family):
+def printFam(familyNum):
     '''This is a wrapper to provide an easy way to print relevant info on
-a family. For ease of use, we take only two arguments, assuming all
-the other required stuff is available at the top level. Family is the
-numerical identifier of a family.'''
+a family. For ease of use, we take only one argument, assuming all the
+other required stuff is available at the top level. amilyNum is the
+numerical identifier of a family.
+    '''
 
     print()
     print("Matrix of raw similarity scores [0,1] between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'rawSc')
+    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'rawSc')
     print()
     print()
 
     print()
     print("Matrix of normalized similarity scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'normSc')
+    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'normSc')
     print()
     print()
     
     print("Matrix of core synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'coreSynSc')
+    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'coreSynSc')
     print()
     print()
 
     print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,'synSc')
+    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'synSc')
     print()
     print()
 
-    printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresO)
+    printOutsideFamilyScores(familyNum,subtreeL,familyT,geneNames,scoresO)
     print()
     print()
 

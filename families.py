@@ -28,30 +28,32 @@ using a PhiGs-like algorithm, with synteny also considered.
             leftS,rightS,outgroupS = createLRSets(subtree,geneNames)
             seedL = createSeedL(leftS,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh)
             for seed in seedL:
-                seedSimScore,g1,g2 = seed
+                seedRawSc,g1,g2 = seed
 
-                if seedSimScore == -float('inf'):
+                if seedRawSc == -float('inf'):
                     # we've gotten to the point in the seed list with
                     # genes having no match on the other branch
                     break
                 else:
-                    family,possibleErrorCt=getFamily(seedSimScore,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent)
+                    famS=getFamily(seedRawSc,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,geneUsedL)
                     
-                    if any((geneUsedL[gene] for gene in family)):
+                    if famS == None:
+                        # one of the genes the the family was already
+                        # used, so getFamily returned None
                         continue
                     else:
-                        # none of the genes in this family used yet
-                        for gene in family:
+                        # none of the genes in famS used yet
+                        for gene in famS:
                             geneUsedL[gene] = True
-                        multiGeneFamilyL.append((node,family,possibleErrorCt))
+                        multiGeneFamilyL.append((node,famS))
 
     # Create Family objects 
     genesInMultiGeneFamsS = set()
     familyL=[]
     famNum = 0
-    for mrca,famS,possibleErrorCt in multiGeneFamilyL:
+    for mrca,famS in multiGeneFamilyL:
         genesInMultiGeneFamsS.update(famS) # add all genes in fam
-        familyL.append(Family(famNum,mrca,famS,trees.nodeCount(tree),geneNames,possibleErrorCt ))
+        familyL.append(Family(famNum,mrca,famS,trees.nodeCount(tree),geneNames ))
         famNum+=1
 
     multiGeneFamNum=famNum
@@ -142,7 +144,7 @@ and return.
     seedL.sort(reverse=True)
     return seedL
 
-def getFamily(seedSimScore,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent):
+def getFamily(seedRawSc,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,geneUsedL):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
 the family than the two seeds are from each other. We have a
@@ -154,10 +156,14 @@ connectsions to genes already in the family, this makes us more
 confident that this gene belongs in the family. Returns a set
 containing genes in the family.
     '''
+
+    if geneUsedL[g1] or geneUsedL[g2]:
+        # one of these has been used already, stop now.
+        return None
+
     alreadySearchedS = set()
     notYetSearchedS = set([g1,g2])
 
-    possibleErrorCt = 0
     while len(notYetSearchedS) > 0:
         newGenesS=set()
         for famGene in notYetSearchedS:
@@ -165,90 +171,23 @@ containing genes in the family.
                 if newGene in leftS or newGene in rightS:
                     # it is from a species descended from the node
                     # we're working on
-                    if newGene not in alreadySearchedS and newGene not in newGenesS:
-                        addIt,err = addGene(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedSimScore,synAdjustThresh,synAdjustExtent)
-                        possibleErrorCt += err
+                    if newGene not in alreadySearchedS and newGene not in newGenesS and newGene not in notYetSearchedS:
+                        addIt = addGene(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedRawSc,synAdjustThresh,synAdjustExtent)
                         if addIt:
-                            newGenesS.add(newGene)
+                            if geneUsedL[newGene]:
+                                # this one's been used already. That
+                                # means the whole family should be
+                                # thrown out. Just stop now.
+                                return None
+                            else:
+                                newGenesS.add(newGene)
                     
             alreadySearchedS.add(famGene)
         notYetSearchedS = newGenesS
-    return alreadySearchedS,possibleErrorCt
+    return alreadySearchedS
 
 
-def addGene(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedSimScore,synAdjustThresh,synAdjustExtent):
-    '''Given famGene that is inside a family, and a newGene we are
-considering adding, check the various scores to determine if we should
-add it. Return boolean.
-    '''
-
-    # get scores
-    rawSc = scoresO.getScoreByEndNodes(famGene,newGene,'rawSc')
-    normSc = scoresO.getScoreByEndNodes(famGene,newGene,'normSc')
-    synSc = scoresO.getScoreByEndNodes(famGene,newGene,'synSc')
-    coreSynSc = scoresO.getScoreByEndNodes(famGene,newGene,'coreSynSc')
-
-
-    # determine whether or not to add newGene
-    # norm theshold is a sort of sanity check. Is the level of
-    # similarity just too low?
-    normB = normSc >= minNormThresh
-    
-    # two types of synteny threshold, core synteny and regular synteny
-    coreB = coreSynSc >= minCoreSynThresh
-    synB = synSc >= minSynThresh
-    
-    # compare raw score with seed score, adjusting for synteny
-    if synSc > synAdjustThresh:
-        # its above the syn score adjustment
-        # threshold, so increase rawSc a bit. This
-        # addresses a problem with closely related
-        # families where the seed score is very
-        # similar. Sometimes by chance things
-        # that should have been added weren't
-        # because they weren't more similar than
-        # an already very similar seed.
-        # (Modification of PhiGs)
-        rawAdj = rawSc * synAdjustExtent
-        if rawAdj > 1: rawAdj = 1 # truncate back to 1
-    else:
-        rawAdj = rawSc
-    rawB = rawAdj >= seedSimScore
-        
-    addIt = normB and coreB and synB and rawB
-
-    # determine if it's a possible error and return magic numbers
-    # here...but we'll be replacing this function with a more
-    # systematic way run after family formation.
-    if isPossibleError(addIt,normSc,minNormThresh,1):
-        return addIt,1
-    elif isPossibleError(addIt,coreSynSc,minCoreSynThresh,.05):
-        return addIt,1
-    elif isPossibleError(addIt,synSc,minSynThresh,1):
-        return addIt,1
-    elif isPossibleError(addIt,rawAdj,seedSimScore,.1):
-        return addIt,1
-    else: return addIt,0
-    
-def isPossibleError(addIt,sc,threshold,errorScoreDetermIncrement):
-    '''Determine if this was a near miss. If we added it, did we almost
-    not do so? If we didn't add it, did we almost add it? If it's a
-    near miss, it will contribute to our error score.
-    '''
-    if addIt:
-        if not (sc - errorScoreDetermIncrement) >= threshold:
-            # It was over, but now is below threshold. Thus its a
-            # possible error
-            return True
-    else:
-        if (sc + errorScoreDetermIncrement) >= threshold:
-            # It was below, but now its over threshold. Thus its's a
-            # possible error.
-            return True
-    return False
-
-    
-def addGeneOnceAndFuture(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedSimScore,synAdjustThresh,synAdjustExtent):
+def addGene(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedRawSc,synAdjustThresh,synAdjustExtent):
     '''Given famGene that is inside a family, and newGene we are
 considering adding, check the various scores to determine if we should
 add it. Return boolean.
@@ -272,10 +211,10 @@ add it. Return boolean.
         # doesn't meet min synteny requirement for
         # family formation. (Modification of PhiGs)
         pass
-    elif rawSc >= seedSimScore:
+    elif rawSc >= seedRawSc:
         # If its within the seed distance, add it
         # (basic PhiGs approach). we have the =
-        # there in case seedSimScore is 1.
+        # there in case seedRawSc is 1.
         addIt = True
     elif synSc > synAdjustThresh:
         # its above the syn score adjustment
@@ -289,7 +228,7 @@ add it. Return boolean.
         # (Modification of PhiGs)
         adjSc = rawSc * synAdjustExtent
         if adjSc > 1: adjSc = 1 # truncate back to 1
-        if adjSc >= seedSimScore:
+        if adjSc >= seedRawSc:
             addIt = True
     return addIt
 

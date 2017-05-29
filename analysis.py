@@ -54,21 +54,21 @@ fields of geneInfoD.'''
         
 ## Print scores associated with a family
 
-def printScoreMatrix(family,subtreeL,familyT,geneNames,scoresO,scoreType):
-    '''Print a matrix of scores between all the genes in a family. Scores
+def printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,scoreType):
+    '''Print a matrix of scores between all the genes in a familyNum. Scores
 are provided by scoresO, and we're extracting the values associated
 with scoreType in the edges of this graph.
     '''
 
-    familyGenesL = getGenesInFamily(family,subtreeL,familyT)
-
+    familyGeneNumsT = familyT[familyNum].geneT
+    
     rowsL = []
-    geneNamesL = [geneNames.numToName(gn) for gn in familyGenesL]
+    geneNamesL = [geneNames.numToName(gn) for gn in familyGeneNumsT]
     rowsL.append([''] + geneNamesL)
     
-    for rowi,gn1 in enumerate(familyGenesL):
-        row = [geneNames.numToName(familyGenesL[rowi])]
-        for gn2 in familyGenesL:
+    for rowi,gn1 in enumerate(familyGeneNumsT):
+        row = [geneNames.numToName(familyGeneNumsT[rowi])]
+        for gn2 in familyGeneNumsT:
             if scoresO.isEdgePresentByEndNodes(gn1,gn2):
                 row.append(format(scoresO.getScoreByEndNodes(gn1,gn2,scoreType),".3f"))
             else:
@@ -77,26 +77,27 @@ with scoreType in the edges of this graph.
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(family,subtreeL,familyT,geneNames,scoresO):
+def printOutsideFamilyScores(familyNum,subtreeL,familyT,geneNames,scoresO):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 scoresO.
     '''
-    
-    familyGenesL = getGenesInFamily(family,subtreeL,familyT)
 
+    family = familyT[familyNum]
+    familyGeneNumsT = family.geneT
+    outsideGeneNumsT = family.getOutsideConnections(scoresO)
+    
     rowL = []
-    for gene in familyGenesL:
-        geneName = geneNames.numToName(gene)
-        for otherGene in scoresO.getConnectionsGene(gene):
-            if not otherGene in familyGenesL:
-                # this connection is with a gene outside the family
-                otherGeneName = geneNames.numToName(otherGene)
-                rawSc=scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
-                normSc=scoresO.getScoreByEndNodes(gene,otherGene,'normSc')
-                coreSynSc=scoresO.getScoreByEndNodes(gene,otherGene,'coreSynSc')
-                synSc=scoresO.getScoreByEndNodes(gene,otherGene,'synSc')
-                rowL.append([geneName,otherGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(coreSynSc,".3f"),format(synSc,".3f")])
+    for familyGeneNum in family.geneT:
+        familyGeneName = geneNames.numToName(familyGeneNum)
+        for outsideGeneNum in outsideGeneNumsT:
+            if scoresO.isEdgePresentByEndNodes(familyGeneNum,outsideGeneNum):
+                outsideGeneName = geneNames.numToName(outsideGeneNum)
+                rawSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'rawSc')
+                normSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'normSc')
+                coreSynSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'coreSynSc')
+                synSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'synSc')
+                rowL.append([familyGeneName,outsideGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(coreSynSc,".3f"),format(synSc,".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
     rowL.insert(0,['----------','-----------','---','----','-------','---'])
@@ -187,19 +188,6 @@ family number to island number.
             for famNum in island.familyL:
                 fam2IslandD[famNum]=island
     return fam2IslandD
-
-def getGenesInFamily(familyNum,subtreeL,familyT):
-    '''Given a family, return a list of all genes in it (in numerical form).'''
-    mrca = familyT[familyNum].mrca
-    leavesL=trees.leafList(subtreeL[mrca])
-
-    genesL=[]
-    for strainNum in leavesL:
-
-        geneT=familyT[familyNum].famGeneT[strainNum][1]
-        genesL.extend(geneT)
-
-    return genesL
 
 
 ## Print neighborhood of an island

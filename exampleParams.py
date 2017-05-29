@@ -1,12 +1,16 @@
 ## This parameter file contains python expressions with info on files
 ## and parameters
 
-#### Input files ####
+#### Input file parameters ####
 
 # Tree file in newick format. This should have named internal
 # nodes. It does not need to have branch lengths (if it has them, they
 # will be ignored).
 treeFN='testE.tre'
+
+# The root node of the focal clade we are studying. Everything outside
+# of this will be treated as ougroups (e.g. won't merge islands there).
+rootFocalClade = 'i7'
 
 # unix style file path to genbank gbff files
 genbankFilePath = 'ncbi/*.gbff'
@@ -84,23 +88,22 @@ matrix = 'parasail.blosum62'
 # Synteny window size, that is the size of the neighborhood of each
 # gene to consider when calculating synteny scores. (measured in
 # number of genes). We go half this distance in either direction.
-synWSize = 60
+synWSize = 8
 
 # When calculating synteny score between two genes, the number of
 # pairs of scores to take (and average) from the neighborhoods of
 # those two genes
-numSynToTake = 25
-
+numSynToTake = 3
 
 # Core synteny window size, that is the number of core genes from the
 # neighborhood of each gene to consider when calculating core synteny
 # scores. (measured in number of genes). We go half this distance in
 # each direction.
-coreSynWsize = 8
+coreSynWsize = 20
 
 # Threshold for the core gene synteny score required for family
 # formation. (These scores range from 0 to 1).
-minCoreSynThresh = 0.25
+minCoreSynThresh = 0.5
 
 # Minimum normalized score for family formation. This should be used
 # as an extreme lower bound, to eliminate those things that are so
@@ -112,13 +115,13 @@ minNormThresh = -7.0
 # Minimum synteny score value we'll accept when putting a gene in a
 # family. Also applies to seeds. Note synteny scores are based on
 # normalized scores
-minSynThresh = -2.0
+minSynThresh = -4.0
 
 # Synteny score threshold for using synteny to adjust a raw
 # score. Setting this lower makes us use synteny more, and thus will
 # tend to make us put more genes in families. This is a normScore type
 # score
-synAdjustThresh = 0
+synAdjustThresh = -2
 
 # We use syntenty scores to adjust similarity scores in family
 # finding. This parameter specifies the amount we multiply a rawScore
@@ -152,6 +155,6 @@ potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 60
 #### Visualization and analysis output files ####
 
 # unix style file path to gff output files
-gffFilePath = 'gff/*-testE-island.gff'
+gffFilePath = 'gff/*-island.gff'
 
 
