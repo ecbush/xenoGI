@@ -54,10 +54,8 @@ file. Genes and mrca are expressed in word form.'''
 
         outL =[str(self.id)]
         outL.append(strainNum2StrD[self.mrca])
+        outL.append(str(self.possibleErrorCt))
 
-        ##  TEMP MAKE NONE. FOR TESTING. CHANGE BACK LATER.
-        #outL.append(str(self.possibleErrorCt))
-        outL.append(str(None))
 
 
         for ct,geneT in self.famGeneT:
