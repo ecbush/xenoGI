@@ -16,7 +16,6 @@ def islandsOfInterest(minLength):
 
 def islandsInStrainLongEnough(minLength):
     '''returns a list of the xenoGI islands that are longer than minLength'''
-    
     #list of islands in strain, empty list of islands to return
     potentialIslands = islandsOnAllValidationNodes()
     returnIslands = []
@@ -160,4 +159,3 @@ if __name__ == "__main__":
     familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-
