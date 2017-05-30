@@ -68,7 +68,7 @@ want.'''
             #iterate through the genes on the chromosome
             for feature in record.features:
                 # choose only the features that are protein coding genes
-                if feature.type == "CDS" and 'protein_id' in feature.qualifiers:
+                if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
                     geneName = speciesName + '-' + feature.qualifiers['protein_id'][0]
                     # verify not in set of genes that appear more than once
                     if geneName in uniqueS:
