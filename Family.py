@@ -72,9 +72,96 @@ connections to this family.'''
                 if not otherGene in self.geneT:
                     otherGenesS.add(otherGene)
         return tuple(otherGenesS)
+    
+    def getPossibleErrorCt(self, scoresO):
+        '''Given a family, returns the number of near misses internally and externally'''
+        internalPossibleErrors,externalPossibleErrors = 0,0
+        allGenesInFam = self.geneT
+        internalEdgeL = makeMSN(allGenesInFam,scoresO)
+        externalGenesTuple=self.getOutsideConnections(scoresO)
+        externalEdgeL = makeExternalEdgeL(externalGenesTuple, allGenesInFam, scoresO)
+        for edge in internalEdgeL:
+            g1,g2=edge[0],edge[1]
+            if isPossibleError(True, g1,g2, scoresO,0,0,0,0,0,0): internalPossibleErrors+=1
+        for edge in externalEdgeL:
+            g1,g2=edge[0],edge[1]
+            if isPossibleError(False, g1,g2, scoresO,0,0,0,0,0,0): externalPossibleErrors+=1
+        self.possibleErrorCt = internalPossibleErrors+externalPossibleErrors
+
+def makeExternalEdgeL(externalGenesTuple, genesInFam, scoresO):
+    '''given a family, returns a list of tuples '''
+    returnEdgeL = [0]*len(externalGenesTuple)
+    for extGeneIndex in range(0,len(externalGenesTuple)):
+        bestScore = float('-inf')
+        extGene = externalGenesTuple[extGeneIndex]
+        connectedGenes = scoresO.getConnectionsGene(extGene)
+        for conGene in connectedGenes:
+            if conGene in genesInFam:
+                rawSc=scoresO.getScoreByEndNodes(extGene,conGene, 'rawSc')
+                if rawSc>bestScore:
+                    bestScore=rawSc
+                    returnEdgeL[extGeneIndex]=(extGene,conGene)
+    return returnEdgeL
+
+def makeInternalEdgeL(genesInFam,scoresO):
+    '''Given a list of all genes in the family, it returns a
+list of lists sorted in descending order by raw score'''
+    # compare every gene to every other gene that comes
+    # in the list after it
+    # format: [[rawScore, gene1, gene2], ....]] for every edge in the fam
+    totalGenesNum = len(genesInFam)
+    internalEdgeL = []
+    for gene1Index in range(0,totalGenesNum-1):
+        for gene2Index in range(gene1Index+1,totalGenesNum):
+            g1=genesInFam[gene1Index]
+            g2=genesInFam[gene2Index]
+            if scoresO.isEdgePresentByEndNodes(g1,g2):
+                rawSc = scoresO.getScoreByEndNodes(g1,g2, 'rawSc')
+                internalEdgeL.append([rawSc,g1,g2])
+    internalEdgeL.sort(reverse=True)
+    return internalEdgeL
 
 
-## USE BELOW (modified) for error count calculation
+def makeUnconnectedGsetL(genesInFam):
+    '''Given a list of all genes in the family, make a set of disjoint genes'''
+    unconnectedGsetL = []
+    for gene in genesInFam:
+        geneSet = set()
+        geneSet.add(gene)
+        unconnectedGsetL.append(geneSet)
+    return unconnectedGsetL
+
+
+def updateConnections(gSetL, g1, g2):
+    '''Given 2 genes and a gene set list, returns True if the genes
+are disconnected, false otherwise. If genes are disconnected, join the
+genes and update gSetL accordingly'''
+    for setIndex1 in range(0,len(gSetL)):
+        if g1 in gSetL[setIndex1]:
+               if g2 in gSetL[setIndex1]: return False,gSetL
+               else:
+                   for setIndex2 in range(0, len(gSetL)):
+                       if g2 in gSetL[setIndex2]:
+                           gSetL[setIndex1]=gSetL[setIndex1].union(gSetL[setIndex2])
+                           gSetL.remove(gSetL[setIndex2])
+                           return True, gSetL
+    return False, gSetL
+        
+
+def makeMSN(genesInFam,scoresO):
+    '''Given a tuple of genes in the family, it makes the max spanning network based on
+the largest raw scores'''
+    returnEdgeList = []
+    internalEdgeL = makeInternalEdgeL(genesInFam,scoresO)
+    gSetL = makeUnconnectedGsetL(genesInFam)
+    while len(gSetL) > 1:
+        currEdge = internalEdgeL[0]
+        internalEdgeL.remove(currEdge)
+        g1,g2 = currEdge[1],currEdge[2]
+        isDisconnected, gSetL = updateConnections(gSetL, g1, g2)
+        if isDisconnected:
+            returnEdgeList.append((g1,g2))
+    return returnEdgeList
 
 def isPossibleError(isInternal,g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedRawSc,synAdjustThresh,synAdjustExtent):
     '''Given g1 that is inside a family, and a g2 we are
@@ -87,16 +174,16 @@ within the same family or not. Return boolean.
     normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
     synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
     coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
-
+    rawSc = scoresO.getScoreByEndNodes(g1,g2,'rawSc')
 
     # determine if it's a possible error and return magic numbers
     # here...but we'll be replacing this function with a more
     # systematic way run after family formation.
-    if isPossibleError(isInternal,normSc,minNormThresh,0): # .5
+    if isPossibleErrorHelper(isInternal,normSc,minNormThresh,0.5): # .5
         return 1
-    elif isPossibleError(isInternal,coreSynSc,minCoreSynThresh,0): #.05
+    elif isPossibleErrorHelper(isInternal,coreSynSc,minCoreSynThresh,0.05): #.05
         return 1
-    elif isPossibleError(isInternal,synSc,minSynThresh,0): # .5
+    elif isPossibleErrorHelper(isInternal,synSc,minSynThresh,0.5): # .5
         return 1
     else: return 0
     
