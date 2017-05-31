@@ -68,6 +68,10 @@ using a PhiGs-like algorithm, with synteny also considered.
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=outputSummaryF)
     print("Number of total families",famNum,file=outputSummaryF)
+
+    # add possible error counts
+    for famO in familyL:
+        famO.getPossibleErrorCt(scoresO)
     
     writeFamilies(familyL,geneNames,strainNum2StrD,familyFN)
 
