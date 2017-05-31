@@ -54,13 +54,13 @@ fields of geneInfoD.'''
         
 ## Print scores associated with a family
 
-def printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,scoreType):
+def printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,scoreType):
     '''Print a matrix of scores between all the genes in a familyNum. Scores
 are provided by scoresO, and we're extracting the values associated
 with scoreType in the edges of this graph.
     '''
 
-    familyGeneNumsT = familyT[familyNum].geneT
+    familyGeneNumsT = familyL[familyNum].geneT
     
     rowsL = []
     geneNamesL = [geneNames.numToName(gn) for gn in familyGeneNumsT]
@@ -77,13 +77,13 @@ with scoreType in the edges of this graph.
 
     printTable(rowsL,2)
 
-def printOutsideFamilyScores(familyNum,subtreeL,familyT,geneNames,scoresO):
+def printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 scoresO.
     '''
 
-    family = familyT[familyNum]
+    family = familyL[familyNum]
     familyGeneNumsT = family.geneT
     outsideGeneNumsT = family.getOutsideConnections(scoresO)
     
@@ -136,7 +136,7 @@ have.
 
     printTable(printL,8)
     
-def vPrintIsland(island,subtreeL,familyT,strainNum2StrD,geneNames):
+def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames):
     '''Verbose print of an island.'''
 
     print("  Island",island.id)
@@ -153,27 +153,27 @@ def vPrintIsland(island,subtreeL,familyT,strainNum2StrD,geneNames):
         newRow=[]
         newRow.append(str(fam))
         for node in speciesNodesL:
-            ct,genesL = familyT[fam].famGeneT[node]
+            ct,genesL = familyL[fam].famGeneT[node]
             newRow.append(",".join([geneNames.numToName(gene) for gene in genesL]))
         printL.append(newRow)
     printTable(printL,4)
 
 
-def vPrintIslands(islandL,subtreeL,familyT,strainNum2StrD,geneNames):
+def vPrintIslands(islandL,subtreeL,familyL,strainNum2StrD,geneNames):
     '''Print a list of islands.'''
     print("Summary of islands")
     printIslandLSummary(islandL)
     print("Print outs of each island")
     for island in islandL:
-        vPrintIsland(island,subtreeL,familyT,strainNum2StrD,geneNames)
+        vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames)
         print('  ---')
 
-def createGene2FamD(familyT):
-    '''Given the family information in familyT, create a dictionary
+def createGene2FamD(familyL):
+    '''Given the family information in familyL, create a dictionary
 gene2FamD which maps from gene number to family number.'''
     gene2FamD={}
-    for famNum in range(len(familyT)):
-        for gnCt,geneT in familyT[famNum].famGeneT:
+    for famNum in range(len(familyL)):
+        for gnCt,geneT in familyL[famNum].famGeneT:
             for gene in geneT:
                 gene2FamD[gene]=famNum
     return gene2FamD
@@ -192,7 +192,7 @@ family number to island number.
 
 ## Print neighborhood of an island
 
-def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD):
+def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD):
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
     print("  Island:",islandNum)
@@ -213,7 +213,7 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrde
 
         print("  In",strainNum2StrD[strainNum],end=' ')
 
-        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyL)
 
         if islandGenesInStrainL == []:
             print("the island is not found.")
@@ -252,12 +252,12 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrde
 
             printTable(rowsL,4)
 
-def getIslandGenesInStrain(island,strainNum,familyT):
+def getIslandGenesInStrain(island,strainNum,familyL):
     '''Given an island, a strain number, and our tuple of family
 objects, return all the genes in the island for that strain.'''
     genesL=[]
     for familyNum in island.familyL:
-        geneT=familyT[familyNum].famGeneT[strainNum][1]
+        geneT=familyL[familyNum].famGeneT[strainNum][1]
         genesL.extend(geneT)
     return genesL
 

@@ -4,7 +4,7 @@ sys.path.append(os.path.join(sys.path[0],'..'))
 import trees, genomes, families, islands, parameters
 
 
-def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyT,geneNames,geneInfoD):
+def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD):
     '''Return a dict keyed by strain name. Values are lists of tuples
     (islandNum, familyL) where familyL is a list of tuples in the island
     present in that strain. Family tuples are (family,[genes in
@@ -32,7 +32,7 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyT,geneNa
                 # tips. Located at each index is a tuple of gene (gene
                 # count, (tuple of genes)). We access by looping over
                 # leaf nodes
-                fgT = familyT[fam].famGeneT
+                fgT = familyL[fam].famGeneT
 
                 for leaf in leafNodesL:
                     ct,geneT = fgT[leaf]
@@ -178,12 +178,12 @@ if __name__ == "__main__":
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
     leafNodesL = trees.leafList(tree)
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
-    familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
     islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
 
     
     # get islands organized by strain
-    islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyT,geneNames,geneInfoD)
+    islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD)
 
     createAllGffs(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreNodeMapD'],paramD['potentialScoresL'])

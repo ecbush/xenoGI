@@ -63,16 +63,12 @@ using a PhiGs-like algorithm, with synteny also considered.
     for gene in geneNames.nums: 
         if not gene in genesInMultiGeneFamsS:
             mrca = geneNames.numToStrainNum(gene)
-            familyL.append(Family(famNum,mrca,[gene],trees.nodeCount(tree),geneNames,None))
+            familyL.append(Family(famNum,mrca,[gene],trees.nodeCount(tree),geneNames))
             famNum+=1
 
     print("Number of single gene families",famNum-multiGeneFamNum,file=outputSummaryF)
     print("Number of total families",famNum,file=outputSummaryF)
 
-    # add possible error counts
-    for famO in familyL:
-        famO.getPossibleErrorCt(scoresO)
-    
     writeFamilies(familyL,geneNames,strainNum2StrD,familyFN)
 
     return tuple(familyL)
@@ -237,6 +233,12 @@ add it. Return boolean.
     return addIt
 
 
+def calcErrorScores(familyL,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
+    '''Given a list of family objects, calculate error scores for
+each. These values get saved as attributes of the objects.
+    '''
+    for famO in familyL:
+        famO.getPossibleErrorCt(scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
 
 
 ## Input/output
@@ -263,14 +265,8 @@ objects where the index corresponds to family number.'''
         L=s.split()
         famNum=int(L[0])
         mrca = strainStr2NumD[L[1]]
-        possibleErrorCt = L[2]
-        if possibleErrorCt == 'None':
-            possibleErrorCt = None
-        else:
-            possibleErrorCt = int(possibleErrorCt)
-        
-        genesL = L[3:]
+        genesL = L[2:]
 
-        famL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames,possibleErrorCt))
+        famL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames))
     f.close()
-    return tuple(famL)
+    return famL

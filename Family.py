@@ -1,7 +1,7 @@
 
 class Family:
 
-    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneNames,possibleErrorCt=None):
+    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneNames):
         '''Given an family ID number, a most recent common ancestor, and a
 list of genes create a family object. Handles genes specified either
 numerically or by name. numNodesInTree is the number of nodes found in
@@ -13,10 +13,6 @@ were added but almost weren't, or were not added but almost were.
         self.id = idnum
         self.mrca = mrca
 
-        # possibleErrorCt applies to multi-gene families. For single
-        # gene families it is None.
-        self.possibleErrorCt = possibleErrorCt 
-        
         # create the family gene tuple, This has indexes corresponding
         # to nodes on the tree. At each position we have another tuple
         # (gene count, (tuple of genes))
@@ -54,9 +50,6 @@ file. Genes and mrca are expressed in word form.'''
 
         outL =[str(self.id)]
         outL.append(strainNum2StrD[self.mrca])
-        outL.append(str(self.possibleErrorCt))
-
-
 
         for ct,geneT in self.famGeneT:
             for gene in geneT:
@@ -73,21 +66,24 @@ connections to this family.'''
                     otherGenesS.add(otherGene)
         return tuple(otherGenesS)
     
-    def getPossibleErrorCt(self, scoresO):
+    def getPossibleErrorCt(self, scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
         '''Given a family, returns the number of near misses internally and externally'''
         internalPossibleErrors,externalPossibleErrors = 0,0
         allGenesInFam = self.geneT
         internalEdgeL = makeMSN(allGenesInFam,scoresO)
         externalGenesTuple=self.getOutsideConnections(scoresO)
         externalEdgeL = makeExternalEdgeL(externalGenesTuple, allGenesInFam, scoresO)
-        for edge in internalEdgeL:
-            g1,g2=edge[0],edge[1]
-            if isPossibleError(True, g1,g2, scoresO,0,0,0,0,0,0): internalPossibleErrors+=1
-        for edge in externalEdgeL:
-            g1,g2=edge[0],edge[1]
-            if isPossibleError(False, g1,g2, scoresO,0,0,0,0,0,0): externalPossibleErrors+=1
-        self.possibleErrorCt = internalPossibleErrors+externalPossibleErrors
+        for g1,g2 in internalEdgeL:
+            internalPossibleErrors+=isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
+        for g1,g2 in externalEdgeL:
+            externalPossibleErrors+=isPossibleErrorExternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
 
+        self.internalPossibleErrorCt = internalPossibleErrors
+        self.externalPossibleErrorCt = externalPossibleErrors
+
+
+# Functions to help in calculating possible error count
+        
 def makeExternalEdgeL(externalGenesTuple, genesInFam, scoresO):
     '''given a family, returns a list of tuples '''
     returnEdgeL = [0]*len(externalGenesTuple)
@@ -163,45 +159,42 @@ the largest raw scores'''
             returnEdgeList.append((g1,g2))
     return returnEdgeList
 
-def isPossibleError(isInternal,g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedRawSc,synAdjustThresh,synAdjustExtent):
-    '''Given g1 that is inside a family, and a g2 we are
-considering adding, check the various scores to determine if we should
-add it. isInternal is a boolean, telling us if the two genes are
-within the same family or not. Return boolean.
+def isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
+    '''Given g1 and g2 both inside a family, check the various scores to
+    determine if it was a near miss, ie almost was not in the
+    family. Returns boolean.
     '''
-
     # get scores
     normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
     synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
     coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
-    rawSc = scoresO.getScoreByEndNodes(g1,g2,'rawSc')
 
-    # determine if it's a possible error and return magic numbers
-    # here...but we'll be replacing this function with a more
-    # systematic way run after family formation.
-    if isPossibleErrorHelper(isInternal,normSc,minNormThresh,0.5): # .5
-        return 1
-    elif isPossibleErrorHelper(isInternal,coreSynSc,minCoreSynThresh,0.05): #.05
-        return 1
-    elif isPossibleErrorHelper(isInternal,synSc,minSynThresh,0.5): # .5
-        return 1
-    else: return 0
     
-def isPossibleErrorHelper(isInternal,sc,threshold,errorScoreDetermIncrement):
-    '''Get better name. Determine if this was a near miss. If we added it, did we almost
-    not do so? If we didn't add it, did we almost add it? If it's a
-    near miss, it will contribute to our error score.
+    if not (normSc - famErrorScoreIncrementD['normSc']) >= minNormThresh:
+        # Was over, but now is below threshold. Is a possible error
+        return True
+    elif not (coreSynSc - famErrorScoreIncrementD['coreSynSc']) >= minCoreSynThresh:
+        return True
+    elif not (synSc - famErrorScoreIncrementD['synSc']) >= minSynThresh:
+        return True
+    else: return False
+
+def isPossibleErrorExternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
+    '''Given g1 inside and g2 outside a family, check the various scores
+    to determine if it was a near miss, ie almost was put in the
+    family. Returns boolean.
     '''
-    if isInternal:
-        if not (sc - errorScoreDetermIncrement) >= threshold:
-            # It was over, but now is below threshold. Thus its a
-            # possible error
-            return True
-    else:
-        if (sc + errorScoreDetermIncrement) >= threshold:
-            # It was below, but now its over threshold. Thus its's a
-            # possible error.
-            return True
-    return False
+    # get scores
+    normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
+    synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
+    coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
 
     
+    if (normSc + famErrorScoreIncrementD['normSc']) >= minNormThresh:
+        # Was below, but now is over threshold. Is a possible error
+        return True
+    elif (coreSynSc + famErrorScoreIncrementD['coreSynSc']) >= minCoreSynThresh:
+        return True
+    elif (synSc + famErrorScoreIncrementD['synSc']) >= minSynThresh:
+        return True
+    else: return False

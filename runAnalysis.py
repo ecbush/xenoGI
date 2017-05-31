@@ -14,27 +14,27 @@ numerical identifier of a family.
 
     print()
     print("Matrix of raw similarity scores [0,1] between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'rawSc')
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'rawSc')
     print()
     print()
 
     print()
     print("Matrix of normalized similarity scores between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'normSc')
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'normSc')
     print()
     print()
     
     print("Matrix of core synteny scores between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'coreSynSc')
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'coreSynSc')
     print()
     print()
 
     print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyT,geneNames,scoresO,'synSc')
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'synSc')
     print()
     print()
 
-    printOutsideFamilyScores(familyNum,subtreeL,familyT,geneNames,scoresO)
+    printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO)
     print()
     print()
 
@@ -51,7 +51,7 @@ def printIsland(islandNum,synWSize):
     '''Print the island and its genomic context in each species. We
     include synWSize/2 genes in either direction beyond the island.
     '''
-    printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyT,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
+    printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
 
     
 def printIslandsAtNode(nodeStr):
@@ -61,7 +61,7 @@ number as argument, assuming all the other required stuff is available
 at the top level.
     '''
     node = strainStr2NumD[nodeStr]
-    vPrintIslands(islandByNodeL[node],subtreeL,familyT,strainNum2StrD,geneNames)
+    vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames)
 
 
 if __name__ == "__main__":
@@ -74,16 +74,15 @@ if __name__ == "__main__":
     # load islands
     islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     
-    # get familyT etc.
+    # get familyL etc.
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
 
     
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
 
-    familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
-    
-    gene2FamD=createGene2FamD(familyT)
+    gene2FamD=createGene2FamD(familyL)
     fam2IslandD=createFam2IslandD(islandByNodeL)
 
     # subtree list
@@ -96,3 +95,7 @@ if __name__ == "__main__":
     # scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
     scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
+
+    # calc family error scores
+    families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
+    

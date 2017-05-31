@@ -5,14 +5,14 @@ from Island import *
 from Family import *
 
 
-def createIslandL(familyT,tree):
+def createIslandL(familyL,tree):
     '''Greate islands, one family per island. Initially store islands
 separately by mrca in a list of lists. (The index of the outer list
 corresponds to the mrca)
     '''
     islandL=[[] for i in range(trees.nodeCount(tree))]
 
-    for fam in familyT:
+    for fam in familyL:
         isl = Island(fam.id, fam.mrca, [fam.id])
         islandL[isl.mrca].append(isl)
 
@@ -71,7 +71,7 @@ fam2 are family tuples specifying the genes present in a family.
     f=rcost(fam1,fam2,geneProximityD,proximityThreshold,subtree,False)
     return(f-t)
     
-def rscore(is0,is1,geneProximityD,proximityThreshold,subtree,familyT):
+def rscore(is0,is1,geneProximityD,proximityThreshold,subtree,familyL):
     '''Returns the rearrangement score between islands is0 and is1. Considers
 all four ways these islands could join (since there are two islands each
 with two ends). This is the rcost given we start not proximate minus
@@ -87,19 +87,19 @@ the rcost given we start proximate.
         caseL = [-float('inf')]*4
 
         # case 0: last fam in is0 vs. first fam in is1
-        caseL[0] = costDiff(familyT[is0.familyL[-1]],familyT[is1.familyL[0]],geneProximityD,proximityThreshold,subtree)
+        caseL[0] = costDiff(familyL[is0.familyL[-1]],familyL[is1.familyL[0]],geneProximityD,proximityThreshold,subtree)
 
         # case 1: last fam in is0 vs. last fam in is1
         if len(is1.familyL) == 1:
             caseL[1] = caseL[0] # since first and last of is1 are same
         else:
-            caseL[1] = costDiff(familyT[is0.familyL[-1]],familyT[is1.familyL[-1]],geneProximityD,proximityThreshold,subtree)
+            caseL[1] = costDiff(familyL[is0.familyL[-1]],familyL[is1.familyL[-1]],geneProximityD,proximityThreshold,subtree)
 
         # case 2: first fam in is0 vs. first fam in is1
         if len(is0.familyL) == 1:
             caseL[2] = caseL[0] # since first and last of is0 are same
         else:
-            caseL[2] = costDiff(familyT[is0.familyL[0]],familyT[is1.familyL[0]],geneProximityD,proximityThreshold,subtree)
+            caseL[2] = costDiff(familyL[is0.familyL[0]],familyL[is1.familyL[0]],geneProximityD,proximityThreshold,subtree)
 
         # case 3: first fam in is0 vs. last fam in is1
         if len(is0.familyL) == 1 and len(is1.familyL) > 1:
@@ -109,32 +109,32 @@ the rcost given we start proximate.
         elif len(is0.familyL) == 1 and len(is1.familyL) == 1:
             caseL[3] = caseL[0]
         else: # both longer than 1
-            caseL[3] = costDiff(familyT[is0.familyL[0]],familyT[is1.familyL[-1]],geneProximityD,proximityThreshold,subtree)
+            caseL[3] = costDiff(familyL[is0.familyL[0]],familyL[is1.familyL[-1]],geneProximityD,proximityThreshold,subtree)
 
         return tuple(caseL)
 
-def storeScore(is0,is1,geneProximityD,proximityThreshold,subtree,scoreD,familyT):
+def storeScore(is0,is1,geneProximityD,proximityThreshold,subtree,scoreD,familyL):
     '''Calculate and store score in scoreD. We follow convention that key
 in scoreD should always have the lower island id first.'''
     if is0.id < is1.id:
         key = is0.id,is1.id
-        tempScoreT=rscore(is0,is1,geneProximityD,proximityThreshold,subtree,familyT)
+        tempScoreT=rscore(is0,is1,geneProximityD,proximityThreshold,subtree,familyL)
         # rscore returns different things depending on order
         # so we must be consistent with what we do in key.
     else:
         key = is1.id,is0.id
-        tempScoreT=rscore(is1,is0,geneProximityD,proximityThreshold,subtree,familyT)
+        tempScoreT=rscore(is1,is0,geneProximityD,proximityThreshold,subtree,familyL)
         
     scoreD[key]=(max(tempScoreT),tempScoreT)
 
     
-def createScoreD(islandL,geneProximityD,proximityThreshold,subtree,familyT):
+def createScoreD(islandL,geneProximityD,proximityThreshold,subtree,familyL):
     '''Create dictionary of scores between all islands at a single node
 (and thus with the same mrca).'''
     scoreD={}
     for i in range(len(islandL)-1):
         for j in range(i+1,len(islandL)):
-            storeScore(islandL[i],islandL[j],geneProximityD,proximityThreshold,subtree,scoreD,familyT)
+            storeScore(islandL[i],islandL[j],geneProximityD,proximityThreshold,subtree,scoreD,familyL)
     return scoreD
 
 
@@ -166,12 +166,12 @@ score D that come from them.'''
     for key in toDelL:
         del scoreD[key]
 
-def addScores(scoreD,is0,islandsAtThisNodeL,geneProximityD,proximityThreshold,subtree,familyT):
+def addScores(scoreD,is0,islandsAtThisNodeL,geneProximityD,proximityThreshold,subtree,familyL):
     '''Get scores for island is0 against all other islands and add to
 scoreD.'''
     for isl in islandsAtThisNodeL:
         if isl.id != is0.id:
-            storeScore(is0,isl,geneProximityD,proximityThreshold,subtree,scoreD,familyT)
+            storeScore(is0,isl,geneProximityD,proximityThreshold,subtree,scoreD,familyL)
 
 def searchIslandsByID(listOfIslands,id):
     '''Search for an island with id equal to id. Return the index of the
@@ -193,7 +193,7 @@ which might have for example proximity threshold 2 (we consider genes
 nearby that are separated by 1 gene).
     '''
 
-    islandL,geneProximityD,proxThreshL,subtree,familyT = argT
+    islandL,geneProximityD,proxThreshL,subtree,familyL = argT
     
     if len(islandL) < 2:
         # nothing to merge
@@ -203,7 +203,7 @@ nearby that are separated by 1 gene).
     # threshold in proxThreshL
     for proximityThreshold,rscThreshold in proxThreshL:
 
-        scoreD = createScoreD(islandL,geneProximityD,proximityThreshold,subtree,familyT)
+        scoreD = createScoreD(islandL,geneProximityD,proximityThreshold,subtree,familyL)
         
         while True:
             sc,islandPairT,scoreT=maxScore(scoreD)
@@ -222,7 +222,7 @@ nearby that are separated by 1 gene).
             delScores(scoreD,is0.id,is1.id)
 
             # calculate new scores for is0 against all other islands
-            addScores(scoreD,is0,islandL,geneProximityD,proximityThreshold,subtree,familyT)
+            addScores(scoreD,is0,islandL,geneProximityD,proximityThreshold,subtree,familyL)
 
     return islandL
 
@@ -257,12 +257,12 @@ recreating islandByNodeL.'''
     
 ## Main function
 
-def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyT,numThreads,strainStr2NumD,strainNum2StrD,rootFocalClade,islandOutFN, outputSummaryF):
+def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyL,numThreads,strainStr2NumD,strainNum2StrD,rootFocalClade,islandOutFN, outputSummaryF):
     '''Parallelized wrapper to merge islands at different nodes.'''
 
     maxGeneProximityForIsland = max([thresh for thresh,rsc in proxThreshL])
     geneProximityD = genomes.createGeneProximityD(geneOrderT,maxGeneProximityForIsland)
-    islandByNodeL=createIslandL(familyT,tree)
+    islandByNodeL=createIslandL(familyL,tree)
 
     focalSubtree = trees.subtree(tree,strainStr2NumD[rootFocalClade])
     focalNodesL=trees.nodeList(focalSubtree)
@@ -274,7 +274,7 @@ def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyT,numThread
     argumentL = []
     for mrcaNode in range(len(islandByNodeL)):
         if mrcaNode in focalNodesL:
-            argumentL.append((islandByNodeL[mrcaNode],geneProximityD,proxThreshL,subtreeL[mrcaNode],familyT))
+            argumentL.append((islandByNodeL[mrcaNode],geneProximityD,proxThreshL,subtreeL[mrcaNode],familyL))
             
     # run it
     p=Pool(numThreads)
