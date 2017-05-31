@@ -1,7 +1,6 @@
 import sys,os
 sys.path.append(os.path.join(sys.path[0],'..'))
-import parameters,genomes,trees,families,scores,islands
-from analysis import
+import parameters,genomes,trees,families,scores,islands,analysis
 
 def islandsOfInterest(minLength):
     longIslands = islandsInStrainLongEnough(minLength)
@@ -39,7 +38,7 @@ def islandsOnChromosome(potentialIslands):
     #loop through each island,if an island is on the correct chromosome,
     #add it to our list of potential islands
     for island in potentialIslands:
-        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
         chromFound = geneInfoD[geneNames.numToName(islandGenesInStrainL[0])][3]
         if (chromFound == chrom): returnIslands.append(island)
     return returnIslands
@@ -53,7 +52,7 @@ def islandsInRange(potentialIslands):
     
     for island in potentialIslands:
         #get the start and end position for the islands
-        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
         if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
             neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
             startPos = min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
