@@ -1,7 +1,7 @@
 import sys,os
 sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genomes,trees,families,scores,islands
-from analysis import *
+from analysis import
 
 def islandsOfInterest(minLength):
     longIslands = islandsInStrainLongEnough(minLength)
@@ -23,11 +23,11 @@ def islandsInStrainLongEnough(minLength):
     #for each island, check that it meets our criteria
     for island in potentialIslands:
 
-        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
         
         #check island's length > minLength
-        if getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
-            neighbGenesL,firstIslandGene,lastIslandGene=getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
+        if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
+            neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
             startPos =min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
             endPos = max(int(geneInfoD[geneNames.numToName(lastIslandGene)][5]),int(geneInfoD[geneNames.numToName(lastIslandGene)][4]))
             #if the island is long enough, add it to our list of potential islands
@@ -54,8 +54,8 @@ def islandsInRange(potentialIslands):
     for island in potentialIslands:
         #get the start and end position for the islands
         islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familyT)
-        if getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
-            neighbGenesL,firstIslandGene,lastIslandGene=getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
+        if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
+            neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
             startPos = min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
             endPos = max(int(geneInfoD[geneNames.numToName(lastIslandGene)][5]),int(geneInfoD[geneNames.numToName(lastIslandGene)][4]))
             islandNode = island.mrca
