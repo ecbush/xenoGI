@@ -5,13 +5,17 @@ import parameters,genomes,trees,families,scores,islands,analysis
 def islandsOfInterest(minLength):
     longIslands = islandsInStrainLongEnough(minLength)
     longOnChrom = islandsOnChromosome(longIslands)
-    longOnChromInRange,overlapList,totalBases,islandsList = islandsInRange(longOnChrom)
+    longOnChromInRange,overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
     overlap = sum(overlapList)
-    print("Islands: ", islandsList)
-    print("overlap: ", overlapList)
-    print("total bases: ", totalBases)
-    print('pecent overlap: ', overlap/totalBases)
-    return longOnChromInRange
+    for rangeIndex in range(0,len(validationRanges)):
+        print("Range:",validationRanges[rangeIndex])
+        print("Coverage:",coveragePerRangeL[rangeIndex])
+        print("Islands:",islandsPerRangeLL[rangeIndex])
+        print("----")
+    print("SUMMARY:")
+    print("Islands per range: ", islandsList)
+    print("Percent overlap: ", overlap/totalBases)
+    print("All islands per range:",islandsPerRangeLL)
 
 def islandsInStrainLongEnough(minLength):
     '''returns a list of the xenoGI islands that are longer than minLength'''
@@ -21,7 +25,6 @@ def islandsInStrainLongEnough(minLength):
     
     #for each island, check that it meets our criteria
     for island in potentialIslands:
-
         islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
         
         #check island's length > minLength
@@ -45,9 +48,11 @@ def islandsOnChromosome(potentialIslands):
 
 def islandsInRange(potentialIslands):
     validationRanges, totalBases=readRanges()
+    islandsPerRangeLL = [[]]*len(validationRanges)
+    coveragePerRangeL = [0]*len(validationRanges)
     returnIslands = []  #holds islands that have any overlap
     overlapList=[] #holds the # of bp that overlap w/ a validation island for each island we check
-    islandsList=[0]*len(validationRanges) #holds the number of xenoGI islands that overlap w/each validation range
+    islandsList=[0]*len(validationRanges) #holds the number of xenoGI islands that overlap w/ each validation range
     nodesLL,uniqueStrains = nodesPerRange()
     
     for island in potentialIslands:
@@ -62,18 +67,19 @@ def islandsInRange(potentialIslands):
             #check that island is in validation range
             inRange,overlap,indices=islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL)
 
-            #if the island overlaps with any validation range, print an array showing which ones
-            #this will be used to see which islands cover multiple ranges
-            if sum(indices)>1: print(island,indices)
+            for index in range(0,len(indices)):
+                if indices[index] is 1: islandsPerRangeLL[index]=islandsPerRangeLL[index]+[island.id]
+
             #update overlap list
             overlapList.append(sum(overlap))
             #update the islandsList so it reflects how many xenoGI islands are in each range
             islandsList=list(map(lambda x,y:x+y, islandsList, indices))
+            coveragePerRangeL=list(map(lambda x,y:x+y, coveragePerRangeL, overlap))
             #add the island to the returnIslands list if it overlaps with any validation range
             if inRange:
                 returnIslands.append(island)
 
-    return returnIslands, overlapList, totalBases, islandsList
+    return returnIslands, overlapList, totalBases, islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL
 
 def islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL):
     '''returns true if the island overlaps with any 
