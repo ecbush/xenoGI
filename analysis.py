@@ -246,7 +246,7 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrde
                 else:
                     tempGeneName = '  '+tempGeneName
 
-                infoL = [tempGeneName,"isl:"+str(tempGeneIsland.id),"fam:"+str(tempFamNum),"mrca:"+strainNum2StrD[tempGeneIsland.mrca],descrip]
+                infoL = [tempGeneName,"isl:"+str(tempGeneIsland.id),"fam:"+str(tempFamNum),"errSc:"+str(familyL[tempFamNum].possibleErrorCt),"mrca:"+strainNum2StrD[tempGeneIsland.mrca],descrip]
 
                 rowsL.append(infoL)
 

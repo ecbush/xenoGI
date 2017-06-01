@@ -78,8 +78,7 @@ connections to this family.'''
         for g1,g2 in externalEdgeL:
             externalPossibleErrors+=isPossibleErrorExternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
 
-        self.internalPossibleErrorCt = internalPossibleErrors
-        self.externalPossibleErrorCt = externalPossibleErrors
+        self.possibleErrorCt = internalPossibleErrors + externalPossibleErrors
 
 
 # Functions to help in calculating possible error count
