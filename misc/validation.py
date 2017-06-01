@@ -2,8 +2,8 @@ import sys,os
 sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genomes,trees,families,scores,islands,analysis
 
-def islandsOfInterest(minLength):
-    longIslands = islandsInStrainLongEnough(minLength)
+def islandsOfInterest(minGenes):
+    longIslands = islandsInStrainLongEnough(minGenes)
     longOnChrom = islandsOnChromosome(longIslands)
     longOnChromInRange,overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
     overlap = sum(overlapList)
@@ -13,11 +13,12 @@ def islandsOfInterest(minLength):
         print("Islands:",islandsPerRangeLL[rangeIndex])
         print("----")
     print("SUMMARY:")
-    print("Islands per range: ", islandsList)
+    print("Ranges:",validationRanges)
+    print("Number of Islands per range: ", islandsList)
     print("Percent overlap: ", overlap/totalBases)
     print("All islands per range:",islandsPerRangeLL)
 
-def islandsInStrainLongEnough(minLength):
+def islandsInStrainLongEnough(minGenes):
     '''returns a list of the xenoGI islands that are longer than minLength'''
     #list of islands in strain, empty list of islands to return
     potentialIslands = islandsOnAllValidationNodes()
@@ -27,13 +28,8 @@ def islandsInStrainLongEnough(minLength):
     for island in potentialIslands:
         islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
         
-        #check island's length > minLength
-        if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
-            neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
-            startPos =min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
-            endPos = max(int(geneInfoD[geneNames.numToName(lastIslandGene)][5]),int(geneInfoD[geneNames.numToName(lastIslandGene)][4]))
-            #if the island is long enough, add it to our list of potential islands
-            if (endPos-startPos)>minLength: returnIslands.append(island)
+        #check island has at least min genes, if so add to list of potential islands
+        if len(islandGenesInStrainL)>=minGenes: returnIslands.append(island)
     return returnIslands
     
 def islandsOnChromosome(potentialIslands):
