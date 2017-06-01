@@ -2,7 +2,7 @@ import sys,os
 sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genomes,trees,families,scores,islands,analysis
 
-def islandsOfInterest(minGenes):
+def islandsOfInterest():
     longIslands = islandsInStrainLongEnough(minGenes)
     longOnChrom = islandsOnChromosome(longIslands)
     longOnChromInRange,overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
@@ -140,6 +140,7 @@ if __name__ == "__main__":
     strainStr = sys.argv[2]
     chrom = sys.argv[3]
     validationFile = sys.argv[4]
+    minGenes = int(sys.argv[5])
 
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
 
@@ -160,3 +161,5 @@ if __name__ == "__main__":
     familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
+
+    islandsOfInterest()
