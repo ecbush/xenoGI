@@ -9,7 +9,7 @@ def islandsOfInterest(minGenes):
     overlap = sum(overlapList)
     for rangeIndex in range(0,len(validationRanges)):
         print("Range:",validationRanges[rangeIndex])
-        print("Coverage:",coveragePerRangeL[rangeIndex])
+        print("Coverage:",coveragePerRangeL[rangeIndex]/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0]))
         print("Islands:",islandsPerRangeLL[rangeIndex])
         print("----")
     print("SUMMARY:")
