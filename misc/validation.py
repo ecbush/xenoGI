@@ -26,7 +26,7 @@ def islandsInStrainLongEnough(minGenes):
     
     #for each island, check that it meets our criteria
     for island in potentialIslands:
-        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyL)
         
         #check island has at least min genes, if so add to list of potential islands
         if len(islandGenesInStrainL)>=minGenes: returnIslands.append(island)
@@ -37,7 +37,7 @@ def islandsOnChromosome(potentialIslands):
     #loop through each island,if an island is on the correct chromosome,
     #add it to our list of potential islands
     for island in potentialIslands:
-        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyL)
         chromFound = geneInfoD[geneNames.numToName(islandGenesInStrainL[0])][3]
         if (chromFound == chrom): returnIslands.append(island)
     return returnIslands
@@ -53,7 +53,7 @@ def islandsInRange(potentialIslands):
     
     for island in potentialIslands:
         #get the start and end position for the islands
-        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyT)
+        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyL)
         if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
             neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
             startPos = min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
@@ -157,6 +157,6 @@ if __name__ == "__main__":
     
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
 
-    familyT = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
