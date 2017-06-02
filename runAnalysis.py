@@ -12,6 +12,8 @@ other required stuff is available at the top level. amilyNum is the
 numerical identifier of a family.
     '''
 
+    print("Family error score (count of possibly misassigned genes):",familyL[familyNum].possibleErrorCt)
+    
     print()
     print("Matrix of raw similarity scores [0,1] between genes in the family")
     printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'rawSc')
