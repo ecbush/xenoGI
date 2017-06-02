@@ -10,7 +10,7 @@ def islandsOfInterest():
     for rangeIndex in range(0,len(validationRanges)):
         print(str(rangeIndex)+".","Range:",validationRanges[rangeIndex])
         covVal = coveragePerRangeL[rangeIndex]/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0])
-        print("Coverage:",format(covVal,,".3f"))
+        print("Coverage:",format(covVal,".3f"))
         print("Islands:",islandsPerRangeLL[rangeIndex])
         print("----")
     print("SUMMARY:")
