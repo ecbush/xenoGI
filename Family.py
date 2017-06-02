@@ -181,19 +181,32 @@ def isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynT
 def isPossibleErrorExternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
     '''Given g1 inside and g2 outside a family, check the various scores
     to determine if it was a near miss, ie almost was put in the
-    family. Returns boolean.
+    family. We consider normSc, synSc, and coreSynSc. We define near
+    miss to be cases when 2/3 of these were above threshold, and the
+    third was below, but within an increment of the threshold
+    (increments provided in famErrorScoreIncrementD). Returns boolean.
     '''
     # get scores
     normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
     synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
     coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
 
+    # w/out increment
+    normB = normSc >= minNormThresh
+    coreSynB = coreSynSc >= minCoreSynThresh
+    synB = synSc >= minSynThresh
+
+    # with increment
+    normIncB = (normSc + famErrorScoreIncrementD['normSc']) >= minNormThresh
+    coreSynIncB = (coreSynSc + famErrorScoreIncrementD['coreSynSc']) >= minCoreSynThresh
+    synIncB = (synSc + famErrorScoreIncrementD['synSc']) >= minSynThresh
     
-    if (normSc + famErrorScoreIncrementD['normSc']) >= minNormThresh:
-        # Was below, but now is over threshold. Is a possible error
+    if coreSynB and synB and not normB and normIncB:
+        # core and syn were over without increment, but norm is only
+        # over once we add the increment
         return True
-    elif (coreSynSc + famErrorScoreIncrementD['coreSynSc']) >= minCoreSynThresh:
+    elif normB and synB and not coreSynB and coreSynIncB:
         return True
-    elif (synSc + famErrorScoreIncrementD['synSc']) >= minSynThresh:
+    elif coreSynB and normB and not synB and synIncB:
         return True
     else: return False
