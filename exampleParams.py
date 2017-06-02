@@ -6,11 +6,11 @@
 # Tree file in newick format. This should have named internal
 # nodes. It does not need to have branch lengths (if it has them, they
 # will be ignored).
-treeFN='testC.tre'
+treeFN='testE.tre'
 
 # The root node of the focal clade we are studying. Everything outside
 # of this will be treated as ougroups (e.g. won't merge islands there).
-rootFocalClade = 'i0'
+rootFocalClade = 'i7'
 
 # unix style file path to genbank gbff files
 genbankFilePath = 'ncbi/*.gbff'
@@ -128,13 +128,6 @@ synAdjustThresh = -2
 # by during this adjustment.
 synAdjustExtent = 1.05
 
-# We count possible errors in a family. This dictionary specifies the
-# increments with which we identify near misses in adding families to
-# genes. If adding or subtracting this amount to a gene's score
-# changes our choice about whether to add it, then we have a near
-# miss, and will count it in our possible error count for the family.
-famErrorScoreIncrementD = {'normSc':0.5, 'synSc':0.05, 'coreSynSc':0.5}
-
 # In deciding whether to merge two islands, we judge partly based on
 # the proximity of their genes. The elements of this list are tuples
 # of the form (proximity threshold, rscore level). For example (1,0)
@@ -147,6 +140,13 @@ proxThreshL = [(1,0),(2,2)]
 
 
 #### Visualization and analysis ####
+
+# We count possible errors in a family. This dictionary specifies the
+# increments with which we identify near misses in adding families to
+# genes. If adding or subtracting this amount to a gene's score
+# changes our choice about whether to add it, then we have a near
+# miss, and will count it in our possible error count for the family.
+famErrorScoreIncrementD = {'normSc':1.0, 'synSc':1.0, 'coreSynSc':0.1}
 
 # Creating gff files of islands for visualization in the IGB browser.
 # We want to display different islands with different colors. We do
