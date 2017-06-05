@@ -35,12 +35,12 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNa
                 fgT = familyL[fam].famGeneT
 
                 for leaf in leafNodesL:
-                    ct,geneT = fgT[leaf]
+                    geneT = fgT[leaf]
 
-                    # if there the family has a gene in this strain,
-                    # add tuple (family,[genes in family]) to list for
-                    # this strain
-                    if ct > 0:
+                    # if the family has a gene or genes in this
+                    # strain, add tuple (family,[genes in family]) to
+                    # list for this strain
+                    if len(geneT) > 0:
                         geneNamesL=[geneNames.numToName(gene) for gene in geneT]
                         tempStrainD[strainNum2StrD[leaf]].append((fam,geneNamesL))
 
