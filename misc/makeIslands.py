@@ -2,7 +2,7 @@ import sys,os
 sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genbank,trees,genomes,scores,families,islands
 
-## Does family making without island making (i.e. the first half of
+## Does island making without family making (i.e. the second half of
 ## what xenoGI.py does).
 
 if __name__ == "__main__":
@@ -23,7 +23,10 @@ if __name__ == "__main__":
     ## read scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
-    ## make gene families
+    ## load gene families
+    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    
+    ## group gene families into islands
     outputSummaryF = open(paramD['outputSummaryFN'],'w')
-    familyL = families.families(tree,subtreeL,geneNames,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
+    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyL,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],outputSummaryF)
     outputSummaryF.close()

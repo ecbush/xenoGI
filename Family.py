@@ -14,10 +14,10 @@ were added but almost weren't, or were not added but almost were.
         self.mrca = mrca
 
         # create the family gene tuple, This has indexes corresponding
-        # to nodes on the tree. At each position we have another tuple
-        # (gene count, (tuple of genes))
+        # to nodes on the tree. At each position we have the genes at
+        # that node.
 
-        familyL = [[0,[]] for j in range(numNodesInTree)]
+        famGeneL = [[] for j in range(numNodesInTree)]
         geneNumL=[]
         for gene in genesL:
             # if we're being passed in genes with string names,
@@ -27,18 +27,22 @@ were added but almost weren't, or were not added but almost were.
             else:
                 geneNum=geneNames.nameToNum(gene)
 
-            geneNumL.append(geneNum)
             strainNum=geneNames.numToStrainNum(geneNum)
-            familyL[strainNum][0]+=1
-            familyL[strainNum][1].append(geneNum)
+            famGeneL[strainNum].append(geneNum)
 
         # tuple-ize
-        newFamilyL=[]
-        for ct,L in familyL:
-            newFamilyL.append((ct,tuple(L)))
+        newFamGeneL=[]
+        for L in famGeneL:
+            newFamGeneL.append(tuple(L))
         
-        self.famGeneT = tuple(newFamilyL)
-        self.geneT = tuple(geneNumL)
+        self.famGeneT = tuple(newFamGeneL)
+
+    def getGeneNums(self):
+        '''Extract and return all the gene numbers from this family.'''
+        genesL=[]
+        for geneT in self.famGeneT:
+            genesL.extend(geneT)
+        return genesL
         
     def __repr__(self):
         '''String representation of a family containing family number.'''
@@ -51,7 +55,7 @@ file. Genes and mrca are expressed in word form.'''
         outL =[str(self.id)]
         outL.append(strainNum2StrD[self.mrca])
 
-        for ct,geneT in self.famGeneT:
+        for geneT in self.famGeneT:
             for gene in geneT:
                 outL.append(geneNames.numToName(gene))
         return "\t".join(outL)
@@ -59,20 +63,21 @@ file. Genes and mrca are expressed in word form.'''
     def getOutsideConnections(self,scoresO):
         '''Given a score object, return a tuple of all outside genes with
 connections to this family.'''
+        allGenesInFamL = self.getGeneNums()
         otherGenesS=set()
-        for geneNum in self.geneT:
+        for geneNum in allGenesInFamL:
             for otherGene in scoresO.getConnectionsGene(geneNum):
-                if not otherGene in self.geneT:
+                if not otherGene in allGenesInFamL:
                     otherGenesS.add(otherGene)
         return tuple(otherGenesS)
     
     def getPossibleErrorCt(self, scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
         '''Given a family, returns the number of near misses internally and externally'''
         internalPossibleErrors,externalPossibleErrors = 0,0
-        allGenesInFam = self.geneT
-        internalEdgeL = makeMSN(allGenesInFam,scoresO)
+        allGenesInFamL = self.getGeneNums()
+        internalEdgeL = makeMSN(allGenesInFamL,scoresO)
         externalGenesTuple=self.getOutsideConnections(scoresO)
-        externalEdgeL = makeExternalEdgeL(externalGenesTuple, allGenesInFam, scoresO)
+        externalEdgeL = makeExternalEdgeL(externalGenesTuple, allGenesInFamL, scoresO)
         for g1,g2 in internalEdgeL:
             internalPossibleErrors+=isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
         for g1,g2 in externalEdgeL:
@@ -82,7 +87,7 @@ connections to this family.'''
 
 
 # Functions to help in calculating possible error count
-        
+
 def makeExternalEdgeL(externalGenesTuple, genesInFam, scoresO):
     '''given a family, returns a list of tuples '''
     returnEdgeL = [0]*len(externalGenesTuple)
@@ -167,7 +172,6 @@ def isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynT
     normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
     synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
     coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
-
     
     if not (normSc - famErrorScoreIncrementD['normSc']) >= minNormThresh:
         # Was over, but now is below threshold. Is a possible error

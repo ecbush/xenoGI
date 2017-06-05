@@ -4,6 +4,49 @@ import trees,genomes
 from Island import *
 from Family import *
 
+## Main function
+
+def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyL,numThreads,strainStr2NumD,strainNum2StrD,rootFocalClade,islandOutFN, outputSummaryF):
+    '''Parallelized wrapper to merge islands at different nodes.'''
+
+    maxGeneProximityForIsland = max([thresh for thresh,rsc in proxThreshL])
+    geneProximityD = genomes.createGeneProximityD(geneOrderT,maxGeneProximityForIsland)
+    islandByNodeL=createIslandL(familyL,tree)
+
+    focalSubtree = trees.subtree(tree,strainStr2NumD[rootFocalClade])
+    focalNodesL=trees.nodeList(focalSubtree)
+    
+
+    ## create argumentL to be passed to p.map and mergeIslandsAtNode
+    argumentL = []
+    for mrcaNode in range(len(islandByNodeL)):
+        if mrcaNode in focalNodesL:
+            argumentL.append((islandByNodeL[mrcaNode],geneProximityD,proxThreshL,subtreeL[mrcaNode],familyL))
+            
+    # run it
+    p=Pool(numThreads)
+    islandByNodeLMerged = p.map(mergeIslandsAtNode, argumentL) 
+
+    # islandByNodeLMerged has all islands from focal clade. Now add in
+    # the single family islands from other nodes
+    for mrcaNode in range(len(islandByNodeL)):
+        if mrcaNode not in focalNodesL: 
+            islandByNodeLMerged.append(islandByNodeL[mrcaNode])
+            
+    print("Merging complete.",file=sys.stderr)
+
+    print("Number of islands per node in focal clade: ",file=outputSummaryF)
+    for islandGroup in islandByNodeLMerged:
+        mrca = islandGroup[0].mrca
+        if mrca in focalNodesL:
+            print("  Node: "+strainNum2StrD[mrca], "Before merge "+str(len(islandByNodeL[mrca])),"After merge: "+str(len(islandGroup)),file=outputSummaryF)
+
+    # write islands
+    writeIslands(islandByNodeLMerged,strainNum2StrD,islandOutFN)
+
+    print("Islands written.",file=sys.stderr)
+
+## Support functions
 
 def createIslandL(familyL,tree):
     '''Greate islands, one family per island. Initially store islands
@@ -30,8 +73,8 @@ def proximity(fam1,fam2,geneProximityD,proximityThreshold,node):
 proximityThreshold of genes at that node for fam2. proximityThreshold
 is measured in genes, e.g. 1 means the adjacent gene.
     '''
-    for gn1 in fam1.famGeneT[node][1]:
-        for gn2 in fam2.famGeneT[node][1]:
+    for gn1 in fam1.famGeneT[node]:
+        for gn2 in fam2.famGeneT[node]:
             if gn1<gn2: key = (gn1,gn2)
             else: key = (gn2,gn1)
             if key in geneProximityD and geneProximityD[key] <= proximityThreshold:
@@ -253,44 +296,3 @@ recreating islandByNodeL.'''
     f.close()
 
     return islandByNodeL
-
-    
-## Main function
-
-def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyL,numThreads,strainStr2NumD,strainNum2StrD,rootFocalClade,islandOutFN, outputSummaryF):
-    '''Parallelized wrapper to merge islands at different nodes.'''
-
-    maxGeneProximityForIsland = max([thresh for thresh,rsc in proxThreshL])
-    geneProximityD = genomes.createGeneProximityD(geneOrderT,maxGeneProximityForIsland)
-    islandByNodeL=createIslandL(familyL,tree)
-
-    focalSubtree = trees.subtree(tree,strainStr2NumD[rootFocalClade])
-    focalNodesL=trees.nodeList(focalSubtree)
-    
-    print("Number of islands per node before merging: ", ' '.join([str(len(x)) for x in islandByNodeL]),file=outputSummaryF)
-
-
-    ## create argumentL to be passed to p.map and mergeIslandsAtNode
-    argumentL = []
-    for mrcaNode in range(len(islandByNodeL)):
-        if mrcaNode in focalNodesL:
-            argumentL.append((islandByNodeL[mrcaNode],geneProximityD,proxThreshL,subtreeL[mrcaNode],familyL))
-            
-    # run it
-    p=Pool(numThreads)
-    islandByNodeLMerged = p.map(mergeIslandsAtNode, argumentL) 
-
-    # islandByNodeLMerged has all islands from focal clade. Now add in
-    # the single family islands from other nodes
-    for mrcaNode in range(len(islandByNodeL)):
-        if mrcaNode not in focalNodesL: 
-            islandByNodeLMerged.append(islandByNodeL[mrcaNode])
-            
-    #print("Did not merge core islands (last entries in islandByNodeL).",file=sys.stderr)
-    print("Merging complete.",file=sys.stderr)
-    print("Number of islands per node after merging: ", ' '.join([str(len(x)) for x in islandByNodeLMerged]),file=outputSummaryF)
-    
-    # write islands
-    writeIslands(islandByNodeLMerged,strainNum2StrD,islandOutFN)
-
-    print("Islands written.",file=sys.stderr)

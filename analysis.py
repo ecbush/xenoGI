@@ -1,5 +1,6 @@
 from Family import *
 from Island import *
+import sys
 import trees,scores,islands
 import matplotlib.pyplot as pyplot
 from matplotlib.backends.backend_pdf import PdfPages
@@ -8,7 +9,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 ## general
 
-def printTable(L,indent=0):
+def printTable(L,indent=0,fileF=sys.stdout):
     '''Given tabular data in a list of lists (where sublists are rows)
 print nicely so columns line up. Indent is an optional number of blank spaces to put in front of each row.'''
     # get max width for each column
@@ -27,7 +28,7 @@ print nicely so columns line up. Indent is an optional number of blank spaces to
             
     for row in L:
         printStr = " "*indent + " | ".join(row)
-        print(printStr.rstrip())
+        print(printStr.rstrip(),file=fileF)
 
 def matchFamilyIsland(geneInfoD,geneNames,gene2FamD,fam2IslandD,searchStr):
     '''Return the island number, family number, and gene name(s)
@@ -60,22 +61,22 @@ are provided by scoresO, and we're extracting the values associated
 with scoreType in the edges of this graph.
     '''
 
-    familyGeneNumsT = familyL[familyNum].geneT
+    familyGeneNumsL = familyL[familyNum].getGeneNums()
     
     rowsL = []
-    geneNamesL = [geneNames.numToName(gn) for gn in familyGeneNumsT]
+    geneNamesL = [geneNames.numToName(gn) for gn in familyGeneNumsL]
     rowsL.append([''] + geneNamesL)
     
-    for rowi,gn1 in enumerate(familyGeneNumsT):
-        row = [geneNames.numToName(familyGeneNumsT[rowi])]
-        for gn2 in familyGeneNumsT:
+    for rowi,gn1 in enumerate(familyGeneNumsL):
+        row = [geneNames.numToName(familyGeneNumsL[rowi])]
+        for gn2 in familyGeneNumsL:
             if scoresO.isEdgePresentByEndNodes(gn1,gn2):
                 row.append(format(scoresO.getScoreByEndNodes(gn1,gn2,scoreType),".3f"))
             else:
                 row.append('-')
         rowsL.append(row)
 
-    printTable(rowsL,2)
+    printTable(rowsL,indent=2)
 
 def printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO):
     '''Given a family, print scores for all non-family members with a
@@ -84,11 +85,10 @@ scoresO.
     '''
 
     family = familyL[familyNum]
-    familyGeneNumsT = family.geneT
     outsideGeneNumsT = family.getOutsideConnections(scoresO)
     
     rowL = []
-    for familyGeneNum in family.geneT:
+    for familyGeneNum in family.getGeneNums():
         familyGeneName = geneNames.numToName(familyGeneNum)
         for outsideGeneNum in outsideGeneNumsT:
             if scoresO.isEdgePresentByEndNodes(familyGeneNum,outsideGeneNum):
@@ -104,7 +104,7 @@ scoresO.
     rowL.insert(0,['Inside fam','Outside fam','Raw','Norm','CoreSyn','Syn'])
                 
     print("Printing all scores with non-family members")
-    printTable(rowL,2)
+    printTable(rowL,indent=2)
 
 
 ## Print all islands at node
@@ -134,7 +134,7 @@ have.
     for ln,occurrences in sorted(lnCtD.items()):
         printL.append([str(ln), str(occurrences)])
 
-    printTable(printL,8)
+    printTable(printL,indent=8)
     
 def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames):
     '''Verbose print of an island.'''
@@ -153,10 +153,10 @@ def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames):
         newRow=[]
         newRow.append(str(fam))
         for node in speciesNodesL:
-            ct,genesL = familyL[fam].famGeneT[node]
-            newRow.append(",".join([geneNames.numToName(gene) for gene in genesL]))
+            geneT = familyL[fam].famGeneT[node]
+            newRow.append(",".join([geneNames.numToName(geneNum) for geneNum in geneT]))
         printL.append(newRow)
-    printTable(printL,4)
+    printTable(printL,indent=4)
 
 
 def vPrintIslands(islandL,subtreeL,familyL,strainNum2StrD,geneNames):
@@ -173,7 +173,7 @@ def createGene2FamD(familyL):
 gene2FamD which maps from gene number to family number.'''
     gene2FamD={}
     for famNum in range(len(familyL)):
-        for gnCt,geneT in familyL[famNum].famGeneT:
+        for geneT in familyL[famNum].famGeneT:
             for gene in geneT:
                 gene2FamD[gene]=famNum
     return gene2FamD
@@ -250,14 +250,14 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrde
 
                 rowsL.append(infoL)
 
-            printTable(rowsL,4)
+            printTable(rowsL,indent=4)
 
 def getIslandGenesInStrain(island,strainNum,familyL):
     '''Given an island, a strain number, and our tuple of family
 objects, return all the genes in the island for that strain.'''
     genesL=[]
     for familyNum in island.familyL:
-        geneT=familyL[familyNum].famGeneT[strainNum][1]
+        geneT=familyL[familyNum].famGeneT[strainNum]
         genesL.extend(geneT)
     return genesL
 
