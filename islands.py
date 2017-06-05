@@ -39,7 +39,7 @@ def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyL,numThread
     for islandGroup in islandByNodeLMerged:
         mrca = islandGroup[0].mrca
         if mrca in focalNodesL:
-            print("  Node: "+strainNum2StrD[mrca], "Before merge "+str(len(islandByNodeL[mrca])),"After merge: "+str(len(islandGroup)),file=outputSummaryF)
+            print("  Node: "+strainNum2StrD[mrca], "Before merge: "+str(len(islandByNodeL[mrca])),"After merge: "+str(len(islandGroup)),file=outputSummaryF)
 
     # write islands
     writeIslands(islandByNodeLMerged,strainNum2StrD,islandOutFN)
