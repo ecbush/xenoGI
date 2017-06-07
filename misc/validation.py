@@ -8,15 +8,14 @@ def islandsOfInterest():
     longOnChromInRange,overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
     overlap = sum(overlapList)
     for rangeIndex in range(0,len(validationRanges)):
-        print(str(rangeIndex+1)+".","Range:",validationRanges[rangeIndex])
-        covVal = coveragePerRangeL[rangeIndex]/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0])
-        print("Coverage:",format(covVal,".3f"))
+        print("Range:",chrom,":",validationRanges[rangeIndex][0],"-",validationRanges[rangeIndex][1])
+        print("Coverage:",coveragePerRangeL[rangeIndex]/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0]))
         print("Islands:",islandsPerRangeLL[rangeIndex])
         print("----")
     print("SUMMARY:")
     print("Ranges:",validationRanges)
     print("Number of Islands per range: ", islandsList)
-    print("Percent overlap: ", format(overlap/totalBases,".3f"))
+    print("Percent overlap: ", overlap/totalBases)
     print("All islands per range:",islandsPerRangeLL)
 
 def islandsInStrainLongEnough(minGenes):
