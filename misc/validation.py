@@ -1,15 +1,15 @@
-import sys,os
+import sys,os,copy
 sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genomes,trees,families,scores,islands,analysis
 
 def islandsOfInterest():
     longIslands = islandsInStrainLongEnough(minGenes)
     longOnChrom = islandsOnChromosome(longIslands)
-    longOnChromInRange,overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
+    overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
     overlap = sum(overlapList)
     for rangeIndex in range(0,len(validationRanges)):
         print(str(rangeIndex+1)+".","Range:",chrom,":",validationRanges[rangeIndex][0],"-",validationRanges[rangeIndex][1])
-        covVal = coveragePerRangeL[rangeIndex]/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0])
+        covVal = (overlapList[rangeIndex])/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0])
         print("Coverage:",format(covVal,".3f"))
         print("Islands:",islandsPerRangeLL[rangeIndex])
         print("----")
@@ -46,8 +46,11 @@ def islandsOnChromosome(potentialIslands):
 def islandsInRange(potentialIslands):
     validationRanges, totalBases=readRanges()
     islandsPerRangeLL = [[]]*len(validationRanges)
-    coveragePerRangeL = [0]*len(validationRanges)
-    returnIslands = []  #holds islands that have any overlap
+    #CoveragePerRangeL holds the start and end possitions of every island in each range
+    coveragePerRangeLL = [[[],[]] for x in range(len(validationRanges))]
+    #finalCoveragePerRangeL holds the total range covered by islands for each validation range
+    finalCoveragePerRangeLL = [[0,0]]*len(validationRanges)
+    returnIslands = []  #holds islands that have any overlap with any island
     overlapList=[] #holds the # of bp that overlap w/ a validation island for each island we check
     islandsList=[0]*len(validationRanges) #holds the number of xenoGI islands that overlap w/ each validation range
     nodesLL,uniqueStrains = nodesPerRange()
@@ -61,35 +64,50 @@ def islandsInRange(potentialIslands):
             endPos = max(int(geneInfoD[geneNames.numToName(lastIslandGene)][5]),int(geneInfoD[geneNames.numToName(lastIslandGene)][4]))
             islandNode = island.mrca
 
-            #check that island is in validation range
+            #check that island is in validation range, if so, add it to the list of islands for that range
+            # and add its start/end positions to coveragePerRangeLL
             inRange,overlap,indices=islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL)
-
             for index in range(0,len(indices)):
-                if indices[index] is 1: islandsPerRangeLL[index]=islandsPerRangeLL[index]+[island.id]
+                if indices[index] is 1:
+                    islandsPerRangeLL[index]=islandsPerRangeLL[index]+[island.id]
+                    coveragePerRangeLL[index][0].append(startPos)
+                    coveragePerRangeLL[index][1].append(endPos)
+                    
 
-            #update overlap list
-            overlapList.append(sum(overlap))
             #update the islandsList so it reflects how many xenoGI islands are in each range
             islandsList=list(map(lambda x,y:x+y, islandsList, indices))
-            coveragePerRangeL=list(map(lambda x,y:x+y, coveragePerRangeL, overlap))
+               
+    
             #add the island to the returnIslands list if it overlaps with any validation range
             if inRange:
                 returnIslands.append(island)
 
-    return returnIslands, overlapList, totalBases, islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL
+    #update overlap list and finalCoveragePerRangeLL based on coveragePerRangeLL
+    for valIndex in range(0,len(validationRanges)):
+        finalCoveragePerRangeLL[valIndex][0] = min(coveragePerRangeLL[valIndex][0])
+        if finalCoveragePerRangeLL[valIndex][0]<validationRanges[valIndex][0]: finalCoveragePerRangeLL[valIndex][0]=validationRanges[valIndex][0]
+        finalCoveragePerRangeLL[valIndex][1] = max(coveragePerRangeLL[valIndex][1])
+        if finalCoveragePerRangeLL[valIndex][1]>validationRanges[valIndex][1]: finalCoveragePerRangeLL[valIndex][1]=validationRanges[valIndex][1]
+
+        overlapList.append(finalCoveragePerRangeLL[valIndex][1] - finalCoveragePerRangeLL[valIndex][0])
+    return overlapList, totalBases, islandsList,validationRanges,islandsPerRangeLL,finalCoveragePerRangeLL
 
 def islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL):
     '''returns true if the island overlaps with any 
     validation ranges and false otherwise'''
-    overlap = [0]*len(validationRanges)
+    overlapLL = [[0,0]]*len(validationRanges)
     indices = [0]*len(validationRanges)
     for index in range(0,len(validationRanges)):
         vRange=validationRanges[index]
         if (islandNode in nodesLL[index]):
-            overlap[index]=min((vRange[1]-vRange[0]),max((endPos-vRange[0]),0))-min((vRange[1]-vRange[0]),max((startPos-vRange[0]),0))
-        if overlap[index]>0: indices[index]=1
-    if sum(overlap)>0: return True, overlap, indices
-    return False, overlap, indices
+            overlapLL[index]=[min(vRange[1],max(vRange[0],startPos)), min(vRange[1],max(vRange[0],endPos))]
+            if overlapLL[index][0] is vRange[1]:
+                overlapLL[index][0]=vRange[0]
+                overlapLL[index][1]=vRange[0]
+        else: overlapLL[index]=[vRange[0],vRange[0]]
+        if (overlapLL[index][1]-overlapLL[index][0])>0: indices[index]=1
+    if sum(indices)>0: return True, overlapLL, indices
+    return False, overlapLL, indices
 
 
 def islandsOnAllValidationNodes():
