@@ -3,13 +3,14 @@ sys.path.append(os.path.join(sys.path[0],'..'))
 import parameters,genomes,trees,families,scores,islands,analysis
 
 def islandsOfInterest():
+    '''using input from the command line, prints out information about xenoGI's findings for the given validation ranges'''
     longIslands = islandsInStrainLongEnough(minGenes)
     longOnChrom = islandsOnChromosome(longIslands)
     overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,coveragePerRangeL = islandsInRange(longOnChrom)
     overlap = sum(overlapList)
     for rangeIndex in range(0,len(validationRanges)):
         print(str(rangeIndex+1)+".","Range:",chrom,":",validationRanges[rangeIndex][0],"-",validationRanges[rangeIndex][1])
-        covVal = (overlapList[rangeIndex])/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0])
+        covVal = (overlapList[rangeIndex])/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0]) #calculate coverage for current range
         print("Coverage:",format(covVal,".3f"))
         print("Islands:",islandsPerRangeLL[rangeIndex])
         print("----")
@@ -34,6 +35,8 @@ def islandsInStrainLongEnough(minGenes):
     return returnIslands
     
 def islandsOnChromosome(potentialIslands):
+    '''of the potential islands passed in, returns a list of the islands on the desired 
+    chromosome'''
     returnIslands = []
     #loop through each island,if an island is on the correct chromosome,
     #add it to our list of potential islands
@@ -44,6 +47,8 @@ def islandsOnChromosome(potentialIslands):
     return returnIslands
 
 def islandsInRange(potentialIslands):
+    '''returns information about the islands in each validation range, including a list of islands in each range,
+    coverage for each range, and values necessary to calculate total coverage'''
     validationRanges, totalBases=readRanges()
     islandsPerRangeLL = [[]]*len(validationRanges)
     #CoveragePerRangeL holds the start and end possitions of every island in each range
@@ -66,7 +71,7 @@ def islandsInRange(potentialIslands):
 
             #check that island is in validation range, if so, add it to the list of islands for that range
             # and add its start/end positions to coveragePerRangeLL
-            inRange,overlap,indices=islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL)
+            inRange,indices=islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL)
             for index in range(0,len(indices)):
                 if indices[index] is 1:
                     islandsPerRangeLL[index]=islandsPerRangeLL[index]+[island.id]
@@ -107,7 +112,7 @@ def islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL):
         else: overlapLL[index]=[vRange[0],vRange[0]]
         if (overlapLL[index][1]-overlapLL[index][0])>0: indices[index]=1
     if sum(indices)>0: return True, overlapLL, indices
-    return False, overlapLL, indices
+    return False, indices
 
 
 def islandsOnAllValidationNodes():
