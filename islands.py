@@ -1,6 +1,6 @@
 import sys
 from multiprocessing import Pool
-import trees,genomes
+import trees,genomes,analysis
 from Island import *
 from Family import *
 
@@ -35,13 +35,9 @@ def makeIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familyL,numThread
             
     print("Merging complete.",file=sys.stderr)
 
-    print("Number of islands per node in focal clade: ",file=outputSummaryF)
-    for islandGroup in islandByNodeLMerged:
-        if islandGroup != []:
-            mrca = islandGroup[0].mrca
-            if mrca in focalNodesL:
-                print("  Node: "+strainNum2StrD[mrca], "Before merge: "+str(len(islandByNodeL[mrca])),"After merge: "+str(len(islandGroup)),file=outputSummaryF)
-
+    # print summary of merging
+    printSummary(islandByNodeLMerged,focalNodesL,strainNum2StrD,islandByNodeL,outputSummaryF)
+    
     # write islands
     writeIslands(islandByNodeLMerged,strainNum2StrD,islandOutFN)
 
@@ -271,6 +267,32 @@ nearby that are separated by 1 gene).
     return islandL
 
 ## Output
+
+def printSummary(islandByNodeLMerged,focalNodesL,strainNum2StrD,islandByNodeL,outputSummaryF):
+    '''Print a summary of the merging saying how many islands there were
+at each node in the focal clade, before and after merging.'''
+
+    focalPrintD = {}
+    for islandGroup in islandByNodeLMerged:
+        if islandGroup != []:
+            mrca = islandGroup[0].mrca
+            if mrca in focalNodesL:
+                focalPrintD[mrca] = [strainNum2StrD[mrca],str(len(islandByNodeL[mrca])),str(len(islandGroup))]
+
+    print("Number of islands per node in focal clade: ",file=outputSummaryF)
+    rowL=[]
+    rowL.append(['Node','Before merge','After merge'])
+    rowL.append(['----','------------','-----------'])
+    for node in focalNodesL:
+        if node in focalPrintD:
+            rowL.append(focalPrintD[node])
+        else:
+            rowL.append([strainNum2StrD[node],'0','0'])
+
+    analysis.printTable(rowL,indent=2,fileF=outputSummaryF)
+
+    return
+
 
 def writeIslands(islandByNodeL,strainNum2StrD,islandOutFN):
     '''Write the islands to a file'''

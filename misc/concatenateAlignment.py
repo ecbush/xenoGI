@@ -1,4 +1,6 @@
-#We assume non-interleaved (i.e. each sequence is on a single line) 
+import sys
+
+# We assume each sequence is on a single line
 
 def concatenateAlign(alignedBlockFile, outputFile):
 	'''Reads a file of aligned genes, and creates a super alignment''' 
@@ -40,3 +42,10 @@ def concatenateAlign(alignedBlockFile, outputFile):
 
 	fOut.close()
 
+
+if __name__ == "__main__":
+
+        alignedBlockFile = sys.argv[1]
+        outputFile = sys.argv[2]
+
+        concatenateAlign(alignedBlockFile, outputFile)

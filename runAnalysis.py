@@ -26,7 +26,7 @@ numerical identifier of a family.
     print()
     print()
     
-    print("Matrix of core synteny scores between genes in the family")
+    print("Matrix of core synteny scores [0,1] between genes in the family")
     printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'coreSynSc')
     print()
     print()
