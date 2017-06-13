@@ -89,6 +89,9 @@ def islandsInRange(potentialIslands):
 
     #update overlap list and finalCoveragePerRangeLL based on coveragePerRangeLL
     for valIndex in range(0,len(validationRanges)):
+        if (len(coveragePerRangeLL[valIndex][0]) is 0):
+            coveragePerRangeLL[valIndex][0]=[validationRanges[valIndex][0]]
+            coveragePerRangeLL[valIndex][1]=[validationRanges[valIndex][0]]
         finalCoveragePerRangeLL[valIndex][0] = min(coveragePerRangeLL[valIndex][0])
         if finalCoveragePerRangeLL[valIndex][0]<validationRanges[valIndex][0]: finalCoveragePerRangeLL[valIndex][0]=validationRanges[valIndex][0]
         finalCoveragePerRangeLL[valIndex][1] = max(coveragePerRangeLL[valIndex][1])
@@ -111,7 +114,7 @@ def islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL):
                 overlapLL[index][1]=vRange[0]
         else: overlapLL[index]=[vRange[0],vRange[0]]
         if (overlapLL[index][1]-overlapLL[index][0])>0: indices[index]=1
-    if sum(indices)>0: return True, overlapLL, indices
+    if sum(indices)>0: return True,indices
     return False, indices
 
 
