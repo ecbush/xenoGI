@@ -282,10 +282,14 @@ def sampler(r, probabilities):
 ####
 
 
-def writeLog(logD,fileName):
-    '''Write the contents of logD, indicating which branch things come from.'''
+def writeLog(tree,strainNum2StrD,logD,fileName):
+    '''Write the contents of logD, indicating which branch things come from. The logD has logs for each branch. The entries withing a branch are in order. However we do need to make sure the branches come in a sensible order (pre-order).'''
+
+    # get list of branches. branch gets name of node it leads to
+    branchL = [strainNum2StrD[brNum] for brNum in trees.nodeList(tree)] 
+
     f = open(fileName,'w')
-    for branch in logD.keys():
+    for branch in branchL:
         L=logD[branch]
         if L != []:
             # skip branches where nothing happened
@@ -341,5 +345,5 @@ if __name__ == "__main__":
         os.mkdir(fastaDir)
     
 
-    writeLog(eventLogD,paramD['logFile'])
+    writeLog(tree,strainNum2StrD,eventLogD,paramD['logFile'])
     writeTipSeqs(tipGenomesL,strainNum2StrD,fastaDir)
