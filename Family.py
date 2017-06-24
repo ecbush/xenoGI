@@ -43,7 +43,14 @@ were added but almost weren't, or were not added but almost were.
         for geneT in self.famGeneT:
             genesL.extend(geneT)
         return genesL
-        
+
+    def getGeneNames(self,geneNames):
+        '''Extract and return all the gene names from this family.'''
+        genesL=[]
+        for num in self.getGeneNums():
+            genesL.append(geneNames.numToName(num))
+        return genesL
+            
     def __repr__(self):
         '''String representation of a family containing family number.'''
         return "<Family: "+str(self.id) + ">"
@@ -54,10 +61,7 @@ file. Genes and mrca are expressed in word form.'''
 
         outL =[str(self.id)]
         outL.append(strainNum2StrD[self.mrca])
-
-        for geneT in self.famGeneT:
-            for gene in geneT:
-                outL.append(geneNames.numToName(gene))
+        outL.extend(self.getGeneNames(geneNames))
         return "\t".join(outL)
 
     def getOutsideConnections(self,scoresO):

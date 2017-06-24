@@ -208,7 +208,7 @@ def randomSeqs(paramD,aaFreq,geneCounter):
 gene numbers and put in geneL.'''
     geneL = []
     seqL = []
-    for i in range(paramD['geneNumber']):
+    for i in range(paramD['initialGeneNumber']):
         geneL.append(geneCounter)
         geneCounter += 1
         seqLen = random.choice(range(paramD['minSeqLen'],paramD['maxSeqLen']))
@@ -283,7 +283,10 @@ def sampler(r, probabilities):
 
 
 def writeLog(tree,strainNum2StrD,logD,fileName):
-    '''Write the contents of logD, indicating which branch things come from. The logD has logs for each branch. The entries withing a branch are in order. However we do need to make sure the branches come in a sensible order (pre-order).'''
+    '''Write the contents of logD, indicating which branch things come
+from. The logD has logs for each branch. The entries withing a branch
+are in order. However we do need to make sure the branches come in a
+sensible order (pre-order).'''
 
     # get list of branches. branch gets name of node it leads to
     branchL = [strainNum2StrD[brNum] for brNum in trees.nodeList(tree)] 
