@@ -122,17 +122,20 @@ def createSimIslandGeneSetByNodeL(logT,tree,geneEventD,strainNum2StrD):
 
 ## xgi side
 
-def createXgiIslandGeneSetByNodeL(tree,geneNames,xgiIslandByNodeL,familyL):
+def createXgiIslandGeneSetByNodeL(tree,geneNames,xgiIslandByNodeL,familyL,minIslandLen):
     '''Given a list with the xgi islands organized by node, return another
 list organized by node where the elements are sets, each set
-containing all the genes for a given xgi island.'''
+containing all the genes for a given xgi island. We only consider xgi
+islands that have at least minIslandLen families in them.
+    '''
 
     xgiIslandGeneSetByNodeL = [[] for i in range(trees.nodeCount(tree))]
 
     for node in range(trees.nodeCount(tree)):
         for islandO in xgiIslandByNodeL[node]:
-            islandGeneS = createXgiIslandGeneSet(islandO,familyL,geneNames)
-            xgiIslandGeneSetByNodeL[node].append(islandGeneS)
+            if len(islandO.familyL) >= minIslandLen:
+                islandGeneS = createXgiIslandGeneSet(islandO,familyL,geneNames)
+                xgiIslandGeneSetByNodeL[node].append(islandGeneS)
 
     return xgiIslandGeneSetByNodeL
 
@@ -248,6 +251,9 @@ if __name__ == "__main__":
     xgiParamFN=sys.argv[2]
     xgiParamD = parameters.loadParametersD(xgiParamFN)
 
+    minIslandLen = 2 # min number of families that must be in an xgi
+                     # island to count
+    
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(simParamD['treeFN'])
     geneNames = genomes.geneNames(xgiParamD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
 
@@ -266,7 +272,7 @@ if __name__ == "__main__":
     xgiIslandByNodeL=islands.readIslands(xgiParamD['islandOutFN'],tree,strainStr2NumD)
 
     # get sets of genes for each island
-    xgiIslandGeneSetByNodeL = createXgiIslandGeneSetByNodeL(tree,geneNames,xgiIslandByNodeL,familyL)
+    xgiIslandGeneSetByNodeL = createXgiIslandGeneSetByNodeL(tree,geneNames,xgiIslandByNodeL,familyL,minIslandLen)
 
     focalSubtree=trees.subtree(tree,strainStr2NumD[xgiParamD['rootFocalClade']])
     validation(simIslandGeneSetByNodeL,xgiIslandGeneSetByNodeL,strainNum2StrD,focalSubtree)
