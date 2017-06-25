@@ -121,9 +121,9 @@ below minSynThresh.
     for otherGene in scoresO.getConnectionsGene(gene):
         if otherGene in S:
             if scoresO.getScoreByEndNodes(gene,otherGene,'rawSc') > bestEdgeScore:
-                if scoresO.getScoreByEndNodes(gene,otherGene,'normSc') > minNormThresh:
-                    if scoresO.getScoreByEndNodes(gene,otherGene,'coreSynSc') > minCoreSynThresh:
-                        if scoresO.getScoreByEndNodes(gene,otherGene,'synSc') > minSynThresh:
+                if scoresO.getScoreByEndNodes(gene,otherGene,'normSc') >= minNormThresh:
+                    if scoresO.getScoreByEndNodes(gene,otherGene,'coreSynSc') >= minCoreSynThresh:
+                        if scoresO.getScoreByEndNodes(gene,otherGene,'synSc') >= minSynThresh:
                             bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
                             bestGene = otherGene
     return bestEdgeScore, gene, bestGene

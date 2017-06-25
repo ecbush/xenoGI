@@ -151,62 +151,93 @@ def validation(simIslandGeneSetByNodeL,xgiIslandGeneSetByNodeL,strainNum2StrD,fo
     '''Calculate FDR and TP rate for xenoGI reconstructing islands. For
 each simulation island, pick the single best xenoGI island and use
 that.'''
-    rowL=[]
-    rowL.append(['Node','True pos rate','Pos pred val'])
-    rowL.append(['----','-------------','------------'])
-    for node in range(trees.nodeCount(focalSubtree)):
-        numAllSim,numAllXgi,numMatch=countSimXgiGenesOverlaps(simIslandGeneSetByNodeL[node],xgiIslandGeneSetByNodeL[node])
-        #print(node,numAllSim,numAllXgi,numMatch)
-        tpr = format(numMatch/numAllSim,".3f") if numAllSim>0 else "None"
-        ppv = format(numMatch/numAllXgi,".3f") if numAllSim>0 else "None"
-        rowL.append([strainNum2StrD[node],tpr,ppv])
-        #print("Node",strainNum2StrD[node],"TPR:",tpr,"PPV:",ppv)
 
+    leafL = trees.leafList(focalSubtree)
+    
+    totAllSim,tipAllSim,internalAllSim=0,0,0
+    totAllXgi,tipAllXgi,internalAllXgi=0,0,0
+    totMatch,tipMatch,internalMatch=0,0,0
+    totExactOverlapCt,tipExactOverlapCt,internalExactOverlapCt=0,0,0
+    totSimIslands,tipSimIslands,internalSimIslands=0,0,0
+    rowL=[]
+    rowL.append(['Node','True pos rate','Pos pred val', 'Prop exact overlap'])
+    rowL.append(['----','-------------','------------', '-------------------'])
+    tempRowL=[]
+    for node in range(trees.nodeCount(focalSubtree)):
+        numAllSim,numAllXgi,numMatch,exactOverlapCt=countSimXgiGenesOverlaps(simIslandGeneSetByNodeL[node],xgiIslandGeneSetByNodeL[node])
+
+        totAllSim+=numAllSim
+        totAllXgi+=numAllXgi
+        totMatch+=numMatch
+        totExactOverlapCt+=exactOverlapCt
+        totSimIslands += len(simIslandGeneSetByNodeL[node])
+
+        if node in leafL:
+            tipAllSim+=numAllSim
+            tipAllXgi+=numAllXgi
+            tipMatch+=numMatch
+            tipExactOverlapCt+=exactOverlapCt
+            tipSimIslands += len(simIslandGeneSetByNodeL[node])
+        else:
+            internalAllSim+=numAllSim
+            internalAllXgi+=numAllXgi
+            internalMatch+=numMatch
+            internalExactOverlapCt+=exactOverlapCt
+            internalSimIslands += len(simIslandGeneSetByNodeL[node])
+            
+        addRow(tempRowL,strainNum2StrD[node],numAllSim,numAllXgi,numMatch,exactOverlapCt,len(simIslandGeneSetByNodeL[node]))
+
+    addRow(rowL,"All nodes",totAllSim,totAllXgi,totMatch,totExactOverlapCt,totSimIslands)
+    addRow(rowL,"Tip nodes",tipAllSim,tipAllXgi,tipMatch,tipExactOverlapCt,tipSimIslands)
+    addRow(rowL,"Int nodes",internalAllSim,internalAllXgi,internalMatch,internalExactOverlapCt,internalSimIslands)
+    rowL.append(['    ','             ','            ','                   '])
+    rowL.extend(tempRowL)
     analysis.printTable(rowL,indent=2,fileF=sys.stdout)
-        
+
 def countSimXgiGenesOverlaps(simSL,xgiSL):
     '''Given a list of gene sets corresponding to the simulation islands
 (at a node) and a similar list from xenoGI, count the total number of
-sim genes, xgi genes, and overlapping genes. We pick a single xgi
-island to match with each sim island. Returns total num sim genes,
-total num xgi genes, total num overlap genes.
+sim genes, xgi genes, and overlapping genes. Returns total num sim
+genes, total num xgi genes, total num overlap genes (this allows more
+than one xgi island to be counted), and the count of sim islands with
+exactly one xgi island matching.
+
     '''
 
-    simSLCopy = copy.deepcopy(simSL) # make copies so we don't make
-    xgiSLCopy = copy.deepcopy(xgiSL) # permanent changes when we
-                                     # delete things
 
     # get all genes of each type
     allSimGenesS=set()
-    for S in simSLCopy:
+    for S in simSL:
         allSimGenesS.update(S)
 
     allXgiGenesS=set()
-    for S in xgiSLCopy:
+    for S in xgiSL:
         allXgiGenesS.update(S)
+
+    matchS = allSimGenesS.intersection(allXgiGenesS)
         
-    # get overlaps
-    matchS=set()
-    for simS in simSLCopy:
-        bestInd,bestS=bestMatch(simS,xgiSLCopy)
-        matchS.update(bestS)
-        if bestInd != None:
-            del xgiSLCopy[bestInd]
-
-    return len(allSimGenesS),len(allXgiGenesS),len(matchS)
-
-def bestMatch(simS,xgiSL):
-    '''Given a set from a simulation, find the single set in xgiSL that
-has the most matching genes.'''
-    bestS=set()
-    bestInd=None
-    for i,xgiS in enumerate(xgiSL):
-        I = simS.intersection(xgiS)
-        if len(I) > len(bestS):
-            bestS=I
-            bestInd=i
-    return bestInd,bestS
+    # get prop sim islands with exactly 1 overlap among xgi islands
+    exactlyOneOverlapCt = 0
+    for simS in simSL:
+        numOverlap=0
+        for xgiS in xgiSL:
+            if len(simS.intersection(xgiS)) > 0:
+                numOverlap +=1
+        if numOverlap == 1:
+            exactlyOneOverlapCt += 1
             
+    return len(allSimGenesS),len(allXgiGenesS),len(matchS),exactlyOneOverlapCt
+    
+def addRow(rowL,nodeStr,allSim,allXgi,match,exactOverlapCt,numSimIslands):
+    '''Add a row to rowL with true positive rate and positive predictive
+value. Returns None.'''
+
+    tpr = format(match/allSim,".3f") if allSim>0 else "None"
+    ppv = format(match/allXgi,".3f") if allXgi>0 else "None"
+    prop = format(exactOverlapCt / numSimIslands,".3f") if numSimIslands>0 else "None"
+    rowL.append([nodeStr,tpr,ppv,prop])
+
+
 ## main
 
 if __name__ == "__main__":

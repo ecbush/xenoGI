@@ -102,7 +102,11 @@ numSynToTake = 3
 coreSynWsize = 20
 
 # Threshold for the core gene synteny score required for family
-# formation. (These scores range from 0 to 1).
+# formation. (These scores range from 0 to 1). Note that if this is
+# set to higher than 0.5, then there will need to be at least one core
+# gene on both sides. This would mean that things at the end of a
+# contig won't get added to families because they lack a common core
+# gene on that side.
 minCoreSynThresh = 0.5
 
 # Minimum normalized score for family formation. This should be used
