@@ -88,7 +88,6 @@ def islandsInRange(potentialIslands):
 
     #update overlap list and finalCoveragePerRangeLL based on coveragePerRangeLL
     overlapList,extra=overlapHelper(coveragePerRangeLL,validationRanges)
-    print("overlap list", overlapList, "extra", extra)
     return overlapList, totalBases, islandsList,validationRanges,islandsPerRangeLL,extra
 
 def overlapHelper(coveragePerRangeLL, valRanges):
@@ -104,7 +103,6 @@ def overlapHelper(coveragePerRangeLL, valRanges):
                 #reset that point to be the valRange start or end
                 islandStart = max(coveragePerRangeLL[valIndex][0][islandIndex],valRanges[valIndex][0])-valRanges[valIndex][0]
                 islandEnd = min(coveragePerRangeLL[valIndex][1][islandIndex],valRanges[valIndex][1])-valRanges[valIndex][0]
-                print(islandStart,islandEnd, len(basesCoveredL))
                 for i in range(islandStart,islandEnd): basesCoveredL[i]=True
             overlap[valIndex]=basesCoveredL.count(True)
             extra[valIndex]=(valRanges[valIndex][0]-min(coveragePerRangeLL[valIndex][0]+[valRanges[valIndex][0]]))+(max(coveragePerRangeLL[valIndex][1]+[valRanges[valIndex][1]])-valRanges[valIndex][1])
