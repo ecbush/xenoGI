@@ -163,8 +163,8 @@ that.'''
     totExactOverlapCt,tipExactOverlapCt,internalExactOverlapCt=0,0,0
     totSimIslands,tipSimIslands,internalSimIslands=0,0,0
     rowL=[]
-    rowL.append(['Node','True pos rate','Pos pred val', 'Prop exact overlap'])
-    rowL.append(['----','-------------','------------', '-------------------'])
+    rowL.append(['Node','True pos rate','Pos pred val', 'Prop exact 1 overlap'])
+    rowL.append(['----','-------------','------------', '--------------------'])
     tempRowL=[]
     for node in range(trees.nodeCount(focalSubtree)):
         numAllSim,numAllXgi,numMatch,exactOverlapCt=countSimXgiGenesOverlaps(simIslandGeneSetByNodeL[node],xgiIslandGeneSetByNodeL[node])
@@ -193,7 +193,7 @@ that.'''
     addRow(rowL,"All nodes",totAllSim,totAllXgi,totMatch,totExactOverlapCt,totSimIslands)
     addRow(rowL,"Tip nodes",tipAllSim,tipAllXgi,tipMatch,tipExactOverlapCt,tipSimIslands)
     addRow(rowL,"Int nodes",internalAllSim,internalAllXgi,internalMatch,internalExactOverlapCt,internalSimIslands)
-    rowL.append(['    ','             ','            ','                   '])
+    rowL.append(['    ','             ','            ','                    '])
     rowL.extend(tempRowL)
     analysis.printTable(rowL,indent=2,fileF=sys.stdout)
 

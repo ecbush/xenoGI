@@ -15,21 +15,21 @@ step = .0006 # the amount of branch length in a single step. A step is our discr
 ## the probability of an event does not depend on the number of genes.
 ## Note that we want del to cancel dup + hgt
 
-delProb = 0.8
+delProb = 0.7
 minDel = 1
-maxDel = 10
+maxDel = 50
 
-dupProb = 0.2
+dupProb = 0.35
 minDup = 1
-maxDup = 10
+maxDup = 48
 
 invProb = 0.1
-minInv = 100
-maxInv = 500
+minInv = 5
+maxInv = 150
 
-hgtProb = 0.6
-minHgt = 1
-maxHgt = 10
+hgtProb = 0.35
+minHgt = 2
+maxHgt = 51
 
 
 ## Sequence level evolution
@@ -40,9 +40,9 @@ maxHgt = 10
 
 model = "WAG" # used in pyvolve Markov model
 
-smallIndelProb = 0 #0.003 # per gene per step
+smallIndelProb = 0.00000015 # per gene per step
 minIndel = 1 # min and max indel size in aa
-maxIndel = 5
+maxIndel = 4
 
 ## Output files
 
