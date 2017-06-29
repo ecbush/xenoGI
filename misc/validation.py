@@ -5,20 +5,21 @@ import parameters,genomes,trees,families,scores,islands,analysis
 def islandsOfInterest():
     '''using input from the command line, prints out information about xenoGI's findings for the given validation ranges'''
     longIslands = islandsInStrainLongEnough(minGenes)
-    longOnChrom = islandsOnChromosome(longIslands)
-    overlapList,totalBases,islandsList,validationRanges,islandsPerRangeLL,extra= islandsInRange(longOnChrom)
+    longOnChromD = islandsOnChromosome(longIslands)
+    overlapList,islandsList,islandsPerRangeLL,extra= islandsInRange(longOnChromD)
     overlap = sum(overlapList)
-    for rangeIndex in range(0,len(validationRanges)):
-        print(str(rangeIndex+1)+".","Range:",chrom,":",validationRanges[rangeIndex][0],"-",validationRanges[rangeIndex][1])
-        covVal = (overlapList[rangeIndex])/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0]) #calculate coverage for current range
-        extraVal = (extra[rangeIndex])/(validationRanges[rangeIndex][1]-validationRanges[rangeIndex][0]) #calculate percentage of extra coverage for current range
+    for valRangeIndex in range(len(allValRanges)):
+        print(str(valRangeIndex+1)+".","Range:",chromsL[valRangeIndex],":",allValRanges[valRangeIndex][0],"-",allValRanges[valRangeIndex][1])
+        covVal = (overlapList[valRangeIndex])/(allValRanges[valRangeIndex][1]-allValRanges[valRangeIndex][0]) #calculate coverage for current range
+        extraVal = (extra[valRangeIndex])/(allValRanges[valRangeIndex][1]-allValRanges[valRangeIndex][0]) #calculate percentage of extra coverage for current range
         print("Coverage:",format(covVal,".3f"))
         print("Extra Coverage:",format(extraVal,".3f"))
-        print("Islands:",islandsPerRangeLL[rangeIndex])
+        print("Islands:",islandsPerRangeLL[valRangeIndex])
         print("----")
     print("SUMMARY:")
-    print("Ranges:",validationRanges)
+    print("Ranges:",allValRanges)
     print("Number of Islands per range: ", islandsList)
+    print("Prop. ranges with 1 island: ",format(islandsList.count(1)/len(islandsList),".3f"))
     print("Percent overlap: ", format(overlap/totalBases,".3f"))
     print("All islands per range:",islandsPerRangeLL)
 
@@ -39,56 +40,62 @@ def islandsInStrainLongEnough(minGenes):
 def islandsOnChromosome(potentialIslands):
     '''of the potential islands passed in, returns a list of the islands on the desired 
     chromosome'''
-    returnIslands = []
+    returnIslandsD = {}
     #loop through each island,if an island is on the correct chromosome,
     #add it to our list of potential islands
     for island in potentialIslands:
         islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyL)
         chromFound = geneInfoD[geneNames.numToName(islandGenesInStrainL[0])][3]
-        if (chromFound == chrom): returnIslands.append(island)
-    return returnIslands
+        if chromFound in chromsL:
+            if chromFound in returnIslandsD: returnIslandsD[chromFound].append(island)
+            else: returnIslandsD[chromFound] = [island]
+    return returnIslandsD
 
-def islandsInRange(potentialIslands):
+def islandsInRange(potentialIslandsD):
     '''returns information about the islands in each validation range, including a list of islands in each range,
     coverage for each range, and values necessary to calculate total coverage'''
-    validationRanges, totalBases=readRanges()
-    islandsPerRangeLL = [[]]*len(validationRanges)
+    islandsPerRangeLL = [[]]*len(allValRanges)
     #CoveragePerRangeL holds the start and end possitions of every island in each range
-    coveragePerRangeLL = [[[],[]] for x in range(len(validationRanges))]
+    coveragePerRangeLL = [[[],[]] for x in range(len(allValRanges))]
     returnIslands = []  #holds islands that have any overlap with any island
-    islandsList=[0]*len(validationRanges) #holds the number of xenoGI islands that overlap w/ each validation range
-    nodesLL,uniqueStrains = nodesPerRange()
-    
-    for island in potentialIslands:
-        #get the start and end position for the islands
-        islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyL)
-        if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
-            neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
-            startPos = min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
-            endPos = max(int(geneInfoD[geneNames.numToName(lastIslandGene)][5]),int(geneInfoD[geneNames.numToName(lastIslandGene)][4]))
-            islandNode = island.mrca
+    islandsList=[0]*len(allValRanges) #holds the number of xenoGI islands that overlap w/ each validation range
 
-            #check that island is in validation range, if so, add it to the list of islands for that range
-            # and add its start/end positions to coveragePerRangeLL
-            inRange,indices=islandInRange(validationRanges, startPos, endPos, islandNode, nodesLL)
-            for index in range(0,len(indices)):
-                if indices[index] is 1:
-                    islandsPerRangeLL[index]=islandsPerRangeLL[index]+[island.id]
-                    coveragePerRangeLL[index][0].append(startPos)
-                    coveragePerRangeLL[index][1].append(endPos)
-                    
+    for chrom,islandsL in potentialIslandsD.items():
+        validationRangesForCurrChrom = []
+        fillerRange = [0,0]
+        for index in range(len(chromsL)):
+            if chromsL[index]==chrom: validationRangesForCurrChrom.append(allValRanges[index])
+            else:validationRangesForCurrChrom.append(fillerRange)
+        for island in islandsL:
+            #get the start and end position for the islands
+            islandGenesInStrainL = analysis.getIslandGenesInStrain(island,strainNum,familyL)
+            if analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0) is not None:
+                neighbGenesL,firstIslandGene,lastIslandGene=analysis.getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,0)
+                startPos = min(int(geneInfoD[geneNames.numToName(firstIslandGene)][4]), int(geneInfoD[geneNames.numToName(firstIslandGene)][5]))
+                endPos = max(int(geneInfoD[geneNames.numToName(lastIslandGene)][5]),int(geneInfoD[geneNames.numToName(lastIslandGene)][4]))
+                islandNode = island.mrca
 
-            #update the islandsList so it reflects how many xenoGI islands are in each range
-            islandsList=list(map(lambda x,y:x+y, islandsList, indices))
-               
-    
-            #add the island to the returnIslands list if it overlaps with any validation range
-            if inRange:
-                returnIslands.append(island)
+                #check that island is in validation range, if so, add it to the list of islands for that range
+                # and add its start/end positions to coveragePerRangeLL
+                inRange,indices=islandInRange(validationRangesForCurrChrom, startPos, endPos, islandNode, nodesLL)
+                for index in range(0,len(indices)):
+                    if indices[index] is 1:
+                        islandsPerRangeLL[index]=islandsPerRangeLL[index]+[island.id]
+                        coveragePerRangeLL[index][0].append(startPos)
+                        coveragePerRangeLL[index][1].append(endPos)
+
+
+                #update the islandsList so it reflects how many xenoGI islands are in each range
+                islandsList=list(map(lambda x,y:x+y, islandsList, indices))
+
+
+                #add the island to the returnIslands list if it overlaps with any validation range
+                if inRange:
+                    returnIslands.append(island)
 
     #update overlap list and finalCoveragePerRangeLL based on coveragePerRangeLL
-    overlapList,extra=overlapHelper(coveragePerRangeLL,validationRanges)
-    return overlapList, totalBases, islandsList,validationRanges,islandsPerRangeLL,extra
+    overlapList,extra=overlapHelper(coveragePerRangeLL,allValRanges)
+    return overlapList,islandsList,islandsPerRangeLL,extra
 
 def overlapHelper(coveragePerRangeLL, valRanges):
     '''returns the number of bps covered for each validation range in a list and a the number of bps extra covered for each validation range'''
@@ -138,18 +145,22 @@ def islandsOnAllValidationNodes():
 def readRanges():
     '''Read a file with start end ranges separated by tabs, and return list of lists.'''
     totalBases = 0
+    chromsL = []
+    allValRanges = []
     f=open(validationFile,'r')
-    outLL = []
     while True:
         s=f.readline()
         if s == "":
             break
+
+        chrom = s.split('\t')[0]
+        chromsL.append(chrom)
         L=[]
-        for elem in s.split('\t')[1:3]:
+        for elem in s.split('\t')[2:4]:
             L.append(int(elem))
         totalBases += (L[1]-L[0])
-        outLL.append(L)
-    return outLL, totalBases
+        allValRanges.append(L)
+    return totalBases, chromsL, allValRanges
 
 def nodesPerRange():
     '''read a tab-separated file where the 3rd element of each line
@@ -162,7 +173,7 @@ def nodesPerRange():
         if s == "":
             break
         nodes = []
-        for strain in s.split('\t')[0].split(','):
+        for strain in s.split('\t')[1].split(','):
             nodes.append(int(strainStr2NumD[strain]))
             if strain not in uniqueStrains: uniqueStrains.append(strain)
         nodesLL.append(nodes)
@@ -174,9 +185,8 @@ if __name__ == "__main__":
     paramFN=sys.argv[1]
     paramD = parameters.loadParametersD(paramFN)
     strainStr = sys.argv[2]
-    chrom = sys.argv[3]
-    validationFile = sys.argv[4]
-    minGenes = int(sys.argv[5])
+    validationFile = sys.argv[3]
+    minGenes = int(sys.argv[4])
 
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
 
@@ -197,5 +207,8 @@ if __name__ == "__main__":
     familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
+
+    totalBases, chromsL, allValRanges = readRanges()
+    nodesLL,uniqueStrains = nodesPerRange()
 
     islandsOfInterest()
