@@ -92,7 +92,21 @@ return its chrom,start,end.
     islandMedianMidpoint = statistics.median(geneMidpointL)
     
     return chrom,islandMedianMidpoint,islandMin,islandMax
-    
+
+def orderedIslandsInStrain(strainName):
+    '''returns a list of all the islands in the strain given, in the order they appear'''
+    islandsInStrainL = islandByStrainD[strainName]
+    chromStartIslandLL = []
+    #for each island in the strain, order first by chromosome and then by island start pos
+    for islandT in islandsInStrainL:
+        chrom,_,start,_,_,islandNum,familyL=islandT
+        chromStartIslandLL.append([chrom,start,islandT])
+    sortedChromStartIslandLL = sorted(chromStartIslandLL)
+    #make an ordered list of just the islands without the other information
+    sortedIslandsL = [x[2] for x in sortedChromStartIslandLL]
+    return sortedIslandsL
+
+
 def islandToGff(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter):
     '''Given a islandT (the values of islandByStrainD are lists of these)
 convert into a string suitable for writing in a gff file. Return
@@ -133,7 +147,8 @@ def writeStrainGff(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,gffFileN
     counter=0
     f=open(gffFileName,'w')
     f.write('##gff-version 3\n')
-    for islandT in islandByStrainD[strain]:
+    orderedIslandsInStrainL = orderedIslandsInStrain(strain)
+    for islandT in orderedIslandsInStrainL:
         gffStr = islandToGff(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,potentialScoresL,counter)
         f.write(gffStr+'\n')
         counter+=1
