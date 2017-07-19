@@ -213,7 +213,7 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD):
 
             #for all islands except the first one, see if the previous island is the same
             #color. if so, pick the next color and increment the counter
-            if islandIndex != 0:
+            if (islandIndex != 0) and (strainNum2StrD[mrcaNum] not in scoreNodeMapD):
                 if islandColorD[str(islandNum)] is islandColorD[str(prevIslandNum)]:
                     score = str(potentialRgbL[counter%len(potentialRgbL)])
                     islandColorD[str(islandNum)]=str(score)
