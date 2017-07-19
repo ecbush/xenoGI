@@ -129,10 +129,9 @@ we've done already.
             else:
                 Name=gene
 
-            escapedDescrip = parse.quote(descrip) # escape some characters
-            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+islandID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+escapedDescrip
+            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+islandID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip
             
-            bedL.append('\t'.join([chrom,start,end,Name,'0','+',start,start,score,'1',str(int(end)-int(start)),'0',gene,attributes]))
+            bedL.append('\t'.join([chrom,start,end,Name,'0',str(strand),start,start,score,'1',str(int(end)-int(start)),'0',gene,attributes]))
 
     bedStr = '\n'.join(bedL)
     return bedStr
