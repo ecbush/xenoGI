@@ -156,7 +156,6 @@ def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scor
 
     bedExtension = bedFilePath.split("*")[1]
     minIslandsMiscolored = 1000
-    numTries = 100
     strainL = list(islandByStrainD.keys())
     for i in range(0,numTries):
         random.shuffle(strainL)
@@ -204,19 +203,20 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD):
             # create score for coloring islands
             if strainNum2StrD[mrcaNum] in scoreNodeMapD:
                 score = '0,0,0'
+                islandColorD[islandNum]=str(score)
             elif str(islandNum) in islandColorD:
                 score = str(islandColorD[str(islandNum)])
             else:
                 score = str(potentialRgbL[counter%len(potentialRgbL)])
-                islandColorD[str(islandNum)]=str(score)
+                islandColorD[islandNum]=str(score)
                 counter += 1
 
             #for all islands except the first one, see if the previous island is the same
             #color. if so, pick the next color and increment the counter
             if (islandIndex != 0) and (strainNum2StrD[mrcaNum] not in scoreNodeMapD):
-                if islandColorD[str(islandNum)] is islandColorD[str(prevIslandNum)]:
+                if islandColorD[islandNum] is islandColorD[prevIslandNum]:
                     score = str(potentialRgbL[counter%len(potentialRgbL)])
-                    islandColorD[str(islandNum)]=str(score)
+                    islandColorD[islandNum]=str(score)
                     counter += 1
 
     numberOfIslandsMiscolored = islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD)
@@ -226,6 +226,7 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD):
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
+    numTries = sys.argv[2]
     paramD = parameters.loadParametersD(paramFN)
 
     ## load data structures we'll use below
