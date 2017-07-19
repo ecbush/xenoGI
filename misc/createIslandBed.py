@@ -226,7 +226,7 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD):
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    numTries = sys.argv[2]
+    numTries = int(sys.argv[2])
     paramD = parameters.loadParametersD(paramFN)
 
     ## load data structures we'll use below
