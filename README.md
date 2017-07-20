@@ -34,7 +34,7 @@ We work with a set of species with known phylogenetic relationships. In the exam
 - Naming of genbank files.
    The system needs a way to connect the sequence files to the names used in the tree.
 
-   In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. In params.py the parameter fileNameMapFN is set to point to this file.
+   In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes ("-"). In params.py the parameter fileNameMapFN is set to point to this file.
 
    Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set fileNameMapFN = None in params.py. (This is not necessary in the example, which is already set to run the other way).
 
