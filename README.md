@@ -34,7 +34,7 @@ We work with a set of species with known phylogenetic relationships. In the exam
 - Naming of genbank files.
    The system needs a way to connect the sequence files to the names used in the tree.
 
-   In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. In params.py the parameter fileNameMapFN is set to point to this file.
+   In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes ("-"). In params.py the parameter fileNameMapFN is set to point to this file.
 
    Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set fileNameMapFN = None in params.py. (This is not necessary in the example, which is already set to run the other way).
 
@@ -90,15 +90,19 @@ From within python, you can then run functions such as
 
 - Visualization in a browser
 
-  . We also include code to output the islands for each strain into a gff file.
+  . We also include code to output the islands for each strain into a bed or gff file.
+
+  python3 path-to-xenoGI-directory/misc/createIslandBed.py params.py 100
 
   python3 path-to-xenoGI-directory/misc/createIslandGffs.py params.py
 
-  In the example, these will be created in a directory called gff/
+  In the example, these will be created in a directory called bed/ or gff/ respectively
 
   These can be visualized in a browser.
 
-  . To use the IGB browser (http://bioviz.org/igb/), we've included scripts for making an IGB quickload directory.
+  . With the IGB browser (http://bioviz.org/igb/), the bed file option allows you to most easily display different islands in different colors.
+
+  . To use with IGB , we've included scripts for making an IGB quickload directory.
 
      These require some additional sequence files from NCBI. For the example, those can be downloaded by going to the ncbi/ directory and running
      
@@ -110,6 +114,6 @@ From within python, you can then run functions such as
 
      Now running the script
 
-     sh moveInGff.sh
+     sh moveInBed.sh
      
-     moves the gff files into the newly created igb directory. You can then set IGB up to load this.
+     moves the bed files into the newly created igb directory. You can then set IGB up to load this.
