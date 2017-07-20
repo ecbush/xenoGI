@@ -239,7 +239,7 @@ if __name__ == "__main__":
     
     # get islands organized by strain
     islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD)
-    potentialRgbL = ['245,130,48', '188,143,14','255,225,25', '230,25,75','60,180,75','0,0,128', '145,30,180','0,255,255','128,0,0','0,255,0', '255,0,255','240,230,140','32,178,170','240,128,128','255,0,0','210,105,30','255,255,0','100,149,237','60,179,113']
+    potentialRgbL = ['245,130,48', '188,143,14','0,102,0','230,26,135','0,0,128', '145,30,180','0,255,255','128,0,0','0,255,0', '255,0,255','240,230,140','32,178,170','240,128,128','255,0,0','100,149,237','60,179,113','0,255,130','128,128,128','94,94,94','102,51,0']
     bedFilePath = 'bed/*-island.bed'
 
     createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,paramD['scoreNodeMapD'],potentialRgbL)
