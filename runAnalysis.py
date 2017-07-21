@@ -67,11 +67,20 @@ at the top level.
 
 
 def printCoreNonCoreByNode():
-    '''print all of the internal nodes and the percentage of genes that
-are at that node for the given strain'''
+    '''For each node in the focal clade, print the number of core and
+non-core families. That is, for that node, we get all families present
+in descendent species. We then look at their mrcas. Those with an mrca
+below the node in question are non-core, others are core.'''
+
+    # get the nodes we'll report on
+    focTree = trees.subtree(tree,strainStr2NumD[paramD['rootFocalClade']])
+    focNodesL = trees.nodeList(focTree)
+    internalNodesL = createInternalNodesL(focTree,focNodesL)
+
+    # but other calculations based on whole tree
     strainL = trees.leafList(tree)
     islandsByStrainD = createIslandsByStrainD(nodesL,strainL,islandByNodeL,familyL)
-    internalNodesL = createInternalNodesL(tree,nodesL)
+
     rowL=[]
     rowL.append(['Node','Core','Non-Core','Total','% Non-Core'])
     rowL.append(['----','----','--------','-----','----------'])
