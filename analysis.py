@@ -292,19 +292,24 @@ def createInternalNodesL(tree,nodesL):
         if node not in leafL: internalNodesL.append(node)
     return internalNodesL
 
-def coreNonCoreCt(tree,nodeCtD, node):
+def coreNonCoreCt(tree,islandsByStrainD,node):
     '''return the number of core and non-core genes for that node'''
     curSubtree = trees.subtree(tree,node)
-    subtreeNodes = trees.nodeList(curSubtree)
+    subtreeStrainsL = trees.leafList(curSubtree)
     nodesEarlierL, nodesLaterL = nodesEarlierLaterL(node,tree,[],[])
-    genesLaterCt = 0
-    genesEarlierCt = 0
-    for node in nodesLaterL:
-        genesLaterCt+=nodeCtD[node]
-    for nodeName in nodesEarlierL:
-        genesEarlierCt+=nodeCtD[node]
-
-    return genesLaterCt,genesEarlierCt
+    famsLaterCt = 0
+    famsEarlierCt = 0
+    totalIslandsL = []
+    for strain in subtreeStrainsL:
+        for island in islandsByStrainD[strain]:
+            if island not in totalIslandsL: totalIslandsL.append(island)
+    for island in totalIslandsL:
+        if island.mrca in nodesEarlierL:
+            famsEarlierCt+=len(island.familyL)
+        if island.mrca in nodesLaterL:
+            famsLaterCt+=len(island.familyL)
+            
+    return famsLaterCt,famsEarlierCt
 
 def nodesEarlierLaterL(node,tree,earlierL,laterL):
     '''assumes internal node, non-empty tree'''
@@ -322,21 +327,18 @@ def nodesEarlierLaterL(node,tree,earlierL,laterL):
     return earlierL,laterL    
 
         
-def createNodeCtD(nodesL,strainNumL,islandByNodeL,familyL):
+def createIslandsByStrainD(nodesL,strainNumL,islandByNodeL,familyL):
     '''create a dictionary to store the number of genes at each node'''
     #create a dictionary to count the number of genes per strain
-    nodeCountDict={}
-    for nodeName in nodesL:
-        nodeCountDict[nodeName]=0
-    #create a counter to keep track of the number of genes
-    totalGenes=0
+    islandsByStrainDict={}
+    for strain in strainNumL:
+        islandsByStrainDict[strain]=[]
 
-    #count genes per node
+    #add islands by strain
     for islandL in islandByNodeL:
-        if len(islandL)>0:
-            currNode = islandL[0].mrca
-            for island in islandL:
-                for strainNum in strainNumL:
-                    genesL=getIslandGenesInStrain(island,strainNum,familyL)
-                    nodeCountDict[currNode]= nodeCountDict[currNode]+len(genesL)
-    return nodeCountDict
+        for island in islandL:
+            for strain in strainNumL:
+                genesL=getIslandGenesInStrain(island,strain,familyL)
+                if len(genesL)>0:
+                    islandsByStrainDict[strain].append(island)
+    return islandsByStrainDict
