@@ -66,6 +66,79 @@ at the top level.
     vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames)
 
 
+def printNodes():
+    '''print all of the nodes and the percentage of genes that
+are at that node for the given strain'''
+    strainL = trees.leafList(tree)
+    nodeCtD = createNodeCtD(strainL)
+    internalNodesL = createInternalNodesL()
+    rowL=[]
+    for node in internalNodesL:
+        nonCore,core=coreNonCoreCt(nodeCtD,node)
+        rowL.insert(0,[strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
+    rowL.insert(0,['Node','Core','Non-Core','Total','% Non-Core'])
+    printTable(rowL)
+    print()
+    return
+
+def createInternalNodesL():
+    '''make a list of the internal nodes to print'''
+    internalNodesL = []
+    leafL = trees.leafList(tree)
+    for node in nodesL:
+        if node not in leafL: internalNodesL.append(node)
+    return internalNodesL
+
+def coreNonCoreCt(nodeCtD, node):
+    '''return the number of core and non-core genes for that node'''
+    curSubtree = trees.subtree(tree,node)
+    subtreeNodes = trees.nodeList(curSubtree)
+    nodesEarlierL, nodesLaterL = nodesEarlierLaterL(node,tree,[],[])
+    genesLaterCt = 0
+    genesEarlierCt = 0
+    for node in nodesLaterL:
+        genesLaterCt+=nodeCtD[node]
+    for nodeName in nodesEarlierL:
+        genesEarlierCt+=nodeCtD[node]
+
+    return genesLaterCt,genesEarlierCt
+
+def nodesEarlierLaterL(node,tree,earlierL,laterL):
+    '''assumes internal node, non-empty tree'''
+    if node is tree[0]:
+        nodesLater = trees.nodeList(tree[1])
+        nodesLater+=trees.nodeList(tree[2])
+        laterL+=nodesLater
+        earlierL.append(node)
+    else:
+        earlierL.append(tree[0])
+        if node in trees.nodeList(tree[1]):
+            earlierL,laterL=nodesEarlierLaterL(node,tree[1],earlierL,laterL)
+        if node in trees.nodeList(tree[2]):
+            earlierL,laterL=nodesEarlierLaterL(node,tree[2],earlierL,laterL)
+    return earlierL,laterL    
+
+        
+def createNodeCtD(strainNumL):
+    '''create a dictionary to store the number of genes at each node'''
+    #create a dictionary to count the number of genes per strain
+    nodeCountDict={}
+    for nodeName in nodesL:
+        nodeCountDict[nodeName]=0
+    #create a counter to keep track of the number of genes
+    totalGenes=0
+
+    #count genes per node
+    for islandL in islandByNodeL:
+        if len(islandL)>0:
+            currNode = islandL[0].mrca
+            for island in islandL:
+                for strainNum in strainNumL:
+                    genesL=getIslandGenesInStrain(island,strainNum,familyL)
+                    nodeCountDict[currNode]= nodeCountDict[currNode]+len(genesL)
+    return nodeCountDict
+
+    
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
@@ -90,6 +163,7 @@ if __name__ == "__main__":
     # subtree list
     subtreeL=trees.createSubtreeL(tree)
     subtreeL.sort()
+    nodesL=trees.nodeList(tree)
 
 
     geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
@@ -101,3 +175,4 @@ if __name__ == "__main__":
     # calc family error scores
     families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
     
+
