@@ -73,11 +73,11 @@ are at that node for the given strain'''
     islandsByStrainD = createIslandsByStrainD(nodesL,strainL,islandByNodeL,familyL)
     internalNodesL = createInternalNodesL(tree,nodesL)
     rowL=[]
-    for node in internalNodesL:
-        nonCore,core=coreNonCoreCt(tree,islandsByStrainD,node)
-        rowL.insert(0,[strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
     rowL.append(['Node','Core','Non-Core','Total','% Non-Core'])
     rowL.append(['----','----','--------','-----','----------'])
+    for node in internalNodesL:
+        nonCore,core=coreNonCoreCt(tree,islandsByStrainD,node)
+        rowL.insert(2,[strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
     printTable(rowL)
     print()
     return
