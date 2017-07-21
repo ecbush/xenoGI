@@ -1,0 +1,4 @@
+Salmonella bongori	S. bongori	S_bongori
+Escherichia fergusonii	E. fergusonii	E_fergusonii
+Escherichia albertii	E. albertii	E_albertii
+Escherichia coli K12	E. coli K12	E_coli_K12

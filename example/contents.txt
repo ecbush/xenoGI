@@ -1,0 +1,4 @@
+S_bongori_Jul_2013	Salmonella bongori (GCA_000439255.1)
+E_fergusonii_Dec_2008	Escherichia fergusonii (GCA_000026225.1)
+E_albertii_Nov_2015	Escherichia albertii (GCA_001549955.1)
+E_coli_K12_Sep_2013	Escherichia coli K12 (GCA_000005845.2)
