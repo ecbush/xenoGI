@@ -239,6 +239,5 @@ if __name__ == "__main__":
     
     # get islands organized by strain
     islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD)
-    bedFilePath = 'bed/*-island.bed'
 
-    createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,paramD['scoreNodeMapD'],paramD['potentialRgbL'])
+    createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['bedFilePath'],paramD['scoreNodeMapD'],paramD['potentialRgbL'])
