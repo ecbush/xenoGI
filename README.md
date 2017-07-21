@@ -112,7 +112,9 @@ From within python, you can then run functions such as
 
      python3 path-to-xenoGI-directory/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
 
-     Now running the script
+     Move species.txt and contents.txt into the directory igbExample.
+
+     Now, running the script
 
      sh moveInBed.sh
      
