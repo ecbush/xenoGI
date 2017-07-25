@@ -109,7 +109,7 @@ corresponding to scoreType.'''
 
     def createNodeConnectL(self,geneNames):
         '''Create an attribute nodeConnectL. Index in this list corresponds to
-gene. Value at that index is a list of the genes which a give gene
+gene. Value at that index is a list of the genes which a given gene
 connects to. This attribute is not saved in our file formats. It must
 be recalculated before it will be used (e.g. in family formation).'''
 

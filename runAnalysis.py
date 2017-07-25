@@ -5,68 +5,68 @@ from analysis import *
 ## Wrapper functions
 #  these should be here, as they assume a bunch of global variables.
 
-def printFam(familyNum):
+def printFam(familyNum,fileF=sys.stdout):
     '''This is a wrapper to provide an easy way to print relevant info on
 a family. For ease of use, we take only one argument, assuming all the
 other required stuff is available at the top level. amilyNum is the
 numerical identifier of a family.
     '''
 
-    print("Family error score (count of possibly misassigned genes):",familyL[familyNum].possibleErrorCt)
+    print("Family error score (count of possibly misassigned genes):",familyL[familyNum].possibleErrorCt,file=fileF)
     
-    print()
-    print("Matrix of raw similarity scores [0,1] between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'rawSc')
-    print()
-    print()
+    print(file=fileF)
+    print("Matrix of raw similarity scores [0,1] between genes in the family",file=fileF)
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'rawSc',fileF)
+    print(file=fileF)
+    print(file=fileF)
 
-    print()
-    print("Matrix of normalized similarity scores between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'normSc')
-    print()
-    print()
+    print(file=fileF)
+    print("Matrix of normalized similarity scores between genes in the family",file=fileF)
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'normSc',fileF)
+    print(file=fileF)
+    print(file=fileF)
     
-    print("Matrix of core synteny scores [0,1] between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'coreSynSc')
-    print()
-    print()
+    print("Matrix of core synteny scores [0,1] between genes in the family",file=fileF)
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'coreSynSc',fileF)
+    print(file=fileF)
+    print(file=fileF)
 
-    print("Matrix of synteny scores between genes in the family")
-    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'synSc')
-    print()
-    print()
+    print("Matrix of synteny scores between genes in the family",file=fileF)
+    printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'synSc',fileF)
+    print(file=fileF)
+    print(file=fileF)
 
-    printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO)
-    print()
-    print()
+    printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO,fileF)
+    print(file=fileF)
+    print(file=fileF)
 
-def findIsland(searchStr):
+def findIsland(searchStr,fileF=sys.stdout):
     '''Print the gene, family and island associated with searchStr. This
 is a wrapper that assumes various required objects are present at the
 top level.'''
     L=matchFamilyIsland(geneInfoD,geneNames,gene2FamD,fam2IslandD,searchStr)
     for geneName,fam,isl in L:
-        print("<gene:"+str(geneName)+">","<family:"+str(fam)+">","<island:"+str(isl)+">")
+        print("<gene:"+str(geneName)+">","<family:"+str(fam)+">","<island:"+str(isl)+">",file=fileF)
     
 
-def printIsland(islandNum,synWSize):
+def printIsland(islandNum,synWSize,fileF=sys.stdout):
     '''Print the island and its genomic context in each species. We
     include synWSize/2 genes in either direction beyond the island.
     '''
-    printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD)
+    printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD,fileF)
 
     
-def printIslandsAtNode(nodeStr):
+def printIslandsAtNode(nodeStr,fileF=sys.stdout):
     '''This is a wrapper to provide an easy way to print all the islands
 at a particular node in the tree. For ease of use, we take only a node
 number as argument, assuming all the other required stuff is available
 at the top level.
     '''
     node = strainStr2NumD[nodeStr]
-    vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames)
+    vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames,fileF)
 
 
-def printCoreNonCoreByNode():
+def printCoreNonCoreByNode(fileF=sys.stdout):
     '''For each node in the focal clade, print the number of core and
 non-core families. That is, for that node, we get all families present
 in descendent species. We then look at their mrcas. Those with an mrca
@@ -87,8 +87,8 @@ below the node in question are non-core, others are core.'''
     for node in internalNodesL:
         nonCore,core=coreNonCoreCt(tree,islandsByStrainD,node)
         rowL.insert(2,[strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
-    printTable(rowL)
-    print()
+    printTable(rowL,fileF=fileF)
+    print(file=fileF)
     return
 
 
