@@ -30,6 +30,20 @@ def nodeList(tree):
     else:
         return [tree[0]] + nodeList(tree[1]) + nodeList(tree[2])
     
+def leafList(tree):
+    '''Return list of leaves in tree.'''
+    if tree[1]==():
+        return [tree[0]]
+    else:
+        return leafList(tree[1]) + leafList(tree[2])
+
+def iNodeList(tree):
+    '''Return list of internal nodes in tree.'''
+    if tree[1]==():
+        return []
+    else:
+        return [tree[0]] + iNodeList(tree[1]) + iNodeList(tree[2])
+    
 def subtree(tree,node):
     '''Return the subtree with node at its root. Assume node is in tree.'''
     if tree[0]==node:
@@ -43,13 +57,6 @@ def subtree(tree,node):
             return r
         else:
             return l
-    
-def leafList(tree):
-    '''Return list of leaves in tree.'''
-    if tree[1]==():
-        return [tree[0]]
-    else:
-        return leafList(tree[1]) + leafList(tree[2])
     
 def isRootNode(tree,mrcaNum):
     '''Is mrcaNum the root node?'''

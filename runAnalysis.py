@@ -72,26 +72,20 @@ non-core families. That is, for that node, we get all families present
 in descendent species. We then look at their mrcas. Those with an mrca
 below the node in question are non-core, others are core.'''
 
-    # get the nodes we'll report on
     focTree = trees.subtree(tree,strainStr2NumD[paramD['rootFocalClade']])
-    focNodesL = trees.nodeList(focTree)
-    internalNodesL = createInternalNodesL(focTree,focNodesL)
-
-    # but other calculations based on whole tree
-    strainL = trees.leafList(tree)
-    islandsByStrainD = createIslandsByStrainD(nodesL,strainL,islandByNodeL,familyL)
-
+    focInodesL=trees.iNodeList(focTree)
+    familyByNodeL=createFamilyByNodeL(geneOrderT,gene2FamD)
+    
     rowL=[]
     rowL.append(['Node','Core','Non-Core','Total','% Non-Core'])
     rowL.append(['----','----','--------','-----','----------'])
-    for node in internalNodesL:
-        nonCore,core=coreNonCoreCt(tree,islandsByStrainD,node)
-        rowL.insert(2,[strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
+    for node in focInodesL:
+        nonCore,core=coreNonCoreCtAtNode(tree,node,familyByNodeL,familyL)
+        rowL.append([strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
     printTable(rowL,fileF=fileF)
     print(file=fileF)
     return
-
-
+    
     
 if __name__ == "__main__":
 

@@ -284,61 +284,45 @@ def getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,genesInEither
 
 # support functions for printCoreNonCoreByNode
 
-def createInternalNodesL(tree,nodesL):
-    '''make a list of the internal nodes to print'''
-    internalNodesL = []
-    leafL = trees.leafList(tree)
-    for node in nodesL:
-        if node not in leafL: internalNodesL.append(node)
-    return internalNodesL
+def createFamilyByNodeL(geneOrderT,gene2FamD):
+    '''Create a list where index is node, and where the value is all the
+families present in that strain. Internal nodes are None, tips are a set of
+families.'''
 
-def coreNonCoreCt(tree,islandsByStrainD,node):
-    '''return the number of core and non-core genes for that node'''
-    curSubtree = trees.subtree(tree,node)
-    subtreeStrainsL = trees.leafList(curSubtree)
-    nodesEarlierL, nodesLaterL = nodesEarlierLaterL(node,tree,[],[])
-    famsLaterCt = 0
-    famsEarlierCt = 0
-    totalIslandsL = []
-    for strain in subtreeStrainsL:
-        for island in islandsByStrainD[strain]:
-            if island not in totalIslandsL: totalIslandsL.append(island)
-    for island in totalIslandsL:
-        if island.mrca in nodesEarlierL:
-            famsEarlierCt+=len(island.familyL)
-        if island.mrca in nodesLaterL:
-            famsLaterCt+=len(island.familyL)
+    # an index for each node. internal nodes get none, just like in geneOrderT
+    familyByNodeL=[set() if x!=None else None for x in geneOrderT]
+
+    for i in range(len(geneOrderT)):
+        contigT = geneOrderT[i]
+        if contigT != None:
+            for contig in contigT:
+                for geneNum in contig:
+                    fam=gene2FamD[geneNum]
+                    familyByNodeL[i].add(fam)
+    return familyByNodeL
+
+def coreNonCoreCtAtNode(tree,node,familyByNodeL,familyL):
+    '''Given a tree and a node, first get all the families present in
+descendant species. Then figure out which of these families are
+non-core (their mrca is located below node) and which are core (mrca
+is at node or above). Return count of non-core and core.'''
+
+    subtree = trees.subtree(tree,node)
+    nonCoreMrcaL = trees.nodeList(subtree[1]) + trees.nodeList(subtree[2])
+    
+    # get set of all families with members in descendant species of this node
+    decFamS = set()
+    for leaf in trees.leafList(subtree):
+        decFamS.update(familyByNodeL[leaf])
+
+    # figure out which are core, non-core
+    coreCt=0
+    nonCoreCt=0
+    totCt = len(decFamS)
+    for fam in decFamS:
+        if familyL[fam].mrca in nonCoreMrcaL:
+            nonCoreCt += 1
+        else:
+            coreCt += 1
             
-    return famsLaterCt,famsEarlierCt
-
-def nodesEarlierLaterL(node,tree,earlierL,laterL):
-    '''assumes internal node, non-empty tree'''
-    if node is tree[0]:
-        nodesLater = trees.nodeList(tree[1])
-        nodesLater+=trees.nodeList(tree[2])
-        laterL+=nodesLater
-        earlierL.append(node)
-    else:
-        earlierL.append(tree[0])
-        if node in trees.nodeList(tree[1]):
-            earlierL,laterL=nodesEarlierLaterL(node,tree[1],earlierL,laterL)
-        if node in trees.nodeList(tree[2]):
-            earlierL,laterL=nodesEarlierLaterL(node,tree[2],earlierL,laterL)
-    return earlierL,laterL    
-
-        
-def createIslandsByStrainD(nodesL,strainNumL,islandByNodeL,familyL):
-    '''create a dictionary to store the number of genes at each node'''
-    #create a dictionary to count the number of genes per strain
-    islandsByStrainDict={}
-    for strain in strainNumL:
-        islandsByStrainDict[strain]=[]
-
-    #add islands by strain
-    for islandL in islandByNodeL:
-        for island in islandL:
-            for strain in strainNumL:
-                genesL=getIslandGenesInStrain(island,strain,familyL)
-                if len(genesL)>0:
-                    islandsByStrainDict[strain].append(island)
-    return islandsByStrainDict
+    return nonCoreCt,coreCt
