@@ -115,7 +115,7 @@ minCoreSynThresh = 0.5
 # obiously dissimilar that they could not be homologous by descent
 # from the node under consideration. In units of standard deviation,
 # centered around 0.
-minNormThresh = -7.0
+minNormThresh = -11.0
 
 # Minimum synteny score value we'll accept when putting a gene in a
 # family. Also applies to seeds. Note synteny scores are based on
@@ -164,13 +164,14 @@ scoreNodeMapD = {'i1':1,'i2':6} # islands with these mrca values always get this
 # createIslandGffs.createPotentialScoresL(100,1001,200,50)
 potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 600, 800, 1000, 250, 450, 650, 850]
 
-
 # The possible rgb values for bed files is based on the list below. 
 potentialRgbL = ['245,130,48', '188,143,14','0,102,0','230,26,135','0,0,128', '145,30,180','0,255,255','128,0,0','0,255,0', '255,0,255','240,230,140','32,178,170','240,128,128','255,0,0','100,149,237','60,179,113','0,255,130','128,128,128','94,94,94','102,51,0']
 
 #### Visualization and analysis output files ####
 
-# unix style file path to gff output files
+# unix style file path to bed, gff output files
+bedFilePath = 'bed/*-island.bed'
 gffFilePath = 'gff/*-island.gff'
+
 
 
