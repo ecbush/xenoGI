@@ -50,7 +50,13 @@ were added but almost weren't, or were not added but almost were.
         for num in self.getGeneNums():
             genesL.append(geneNames.numToName(num))
         return genesL
-            
+
+    def isInStrain(self,strainNum):
+        '''Is this family present in strainNum, return boolean.'''
+        if len(self.famGeneT[strainNum]) > 0:
+            return True
+        else: return False
+        
     def __repr__(self):
         '''String representation of a family containing family number.'''
         return "<Family: "+str(self.id) + ">"

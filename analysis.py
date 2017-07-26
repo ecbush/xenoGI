@@ -104,7 +104,29 @@ scoresO.
     print("Printing all scores with non-family members",file=fileF)
     printTable(rowL,indent=2,fileF=fileF)
 
+## Print strains where family is present, and not present
 
+def familyPrintStrainsPresentAbsent(tree,strainNum2StrD,familyL,famNum,fileF=sys.stdout):
+    '''Print a list of strains where the family is present, and another where it is absent.'''
+
+    presL=[]
+    notPresL=[]
+    for leafNum in trees.leafList(tree):
+        if familyL[famNum].isInStrain(leafNum):
+            presL.append(strainNum2StrD[leafNum])
+        else:
+            notPresL.append(strainNum2StrD[leafNum])
+    print("Family:",famNum,file=fileF)
+    print("  Strains posessing:",file=fileF)
+    for strain in presL:
+        print("    "+strain,file=fileF)
+    print(file=fileF)
+    print("  Strains lacking:",file=fileF)
+    for strain in notPresL:
+        print("    "+strain,file=fileF)
+
+
+    
 ## Print all islands at node
 
 def printIslandLSummary(island,fileF):
