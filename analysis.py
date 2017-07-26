@@ -117,7 +117,7 @@ def familyPrintStrainsPresentAbsent(tree,strainNum2StrD,familyL,famNum,fileF=sys
         else:
             notPresL.append(strainNum2StrD[leafNum])
     print("Family:",famNum,file=fileF)
-    print("  Strains posessing:",file=fileF)
+    print("  Strains possessing:",file=fileF)
     for strain in presL:
         print("    "+strain,file=fileF)
     print(file=fileF)
