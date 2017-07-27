@@ -56,8 +56,8 @@ python3 path-to-xenoGI-directory/xenoGI.py params.py
 
 
   . parseGenbank.py runs through the genbank files and produces input files that are used by subsequent code.
-  . runBlast.py does an all vs. all blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
-  . calcScores.py calcualtes similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
+  . runBlast.py does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
+  . calcScores.py calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
   . xenoGI.py identifies horizontal transfer events. It is partly parallelized.
 
 
@@ -81,7 +81,7 @@ From within python, you can then run functions such as
 
     printIsland(3500,10) # Print out an island with its context in different species (first arg is island id, second is the number of genes to print to each side)
 
-    printIsland prints the island in each strain where it's present. Its output includes the island and family numbers for each gene, an error score for the family of each gene, the mrca of the family, and a description of the gene. The error score is intended to indicate confidence in the correctness o the family. 0 means more confident, higher numbers less confident.
+    printIsland prints the island in each strain where it's present. Its output includes the island and family numbers for each gene, an error score for the family of each gene, the most recent common ancestor (mrca) of the family, and a description of the gene. The error score is intended to indicate confidence in the correctness of the family. 0 means more confident, higher numbers less confident.
 
   . printFam
 
@@ -96,7 +96,7 @@ From within python, you can then run functions such as
 
   python3 path-to-xenoGI-directory/misc/createIslandGffs.py params.py
 
-  In the example, these will be created in a directory called bed/ or gff/ respectively
+  In the example, these will be created in a directory called bed/ or gff/ respectively.
 
   These can be visualized in a browser.
 
@@ -108,7 +108,7 @@ From within python, you can then run functions such as
      
      sh getSeqs.sh
 
-     Then in the main direcotry, run
+     Then in the main directory, run
 
      python3 path-to-xenoGI-directory/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
 
@@ -118,4 +118,4 @@ From within python, you can then run functions such as
 
      sh moveInBed.sh
      
-     moves the bed files into the newly created igb directory. You can then set IGB up to load this.
+     moves the bed files into the newly created igbExample directory. You can then set IGB up to load this.
