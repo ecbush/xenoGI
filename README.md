@@ -1,4 +1,4 @@
-Code for detecting genomic islands in a clade of bacteria.
+Code for detecting horizontal transfer events in clades of bacteria.
 
 ## Requirements
 
