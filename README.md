@@ -27,12 +27,12 @@ We work with a set of species with known phylogenetic relationships. In the exam
   . A parameter file. In the provided example/ directory this is called params.py.
 
   . A subdirectory of sequence files. In the example, this is called ncbi. Contained in this subdirectory will be genbank (gbff) files for the species.
-      The parameter genbankFilePath in params.py has the path to these files.
+     The parameter genbankFilePath in params.py has the path to these files.
 
   . A newick format tree representing the relationships of the strains. In the example this is called example.tre. Note that branch lengths are not used in xenoGI, and example.tre does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter treeFN in params.py has the path to this tree file.
 
 - Naming of genbank files.
-   The system needs a way to connect the sequence files to the names used in the tree.
+  . The system needs a way to connect the sequence files to the names used in the tree.
 
    In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes ("-"). In params.py the parameter fileNameMapFN is set to point to this file.
 
