@@ -69,8 +69,8 @@ From within python, you can then run functions such as
 
   . printIslandsAtNode
 
-    printIslandsAtNode('i0') # Prints all islands at node i0
-    printIslandsAtNode('E_coli_K12') # Prints all islands specific to the E. coli K12 branch
+     printIslandsAtNode('i0') # Prints all islands at node i0
+     printIslandsAtNode('E_coli_K12') # Prints all islands specific to the E. coli K12 branch
 
   . findIsland 
 
@@ -92,9 +92,9 @@ From within python, you can then run functions such as
 
   . We also include code to output the islands for each strain into a bed or gff file.
 
-  python3 path-to-xenoGI-directory/misc/createIslandBed.py params.py 100
+     python3 path-to-xenoGI-directory/misc/createIslandBed.py params.py 100
 
-  python3 path-to-xenoGI-directory/misc/createIslandGffs.py params.py
+     python3 path-to-xenoGI-directory/misc/createIslandGffs.py params.py
 
   In the example, these will be created in a directory called bed/ or gff/ respectively.
 
