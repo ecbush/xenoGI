@@ -19,8 +19,9 @@ def islandsOfInterest():
     print("SUMMARY:")
     print("Ranges:",allValRanges)
     print("Number of Islands per range: ", islandsList)
-    print("Prop. ranges with 1 island: ",format(islandsList.count(1)/len(islandsList),".3f"))
     print("Percent overlap: ", format(overlap/totalBases,".3f"))
+    print("Prop. ranges with 1 island: ",format(islandsList.count(1)/len(islandsList),".3f"))
+    print("Extra: ", format(sum(extra)/totalBases,".3f"))
     print("All islands per range:",islandsPerRangeLL)
 
 def islandsInStrainLongEnough(minGenes):
@@ -94,6 +95,7 @@ def islandsInRange(potentialIslandsD):
                     returnIslands.append(island)
 
     #update overlap list and finalCoveragePerRangeLL based on coveragePerRangeLL
+    #print("***",coveragePerRangeLL)
     overlapList,extra=overlapHelper(coveragePerRangeLL,allValRanges)
     return overlapList,islandsList,islandsPerRangeLL,extra
 
@@ -107,7 +109,7 @@ def overlapHelper(coveragePerRangeLL, valRanges):
             basesCoveredL = [0]*rangeLength
             for islandIndex in range(0,len(coveragePerRangeLL[valIndex][0])):
                 #get the indices of the start and end of the island, if the island extends beyond the validation ranges,
-                #reset that point to be the valRange start or end
+                #reset that point to be the valRange start or end (ie put in validation range coordinates)
                 islandStart = max(coveragePerRangeLL[valIndex][0][islandIndex],valRanges[valIndex][0])-valRanges[valIndex][0]
                 islandEnd = min(coveragePerRangeLL[valIndex][1][islandIndex],valRanges[valIndex][1])-valRanges[valIndex][0]
                 for i in range(islandStart,islandEnd): basesCoveredL[i]=True
@@ -142,7 +144,7 @@ def islandsOnAllValidationNodes():
         allIslands+=islandByNodeL[int(strainStr2NumD[strain])]
     return allIslands
 
-def readRanges():
+def readRanges(validationFile):
     '''Read a file with start end ranges separated by tabs, and return list of lists.'''
     totalBases = 0
     chromsL = []
@@ -208,7 +210,7 @@ if __name__ == "__main__":
 
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
 
-    totalBases, chromsL, allValRanges = readRanges()
+    totalBases, chromsL, allValRanges = readRanges(validationFile)
     nodesLL,uniqueStrains = nodesPerRange()
 
     islandsOfInterest()
