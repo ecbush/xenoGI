@@ -1,3 +1,4 @@
+import os
 from Bio import SeqIO
 
 def getUniqueRedundSets(fileName,speciesName):
@@ -40,8 +41,8 @@ want.'''
     
     # iterate through list of genbank files
     for fileName in genbankFileList:
-        
-        genbankName = fileName.split("/")[-1]
+
+        genbankName = os.path.split(fileName)[-1]
 
         if fileNameMapD == {}:
             speciesName = genbankName # not renaming in this case
