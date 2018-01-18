@@ -30,11 +30,9 @@ The working directory must contain:
 
 - A newick format tree representing the relationships of the strains. In the example this is called example.tre. Note that branch lengths are not used in xenoGI, and example.tre does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter treeFN in params.py has the path to this tree file.
 
-- A subdirectory of sequence files. In the example, this is called ncbi. Contained in this subdirectory will be genbank (gbff) files for the species.
+- A subdirectory of sequence files. In the example, this is called ncbi. Contained in this subdirectory will be genbank (gbff) files for the species. The parameter genbankFilePath in params.py has the path to these files.
 
-The parameter genbankFilePath in params.py has the path to these files.
-
-Naming of genbank files.
+#### Naming of genbank files.
 
 The system needs a way to connect the sequence files to the names used in the tree.
 
