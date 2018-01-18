@@ -2,11 +2,11 @@ Code for detecting genomic island insertions in clades of bacteria.
 
 ## Requirements
 
-- NCBI blast+.
+- NCBI blast+
 
   We need blastp and makeblastdb executables in the path.
 
-- Python 3.
+- Python 3
 
   The following packages for python should also be included:
 
@@ -14,7 +14,7 @@ Code for detecting genomic island insertions in clades of bacteria.
 
   - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip: ```pip install parasail```
 
-- xenoGI is able to work on multiple platforms. It's been run sucessfully run on Linux and Mac.
+- xenoGI is able to work on multiple platforms. It's been run sucessfully on Linux and Mac.
 
 ## How to use
 
@@ -22,24 +22,27 @@ An example/ directory is included in this repository.
 
 We work with a set of species with known phylogenetic relationships. In the example, these species are: E. coli K12, E. albertii, E. fergusonii and S. bongori.
 
-- The working directory must contain:
+### Required files
 
-   - A parameter file. In the provided example/ directory this is called params.py.
+The working directory must contain:
 
-   - A subdirectory of sequence files. In the example, this is called ncbi. Contained in this subdirectory will be genbank (gbff) files for the species.
-     The parameter genbankFilePath in params.py has the path to these files.
+- A parameter file. In the provided example/ directory this is called params.py.
 
-   - A newick format tree representing the relationships of the strains. In the example this is called example.tre. Note that branch lengths are not used in xenoGI, and example.tre does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter treeFN in params.py has the path to this tree file.
+- A newick format tree representing the relationships of the strains. In the example this is called example.tre. Note that branch lengths are not used in xenoGI, and example.tre does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter treeFN in params.py has the path to this tree file.
 
-- Naming of genbank files.
+- A subdirectory of sequence files. In the example, this is called ncbi. Contained in this subdirectory will be genbank (gbff) files for the species.
 
-   The system needs a way to connect the sequence files to the names used in the tree.
+The parameter genbankFilePath in params.py has the path to these files.
 
-   In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes ("-"). In params.py the parameter fileNameMapFN is set to point to this file.
+Naming of genbank files.
 
-   Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set fileNameMapFN = None in params.py. (This is not necessary in the example, which is already set to run the other way).
+The system needs a way to connect the sequence files to the names used in the tree.
 
-- Running the code
+In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ncbiHumanMap.txt. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes ("-"). In params.py the parameter fileNameMapFN is set to point to this file.
+
+Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set fileNameMapFN = None in params.py. (This is not necessary in the example, which is already set to run the other way).
+
+### Running the code
   
 You run the code from within the working directory. To run the example, you would cd into the example/ directory, then:
 
@@ -59,10 +62,10 @@ python3 path-to-xenoGI-directory/calcScores.py params.py
 python3 path-to-xenoGI-directory/xenoGI.py params.py
 ```
 
-  - parseGenbank.py runs through the genbank files and produces input files that are used by subsequent code.
-  - runBlast.py does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
-  - calcScores.py calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
-  - xenoGI.py identifies horizontal transfer events. It is partly parallelized.
+- parseGenbank.py runs through the genbank files and produces input files that are used by subsequent code.
+- runBlast.py does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
+- calcScores.py calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
+- xenoGI.py identifies horizontal transfer events. It is partly parallelized.
 
 
 - Subsequent analysis can also be run from the working directory
@@ -75,34 +78,41 @@ From within python, you can then run functions such as
 
   - printIslandsAtNode
 
-     printIslandsAtNode('i0') # Prints all islands at node i0
-     
-     printIslandsAtNode('E_coli_K12') # Prints all islands specific to the E. coli K12 branch
-
+    ```
+    printIslandsAtNode('i0') # Prints all islands at node i0
+    printIslandsAtNode('E_coli_K12') # Prints all islands specific to the E. coli K12 branch
+    ```
   - findIsland 
-
-
+    
+    ```
     findIsland('gadA') # Find an island associated with a gene name or description
-
+    ```
+    
   - printIsland
 
+    ```
     printIsland(3500,10) # Print out an island with its context in different species (first arg is island id, second is the number of genes to print to each side)
-
+    ```
+    
     printIsland prints the island in each strain where it's present. Its output includes the island and family numbers for each gene, an error score for the family of each gene, the most recent common ancestor (mrca) of the family, and a description of the gene. The error score is intended to indicate confidence in the correctness of the family. 0 means more confident, higher numbers less confident.
 
   - printFam
 
+    ```
     printFam(3500) # Print scores within a particular gene family, and also with similar genes not in the family
-
+    ```
 
 - Visualization in a browser
 
-  - We also include code to output the islands for each strain into a bed or gff file.
+  - We also include code to output the islands for each strain into a bed or gff file:
 
     ```
     python3 path-to-xenoGI-directory/misc/createIslandBed.py params.py 100
+    ```
 
+    or
 
+    ```
     python3 path-to-xenoGI-directory/misc/createIslandGffs.py params.py
     ```
 
