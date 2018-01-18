@@ -8,7 +8,7 @@ from analysis import *
 def printFam(familyNum,fileF=sys.stdout):
     '''This is a wrapper to provide an easy way to print relevant info on
 a family. For ease of use, we take only one argument, assuming all the
-other required stuff is available at the top level. amilyNum is the
+other required stuff is available at the top level. familyNum is the
 numerical identifier of a family.
     '''
 
