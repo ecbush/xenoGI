@@ -10,9 +10,9 @@ Code for detecting genomic island insertions in clades of bacteria.
 
   The following packages for python should also be included:
 
-  - Biopython (http://biopython.org/). This is for parsing genbank files and can be installed using pip: '''pip install biopython'''
+  - Biopython (http://biopython.org/). This is for parsing genbank files and can be installed using pip: ```pip install biopython```
 
-  - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip: '''pip install parasail'''
+  - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip: ```pip install parasail```
 
 - xenoGI is able to work on multiple platforms. It's been run sucessfully run on Linux and Mac.
 
@@ -43,21 +43,21 @@ We work with a set of species with known phylogenetic relationships. In the exam
   
 You run the code from within the working directory. To run the example, you would cd into the example/ directory, then:
 
-'''
+```
 python3 ../parseGenbank.py params.py
 python3 ../runBlast.py params.py
 python3 ../calcScores.py params.py
 python3 ../xenoGI.py params.py
-'''
+```
 
 From another directory, this would simply be
 
-'''
+```
 python3 path-to-xenoGI-directory/parseGenbank.py params.py
 python3 path-to-xenoGI-directory/runBlast.py params.py
 python3 path-to-xenoGI-directory/calcScores.py params.py
 python3 path-to-xenoGI-directory/xenoGI.py params.py
-'''
+```
 
   - parseGenbank.py runs through the genbank files and produces input files that are used by subsequent code.
   - runBlast.py does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
@@ -67,9 +67,9 @@ python3 path-to-xenoGI-directory/xenoGI.py params.py
 
 - Subsequent analysis can also be run from the working directory
 
-'''
+```
 python3 -i path-to-xenoGI-directory/runAnalysis.py params.py
-'''
+```
 
 From within python, you can then run functions such as
 
@@ -99,13 +99,12 @@ From within python, you can then run functions such as
 
   - We also include code to output the islands for each strain into a bed or gff file.
 
-    '''
+    ```
     python3 path-to-xenoGI-directory/misc/createIslandBed.py params.py 100
-    '''
 
-    '''
+
     python3 path-to-xenoGI-directory/misc/createIslandGffs.py params.py
-    '''
+    ```
 
     In the example, these will be created in a directory called bed/ or gff/ respectively.
 
@@ -117,22 +116,22 @@ From within python, you can then run functions such as
 
      These require some additional sequence files from NCBI. For the example, those can be downloaded by going to the ncbi/ directory and running
 
-     '''
+     ```
      sh getSeqs.sh
-     '''
+     ```
 
      Then in the main directory, run
 
-     '''
+     ```
      python3 path-to-xenoGI-directory/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
-     '''
+     ```
 
      Move species.txt and contents.txt into the directory igbExample.
 
      Now, running the script
 
-     '''
+     ```
      sh moveInBed.sh
-     '''
+     ```
 
      moves the bed files into the newly created igbExample directory. You can then set IGB up to load this.
