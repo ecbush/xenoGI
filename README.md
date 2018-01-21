@@ -4,7 +4,7 @@ Code for detecting genomic island insertions in clades of bacteria.
 
 - NCBI blast+
 
-  We need blastp and makeblastdb executables in the path.
+  We need blastp and makeblastdb executables.
 
 - Python 3
 
@@ -14,7 +14,8 @@ Code for detecting genomic island insertions in clades of bacteria.
 
   - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip: ```pip install parasail```
 
-- xenoGI is able to work on multiple platforms. It's been run sucessfully on Linux and Mac.
+- Has been run on Linux, Mac and Windows.
+
 
 ## How to use
 
@@ -26,7 +27,7 @@ We work with a set of species with known phylogenetic relationships. In the exam
 
 The working directory must contain:
 
-- A parameter file. In the provided example/ directory this is called params.py.
+- A parameter file. In the provided example/ directory this is called params.py. The blastExecutDirPath parameter in this file should be edited to point to the directory where the blastp and makeblastdb executables are.
 
 - A newick format tree representing the relationships of the strains. In the example this is called example.tre. Note that branch lengths are not used in xenoGI, and example.tre does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter treeFN in params.py has the path to this tree file.
 
@@ -133,6 +134,8 @@ From within python, you can then run functions such as
      ```
      python3 path-to-xenoGI-directory/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
      ```
+
+     This script requires two programs from the blat suite, faToTwoBit and twoBitInfo (https://genome.ucsc.edu/goldenpath/help/blatSpec.html). These are required to be in the path. On windows it may be easier to simply edit createIgbQuckloadDirs.py, entering the absolute path to these executables.
 
      Move species.txt and contents.txt into the directory igbExample.
 

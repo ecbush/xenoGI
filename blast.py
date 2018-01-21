@@ -1,36 +1,40 @@
 import os, subprocess, glob
 from multiprocessing import Pool
 
-def formatDb(dbFileL):
+def formatDb(dbFileL,blastExecutDirPath):
     '''Format fasta files in fastaDir for blast by calling the formatdb
 executable.'''
     for dbFileName in dbFileL:
-        subprocess.call(['makeblastdb', '-dbtype' ,'prot', '-in', dbFileName],stdout=subprocess.PIPE)
+        makeblastdbExecutable = os.path.join(blastExecutDirPath,'makeblastdb')
+        subprocess.call([makeblastdbExecutable, '-dbtype' ,'prot', '-in', dbFileName],stdout=subprocess.PIPE)
     return
 
-def makeBlastClineList(dbFileL,fastaFilePath,blastFilePath,blastCLine):
+def makeBlastClineList(dbFileL,fastaFilePath,blastFilePath,blastExecutDirPath,blastCLine):
     '''Create a list of lists, where the sublists have the command line
 needed to run blastp on a pair of databases.'''
 
-    blastCLineT = tuple(blastCLine.split())
+    # get a tuple of the blastp command line args for use below
+    blastCLineL = blastCLine.split()
+    blastCLineL[0] = os.path.join(blastExecutDirPath,blastCLineL[0])
+    blastCLineT = tuple(blastCLineL)
 
-    blastDir = blastFilePath.split("*")[0]
-    blastExtension = blastFilePath.split("*")[1]
-    
-    suffixToRemove = fastaFilePath.split('*')[-1]
-    filePathStemToRemove = fastaFilePath.split("*")[0]
+    # get blast file dir and extension
+    splitT = os.path.split(blastFilePath)
+    blastDir,rest = splitT
+    blastExtension = rest.split("*")[-1]
 
     clineL=[]
     for query in dbFileL:
         for db in dbFileL:
             if query != db:
-                qstem=query.split(suffixToRemove)[0]
-                qstem=qstem.split(filePathStemToRemove)[1]
 
-                dbstem=db.split(suffixToRemove)[0]
-                dbstem=dbstem.split(filePathStemToRemove)[1]
+                qstem = os.path.split(query)[-1]
+                qstem = os.path.splitext(qstem)[0]
+                
+                dbstem = os.path.split(db)[-1]
+                dbstem = os.path.splitext(dbstem)[0]
 
-                outFN = blastDir + qstem + '-' + dbstem + blastExtension
+                outFN = os.path.join( blastDir, qstem + '-' + dbstem + blastExtension )
                 L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
                 clineL.append(L)
 
@@ -43,24 +47,21 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
-def runBlast(fastaFilePath,blastFilePath,blastCLine,numThreads):
+def runBlast(fastaFilePath,blastFilePath,blastExecutDirPath,blastCLine,numThreads):
     '''Run blast comparing every database against every other in
 fastaFilePath. Save to the directory indicated by blastFilePath, using
 the blast parameters in blastCLine.'''
 
     # format the databases
     dbFileL=glob.glob(fastaFilePath)
-    formatDb(dbFileL)
-
-    # create blast directory
-
-
+    formatDb(dbFileL,blastExecutDirPath)
+    
     # if directory for blast doesn't exist yet, make it
-    blastDir = blastFilePath.split("*")[0]
+    blastDir = os.path.split(blastFilePath)[0]
     if glob.glob(blastDir)==[]:
         os.mkdir(blastDir)
 
-    clineL =  makeBlastClineList(dbFileL,fastaFilePath,blastFilePath,blastCLine)
+    clineL =  makeBlastClineList(dbFileL,fastaFilePath,blastFilePath,blastExecutDirPath,blastCLine)
 
     p=Pool(numThreads)
     stderrL = p.map(subprocessWrapper, clineL)

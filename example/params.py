@@ -41,6 +41,9 @@ fastaFilePath = 'fasta/*.fa'
 
 #### Blast output ####
 
+# absolute path to the directory containing the blastp and makeblastdb executables.
+blastExecutDirPath = '/usr/bin/'
+
 # blast command line (except for db,query and outfiles)
 blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -evalue 0.01 -seg yes -outfmt 6'
 

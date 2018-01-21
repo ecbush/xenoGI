@@ -3,13 +3,6 @@ from multiprocessing import set_start_method, Pool
 import genomes,trees,Score
 
 
-#### Global variables
-
-scoresO = None # we'll actually put something in it in functions
-               # below. The purpose of doing this has to do with
-               # efficient memory use in paralellization of synteny
-               # scores.
-
 #### Functions
 
 
@@ -363,21 +356,17 @@ score normalized by std and centered around zero.'''
 
 ## synteny scores
 
-def calcSynScores(scoresOArg,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
+def calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
 genes that have an edge in scoresO.
     '''
-    # Put the norm scores graph into a global in this namespace so it
-    # will be available in other functions to be called below.
-    global scoresO
-    scoresO = scoresOArg
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
     # make list of groups of arguments to be passed to p.map. There
     # should be numThreads groups.
-    argumentL = [([],neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD) for i in range(numThreads)]
+    argumentL = [([],neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD,scoresO) for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -388,7 +377,6 @@ genes that have an edge in scoresO.
     synScoresLL = p.map(synScoreGroup, argumentL)
     p.close()
     p.join()
-
     
     # add to scores object
     for synScoresL in synScoresLL:
@@ -424,8 +412,7 @@ def synScoreGroup(argsT):
     scores. This function is intended to be called by p.map.
     '''
 
-    global scoresO
-    edgeL,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD = argsT
+    edgeL,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD,scoresO = argsT
 
     outL=[]
     for gn1,gn2 in edgeL:
