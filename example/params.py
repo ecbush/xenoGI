@@ -41,7 +41,7 @@ fastaFilePath = 'fasta/*.fa'
 
 #### Blast output ####
 
-# absolute path to the directory containing the blastp and makeblastdb executables.
+# absolute path to the directory containing the blastp and makeblastdb executables. Write this in whatever style is typical for the machine you are on, e.g. if it is windows, then using windows style \ etc.
 blastExecutDirPath = '/usr/bin/'
 
 # blast command line (except for db,query and outfiles)
