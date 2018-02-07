@@ -181,13 +181,24 @@ def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,fileF):
 
 def vPrintIslands(islandL,subtreeL,familyL,strainNum2StrD,geneNames,fileF):
     '''Print a list of islands.'''
-    print("Summary of islands",file=fileF)
+    print("  Summary",file=fileF)
     printIslandLSummary(islandL,fileF)
-    print("Print outs of each island",file=fileF)
+    print("  ---",file=fileF)
     for island in islandL:
         vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,fileF)
         print('  ---',file=fileF)
 
+def vPrintAllIslands(islandByNodeL,tree,rootFocalClade,subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,fileF):
+    '''Loop over all nodes in tree, printing islands at each. '''
+    rootFocalCladeNum = strainStr2NumD[rootFocalClade]
+    focalTree = trees.subtree(tree,rootFocalCladeNum)
+    for node in trees.nodeList(focalTree):
+        nodeStr = strainNum2StrD[node]
+        print('########################### ',"Islands at node",nodeStr,file=fileF)
+        print('',file=fileF)
+        vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames,fileF)
+
+        
 def createGene2FamD(familyL):
     '''Given the family information in familyL, create a dictionary
 gene2FamD which maps from gene number to family number.'''
@@ -209,7 +220,26 @@ family number to island number.
                 fam2IslandD[famNum]=island
     return fam2IslandD
 
+## Print species files with all the genes, grouped by contig
 
+def printSpeciesContigs(geneOrderT,fileStemStr,fileExtensionStr,geneNames,gene2FamD,fam2IslandD,geneInfoD,familyL,strainNum2StrD):
+    '''This function produces a set of species specific genome
+files. These contain all the genes in a strain laid out in the order
+they occur on the contigs. Each gene entry include island and family
+information, as well as a brief description of the gene's function.'''
+
+    for strainNum in range(len(geneOrderT)):
+        strainStr = strainNum2StrD[strainNum]
+        contigT = geneOrderT[strainNum]
+        if contigT != None:
+            # it's a tip
+            fileF=open(fileStemStr+'-'+strainStr+fileExtensionStr,'w')
+            for contig in contigT:
+                print("########### Contig",file=fileF)
+                printGenes(contig,geneNames,gene2FamD,fam2IslandD,geneInfoD,[],familyL,strainNum2StrD,fileF)
+
+            fileF.close()
+    
 ## Print neighborhood of an island
 
 def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD,fileF):
@@ -248,29 +278,8 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrde
 
             print("(Coordinates",chrom+":"+str(startPos)+"-"+str(endPos)+")",file=fileF)
 
-            # now print the neighbors
-            rowsL=[]
-            for tempGene in neighbGenesL:
-                tempGeneName=geneNames.numToName(tempGene)
-                tempFamNum=gene2FamD[tempGene]
-                tempGeneIsland=fam2IslandD[tempFamNum]
+            printGenes(neighbGenesL,geneNames,gene2FamD,fam2IslandD,geneInfoD,islandGenesInStrainL,familyL,strainNum2StrD,fileF)
 
-                if tempGeneName in geneInfoD:
-                    descrip = geneInfoD[tempGeneName][2]
-                else:
-                    descrip = ''
-
-                # mark genes in the island with a *
-                if tempGene in islandGenesInStrainL:
-                    tempGeneName = '* '+tempGeneName
-                else:
-                    tempGeneName = '  '+tempGeneName
-
-                infoL = [tempGeneName,"isl:"+str(tempGeneIsland.id),"fam:"+str(tempFamNum),"errSc:"+str(familyL[tempFamNum].possibleErrorCt),"mrca:"+strainNum2StrD[tempGeneIsland.mrca],descrip]
-
-                rowsL.append(infoL)
-
-            printTable(rowsL,indent=4,fileF=fileF)
 
 def getIslandGenesInStrain(island,strainNum,familyL):
     '''Given an island, a strain number, and our tuple of family
@@ -303,6 +312,32 @@ def getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,genesInEither
         except ValueError:
             continue
 
+def printGenes(neighbGenesL,geneNames,gene2FamD,fam2IslandD,geneInfoD,islandGenesInStrainL,familyL,strainNum2StrD,fileF):
+    '''Given a list of contiguous genes, print them out nicely with information on family and island etc. Put * next to any that are in islandGenesInStrainL.'''
+            
+    # now print the neighbors
+    rowsL=[]
+    for tempGene in neighbGenesL:
+        tempGeneName=geneNames.numToName(tempGene)
+        tempFamNum=gene2FamD[tempGene]
+        tempGeneIsland=fam2IslandD[tempFamNum]
+
+        if tempGeneName in geneInfoD:
+            descrip = geneInfoD[tempGeneName][2]
+        else:
+            descrip = ''
+
+        # mark genes in the island with a *
+        if tempGene in islandGenesInStrainL:
+            tempGeneName = '* '+tempGeneName
+        else:
+            tempGeneName = '  '+tempGeneName
+
+        infoL = [tempGeneName,"isl:"+str(tempGeneIsland.id),"fam:"+str(tempFamNum),"errSc:"+str(familyL[tempFamNum].possibleErrorCt),"mrca:"+strainNum2StrD[tempGeneIsland.mrca],descrip]
+
+        rowsL.append(infoL)
+
+    printTable(rowsL,indent=4,fileF=fileF)
 
 # support functions for printCoreNonCoreByNode
 

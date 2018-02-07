@@ -67,10 +67,22 @@ python3 path-to-xenoGI-directory/xenoGI.py params.py
 - xenoGI.py identifies horizontal transfer events. It is partly parallelized.
 
 
-- Subsequent analysis can also be run from the working directory
+### Subsequent analysis can also be run from the working directory
+
+- The script printAnalysis.py produces a number of analysis files
 
 ```
-python3 -i path-to-xenoGI-directory/runAnalysis.py params.py
+python3 path-to-xenoGI-directory/printAnalysis.py params.py
+```
+
+islandsSummary.out contains a summary of islands, organized by node.
+
+This script also produces a set of species specific genome files. These contain all the genes in a strain laid out in the order they occur on the contigs. Each gene entry include island and family information, as well as a brief description of the gene's function. These files all have the name genes in their stem, followed by the strain name, and the extension .out.
+
+- There are also functions for looking at the output interactively.
+
+```
+python3 -i path-to-xenoGI-directory/interactiveAnalysis.py params.py
 ```
 
 From within python, you can then run functions such as

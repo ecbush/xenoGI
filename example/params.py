@@ -176,5 +176,7 @@ potentialRgbL = ['245,130,48', '188,143,14','0,102,0','230,26,135','0,0,128', '1
 bedFilePath = 'bed/*-island.bed'
 gffFilePath = 'gff/*-island.gff'
 
+islandsSummaryFN = 'islandsSummary.out'
 
-
+genesFNstem = 'genes'
+genesFNextension = '.out'
