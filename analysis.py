@@ -254,6 +254,9 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrde
         _,island = islands.searchIslandsByID(listOfIslands,islandNum)
         if island != None: break
 
+    if island == None:
+        raise ValueError("Island "+str(islandNum)+" not found.")
+        
     mrca = island.mrca
     print("  mrca:",strainNum2StrD[mrca],file=fileF)
 
