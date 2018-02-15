@@ -169,7 +169,7 @@ def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scor
         bedFileName = bedDir+strain+bedExtension
         writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileName,scoreNodeMapD,islandColorD)
 
-    print('Number of islands miscolored is '+str(numberOfIslandsMiscolored)+' after '+str(numTries)+' tries.')
+    print('Number of islands miscolored is '+str(numberOfIslandsMiscolored)+' after '+str(numTries)+' tries.',file=sys.stderr)
 
 
 def islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD):
