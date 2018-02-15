@@ -1,5 +1,5 @@
 # module for loading parameters.
-
+import os
 
 def loadParametersD(paramFN):
     '''Load a parameters file into a dictionary. Assumes the file consists
@@ -25,16 +25,28 @@ of python assignment statements.'''
 
     return paramD
 
-def loadFileNameMapD(fileNameMapFN):
-    '''Load file containing the mappings between genbank file names and
-the human readable names we use. Return as dictionary. If
-fileNameMapFN is None, return empty dictionary. Expects file with one species per line: genbank name -  white space - human name.'''
+def loadFileNameMapD(fileNameMapFN,genbankFileList):
+    '''Create a dictionary with mappings between genbank file names and
+the human readable names we use in the tree. If fileNameMapFN contains
+a string, we load that file and construct the mappings based on this.
+Expects file with one species per line: genbank name + white space +
+human name. If fileNameMapFN is None, we create the mappings between
+the full file names (with path and extension) and the stem of the file
+name, which in this case should correspond to what is in the input
+tree.
+    '''
     fileNameMapD = {}
-    f = open(fileNameMapFN,'r')
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        genbankStem,human = s.rstrip().split()
-        fileNameMapD[genbankStem] = human
+    if fileNameMapFN == None:
+        for fullPathFN in genbankFileList:
+            fn = os.path.split(fullPathFN)[-1]
+            stem = os.path.splitext(fn)[0]
+            fileNameMapD[fn] = stem
+    else:
+        f = open(fileNameMapFN,'r')
+        while True:
+            s = f.readline()
+            if s == '':
+                break
+            genbankStem,human = s.rstrip().split()
+            fileNameMapD[genbankStem] = human
     return fileNameMapD

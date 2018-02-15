@@ -44,10 +44,7 @@ want.'''
 
         genbankName = os.path.split(fileName)[-1]
 
-        if fileNameMapD == {}:
-            speciesName = genbankName # not renaming in this case
-        else:
-            speciesName = fileNameMapD[genbankName]
+        speciesName = fileNameMapD[genbankName]
 
         uniqueS,redundS=getUniqueRedundSets(fileName,speciesName)
 
