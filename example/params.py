@@ -70,7 +70,7 @@ familyFN='fam.out'
 islandOutFN = 'islands.out'
 
 # file with summary info about family and island formation
-outputSummaryFN = 'outputSummary.txt'
+familyIslandFormationSummaryFN = 'familyIslandFormationSummary.out'
 
 #### Algorithm parameters ####
 

@@ -21,9 +21,9 @@ if __name__ == "__main__":
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
     ## make gene families
-    outputSummaryF = open(paramD['outputSummaryFN'],'w')
-    familyL = families.families(tree,subtreeL,geneNames,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,outputSummaryF)
+    familyIslandFormationSummaryF = open(paramD['familyIslandFormationSummaryFN'],'w')
+    familyL = families.families(tree,subtreeL,geneNames,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,familyIslandFormationSummaryF)
     
     ## group gene families into islands
-    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyL,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],outputSummaryF)
-    outputSummaryF.close()
+    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyL,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],familyIslandFormationSummaryF)
+    familyIslandFormationSummaryF.close()
