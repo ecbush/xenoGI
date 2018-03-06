@@ -47,6 +47,8 @@ tree.
             s = f.readline()
             if s == '':
                 break
+            elif s[0].isspace():
+                continue
             genbankStem,human = s.rstrip().split()
             fileNameMapD[genbankStem] = human
     return fileNameMapD
