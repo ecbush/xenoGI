@@ -1,8 +1,6 @@
 import sys,statistics,os,glob
 from urllib import parse
-sys.path.append(os.path.join(sys.path[0],'..'))
-import trees, genomes, families, islands, parameters, random
-
+import random
 
 def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD):
     '''Return a dict keyed by strain name. Values are lists of tuples
@@ -93,7 +91,7 @@ return its chrom,start,end.
     
     return chrom,islandMedianMidpoint,islandMin,islandMax
 
-def orderedIslandsInStrain(strainName):
+def orderedIslandsInStrain(strainName,islandByStrainD):
     '''returns a list of all the islands in the strain given, in the order they appear'''
     islandsInStrainL = islandByStrainD[strainName]
     chromStartIslandLL = []
@@ -140,13 +138,13 @@ def writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileN
     '''For a given strain, Write bed file.'''
     f=open(bedFileName,'w')
     f.write('track name='+strain+' type=bedDetail visibility=full itemRgb="On" useScore=0 \n')
-    orderedIslandsInStrainL = orderedIslandsInStrain(strain)
+    orderedIslandsInStrainL = orderedIslandsInStrain(strain,islandByStrainD)
     for islandT in orderedIslandsInStrainL:
         bedStr = islandToBed(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,islandColorD)
         f.write(bedStr+'\n')
     f.close()
 
-def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scoreNodeMapD,potentialRgbL):
+def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scoreNodeMapD,potentialRgbL,bedNumTries):
 
     # if directory for beds doesn't exist yet, make it
     bedDir = bedFilePath.split("*")[0]
@@ -156,9 +154,9 @@ def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scor
     bedExtension = bedFilePath.split("*")[1]
     minIslandsMiscolored = 1000
     strainL = list(islandByStrainD.keys())
-    for i in range(0,numTries):
+    for i in range(0,bedNumTries):
         random.shuffle(strainL)
-        numberOfIslandsMiscolored,islandColorD  = createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL)
+        numberOfIslandsMiscolored,islandColorD  = createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL,islandByStrainD)
         if numberOfIslandsMiscolored<minIslandsMiscolored:
             bestColorD = islandColorD
             minIslandsMiscolored = numberOfIslandsMiscolored
@@ -169,14 +167,14 @@ def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scor
         bedFileName = bedDir+strain+bedExtension
         writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileName,scoreNodeMapD,islandColorD)
 
-    print('Number of islands miscolored is '+str(numberOfIslandsMiscolored)+' after '+str(numTries)+' tries.',file=sys.stderr)
+    print('Number of islands miscolored is '+str(numberOfIslandsMiscolored)+' after '+str(bedNumTries)+' tries.',file=sys.stderr)
 
 
-def islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD):
+def islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD,strainNum2StrD):
     '''counts the number of islands that are adjacent to the same color island'''
     miscolorCount = 0
     for strain in islandByStrainD:
-        orderedIslandsInStrainL = orderedIslandsInStrain(strain)
+        orderedIslandsInStrainL = orderedIslandsInStrain(strain,islandByStrainD)
         for islandIndex in range(1,len(orderedIslandsInStrainL)):
             mrcaNum = orderedIslandsInStrainL[islandIndex-1][-3]
             if strainNum2StrD[mrcaNum] not in scoreNodeMapD:
@@ -184,12 +182,12 @@ def islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD):
                    
     return miscolorCount
 
-def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL):
+def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL,islandByStrainD):
     '''make the island color dictionary'''
     islandColorD = {}
     for strain in strainL:
         counter = 0
-        orderedIslandsInStrainL = orderedIslandsInStrain(strain)
+        orderedIslandsInStrainL = orderedIslandsInStrain(strain,islandByStrainD)
         for islandIndex in range(0,len(orderedIslandsInStrainL)):
             island = orderedIslandsInStrainL[islandIndex]
             #make a variable holding the previous island to compare colors
@@ -218,26 +216,6 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL):
                     islandColorD[islandNum]=str(score)
                     counter += 1
 
-    numberOfIslandsMiscolored = islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD)
+    numberOfIslandsMiscolored = islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD,strainNum2StrD)
 
     return numberOfIslandsMiscolored, islandColorD
-        
-if __name__ == "__main__":
-
-    paramFN=sys.argv[1]
-    numTries = int(sys.argv[2])
-    paramD = parameters.loadParametersD(paramFN)
-
-    ## load data structures we'll use below
-    tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
-    leafNodesL = trees.leafList(tree)
-    geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
-    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
-    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
-
-    
-    # get islands organized by strain
-    islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD)
-
-    createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['bedFilePath'],paramD['scoreNodeMapD'],paramD['potentialRgbL'])

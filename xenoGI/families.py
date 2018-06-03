@@ -2,8 +2,8 @@
 # http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
 # (We've added the use of synteny)
 import sys
-import trees
-from Family import *
+from . import trees
+from .Family import *
 
 
 ## Main function

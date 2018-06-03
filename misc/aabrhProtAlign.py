@@ -1,6 +1,6 @@
 import sys,glob,os,random
 sys.path.append(os.path.join(sys.path[0],'..'))
-import genomes,fasta,parameters,scores
+from xenoGI import genomes,fasta,parameters,scores
 
 ## funcs
 
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     f=open(aabrhAlignmentFN,"w")
 
     randStr = str(random.randrange(1e5))
-    intempAlignFN="/tmp/tempAlign"+randStr+".fa"
-    outtempAlignFN="/tmp/tempAlign"+randStr+".afa"
+    intempAlignFN="tempAlign"+randStr+".fa"
+    outtempAlignFN="tempAlign"+randStr+".afa"
    
     for orthos in aabrhL:
         tempf = open(intempAlignFN,"w")

@@ -1,6 +1,7 @@
-import sys
-import parameters,genomes,trees,families,scores,islands
-from analysis import *
+import sys,os
+sys.path.append(os.path.join(sys.path[0],'..'))
+from xenoGI import parameters,genomes,trees,families,scores,islands
+from xenoGI.analysis import *
 
 ## Wrapper functions
 #  these should be here, as they assume a bunch of global variables.

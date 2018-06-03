@@ -1,8 +1,10 @@
 import sys
 from multiprocessing import Pool
-import trees,genomes,analysis
-from Island import *
-from Family import *
+from . import trees
+from . import genomes
+from . import analysis
+from .Island import *
+from .Family import *
 
 ## Main function
 

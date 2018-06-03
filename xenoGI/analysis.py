@@ -1,7 +1,9 @@
-from Family import *
-from Island import *
 import sys
-import trees,scores,islands
+from .Family import *
+from .Island import *
+from . import trees
+from . import scores
+from . import islands
 
 #### Analysis functions
 

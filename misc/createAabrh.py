@@ -1,6 +1,6 @@
 import sys, os
 sys.path.append(os.path.join(sys.path[0],'..'))
-import genomes,scores,parameters
+from xenoGI import genomes,scores,parameters
 
 def loadStrainNames(geneOrderFN):
     '''Load gene order file, and keep the first thing on each line, which

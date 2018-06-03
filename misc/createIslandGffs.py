@@ -1,7 +1,7 @@
 import sys,statistics,os,glob
 from urllib import parse
 sys.path.append(os.path.join(sys.path[0],'..'))
-import trees, genomes, families, islands, parameters
+from xenoGI import trees, genomes, families, islands, parameters
 
 
 def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD):

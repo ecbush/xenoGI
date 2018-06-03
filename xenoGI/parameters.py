@@ -25,7 +25,7 @@ of python assignment statements.'''
 
     return paramD
 
-def loadFileNameMapD(fileNameMapFN,genbankFileList):
+def loadFileNameMapD(fileNameMapFN,genbankFileList=None):
     '''Create a dictionary with mappings between genbank file names and
 the human readable names we use in the tree. If fileNameMapFN contains
 a string, we load that file and construct the mappings based on this.

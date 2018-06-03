@@ -1,5 +1,7 @@
 # Functions for loading genes and gene order
-import trees,fasta,sys
+import sys
+from . import fasta
+from . import trees
 
 def loadProt(protFnL):
     '''Given a list of file names of fasta files with the gene name as

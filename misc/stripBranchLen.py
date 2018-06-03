@@ -1,7 +1,7 @@
 import sys,os
 from Bio import Phylo
 sys.path.append(os.path.join(sys.path[0],'..'))
-import trees
+from xenoGI import trees
 
 
 def tupleTree2NoBrLenNewick(tree):

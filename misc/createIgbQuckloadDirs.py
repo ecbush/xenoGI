@@ -1,6 +1,6 @@
 import sys,os,shutil
 sys.path.append(os.path.join(sys.path[0],'..'))
-import parameters
+from xenoGI import parameters
 
 # funcs
 

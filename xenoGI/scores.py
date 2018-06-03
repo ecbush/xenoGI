@@ -1,7 +1,8 @@
 import parasail,pickle,glob,statistics
 from multiprocessing import set_start_method, Pool
-import genomes,trees,Score
-
+from . import genomes
+from . import trees
+from . import Score
 
 #### Functions
 

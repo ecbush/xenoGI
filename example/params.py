@@ -41,7 +41,9 @@ fastaFilePath = 'fasta/*.fa'
 
 #### Blast output ####
 
-# absolute path to the directory containing the blastp and makeblastdb executables. Write this in whatever style is typical for the machine you are on, e.g. if it is windows, then using windows style \ etc.
+# absolute path to the directory containing the blastp and makeblastdb
+# executables. On Windows you may need to put in a second slash as an
+# escape, e.g. 'C:\\Users\\guest\\blast-2.7.1+\\bin'
 blastExecutDirPath = '/usr/bin/'
 
 # blast command line (except for db,query and outfiles)
@@ -70,7 +72,8 @@ familyFN='fam.out'
 islandOutFN = 'islands.out'
 
 # file with summary info about family and island formation
-familyIslandFormationSummaryFN = 'familyIslandFormationSummary.out'
+familyFormationSummaryFN = 'familyFormationSummary.out'
+islandFormationSummaryFN = 'islandFormationSummary.out'
 
 #### Algorithm parameters ####
 
@@ -172,11 +175,12 @@ potentialRgbL = ['245,130,48', '188,143,14','0,102,0','230,26,135','0,0,128', '1
 
 #### Visualization and analysis output files ####
 
-# unix style file path to bed, gff output files
-bedFilePath = 'bed/*-island.bed'
+# output for browsers
+bedFilePath = 'bed/*-island.bed' # unix style file path to bed output files
+bedNumTries = 100 # number of random tries to find best coloring for islands
 gffFilePath = 'gff/*-island.gff'
 
-islandsSummaryFN = 'islandsSummary.out'
-
+# analysis output
+analysisFilePath = 'analysis/*.out'
+islandsSummaryStem = 'islandsSummary'
 genesFNstem = 'genes'
-genesFNextension = '.out'
