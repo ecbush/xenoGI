@@ -24,11 +24,12 @@ Requirements
 
 Installation
 ------------
-  The easiest way to install is using pip:
 
-    ``pip intall xenoGI``
+The easiest way to install is using pip:
+
+  ``pip intall xenoGI``
     
-  Please ensure that the pip you are using corresponds to a version of Python 3.
+Please ensure that the pip you are using corresponds to a version of Python 3.
 
 How to use
 ----------
