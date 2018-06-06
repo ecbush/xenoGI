@@ -25,9 +25,9 @@ Requirements
 Installation
 ------------
 
-The easiest way to install is using pip:
+The easiest way to install is using pip:::
 
-  ``pip intall xenoGI``
+  pip intall xenoGI
     
 Please ensure that the pip you are using corresponds to a version of Python 3.
 
