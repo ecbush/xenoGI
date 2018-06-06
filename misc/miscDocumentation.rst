@@ -7,29 +7,29 @@ Brief documentation for helper scripts in misc/
 Tools for visualization with the IGB browser
 --------------------------------------------
 
-* With the IGB browser (http://bioviz.org/igb/), the bed file option allows you to most easily display different islands in different colors. As described in README.rst, bed files can be created via:::
+* With the IGB browser (http://bioviz.org/igb/), the bed file option allows you to most easily display different islands in different colors. As described in README.rst, bed files can be created via:
 
-  xenoGI params.py createIslandBed
+``xenoGI params.py createIslandBed``
            
 * To use with IGB , we've included scripts for making an IGB quickload directory (in misc).
 
-These require some additional sequence files from NCBI. For the example, those can be downloaded by going to the ncbi/ directory and running:::
+  These require some additional sequence files from NCBI. For the example, those can be downloaded by going to the ncbi/ directory and running:::
 
   sh getSeqs.sh
 
-Then in the main directory, run:::
+  Then in the main directory, run:::
 
-  python3 path-to-xenoGI-github-repository/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
+    python3 path-to-xenoGI-github-repository/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
 
-This script requires two programs from the blat suite, faToTwoBit and twoBitInfo (https://genome.ucsc.edu/goldenpath/help/blatSpec.html). These are required to be in the path. On windows it may be easier to simply edit createIgbQuckloadDirs.py, entering the absolute path to these executables.
+  This script requires two programs from the blat suite, faToTwoBit and twoBitInfo (https://genome.ucsc.edu/goldenpath/help/blatSpec.html). These are required to be in the path. On windows it may be easier to simply edit createIgbQuckloadDirs.py, entering the absolute path to these executables.
 
-Move species.txt and contents.txt into the directory igbExample.
+  Move species.txt and contents.txt into the directory igbExample.
 
-Now, running the script::
+  Now, running the script::
 
-  sh moveInBed.sh
+    sh moveInBed.sh
 
-moves the bed files into the newly created igbExample directory. You can then set IGB up to load this.
+  moves the bed files into the newly created igbExample directory. You can then set IGB up to load this.
 
 * We also include a script for creating gff files:::
    python3 path-to-xenoGI-github-repository/misc/createIslandGffs.py params.py
