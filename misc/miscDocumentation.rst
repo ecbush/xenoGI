@@ -7,9 +7,11 @@ Brief documentation for helper scripts in misc/
 Tools for visualization with the IGB browser
 --------------------------------------------
 
-* With the IGB browser (http://bioviz.org/igb/), the bed file option allows you to most easily display different islands in different colors. As described in README.rst, bed files can be created via:
+* With the IGB browser (http://bioviz.org/igb/), the bed file option allows you to most easily display different islands in different colors.
 
-``xenoGI params.py createIslandBed``
+  As described in README.rst, bed files can be created via::
+
+    xenoGI params.py createIslandBed
            
 * To use with IGB , we've included scripts for making an IGB quickload directory (in misc).
 
@@ -17,7 +19,7 @@ Tools for visualization with the IGB browser
 
   sh getSeqs.sh
 
-  Then in the main directory, run:::
+  Then in the main directory, run::
 
     python3 path-to-xenoGI-github-repository/misc/createIgbQuckloadDirs.py ncbiIgbDirMap.txt ncbiHumanMap.txt ncbi/ igbExample
 
@@ -31,16 +33,17 @@ Tools for visualization with the IGB browser
 
   moves the bed files into the newly created igbExample directory. You can then set IGB up to load this.
 
-* We also include a script for creating gff files:::
-   python3 path-to-xenoGI-github-repository/misc/createIslandGffs.py params.py
+* We also include a script for creating gff files.
+
+  It can be run like this::
+    
+    python3 path-to-xenoGI-github-repository/misc/createIslandGffs.py params.py
 
 
 interactiveAnalysis.py
 ----------------------
 
-This script does some interactive analysis from within the interpreter.
-
-Usage:::
+This script does some interactive analysis from within the interpreter::
 
   python3 -i path-to-xenoGI-github-repository/misc/interactiveAnalysis.py params.py
 
@@ -48,24 +51,30 @@ From within python, you can then run functions such as
 
 * printIslandsAtNode
 
-``printIslandsAtNode('i0')         # All islands at node i0
-  printIslandsAtNode('E_coli_K12') # All islands on the E. coli K12 branch``
+  Usage::
 
-* findIsland 
-    
-``findIsland('gadA') # Find an island associated with a gene name or description``
+    printIslandsAtNode('i0')         # All islands at node i0
+    printIslandsAtNode('E_coli_K12') # All islands on the E. coli K12 branch
+
+* findIsland
+
+  Usage::
+  
+    findIsland('gadA') # Find an island associated with a gene name or description``
     
 * printIsland
 
-    If we've identified an island of interest (for example island number 3500) then we can print it like this:
+  If we've identified an island of interest (for example island number 3500) then we can print it like this::
 
-``printIsland(3500,10) # First argument is island id, second is the number of genes to print to each side``
+    printIsland(3500,10) # First argument is island id, second is the number of genes to print to each side
     
-printIsland prints the island in each strain where it's present. Its output includes the island and family numbers for each gene, an error score for the family of each gene, the most recent common ancestor (mrca) of the family, and a description of the gene. The error score is intended to indicate confidence in the correctness of the family. 0 means more confident, higher numbers less confident.
+  printIsland prints the island in each strain where it's present. Its output includes the island and family numbers for each gene, an error score for the family of each gene, the most recent common ancestor (mrca) of the family, and a description of the gene. The error score is intended to indicate confidence in the correctness of the family. 0 means more confident, higher numbers less confident.
 
 * printFam
 
-``printFam(3500) # Print scores within a particular gene family, and also with similar genes not in the family``
+  Print scores within a particular gene family, and also with similar genes not in the family::
+  
+    printFam(3500)
 
 
 Obtaining a tree if you don't already have one
@@ -73,7 +82,7 @@ Obtaining a tree if you don't already have one
 
 If you don't have a species tree for your set of species, there is some code in misc/ to help you get alignments, which can then be used (with your phylogenetic package of choice) to get a tree.
 
-The first step is to get the genbank files for your species, and begin the process of running xenoGI, as described in README.rst. However you only run the first two steps:::
+The first step is to get the genbank files for your species, and begin the process of running xenoGI, as described in README.rst. However you only run the first two steps::
 
   xenoGI params.py parseGenbank
   xenoGI params.py runBlast
@@ -82,24 +91,24 @@ The first step is to get the genbank files for your species, and begin the proce
 Obtaining alignments
 ~~~~~~~~~~~~~~~~~~~~
 
-Next, we obtain sets of "all around best reciprocal hit" orthologs. These sets have exactly one copy in each strain.::
+Next, we obtain sets of "all around best reciprocal hit" orthologs. These sets have exactly one copy in each strain::
 
   python3 path-to-xenoGI-github-repository/misc/createAabrh.py params.py
 
-We now will take the proteins for each ortholog set, and construct alignments between them. This step assumes you have muscle (https://www.drive5.com/muscle/) in your path.::
+We now will take the proteins for each ortholog set, and construct alignments between them. This step assumes you have muscle (https://www.drive5.com/muscle/) in your path::
 
   python3 path-to-xenoGI-github-repository/misc/aabrhProtAlign.py params.py alignedProts.fa
 
-One possibility is you might want to make a tree based on the protein. In that case, you can concatenate the proteins like this:::
+One possibility is you might want to make a tree based on the protein. In that case, you can concatenate the proteins like this::
 
   python3 path-to-xenoGI-github-repository/misc/concatenateAlignment.py alignedProts.fa alignedProtsConcat.fa
 
-Alternatively, you may want to work with aligned nucleotide sequences. In that case, we download some corresponding nucleotide sequences to the gbff files in example/. From within the example/ncbi/ directory, run:::
+Alternatively, you may want to work with aligned nucleotide sequences. In that case, we download some corresponding nucleotide sequences to the gbff files in example/. From within the example/ncbi/ directory, run::
 
   sh getSeqs.sh
   gunzip *.gz
 
-Now back in example/ run:::
+Now back in example/ run::
   
   python3 path-to-xenoGI-github-repository/misc/aabrhBackAlign.py 4 alignedProts.fa alignedNucs.fa ncbi/*_cds_from_genomic.fna
 
@@ -120,11 +129,11 @@ Now you have output from some phylogenetic reconstruction program in the form of
 
 * Add names to the internal nodes
 
-  xenoGI requires internal nodes to be named. We can do that like this:::
+  xenoGI requires internal nodes to be named. We can do that like this::
 
     python3 path-to-xenoGI-github-repository/misc/nameInternalNodes.py rooted.tre namedNode.tre
 
-* Remove branch lengths (optional):::
+* Remove branch lengths (optional)::
     
     python3 path-to-xenoGI-github-repository/misc/stripBranchLen.py namedNode.tre final.tre
 

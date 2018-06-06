@@ -18,14 +18,14 @@ Requirements
   - Biopython (http://biopython.org/). This is for parsing genbank files and can be installed using pip:
       ``pip install biopython``
 
-  - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip::
+  - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip:
       ``pip install parasail``
 
 
 Installation
 ------------
 
-The easiest way to install is using pip:::
+The easiest way to install is using pip::
 
   pip intall xenoGI
     
@@ -63,7 +63,7 @@ Running the code
 
 If you install via pip, then you should have an executable script in your path called xenoGI.
 
-You run the code from within the working directory. To run the example, you would cd into the ``example/`` directory. You will need to ensure that the ``params.py`` parameters file contains the  correct path to the directory with the blastp and makeblastdb executables in it. Then, the various steps of xenoGI can be run all at once like this:::
+You run the code from within the working directory. To run the example, you would cd into the ``example/`` directory. You will need to ensure that the ``params.py`` parameters file contains the  correct path to the directory with the blastp and makeblastdb executables in it. Then, the various steps of xenoGI can be run all at once like this::
 
   xenoGI params.py runAll
 
@@ -77,7 +77,7 @@ They can also be run individually::
   xenoGI params.py printAnalysis
   xenoGI params.py createIslandBed
 
-If for some reason you don't want to install via pip, then you can download the repository and run the code like this:::
+If for some reason you don't want to install via pip, then you can download the repository and run the code like this::
 
   python3 path-to-xenoGI-github-repository/xenoGI-runner.py params.py runAll
 
