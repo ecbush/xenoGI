@@ -158,7 +158,7 @@ have.
 
     printTable(printL,indent=8,fileF=fileF)
     
-def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,fileF):
+def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,fileF):
     '''Verbose print of an island.'''
 
     print("  Island",island.id,file=fileF)
@@ -176,21 +176,24 @@ def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,fileF):
         newRow.append(str(fam))
         for node in speciesNodesL:
             geneT = familyL[fam].famGeneT[node]
-            newRow.append(",".join([geneNames.numToName(geneNum) for geneNum in geneT]))
+            for geneNum in geneT:
+                geneName = geneNames.numToName(geneNum)
+                commonGeneName = "("+geneInfoD[geneName][0]+")" if geneInfoD[geneName][0] != '' else ''
+                newRow.append(",".join([geneName + commonGeneName for geneNum in geneT]))
         printL.append(newRow)
     printTable(printL,indent=4,fileF=fileF)
 
 
-def vPrintIslands(islandL,subtreeL,familyL,strainNum2StrD,geneNames,fileF):
+def vPrintIslands(islandL,subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,fileF):
     '''Print a list of islands.'''
     print("  Summary",file=fileF)
     printIslandLSummary(islandL,fileF)
     print("  ---",file=fileF)
     for island in islandL:
-        vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,fileF)
+        vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,fileF)
         print('  ---',file=fileF)
 
-def vPrintAllIslands(islandByNodeL,tree,rootFocalClade,subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,fileF):
+def vPrintAllIslands(islandByNodeL,tree,rootFocalClade,subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,fileF):
     '''Loop over all nodes in tree, printing islands at each. '''
     rootFocalCladeNum = strainStr2NumD[rootFocalClade]
     focalTree = trees.subtree(tree,rootFocalCladeNum)
@@ -198,7 +201,7 @@ def vPrintAllIslands(islandByNodeL,tree,rootFocalClade,subtreeL,familyL,strainSt
         nodeStr = strainNum2StrD[node]
         print('########################### ',"Islands at node",nodeStr,file=fileF)
         print('',file=fileF)
-        vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames,fileF)
+        vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,fileF)
 
         
 def createGene2FamD(familyL):

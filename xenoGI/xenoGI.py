@@ -192,7 +192,7 @@ def printAnalysisWrapper(paramD):
 
     # Print out all islands
     islandsOutF = open(islandsSummaryFN,'w')
-    analysis.vPrintAllIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,islandsOutF)
+    analysis.vPrintAllIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,islandsOutF)
     islandsOutF.close()
 
     # Print species files with all the genes, grouped by contig
