@@ -114,6 +114,42 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
 
 * ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the islands in different colors.
 
+Interactive analysis
+~~~~~~~~~~~~~~~~~~~~
+
+After you have done runAll, it is possible to bring up the interpreter for interactive analysis::
+
+  xenoGI params.py interactiveAnalysis
+  
+From within python, you can then run functions such as
+
+* printIslandsAtNode
+
+  Usage::
+
+    printIslandsAtNode('i0')         # All islands at node i0
+    printIslandsAtNode('E_coli_K12') # All islands on the E. coli K12 branch
+
+* findIsland
+
+  Usage::
+  
+    findIsland('gadA') # Find an island associated with a gene name or description``
+    
+* printIsland
+
+  If we've identified an island of interest (for example island number 3500) then we can print it like this::
+
+    printIsland(3500,10) # First argument is island id, second is the number of genes to print to each side
+    
+  printIsland prints the island in each strain where it's present. Its output includes the island and family numbers for each gene, an error score for the family of each gene, the most recent common ancestor (mrca) of the family, and a description of the gene. The error score is intended to indicate confidence in the correctness of the family. 0 means more confident, higher numbers less confident.
+
+* printFam
+
+  Print scores within a particular gene family, and also with similar genes not in the family::
+  
+    printFam(3500)
+
 
 
 Additional files
