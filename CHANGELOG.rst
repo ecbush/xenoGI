@@ -3,6 +3,12 @@ Change Log
 ==========
 
 -------------------
+1.1.1_ - 2018-06-11
+-------------------
+
+Interactive analysis is now part of the main xenoGI script.
+
+-------------------
 1.1.0_ - 2018-06-03
 -------------------
 
@@ -18,4 +24,5 @@ Initial release, corresponding to our article: "xenoGI: reconstructing the histo
 
 
 .. _1.1.1:  https://github.com/ecbush/xenoGI/compare/v1.1.0...v1.1.1
-.. _1.1.0:  https://github.com/ecbush/xenoGI/releases/tag/v1.1.0
+.. _1.1.0:  https://github.com/ecbush/xenoGI/compare/v1.0.0...v1.1.0
+.. _1.0.0:  https://github.com/ecbush/xenoGI/releases/tag/v1.0.0
