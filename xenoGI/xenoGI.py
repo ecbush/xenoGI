@@ -35,7 +35,7 @@ def main():
         
     #### runBlast
     elif task == 'runBlast':
-        blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastExecutDirPath'],paramD['blastCLine'],paramD['numThreads'])
+        blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastExecutDirPath'],paramD['blastCLine'],paramD['numThreads'],paramD['treeFN'])
 
     #### calcScores
     elif task == 'calcScores':
@@ -60,7 +60,7 @@ def main():
     #### runAll
     elif task == 'runAll':
         parseGenbankWrapper(paramD)
-        blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastExecutDirPath'],paramD['blastCLine'],paramD['numThreads'])
+        blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastExecutDirPath'],paramD['blastCLine'],paramD['numThreads'],paramD['treeFN'])
         calcScoresWrapper(paramD)
         makeFamiliesWrapper(paramD)
         makeIslandsWrapper(paramD)

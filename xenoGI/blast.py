@@ -1,5 +1,38 @@
-import os, subprocess, glob
+import sys, os, subprocess, glob
+from . import trees
 from multiprocessing import Pool
+from Bio import Phylo
+
+def getDbFileL(fastaFilePath,treeFN):
+    '''Obtains and returns a list of all fasta files that should be run
+through blast. If there is a valid tree file present, then this list
+should contain only those fastas that correspond to species in the
+tree. If there is not a valid tree file, then the list will contain
+all fasta files present in the fasta directory. The reason we don't
+want to assume there is a tree file is that sometimes users will need
+to run blast before making that.
+    '''
+    # get list of all fastas in directory
+    dbFileL=glob.glob(fastaFilePath)
+
+    # load tree if present
+    try:
+        newDbFileL=[]
+        tree,strainStr2NumD,strainNum2StrD = trees.readTree(treeFN)
+        leavesL=[strainNum2StrD[strainNum] for strainNum in trees.leafList(tree)]
+
+        for dbFile in dbFileL:
+            dbStem = os.path.split(dbFile)[-1] # strain + extension
+            dbStem = os.path.splitext(dbStem)[0] # strain only
+            if dbStem in leavesL:
+                # this file name is in the tree, include it
+                newDbFileL.append(dbFile)
+
+        dbFileL = newDbFileL
+    except ( TypeError, FileNotFoundError, Phylo.NewickIO.NewickError ):
+        print("Since a properly formated tree file was not provided, we can't use that to determine which fasta files to blast. We will therefore blast all fasta files in fastaFilePath.",file=sys.stderr)
+
+    return dbFileL
 
 def formatDb(dbFileL,blastExecutDirPath):
     '''Format fasta files in fastaDir for blast by calling the formatdb
@@ -47,13 +80,14 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
-def runBlast(fastaFilePath,blastFilePath,blastExecutDirPath,blastCLine,numThreads):
+def runBlast(fastaFilePath,blastFilePath,blastExecutDirPath,blastCLine,numThreads,treeFN):
     '''Run blast comparing every database against every other in
 fastaFilePath. Save to the directory indicated by blastFilePath, using
 the blast parameters in blastCLine.'''
 
     # format the databases
-    dbFileL=glob.glob(fastaFilePath)
+    dbFileL=getDbFileL(fastaFilePath,treeFN)
+
     formatDb(dbFileL,blastExecutDirPath)
     
     # if directory for blast doesn't exist yet, make it
