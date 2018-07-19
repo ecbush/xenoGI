@@ -12,7 +12,7 @@ of python assignment statements.'''
         s=f.readline()
         if s == '':
             break
-        if s[0]=='#' or s[0] == '\n':
+        if s[0] == '\n' or s.lstrip() == '' or s.lstrip()[0]=='#':
             continue
         # if it's not the EOF, a comment, or a blank line, so it
         # must be an assignment statement.

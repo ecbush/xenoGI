@@ -17,7 +17,7 @@ def main():
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-            2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeFamilies, makeIslands, printAnalysis, createIslandBed, interactiveAnalysis, or runAll.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeFamilies, makeIslands, printAnalysis, createIslandBed, interactiveAnalysis, or runAll.
 
    For example: 
       xenoGI params.py parseGenbank

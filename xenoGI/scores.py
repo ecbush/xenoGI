@@ -9,7 +9,7 @@ from . import Score
 
 ## raw similarity scores
 
-def calcRawScores(fastaFilePath,numThreads,geneNames,gapOpen, gapExtend, matrix, scoresO):
+def calcRawScores(fastaFilePath,numThreads,geneNames,gapOpen,gapExtend,matrix,scoresO):
     '''Get a global alignment based raw score for every edge in scoresO.'''
 
     # load sequences
@@ -91,8 +91,10 @@ based on the max and min possible scores for these sequences.'''
 def calcNormScores(tree,strainNum2StrD,blastFilePath,evalueThresh,scoresO,geneNames,aabrhFN):
     '''Given directory of blast output and a graph of raw similarity
 scores, calculate normalized similarity scores by comparing each score
-with the range of scores in in all around best reciprocal hits in that
-pair of strains.'''
+with the range of scores in all around best reciprocal hits in that
+pair of strains. The norm score is not defined for genes in the same
+strain.
+    '''
 
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
@@ -102,15 +104,18 @@ pair of strains.'''
     # loop over each edge in scoresO, normalizing score and saving there
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
 
-        rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+        if geneNames.isSameStrain(gn1,gn2):
+            # normSc is undefined for genes in same strain
+            normSc = None
+        else:
+            rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
 
-        # find mean,std from aabrhRawScoreSummmaryD.
-        gnName1 = geneNames.numToName(gn1)
-        sp1,restOfName1 = gnName1.split('-')
-        gnName2 = geneNames.numToName(gn2)
-        sp2,restOfName1 = gnName2.split('-')
-        mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
-        normSc = normScore(rawSc,mean,std)
+            # find mean,std from aabrhRawScoreSummmaryD.
+            sp1 = geneNames.numToStrainName(gn1)
+            sp2 = geneNames.numToStrainName(gn2)
+            mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
+            normSc = normScore(rawSc,mean,std)
+            
         scoresO.addScoreByEndNodes(gn1,gn2,normSc,'normSc')
 
     return scoresO,aabrhL,aabrhRawScoreSummmaryD
@@ -360,7 +365,8 @@ score normalized by std and centered around zero.'''
 def calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
-genes that have an edge in scoresO.
+genes that have an edge in scoresO. The synteny score is not defined
+for genes in the same strain.
     '''
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
@@ -371,8 +377,13 @@ genes that have an edge in scoresO.
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-        argumentL[i%numThreads][0].append((gn1,gn2))
-        i+=1
+
+        if geneNames.isSameStrain(gn1,gn2):
+            # synSc is undefined for genes in same strain
+            scoresO.addScoreByEndNodes(gn1,gn2,None,'synSc')
+        else:
+            argumentL[i%numThreads][0].append((gn1,gn2))
+            i+=1
 
     p=Pool(numThreads) # num threads
     synScoresLL = p.map(synScoreGroup, argumentL)
@@ -433,10 +444,8 @@ def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSumm
     # get the min possible score for these two species (this is
     # really for the case of using normalized scores, where it
     # varies by species pair.)
-    gnName1 = geneNames.numToName(gn1)
-    sp1,restOfName1 = gnName1.split('-')
-    gnName2 = geneNames.numToName(gn2)
-    sp2,restOfName1 = gnName2.split('-')
+    sp1 = geneNames.numToStrainName(gn1)
+    sp2 = geneNames.numToStrainName(gn2)
     mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
 
     minNormScore = normScore(0,mean,std) # min raw score is 0
@@ -495,7 +504,10 @@ genes shared.'''
     return scoresO
 
 def createGeneToAabrhT(aabrhL,geneNames):
-    '''Create a tuple where the index corresponds to gene number and the value at that location is the number of the aabrh group to which the gene belongs, or None. The aabrh groups are numbered, simply based on the index where they occur in aabrhL.'''
+    '''Create a tuple where the index corresponds to gene number and the
+value at that location is the number of the aabrh group to which the
+gene belongs, or None. The aabrh groups are numbered, simply based on
+the index where they occur in aabrhL.'''
 
     geneToAabrhL =[None] * len(geneNames.nums)
 
@@ -506,7 +518,9 @@ def createGeneToAabrhT(aabrhL,geneNames):
     return tuple(geneToAabrhL)
 
 def createCoreSyntenyT(geneToAabrhT,geneOrderT,coreSynWsize):
-    '''Create and return core synteny tuple. The index of this corresponds to gene number. The value at that index is a tuple of the aabrh numbers for the syntenic genes within coreSynWsize.'''
+    '''Create and return core synteny tuple. The index of this corresponds
+to gene number. The value at that index is a tuple of the aabrh
+numbers for the syntenic genes within coreSynWsize.'''
 
     coreSyntenyL =[None] * len(geneToAabrhT)
     geneAabrhOrderL = createGeneAabrhOrderL(geneToAabrhT,geneOrderT)

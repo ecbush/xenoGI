@@ -82,7 +82,13 @@ class geneNames:
 
     def nameToStrainName(self,geneName):
         return self.strainNumToNameD[self.geneNumToStrainNumD[self.nameToNum(geneName)]]
-    
+
+    def isSameStrain(self,geneNum1,geneNum2):
+        '''Tests if two genes, given in numerical form, are in the same
+strain. Returns boolean.
+        '''
+        return self.numToStrainNum(geneNum1) == self.numToStrainNum(geneNum2)
+        
     def __repr__(self):
         return "<geneName object with "+str(len(self.names))+" genes.>"
     

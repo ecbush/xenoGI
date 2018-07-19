@@ -59,17 +59,16 @@ needed to run blastp on a pair of databases.'''
     clineL=[]
     for query in dbFileL:
         for db in dbFileL:
-            if query != db:
 
-                qstem = os.path.split(query)[-1]
-                qstem = os.path.splitext(qstem)[0]
-                
-                dbstem = os.path.split(db)[-1]
-                dbstem = os.path.splitext(dbstem)[0]
+            qstem = os.path.split(query)[-1]
+            qstem = os.path.splitext(qstem)[0]
 
-                outFN = os.path.join( blastDir, qstem + '-' + dbstem + blastExtension )
-                L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
-                clineL.append(L)
+            dbstem = os.path.split(db)[-1]
+            dbstem = os.path.splitext(dbstem)[0]
+
+            outFN = os.path.join( blastDir, qstem + '-' + dbstem + blastExtension )
+            L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
+            clineL.append(L)
 
     return clineL
 
