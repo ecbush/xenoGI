@@ -8,7 +8,9 @@ from .Family import *
 
 ## Main function
 
-def families(tree,subtreeL,geneNames,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,familyFN,strainNum2StrD, outputSummaryF):
+
+
+def createFamiliesO(tree,scoresO,geneNames,subtreeL,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,outputSummaryF,strainNum2StrD,familyFN):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
     '''
@@ -19,23 +21,33 @@ using a PhiGs-like algorithm, with synteny also considered.
     scoresO.createNodeConnectL(geneNames)
     
     geneUsedL = [False for x in geneNames.nums]
-    multiGeneFamilyL=[]
+
+    # create an object of class Families to store this in.
+    familiesO = Families(tree)
+    famNumCounter = 0
+    locusFamNumCounter = 0
     
-    for node,lnode,rnode in nodeOrderL:
-        if lnode != None:
+    for familyMrca,lchild,rchild in nodeOrderL:
+        if lchild != None:
             # not a tip
-            subtree=subtreeL[node]
-            leftS,rightS,outgroupS = createLRSets(subtree,geneNames)
+            subtree=subtreeL[familyMrca]
+
+            # for use in createSubFamilies call below
+            familySubtreeNodeOrderL = createNodeProcessOrderList(subtree)
+            
+            leftS,rightS,outgroupS = createLRSets(subtree,geneNames,geneNames.nums)
             seedL = createSeedL(leftS,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh)
             for seed in seedL:
-                seedRawSc,g1,g2 = seed
+                # each seed corresponds to a prospective gene family.
+                seedRawSc,seedG1,seedG2 = seed
 
                 if seedRawSc == -float('inf'):
                     # we've gotten to the point in the seed list with
                     # genes having no match on the other branch
                     break
                 else:
-                    famS=getFamily(seedRawSc,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,geneUsedL)
+                    # getting initial family, using only raw score and synteny bump
+                    famS=getFamily(seedRawSc,seedG1,seedG2,scoresO,leftS,rightS,minNormThresh,synAdjustThresh,synAdjustExtent,geneUsedL)
                     
                     if famS == None:
                         # one of the genes the the family was already
@@ -45,33 +57,39 @@ using a PhiGs-like algorithm, with synteny also considered.
                         # none of the genes in famS used yet
                         for gene in famS:
                             geneUsedL[gene] = True
-                        multiGeneFamilyL.append((node,famS))
 
-    # Create Family objects 
-    genesInMultiGeneFamsS = set()
-    familyL=[]
-    famNum = 0
-    for mrca,famS in multiGeneFamilyL:
-        genesInMultiGeneFamsS.update(famS) # add all genes in fam
-        familyL.append(Family(famNum,mrca,famS,trees.nodeCount(tree),geneNames ))
-        famNum+=1
+                        # now set up familiesO to take this family and
+                        # determine the corresponding locusFamilies
+                        
+                        familiesO.initializeFamily(famNumCounter,familyMrca,[seedG1,seedG2])
+                        famNumCounter,locusFamNumCounter,familiesO = createLocusFamilies(subtreeL,familyMrca,geneNames,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,minSynThresh,familiesO,familySubtreeNodeOrderL)
+                        famNumCounter+=1
 
-    multiGeneFamNum=famNum
+
+
+    genesInMultiGeneFamsS = familiesO.getAllGenes()
+    
+
+    multiGeneFamNum=famNumCounter
     print("Number of multigene families",multiGeneFamNum,file=outputSummaryF)
 
     # Add on remaining genes as single gene families.
-    for gene in geneNames.nums: 
+    for gene in geneNames.nums:
         if not gene in genesInMultiGeneFamsS:
-            mrca = geneNames.numToStrainNum(gene)
-            familyL.append(Family(famNum,mrca,[gene],trees.nodeCount(tree),geneNames))
-            famNum+=1
+            strain = geneNames.numToStrainNum(gene)
+            lfO = LocusFamily(famNumCounter,locusFamNumCounter,strain)
+            familiesO.initializeFamily(famNumCounter,strain)
+            familiesO.addLocusFamily(lfO)
+            locusFamNumCounter+=1
+            famNumCounter+=1
+            
 
-    print("Number of single gene families",famNum-multiGeneFamNum,file=outputSummaryF)
-    print("Number of total families",famNum,file=outputSummaryF)
+    print("Number of single gene families",famNumCounter-multiGeneFamNum,file=outputSummaryF)
+    print("Number of total families",famNumCounter,file=outputSummaryF)
 
     writeFamilies(familyL,geneNames,strainNum2StrD,familyFN)
 
-    return tuple(familyL)
+    return familiesO
 
 ## Support functions
 
@@ -88,7 +106,7 @@ node #, right node #).
         return [(tree[0], tree[1][0], tree[2][0])] + l + r
 
 
-def createLRSets(tree,geneNames):
+def createLRSets(tree,geneNames,geneListL):
     '''For every gene in our data, put it into one of three sets. Left,
 right, or outgroup. Genes in the left set are found in a species on
 the left branch of tree.'''
@@ -99,7 +117,7 @@ the left branch of tree.'''
     leftS=set()
     rightS=set()
     outgroupS=set()
-    for geneNum in geneNames.nums: # all genes
+    for geneNum in geneListL: # all genes
         strain=geneNames.numToStrainNum(geneNum)
         if strain in leftSpeciesS:
             leftS.add(geneNum)
@@ -120,12 +138,11 @@ below minSynThresh.
     bestEdgeScore = -float('inf')
     for otherGene in scoresO.getConnectionsGene(gene):
         if otherGene in S:
-            if scoresO.getScoreByEndNodes(gene,otherGene,'rawSc') > bestEdgeScore:
-                if scoresO.getScoreByEndNodes(gene,otherGene,'normSc') >= minNormThresh:
-                    if scoresO.getScoreByEndNodes(gene,otherGene,'coreSynSc') >= minCoreSynThresh:
-                        if scoresO.getScoreByEndNodes(gene,otherGene,'synSc') >= minSynThresh:
-                            bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
-                            bestGene = otherGene
+
+            if isFamily(gene,otherGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,bestEdgeScore,float('inf'),1):
+                # the float('inf') is to avoid using synAdjustThresh here.
+                bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
+                bestGene = otherGene
     return bestEdgeScore, gene, bestGene
     
 def createSeedL(leftS,rightS,scoresO,minNormThresh,minCoreSynThresh,minSynThresh):
@@ -144,19 +161,22 @@ and return.
     seedL.sort(reverse=True)
     return seedL
 
-def getFamily(seedRawSc,g1,g2,scoresO,leftS,rightS,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,geneUsedL):
+def getFamily(seedRawSc,g1,g2,scoresO,leftS,rightS,minNormThresh,synAdjustThresh,synAdjustExtent,geneUsedL):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
-the family than the two seeds are from each other. We have a
-normScore, synScore, and coreSynScore thresholds below which we will
-not add genes. We also have a synteny adjustment of the raw score
-where we make the raw score between a pair a bit better if their
-synteny is above synAdjustThresh. In general, if a gene has syntenic
-connectsions to genes already in the family, this makes us more
-confident that this gene belongs in the family. Returns a set
-containing genes in the family.
+the family than the two seeds are from each other. We have a normScore
+threshold below which we will not add genes. We also have a synteny
+adjustment of the raw score where we make the raw score between a pair
+a bit better if their synteny is above synAdjustThresh. In general, if
+a gene has syntenic connections to genes already in the family, this
+makes us more confident that this gene belongs in the family. Returns
+a set containing genes in the family.
     '''
 
+    ## Maybe re-write this with a helper function, analagous to
+    ## getLocusFamilyMatches? That approach is clearer if it works
+    ## here.
+    
     if geneUsedL[g1] or geneUsedL[g2]:
         # one of these has been used already, stop now.
         return None
@@ -172,7 +192,7 @@ containing genes in the family.
                     # it is from a species descended from the node
                     # we're working on
                     if newGene not in alreadySearchedS and newGene not in newGenesS and newGene not in notYetSearchedS:
-                        addIt = addGene(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedRawSc,synAdjustThresh,synAdjustExtent)
+                        addIt = isFamily(famGene,newGene,scoresO,minNormThresh,-float('inf'),-float('inf'),seedRawSc,synAdjustThresh,synAdjustExtent)
                         if addIt:
                             if geneUsedL[newGene]:
                                 # this one's been used already. That
@@ -187,7 +207,7 @@ containing genes in the family.
     return alreadySearchedS
 
 
-def addGene(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,seedRawSc,synAdjustThresh,synAdjustExtent):
+def isFamily(famGene,newGene,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,minRawThresh,synAdjustThresh,synAdjustExtent):
     '''Given famGene that is inside a family, and newGene we are
 considering adding, check the various scores to determine if we should
 add it. Return boolean.
@@ -211,10 +231,10 @@ add it. Return boolean.
         # doesn't meet min synteny requirement for
         # family formation. (Modification of PhiGs)
         pass
-    elif rawSc >= seedRawSc:
+    elif rawSc >= minRawThresh:
         # If its within the seed distance, add it
         # (basic PhiGs approach). we have the =
-        # there in case seedRawSc is 1.
+        # there in case minRawThresh is 1.
         addIt = True
     elif synSc > synAdjustThresh:
         # its above the syn score adjustment
@@ -228,13 +248,112 @@ add it. Return boolean.
         # (Modification of PhiGs)
         adjSc = rawSc * synAdjustExtent
         if adjSc > 1: adjSc = 1 # truncate back to 1
-        if adjSc >= seedRawSc:
+        if adjSc >= minRawThresh:
             addIt = True
     return addIt
 
+def createLocusFamilies(subtreeL,familyMrca,geneNames,famS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,minSynThresh,familiesO,familySubtreeNodeOrderL):
+    '''Given a family in famS, break it up into subsidiary locus families
+based on synteny. We iterate through the subtree rooted at familyMrca
+in pre-order (ancestors first). Using seeds, we try to find groups
+among famS that share high synteny.'''
+
+    #print("seedPairL",seedPairL)
+
+    subtree=subtreeL[familyMrca]
+    leftS,rightS,outgroupS = createLRSets(subtree,geneNames,famS)
+
+    famGenesToSearchS = leftS.copy()
+    famGenesToSearchS.update(rightS)
+
+    for seedG in seedPairL:
+        famGenesToSearchS.remove(seedG)
+
+    # get the LocusFamily associated with the original seed
+    lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,familyMrca,seedPairL,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
+
+    familiesO.addLocusFamily(lfO)
+    
+    # get any remaining LocusFamilies at non-syntenic locations
+    
+    for lfMrca,lchild,rchild in familySubtreeNodeOrderL:
+
+        if lchild != None:
+            # not a tip
+            subtree=subtreeL[lfMrca]
+            leftS,rightS,outgroupS = createLRSets(subtree,geneNames,famGenesToSearchS)
+
+            # not using minNormThresh
+            seedL = createSeedL(leftS,rightS,scoresO,-float('inf'),minCoreSynThresh,minSynThresh)
+
+            for seed in seedL:
+                seedRawSc,g1,g2 = seed
+
+                if seedRawSc == -float('inf'):
+                    # we've gotten to the point in the seed list with
+                    # genes having no match on the other branch
+                    break
+                else:
+                    startGeneL = [g1,g2]
+                    lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,startGeneL,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
+                    familiesO.addLocusFamily(lfO)
+
+    # any remaining genes must be on tips, and belong in their own locusFamily
+    for gene in famGenesToSearchS:
+        strain=geneNames.numToStrainNum(gene)
+        lfO = LocusFamily(famNumCounter,locusFamNumCounter,strain)
+        locusFamNumCounter+=1
+        lfO.add(gene)
+        familiesO.addLocusFamily(lfO)
+        
+    
+
+    return famNumCounter,locusFamNumCounter,familiesO
+    
+
+def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,startGeneL,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh):
+    '''Returns a LocusFamily object, containing genes associated with
+those in startGeneL, in the subtree definied at lfMrca
+(famGenesToSearchS is already restricted to the subtree defined by
+lfMrca). Does single linkage clustering, adding in anything in
+famGenesToSearchS with above threshold synteny.
+    '''
+    
+    lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca)
+    locusFamNumCounter+=1
+
+    for gene in startGeneL:
+        lfO.addGene(gene)
+
+    while True:
+        genesToAddS = getLocusFamilyMatches(lfO,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
+        if len(genesToAddS) == 0:
+            break
+
+        famGenesToSearchS.difference_update(genesToAddS)
+    
+    return lfO,locusFamNumCounter,famGenesToSearchS
+
+def getLocusFamilyMatches(lfO,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh):
+    '''Given a LocusFamily object lfO and some remaining genes, search through the remaining genes to find those that match syntenically. Return a list of genes to add.'''
+    
+    genesToAddS=set()
+    
+    for lfGene in lfO.genesL:
+        for searchGene in famGenesToSearchS:
+            # we don't use minNormThresh, minRawThresh, or
+            # synAdjustThresh. If the pair have values above
+            # minCoreSynThresh and minSynThres, then addIt will be
+            # True.
+            addIt = isFamily(lfGene,searchGene,scoresO,-float('inf'),minCoreSynThresh,minSynThresh,-float('inf'),float('inf'),1)
+            if addIt:
+                genesToAddS.add(searchGene)
+                
+    return genesToAddS
+                             
 
 def calcErrorScores(familyL,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
-    '''Given a list of family objects, calculate error scores for
+    '''NEEDS TO BE UPDATED. Given a list of family objects, calculate error scores for
 each. These values get saved as attributes of the objects.
     '''
     for famO in familyL:
@@ -243,30 +362,45 @@ each. These values get saved as attributes of the objects.
 
 ## Input/output
 
-def writeFamilies(familyL,geneNames,strainNum2StrD,fileName):
+def writeFamilies(familiesO,geneNames,strainNum2StrD,fileName):
     '''Write all gene families to fileName, one family per line.'''
     f=open(fileName,'w')
-    for fam in familyL:
+    for fam in familiesO.iterFamily():
         f.write(fam.fileStr(geneNames,strainNum2StrD)+'\n')
     f.close()
 
 
 def readFamilies(familyFN,tree,geneNames,strainStr2NumD):
-    '''Read the family file named familyFN, creating a tuple of family
-objects where the index corresponds to family number.'''
-    
-    famL=[]
-    maxFamNum=0
+    '''Read the family file named familyFN, creating a Families object.
+    '''
+
+    familiesO = Families(tree)
     f=open(familyFN,'r')
     while True:
         s=f.readline()
         if s=='':
             break
-        L=s.split()
+        L=s.split('\t')
         famNum=int(L[0])
         mrca = strainStr2NumD[L[1]]
-        genesL = L[2:]
+        if L[2] == "-":
+            seedPairL = None
+        else:
+            seedPairL = [L[2],L[3]]
 
-        famL.append(Family(famNum,mrca,genesL,trees.nodeCount(tree),geneNames))
+        lfL = L[4:]
+
+        familiesO.initializeFamily(famNum,mrca,seedPairL)
+
+        for lfStr in lfL:
+            lfSplitL = lfStr.split(',')
+            locusFamNum=int(lfSplitL[0])
+            lfMrca = strainStr2NumD[lfSplitL[1]]
+            geneL=[]
+            for geneName in lfSplitL[2:]:
+                geneL.append(geneNames.nameToNum(geneName))
+            lfO = LocusFamily(locusFamNum,famNum,lfMrca)
+            familiesO.addLocusFamily(lfO)
+
     f.close()
-    return famL
+    return familiesO

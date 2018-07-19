@@ -138,7 +138,7 @@ def makeFamiliesWrapper(paramD):
 
     ## make gene families
     familyFormationSummaryF = open(paramD['familyFormationSummaryFN'],'w')
-    familyL = families.families(tree,subtreeL,geneNames,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],paramD['familyFN'],strainNum2StrD,familyFormationSummaryF)
+    familiesO = families.createFamiliesO(tree,scoresO,geneNames,subtreeL,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],familyFormationSummaryF,strainNum2StrD,paramD['familyFN'])
     familyFormationSummaryF.close()
 
 def makeIslandsWrapper(paramD):
@@ -150,7 +150,7 @@ def makeIslandsWrapper(paramD):
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
     ## read gene families
-    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
     ## group gene families into islands
     islandFormationSummaryF = open(paramD['islandFormationSummaryFN'],'w')
