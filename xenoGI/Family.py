@@ -1,31 +1,44 @@
 
 class LocusFamily:
-    def __init__(self, locusFamNum, famNum, lfMrca):
-        ''''''
-
-        self.locusFamNum = locusFamNum
+    def __init__(self, famNum, locusFamNum, lfMrca, genesL):
+        '''Initialize a LocusFamily object with a family number, a LocusFamily
+number, and the mrca for this locus family (which may differ from the
+mrca for its family.'''
         self.famNum = famNum
+        self.locusFamNum = locusFamNum
         self.lfMrca = lfMrca
-
-        self.genesL = []
+        self.genesL = genesL
 
     def addGene(self, gene):
         '''Add a gene to our set of genes. This should be the numerical
 representation of a gene.'''
         self.genesL.append(gene)
 
-    def fileStr(self,strainNum2StrD,geneNames):
-        '''Return a string representation of a single LocusFamily. Format is
-        comma separated: locusFamNum,gene1,gene2...
-        '''
+    def getGeneNums(self):
+        return self.genesL
 
+    def getStr(self,strainNum2StrD,geneNames,sep):
+        '''Return a string representation of a single LocusFamily. Separator
+between elements given by sep. Elements are: locusFamNum lfMrca gene1
+gene2...
+        '''
         outL=[str(self.locusFamNum),strainNum2StrD[self.lfMrca]]
         
         for geneNum in self.genesL:
             outL.append(geneNames.numToName(geneNum))
 
-        return ",".join(outL)
+        return sep.join(outL)
+    
+    def fileStr(self,strainNum2StrD,geneNames):
+        '''Return a string representation of a single LocusFamily. Format is
+        comma separated: 
+        '''
+        return self.getStr(strainNum2StrD,geneNames,',')
 
+    def __repr__(self):
+        '''String representation of a LocusFamily, for display purposes.'''
+        return "<lf "+str(self.locusFamNum)+">"
+        
         
 class Family:
     def __init__(self,famNum,mrca,seedPairL=None):
@@ -35,11 +48,22 @@ class Family:
         self.mrca = mrca
         self.seedPairL = seedPairL # original seeds from PHiGS. This will be
                                    # None if single gene family
-        self.locusFamiliesL = [] # will contain locusFamily IDs for this family
+        self.locusFamiliesL = []   # will contain locusFamily objects for this family
 
     def addLocusFamily(self,lfO):
         self.locusFamiliesL.append(lfO)
-    
+
+    def getLocusFamilies(self):
+        return self.locusFamiliesL
+
+    def getGeneNums(self):
+        '''Get all the genes associated with this family in numerical form.'''
+        famGenesL=[]
+        for lfO in self.getLocusFamilies():
+            for gene in lfO.getGeneNums():
+                famGenesL.append(gene)
+        return famGenesL
+        
     def fileStr(self,strainNum2StrD,geneNames):
         '''Return string representation of single family. Format is: famNum <tab> 
         mrca <tab> seedG1 <tab> seedG2 <tab> locusFamNum1,locusFamGenes <tab>
@@ -56,11 +80,14 @@ class Family:
             for seed in self.seedPairL:
                 outL.append(geneNames.numToName(seed))
 
-        for lfO in self.locusfamiliesL:
-            outL.append(lfO.fileStr(geneNames))
+        for lfO in self.locusFamiliesL:
+            outL.append(lfO.fileStr(strainNum2StrD,geneNames))
                 
         return "\t".join(outL)
 
+    def __repr__(self):
+        return "<fam:"+str(self.famNum)+">"
+    
 
 class Families:
 
@@ -95,18 +122,18 @@ to create the corresponding family.
     def getFamily(self,famNum):
         return self.familiesD[famNum]
 
-    def iterLocusFamily(self):
+    def iterLocusFamilies(self):
         '''Iterate over all LocusFamilies in order of locusFamNum.
         '''
         maxLocusFamNum = max(self.locusFamiliesD.keys())
-        for i in range(maxLocusFamNum):
+        for i in range(maxLocusFamNum+1):
             if i in self.locusFamiliesD:
                 yield self.locusFamiliesD[i]
         
-    def iterFamily(self):
+    def iterFamilies(self):
         '''Iterate over all Families in order of famNum.'''
         maxFamNum = max(self.familiesD.keys())
-        for i in range(maxFamNum):
+        for i in range(maxFamNum+1):
             if i in self.familiesD:
                 yield self.familiesD[i]
                 
@@ -115,6 +142,9 @@ to create the corresponding family.
 to this instance of the Families class. Return as a set.
         '''
         allGenesS=set()
-        for lfO in self.iterLocusFamily():
+        for lfO in self.iterLocusFamilies():
             allGenesS.update(lfO.genesL)
         return allGenesS
+
+    def __repr__(self):
+        return "<Families object--"+str(len(self.familiesD))+" Families, "+str(len(self.locusFamiliesD))+" LocusFamilies>"

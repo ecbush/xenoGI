@@ -55,13 +55,15 @@ fields of geneInfoD.'''
         
 ## Print scores associated with a family
 
-def printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,scoreType,fileF):
-    '''Print a matrix of scores between all the genes in a familyNum. Scores
-are provided by scoresO, and we're extracting the values associated
-with scoreType in the edges of this graph.
+def printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,scoreType,fileF):
+    '''Print a matrix of scores between all the genes in a family given by
+familyNum. Scores are provided by scoresO, and we're extracting the
+values associated with scoreType in the edges of this graph.
     '''
 
-    familyGeneNumsL = familyL[familyNum].getGeneNums()
+    familyGeneNumsL = []
+    for lfO in familiesO.getFamily(familyNum).getLocusFamilies():
+        familyGeneNumsL.extend(lfO.getGeneNums())
     
     rowsL = []
     geneNamesL = [geneNames.numToName(gn) for gn in familyGeneNumsL]
@@ -204,14 +206,14 @@ def vPrintAllIslands(islandByNodeL,tree,rootFocalClade,subtreeL,familyL,strainSt
         vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,fileF)
 
         
-def createGene2FamD(familyL):
-    '''Given the family information in familyL, create a dictionary
+def createGene2FamD(familyO):
+    '''Given the family information in familyO, create a dictionary
 gene2FamD which maps from gene number to family number.'''
     gene2FamD={}
-    for famNum in range(len(familyL)):
-        for geneT in familyL[famNum].famGeneT:
-            for gene in geneT:
-                gene2FamD[gene]=famNum
+    for lfO in familyO.iterLocusFamilies():
+        famNum=lfO.famNum
+        for gene in lfO.genesL:
+            gene2FamD[gene]=famNum
     return gene2FamD
 
 def createFam2IslandD(islandL):

@@ -10,7 +10,7 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'interactiveAnalysis', 'runAll'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'interactiveAnalysis', 'runAll', 'debug'])
     
     except:
         print(
@@ -71,6 +71,9 @@ def main():
     elif task == 'interactiveAnalysis':
         interactiveAnalysisWrapper(paramD)
 
+    #### debug
+    elif task == 'debug':
+        debugWrapper(paramD)
         
 ######## Task related functions
 
@@ -235,34 +238,39 @@ def interactiveAnalysisWrapper(paramD):
     other required stuff is available at the top level. familyNum is the
     numerical identifier of a family.
         '''
-
-        print("Family error score (count of possibly misassigned genes):",familyL[familyNum].possibleErrorCt,file=fileF)
+                    
+        print("Family",familyNum,file=fileF)
+        # print out the locus families
+        for lfO in familiesO.getFamily(familyNum).getLocusFamilies():
+            print("    LocusFamily",lfO.getStr(strainNum2StrD,geneNames," "),file=fileF)
+        
+        # print("Family error score (count of possibly misassigned genes):",familyL[familyNum].possibleErrorCt,file=fileF)
 
         print(file=fileF)
         print("Matrix of raw similarity scores [0,1] between genes in the family",file=fileF)
-        printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'rawSc',fileF)
+        printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'rawSc',fileF)
         print(file=fileF)
         print(file=fileF)
 
         print(file=fileF)
         print("Matrix of normalized similarity scores between genes in the family",file=fileF)
-        printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'normSc',fileF)
+        printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'normSc',fileF)
         print(file=fileF)
         print(file=fileF)
 
         print("Matrix of core synteny scores [0,1] between genes in the family",file=fileF)
-        printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'coreSynSc',fileF)
+        printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'coreSynSc',fileF)
         print(file=fileF)
         print(file=fileF)
 
         print("Matrix of synteny scores between genes in the family",file=fileF)
-        printScoreMatrix(familyNum,subtreeL,familyL,geneNames,scoresO,'synSc',fileF)
+        printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'synSc',fileF)
         print(file=fileF)
         print(file=fileF)
 
-        printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO,fileF)
-        print(file=fileF)
-        print(file=fileF)
+        #printOutsideFamilyScores(familyNum,subtreeL,familiesO,geneNames,scoresO,fileF)
+        #print(file=fileF)
+        #print(file=fileF)
 
     def findIsland(searchStr,fileF=sys.stdout):
         '''Print the gene, family and island associated with searchStr. This
@@ -315,17 +323,31 @@ def interactiveAnalysisWrapper(paramD):
     
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     nodesL=trees.nodeList(tree)
-    geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
-    gene2FamD=createGene2FamD(familyL)
-    fam2IslandD=createFam2IslandD(islandByNodeL)
-    geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNames,subtreeL,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    # islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    gene2FamD=createGene2FamD(familiesO)
+    #fam2IslandD=createFam2IslandD(islandByNodeL)
+
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
     scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
     # calc family error scores
-    families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
+    #families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
     
     code.interact(local=locals())
 
+def debugWrapper(paramD):
+    '''Take us into interactive mode for debugging.'''
+
+    ## Set up the modules a bit differently for interactive mode
+    import code
+
+    
+    tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+
+    nodeGenesL = families.createNodeGenesL(tree,geneNames)
+
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    
+    code.interact(local=locals())
