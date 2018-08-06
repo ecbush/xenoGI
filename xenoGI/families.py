@@ -20,7 +20,7 @@ using a PhiGs-like algorithm, with synteny also considered.
     
     geneUsedL = [False for x in geneNames.nums]
 
-    # create nodeGenesL
+    # create nodeGenesL, has genes divided by node
     nodeGenesL = createNodeGenesL(tree,geneNames)
     
     # create an object of class Families to store this in.
@@ -35,8 +35,10 @@ using a PhiGs-like algorithm, with synteny also considered.
 
             # for use in createLocusFamilies call below
             familySubtreeNodeOrderL = createNodeProcessOrderList(subtree)
-            
-            leftS,rightS,outgroupS = createLRSets(subtree,geneNames,geneNames.nums)
+
+
+            leftS,rightS = createLRSets(subtreeL,familyMrca,nodeGenesL,None)
+
             seedL = createSeedL(leftS,rightS,scoresO,geneNames,minNormThresh)
             for seed in seedL:
                 # each seed corresponds to a prospective gene family.
@@ -62,7 +64,7 @@ using a PhiGs-like algorithm, with synteny also considered.
                         # now set up familiesO to take this family and
                         # determine the corresponding locusFamilies
                         familiesO.initializeFamily(famNumCounter,familyMrca,[seedG1,seedG2])
-                        locusFamNumCounter,familiesO = createLocusFamilies(subtreeL,familyMrca,geneNames,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,minSynThresh,familiesO,familySubtreeNodeOrderL)
+                        locusFamNumCounter,familiesO = createLocusFamilies(subtreeL,familyMrca,geneNames,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,minSynThresh,familiesO,familySubtreeNodeOrderL,nodeGenesL)
                         famNumCounter+=1 # important to increment this after call to createLocusFamilies
 
 
@@ -92,8 +94,10 @@ using a PhiGs-like algorithm, with synteny also considered.
                 newFamS=set([seed])
                 for newGene in unusedGenesAtThisTipS:
 
-                    # for now, simply check if there's an edge
-                    # (reflecting significant similarity)
+                    # check if there's an edge (reflecting significant
+                    # blast similarity). If so at newGene to
+                    # family. In future maybe we can set some kind of
+                    # crude threshold here (and could use isFamily in that case)
                                 
                     if scoresO.isEdgePresentByEndNodes(seed,newGene):
                         newFamS.add(newGene)
@@ -107,7 +111,8 @@ using a PhiGs-like algorithm, with synteny also considered.
 
                     
                 familiesO.initializeFamily(famNumCounter,familyMrca)
-                lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtTips(newFamS,geneNames,familyMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter)
+                lfOL,locusFamNumCounter = createAllLocusFamiliesAtTips(newFamS,geneNames,familyMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter)
+
                 for lfO in lfOL:
                     familiesO.addLocusFamily(lfO)
                     
@@ -177,27 +182,29 @@ sets.
         nodeGenesL[strain].add(gene)
     return nodeGenesL
         
-def createLRSets(tree,geneNames,geneListL):
-    '''For every gene in our data, put it into one of three sets. Left,
-right, or outgroup. Genes in the left set are found in a species on
-the left branch of tree.'''
+def createLRSets(subtreeL,mrca,nodeGenesL,restrictS):
+    '''At given mrca, obtain all genes in species in left branch and put
+in leftS, and all genes from species in right branch to
+rightS. Restrict each of these to be only genes in restrictS. If
+restrictS is None, then use all genes.
+    '''
 
-    leftSpeciesS=set(trees.leafList(tree[1]))
-    rightSpeciesS=set(trees.leafList(tree[2]))
+    subtree=subtreeL[mrca]
     
     leftS=set()
+    for tip in trees.leafList(subtree[1]):
+        leftS.update(nodeGenesL[tip])
     rightS=set()
-    outgroupS=set()
-    for geneNum in geneListL: # all genes
-        strain=geneNames.numToStrainNum(geneNum)
-        if strain in leftSpeciesS:
-            leftS.add(geneNum)
-        elif strain in rightSpeciesS:
-            rightS.add(geneNum)
-        else:
-            outgroupS.add(geneNum)
+    for tip in trees.leafList(subtree[2]):
+        rightS.update(nodeGenesL[tip])
 
-    return(leftS,rightS,outgroupS)
+    if restrictS != None:    
+        leftS.intersection_update(restrictS)
+        rightS.intersection_update(restrictS)
+        
+    return(leftS,rightS)
+
+
 
 def closestMatch(gene,S,scoresO,geneNames,minNormThresh):
     '''Find the closest match to gene among the genes in the set S in the
@@ -211,7 +218,6 @@ below minSynThresh.
         if otherGene in S:
 
             if isFamily(gene,otherGene,scoresO,geneNames,bestEdgeScore,minNormThresh,float('inf'),1):
-            
                 # the float('inf') is to avoid using synAdjustThresh here.
                 bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
                 bestGene = otherGene
@@ -327,7 +333,7 @@ add it. Return boolean.
                 
     return addIt
 
-def createLocusFamilies(subtreeL,familyMrca,geneNames,famS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,minSynThresh,familiesO,familySubtreeNodeOrderL):
+def createLocusFamilies(subtreeL,familyMrca,geneNames,famS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,minSynThresh,familiesO,familySubtreeNodeOrderL,nodeGenesL):
     '''Given a family in famS, break it up into subsidiary locus families
 based on synteny. We iterate through the subtree rooted at familyMrca
 in pre-order (ancestors first). Using seeds, we try to find groups
@@ -343,14 +349,24 @@ among famS that share high synteny.'''
 
         if lchild != None:
             # not a tip
-            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter)
+            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter)
             
             for lfO in lfOL:
                 familiesO.addLocusFamily(lfO)
 
         else:
             # we're at a tip.
-            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtTips(famGenesToSearchS,geneNames,lfMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter)            
+            
+            # get only the genes at this tip
+            genesAtThisTipS = famGenesToSearchS.intersection(nodeGenesL[lfMrca])
+
+            # remove them from famGenesToSearchS
+            famGenesToSearchS.difference_update(genesAtThisTipS)
+
+            # Get lf objects for all these genes
+            lfOL,locusFamNumCounter = createAllLocusFamiliesAtTips(genesAtThisTipS,geneNames,lfMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter)            
+
+            # add to our families object
             for lfO in lfOL:
                 familiesO.addLocusFamily(lfO)
 
@@ -449,13 +465,13 @@ boolean.
             
     return addIt
 
-def createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
     '''Obtains all locus families at the internal node defined by lfMrca.'''
 
     lfOL = []
     while True:
 
-        lfSeedPairL = createLFSeed(subtreeL,lfMrca,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
+        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
         
         if lfSeedPairL == []:
             # there are no (more) seeds stradling this internal node,
@@ -467,14 +483,13 @@ def createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,geneNames,famGenesToSea
         
     return lfOL,locusFamNumCounter,famGenesToSearchS
             
-def createLFSeed(subtreeL,lfMrca,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh):
+def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh):
     '''Given a set of genes famGenesToSearchS from a family, try to find a
 seed based at lfMrca. A seed consists of two genes, one in the left
 subtree and one in the right, which are syntenically consistent.
     '''
     
-    subtree=subtreeL[lfMrca]
-    leftS,rightS,outgroupS = createLRSets(subtree,geneNames,famGenesToSearchS)
+    leftS,rightS = createLRSets(subtreeL,lfMrca,nodeGenesL,famGenesToSearchS)
     
     for lGene in leftS:
         for rGene in rightS:
@@ -483,25 +498,14 @@ subtree and one in the right, which are syntenically consistent.
     return []
         
 
-def createAllLocusFamiliesAtTips(famGenesToSearchS,geneNames,lfMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtTips(genesAtThisTipS,geneNames,lfMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
     '''Given a set of genes famGenesToSearchS, search for all those found
 on the tip given by lfMrca. Break these into LocusFamilies. Many will
 be single gene LocusFamilies, but some may be multi-gene
     '''
 
-    # NOTE: rewrite to use nodeGenesL. Better. Get rid of this, and filter outside.
-    
-    genesAtThisTipS=set()
-    for gene in famGenesToSearchS:
-        strain=geneNames.numToStrainNum(gene)
-        if strain == lfMrca:
-            # this gene belongs to the tip we're at
-            genesAtThisTipS.add(gene)
-    
     # Break these up into LocusFamilies. Many will be
     # single gene LocusFamilies, but some may be multi-gene
-
-    
     lfGroupsL=[]
     while len(genesAtThisTipS) > 0:
 
@@ -519,7 +523,6 @@ be single gene LocusFamilies, but some may be multi-gene
 
     lfOL=[]
     for lfGroupS in lfGroupsL:
-        famGenesToSearchS.difference_update(lfGroupS)
 
         lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca,[])
         locusFamNumCounter+=1
@@ -527,7 +530,7 @@ be single gene LocusFamilies, but some may be multi-gene
             lfO.addGene(gene)
         lfOL.append(lfO)
 
-    return lfOL,locusFamNumCounter,famGenesToSearchS
+    return lfOL,locusFamNumCounter
     
 
 def calcErrorScores(familyL,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):

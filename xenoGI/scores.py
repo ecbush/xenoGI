@@ -1,4 +1,4 @@
-import parasail,pickle,glob,statistics
+import parasail,pickle,glob
 from multiprocessing import set_start_method, Pool
 from . import genomes
 from . import trees
@@ -99,7 +99,7 @@ strain.
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
 
-    aabrhRawScoreSummmaryD=getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,scoresO,geneNames)
+    scoresO.createAabrhScoreSummaryD(strainNamesL,aabrhL,geneNames)
    
     # loop over each edge in scoresO, normalizing score and saving there
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -110,15 +110,15 @@ strain.
         else:
             rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
 
-            # find mean,std from aabrhRawScoreSummmaryD.
+            # find mean,std from scoresO.scoreSummaryD.
             sp1 = geneNames.numToStrainName(gn1)
             sp2 = geneNames.numToStrainName(gn2)
-            mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
+            mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
             normSc = normScore(rawSc,mean,std)
             
         scoresO.addScoreByEndNodes(gn1,gn2,normSc,'normSc')
 
-    return scoresO,aabrhL,aabrhRawScoreSummmaryD
+    return scoresO,aabrhL
 
 
 def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
@@ -309,51 +309,6 @@ orthologs.'''
             aabrhL.append((gene,)+hitsT)
     return aabrhL
 
-def getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,scoresO,geneNames):
-    '''Given raw scores and a directory with blast output, finds the sets of all around best reciprocal hits. Then for each pair of species, calculates the mean and standard deviation of scores and stores in a dictionary.'''
-
-    # now loop through these, sorting scores into a dict keyed by species pair.
-
-    # create dictionary, (representing an upper triangular matrix)
-    spScoreD={}
-    for i in range(len(strainNamesL)-1):
-        strain1 = strainNamesL[i]
-        for j in range(i+1,len(strainNamesL)):
-            strain2 = strainNamesL[j]
-            spScoreD[(strain1,strain2)]=[]
-
-    # loop through aabrhL and populate
-    for orthoT in aabrhL:
-        spScoreD = addPairwiseScores(spScoreD,orthoT,scoresO,geneNames)
-
-    # get mean and standard deviation
-    summaryD = {}
-    for sp1,sp2 in spScoreD:
-        mean = statistics.mean(spScoreD[(sp1,sp2)])
-        std = statistics.stdev(spScoreD[(sp1,sp2)])
-        summaryD[(sp1,sp2)] = (mean,std)
-        summaryD[(sp2,sp1)] = (mean,std)
-        
-    return summaryD
-
-def addPairwiseScores(spScoreD,orthoT,scoresO,geneNames):
-    '''Given a dictionary for storing pairwise scores, and ortholog set in
-orthoT, and a network of scores, scoresO, pull out all species pairs, and
-add score for each in appropriate place in spScoreD.'''
-
-    for i in range(len(orthoT)-1):
-        gene1 = orthoT[i]
-        sp1,restOfName1=gene1.split('-')
-        geneNum1=geneNames.nameToNum(gene1)
-        for j in range(i+1,len(orthoT)):
-            gene2 = orthoT[j]
-            geneNum2=geneNames.nameToNum(gene2)
-            sp2,restOfName1=gene2.split('-')
-            sc = scoresO.getScoreByEndNodes(geneNum1,geneNum2,'rawSc')
-            key = tuple(sorted([sp1,sp2]))
-            spScoreD[key].append(sc)
-    return spScoreD
-
 def normScore(rawScore,mean,std):
     '''Given a raw score and mean and std of all raw scores, return a
 score normalized by std and centered around zero.'''
@@ -362,7 +317,7 @@ score normalized by std and centered around zero.'''
 
 ## synteny scores
 
-def calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
+def calcSynScores(scoresO,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
 genes that have an edge in scoresO. The synteny score is not defined
@@ -373,7 +328,7 @@ for genes in the same strain.
 
     # make list of groups of arguments to be passed to p.map. There
     # should be numThreads groups.
-    argumentL = [([],neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD,scoresO) for i in range(numThreads)]
+    argumentL = [([],neighborTL,numSynToTake,geneNames,scoresO) for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -424,15 +379,15 @@ def synScoreGroup(argsT):
     scores. This function is intended to be called by p.map.
     '''
 
-    edgeL,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD,scoresO = argsT
+    edgeL,neighborTL,numSynToTake,geneNames,scoresO = argsT
 
     outL=[]
     for gn1,gn2 in edgeL:
-        outL.append(synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
+        outL.append(synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames))
         
     return outL
         
-def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD):
+def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
@@ -446,7 +401,7 @@ def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSumm
     # varies by species pair.)
     sp1 = geneNames.numToStrainName(gn1)
     sp2 = geneNames.numToStrainName(gn2)
-    mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
+    mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
 
     minNormScore = normScore(0,mean,std) # min raw score is 0
     L1 = list(neighborTL[gn1])

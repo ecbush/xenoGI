@@ -120,10 +120,10 @@ def calcScoresWrapper(paramD):
     scoresO = scores.calcRawScores(paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresO)
 
     ## normalized scores
-    scoresO,aabrhL,aabrhRawScoreSummmaryD=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresO,geneNames,paramD['aabrhFN'])
+    scoresO,aabrhL=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresO,geneNames,paramD['aabrhFN'])
 
     ## synteny scores
-    scoresO = scores.calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
+    scoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
 
     ## core synteny scores
     scoresO = scores.calcCoreSynScores(scoresO,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])
@@ -346,8 +346,13 @@ def debugWrapper(paramD):
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
-    nodeGenesL = families.createNodeGenesL(tree,geneNames)
+    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
+    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
+    
+    scoresO.createAabrhScoreSummaryD(strainNamesL,aabrhL,geneNames)
+    
+    # nodeGenesL = families.createNodeGenesL(tree,geneNames)
 
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    # familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
     
     code.interact(local=locals())
