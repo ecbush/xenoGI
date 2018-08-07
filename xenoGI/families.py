@@ -8,34 +8,34 @@ from .analysis import printTable
 
 ## Main function
 
-def createFamiliesO(tree,scoresO,geneNames,subtreeL,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,outputSummaryF,strainNum2StrD,familyFN):
+def createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,singleStrainFamilyThresholdAdjust,subtreeL,minNormThresh,minCoreSynThresh,minSynThresh,synAdjustThresh,synAdjustExtent,outputSummaryF,familyFN):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
     '''
 
-    nodeOrderL=createNodeProcessOrderList(tree)
-
-    # initialize scoresO.nodeConnectL for use below
+    # initialize scoresO.nodeConnectL and scoresO.ScoreSummaryD for
+    # use below
+    strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
     scoresO.createNodeConnectL(geneNames)
-    
-    geneUsedL = [False for x in geneNames.nums]
+    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
 
-    # create nodeGenesL, has genes divided by node
-    nodeGenesL = createNodeGenesL(tree,geneNames)
-    
     # create an object of class Families to store this in.
     familiesO = Families(tree)
     famNumCounter = 0
     locusFamNumCounter = 0
+
+    # other assorted things we'll need
+    geneUsedL = [False for x in geneNames.nums]
+    nodeGenesL = createNodeGenesL(tree,geneNames) # has genes divided by node
+    tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,singleStrainFamilyThresholdAdjust)
     
-    for familyMrca,lchild,rchild in nodeOrderL:
+    for familyMrca,lchild,rchild in createNodeProcessOrderList(tree):
         if lchild != None:
             # not a tip
             subtree=subtreeL[familyMrca]
 
             # for use in createLocusFamilies call below
             familySubtreeNodeOrderL = createNodeProcessOrderList(subtree)
-
 
             leftS,rightS = createLRSets(subtreeL,familyMrca,nodeGenesL,None)
 
@@ -71,15 +71,9 @@ using a PhiGs-like algorithm, with synteny also considered.
         else:
             # we're at a tip. Because we've come through the nodes in
             # pre-order, we know that all unused genes at this node
-            # are in a family with mrca here. (they can still be multi
-            # gene families, just with mrca here).
+            # are in a families with mrca here. (they can still be multi
+            # gene families).
 
-            # note to self. We're going through every gene at every
-            # node here. It would be faster to do it in one pass at
-            # the top. Divide all the genes by node. and put in some
-            # sort of list. That would make this, and createLRSets
-            # work more efficiently.
-            
             unusedGenesAtThisTipS=set()
             for gene in nodeGenesL[familyMrca]: # familyMrca is a tip
                 # gene is at this tip
@@ -181,7 +175,30 @@ sets.
         strain = geneNames.numToStrainNum(gene)
         nodeGenesL[strain].add(gene)
     return nodeGenesL
-        
+
+def getTipFamilyRawThresholdD(tree,scoresO,singleStrainFamilyThresholdAdjust):
+    '''Return a dictionary containing a raw score threshold for each
+tip. This threshold is for use in forming families on the tip,
+defining the minimum distance within which we will combine two gene
+into a family.'''
+
+    tipFamilyRawThresholdD = {}
+    for leaf in trees.leafList(tree):
+        # get average score at core genes for neighbors
+        threshold = 0
+        neighbL = trees.getNearestNeighborL(tip,subtree)
+        for neighb in neighbL:
+            threshold += scoresO.scoreSummaryD[(leaf,neighb)][0]
+        threshold /= len(neighbL)
+
+        # multiply in an adjustment parameter (since average core gene
+        # scores of neighbors would be way too high)
+        threshold *= singleStrainFamilyThresholdAdjust
+
+        tipFamilyRawThresholdD[leaf] = threshold
+
+    return tipFamilyRawThresholdD
+    
 def createLRSets(subtreeL,mrca,nodeGenesL,restrictS):
     '''At given mrca, obtain all genes in species in left branch and put
 in leftS, and all genes from species in right branch to

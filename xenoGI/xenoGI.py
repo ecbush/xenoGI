@@ -135,13 +135,14 @@ def makeFamiliesWrapper(paramD):
     """Wrapper to create gene families."""
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-    
     ## read scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
 
     ## make gene families
     familyFormationSummaryF = open(paramD['familyFormationSummaryFN'],'w')
-    familiesO = families.createFamiliesO(tree,scoresO,geneNames,subtreeL,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],familyFormationSummaryF,strainNum2StrD,paramD['familyFN'])
+    familiesO = families.createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD['singleStrainFamilyThresholdAdjust'],subtreeL,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],familyFormationSummaryF,paramD['familyFN'])
+    
     familyFormationSummaryF.close()
 
 def makeIslandsWrapper(paramD):
@@ -341,15 +342,15 @@ def debugWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code
-
+    from .xenoGI import trees
     
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
-    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
+    strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
     aabrhL = scores.loadOrthos(paramD['aabrhFN'])
     
-    scoresO.createAabrhScoreSummaryD(strainNamesL,aabrhL,geneNames)
+    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
     
     # nodeGenesL = families.createNodeGenesL(tree,geneNames)
 

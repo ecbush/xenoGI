@@ -99,7 +99,8 @@ strain.
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
 
-    scoresO.createAabrhScoreSummaryD(strainNamesL,aabrhL,geneNames)
+    strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
+    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
    
     # loop over each edge in scoresO, normalizing score and saving there
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -111,8 +112,8 @@ strain.
             rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
 
             # find mean,std from scoresO.scoreSummaryD.
-            sp1 = geneNames.numToStrainName(gn1)
-            sp2 = geneNames.numToStrainName(gn2)
+            sp1 = geneNames.numToStrainNum(gn1)
+            sp2 = geneNames.numToStrainNum(gn2)
             mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
             normSc = normScore(rawSc,mean,std)
             
@@ -399,8 +400,8 @@ def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames):
     # get the min possible score for these two species (this is
     # really for the case of using normalized scores, where it
     # varies by species pair.)
-    sp1 = geneNames.numToStrainName(gn1)
-    sp2 = geneNames.numToStrainName(gn2)
+    sp1 = geneNames.numToStrainNum(gn1)
+    sp2 = geneNames.numToStrainNum(gn2)
     mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
 
     minNormScore = normScore(0,mean,std) # min raw score is 0

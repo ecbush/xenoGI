@@ -301,18 +301,20 @@ recalculated before it will be used.
         '''Given and edge, return the numbers for the two genes on either end.'''
         return self.edgeToEndNodeL[edge]
 
-    def createAabrhScoreSummaryD(self,strainNamesL,aabrhL,geneNames):
+    def createAabrhScoreSummaryD(self,strainNumsL,aabrhL,geneNames):
         '''Given raw scores and set of all around best reciprocal hits,
     calculates the mean and standard deviation of scores and stores in a
     dictionary.'''
 
+        strainNumsL.sort()
+        
         # create dictionary keyed by species pair, (representing an upper
         # triangular matrix)
         spScoreD={}
-        for i in range(len(strainNamesL)-1):
-            strain1 = strainNamesL[i]
-            for j in range(i+1,len(strainNamesL)):
-                strain2 = strainNamesL[j]
+        for i in range(len(strainNumsL)-1):
+            strain1 = strainNumsL[i]
+            for j in range(i+1,len(strainNumsL)):
+                strain2 = strainNumsL[j]
                 spScoreD[(strain1,strain2)]=[]
 
         # loop through aabrhL and populate
@@ -334,12 +336,12 @@ recalculated before it will be used.
 
         for i in range(len(orthoT)-1):
             gene1 = orthoT[i]
-            sp1,restOfName1=gene1.split('-')
             geneNum1=geneNames.nameToNum(gene1)
+            sp1 = geneNames.nameToStrainNum(gene1)
             for j in range(i+1,len(orthoT)):
                 gene2 = orthoT[j]
                 geneNum2=geneNames.nameToNum(gene2)
-                sp2,restOfName1=gene2.split('-')
+                sp2 = geneNames.nameToStrainNum(gene2)
                 sc = self.getScoreByEndNodes(geneNum1,geneNum2,'rawSc')
                 key = tuple(sorted([sp1,sp2]))
                 spScoreD[key].append(sc)

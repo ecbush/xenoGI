@@ -139,6 +139,14 @@ synAdjustThresh = -2
 # by during this adjustment.
 synAdjustExtent = 1.05
 
+# When forming gene families within a single strain, we need a raw
+# score threshold to determine which genes are similar enough to get
+# in the same family. To get this threshold, we identify the nearest
+# neighbors of the strain in question, and get the average score in
+# core genes across these. We then multiply by this adjustment
+# parameter to get the value we use as a threshold.
+singleStrainFamilyThresholdAdjust = 0.5
+
 # In deciding whether to merge two islands, we judge partly based on
 # the proximity of their genes. The elements of this list are tuples
 # of the form (proximity threshold, rscore level). For example (1,0)
