@@ -63,7 +63,18 @@ class Family:
             for gene in lfO.getGeneNums():
                 famGenesL.append(gene)
         return famGenesL
-        
+
+    def getOutsideConnections(self,scoresO):
+        '''Given a score object, return a set of all outside genes with
+connections to this family.'''
+        allGenesInFamL = self.getGeneNums()
+        otherGenesS=set()
+        for geneNum in allGenesInFamL:
+            for otherGene in scoresO.getConnectionsGene(geneNum):
+                if not otherGene in allGenesInFamL:
+                    otherGenesS.add(otherGene)
+        return otherGenesS
+    
     def fileStr(self,strainNum2StrD,geneNames):
         '''Return string representation of single family. Format is: famNum <tab> 
         mrca <tab> seedG1 <tab> seedG2 <tab> locusFamNum1,locusFamGenes <tab>

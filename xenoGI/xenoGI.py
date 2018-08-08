@@ -269,9 +269,9 @@ def interactiveAnalysisWrapper(paramD):
         print(file=fileF)
         print(file=fileF)
 
-        #printOutsideFamilyScores(familyNum,subtreeL,familiesO,geneNames,scoresO,fileF)
-        #print(file=fileF)
-        #print(file=fileF)
+        printOutsideFamilyScores(familyNum,subtreeL,familiesO,geneNames,scoresO,fileF)
+        print(file=fileF)
+        print(file=fileF)
 
     def findIsland(searchStr,fileF=sys.stdout):
         '''Print the gene, family and island associated with searchStr. This
@@ -342,7 +342,6 @@ def debugWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code
-    from .xenoGI import trees
     
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)

@@ -81,6 +81,9 @@ using a PhiGs-like algorithm, with synteny also considered.
                     # not used yet
                     unusedGenesAtThisTipS.add(gene)
 
+            # pull out the threshold we'll use given the strain
+            tipFamilyRawThreshold = tipFamilyRawThresholdD[familyMrca]
+                    
             # Now we pull out families greedily. Simply take a gene,
             # and get all other genes that isFamily says are shared
             while len(unusedGenesAtThisTipS)>0:
@@ -92,9 +95,12 @@ using a PhiGs-like algorithm, with synteny also considered.
                     # blast similarity). If so at newGene to
                     # family. In future maybe we can set some kind of
                     # crude threshold here (and could use isFamily in that case)
-                                
+                    
                     if scoresO.isEdgePresentByEndNodes(seed,newGene):
-                        newFamS.add(newGene)
+
+                        addIt = isFamily(seed,newGene,scoresO,geneNames,tipFamilyRawThreshold,None,None,None) # the last 3 args not used
+                        if addIt:
+                            newFamS.add(newGene)
 
                 # newFamS now contains a set of genes with significant
                 # similarity. Remove it from unusedGenesAtThisTipS,
@@ -186,7 +192,7 @@ into a family.'''
     for leaf in trees.leafList(tree):
         # get average score at core genes for neighbors
         threshold = 0
-        neighbL = trees.getNearestNeighborL(tip,subtree)
+        neighbL = trees.getNearestNeighborL(leaf,tree)
         for neighb in neighbL:
             threshold += scoresO.scoreSummaryD[(leaf,neighb)][0]
         threshold /= len(neighbL)
@@ -358,8 +364,6 @@ among famS that share high synteny.'''
 
     # get the LocusFamily associated with the original seed
     famGenesToSearchS = famS.copy()
-    lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,familyMrca,seedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,minCoreSynThresh,minSynThresh)
-    familiesO.addLocusFamily(lfO)
     
     # get LocusFamilies at non-syntenic locations
     for lfMrca,lchild,rchild in familySubtreeNodeOrderL:
@@ -388,13 +392,44 @@ among famS that share high synteny.'''
                 familiesO.addLocusFamily(lfO)
 
     return locusFamNumCounter,familiesO
-    
 
+def createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
+    '''Obtains all locus families at the internal node defined by lfMrca.'''
+
+    lfOL = []
+    while True:
+
+        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
+        
+        if lfSeedPairL == []:
+            # there are no (more) seeds stradling this internal node,
+            # break out
+            break
+
+        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,minCoreSynThresh,minSynThresh)
+        lfOL.append(lfO)
+        
+    return lfOL,locusFamNumCounter,famGenesToSearchS
+            
+def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh):
+    '''Given a set of genes famGenesToSearchS from a family, try to find a
+seed based at lfMrca. A seed consists of two genes, one in the left
+subtree and one in the right, which are syntenically consistent.
+    '''
+    
+    leftS,rightS = createLRSets(subtreeL,lfMrca,nodeGenesL,famGenesToSearchS)
+    
+    for lGene in leftS:
+        for rGene in rightS:
+            if isSameLocusFamily(lGene,rGene,scoresO,geneNames,minCoreSynThresh,minSynThresh):
+                return [lGene,rGene]
+    return []
+        
 def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,minCoreSynThresh,minSynThresh):
     '''Returns a LocusFamily object, containing genes associated with
 those in seedPairL, in the subtree definied at lfMrca. Does single
 linkage clustering, adding in anything in famGenesToSearchS with above
-threshold synteny.
+threshold synteny. Note that these seeds are not the seed from family formation (which might not be syntenic) but rather an independently generated pair which we know belong in the same LocusFamily
     '''
 
     lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca,[])
@@ -439,6 +474,7 @@ are in a child species of lfMrca. Return a list of genes to add.
                 addIt = isSameLocusFamily(searchGene,lfGene,scoresO,geneNames,minCoreSynThresh,minSynThresh)
                 if addIt:
                     genesToAddS.add(searchGene)
+                    break
                 
     return genesToAddS
 
@@ -481,39 +517,6 @@ boolean.
             addIt = True
             
     return addIt
-
-def createAllLocusFamiliesAtInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
-    '''Obtains all locus families at the internal node defined by lfMrca.'''
-
-    lfOL = []
-    while True:
-
-        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh)
-        
-        if lfSeedPairL == []:
-            # there are no (more) seeds stradling this internal node,
-            # break out
-            break
-
-        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,minCoreSynThresh,minSynThresh)
-        lfOL.append(lfO)
-        
-    return lfOL,locusFamNumCounter,famGenesToSearchS
-            
-def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,minSynThresh):
-    '''Given a set of genes famGenesToSearchS from a family, try to find a
-seed based at lfMrca. A seed consists of two genes, one in the left
-subtree and one in the right, which are syntenically consistent.
-    '''
-    
-    leftS,rightS = createLRSets(subtreeL,lfMrca,nodeGenesL,famGenesToSearchS)
-    
-    for lGene in leftS:
-        for rGene in rightS:
-            if isSameLocusFamily(lGene,rGene,scoresO,geneNames,minCoreSynThresh,minSynThresh):
-                return [lGene,rGene]
-    return []
-        
 
 def createAllLocusFamiliesAtTips(genesAtThisTipS,geneNames,lfMrca,scoresO,minCoreSynThresh,minSynThresh,famNumCounter,locusFamNumCounter):
     '''Given a set of genes famGenesToSearchS, search for all those found

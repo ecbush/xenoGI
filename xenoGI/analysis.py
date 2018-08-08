@@ -80,19 +80,19 @@ values associated with scoreType in the edges of this graph.
 
     printTable(rowsL,indent=2,fileF=fileF)
 
-def printOutsideFamilyScores(familyNum,subtreeL,familyL,geneNames,scoresO,fileF):
+def printOutsideFamilyScores(familyNum,subtreeL,familiesO,geneNames,scoresO,fileF):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 scoresO.
     '''
 
-    family = familyL[familyNum]
-    outsideGeneNumsT = family.getOutsideConnections(scoresO)
+    family = familiesO.getFamily(familyNum)
+    outsideGeneNumsS = family.getOutsideConnections(scoresO)
     
     rowL = []
     for familyGeneNum in family.getGeneNums():
         familyGeneName = geneNames.numToName(familyGeneNum)
-        for outsideGeneNum in outsideGeneNumsT:
+        for outsideGeneNum in outsideGeneNumsS:
             if scoresO.isEdgePresentByEndNodes(familyGeneNum,outsideGeneNum):
                 outsideGeneName = geneNames.numToName(outsideGeneNum)
                 rawSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'rawSc')
