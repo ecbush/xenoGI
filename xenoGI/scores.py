@@ -1,4 +1,4 @@
-import parasail,pickle,glob
+import parasail,pickle,glob,statistics
 from multiprocessing import set_start_method, Pool
 from . import genomes
 from . import trees
@@ -92,8 +92,29 @@ def calcNormScores(tree,strainNum2StrD,blastFilePath,evalueThresh,scoresO,geneNa
     '''Given directory of blast output and a graph of raw similarity
 scores, calculate normalized similarity scores by comparing each score
 with the range of scores in all around best reciprocal hits in that
-pair of strains. The norm score is not defined for genes in the same
-strain.
+pair of strains. For genes coming from different strains, we normalize
+using the mean and std for aabrh core gene raw scores between those
+strains. For genes from the same strain, we find the nearest neigbhor
+strain(s) to that strain, and then get the mean and std of scores
+between the starting strain and these. We then use this to calculate
+the norm score. This approach to genes from the same strain allows us
+to have norm scores for every pair of genes where there is a raw
+score.
+
+Here are some things to think about in considering this. The idea of a
+norm score is that two genes who have evolved at an "average" rate
+since their common ancestor should get a 0. In the case of genes from
+different strains, it makes sense to normalize with known homologs in
+the two. In genes of the same strain, the mrca is a duplication, and
+could either be before or after the time of divergence of the nearest
+neighbor. If it is before, this will tend to result in slightly
+negative norm scores for genes that evolved at the "average" rate. If
+the duplication comes after the most recent divergence, it will make
+norm scores that are slightly positive for an average evolving pair of
+genes. However, these biases are small. We are doing it this way
+because it is an advantage (and a simplification) to have the same
+sorts of scores available for all pairs of genes.
+
     '''
 
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
@@ -104,16 +125,17 @@ strain.
    
     # loop over each edge in scoresO, normalizing score and saving there
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-
-        if geneNames.isSameStrain(gn1,gn2):
-            # normSc is undefined for genes in same strain
-            normSc = None
+        sp1 = geneNames.numToStrainNum(gn1)
+        sp2 = geneNames.numToStrainNum(gn2)
+        rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+            
+        if sp1 == sp2:
+            # find mean,std from scoresO.scoreSummaryD for the nearest
+            # neighbors to this species.
+            mean,std = getNearestNeighborAverageScore(sp1,tree,scoresO)
+            normSc = normScore(rawSc,mean,std)
         else:
-            rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
-
             # find mean,std from scoresO.scoreSummaryD.
-            sp1 = geneNames.numToStrainNum(gn1)
-            sp2 = geneNames.numToStrainNum(gn2)
             mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
             normSc = normScore(rawSc,mean,std)
             
@@ -143,6 +165,24 @@ def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
     f.close()
         
     return aabrhL
+
+
+def getNearestNeighborAverageScore(species,tree,scoresO):
+    '''Get all the nearest neighbors of species, and collect the average
+score for each against species at aabrh core genes. Return the average
+of this. Assumes that scoreSummaryD has been initialized in
+scoresO.
+    '''
+    neighbL = trees.getNearestNeighborL(species,tree)
+    avScore = 0
+    avStd = 0
+    for neighb in neighbL:
+        sc,std = scoresO.scoreSummaryD[(species,neighb)]
+        avScore += sc
+        avStd += std
+    avScore /= len(neighbL)
+    avStd /= len(neighbL)
+    return avScore,avStd
 
 def loadOrthos(aabrhFN):
     '''Reads the all around best reciprocal hits orthologs file. One set
@@ -311,25 +351,24 @@ orthologs.'''
     return aabrhL
 
 def normScore(rawScore,mean,std):
-    '''Given a raw score and mean and std of all raw scores, return a
+    '''Given a raw score, mean and std, return a
 score normalized by std and centered around zero.'''
     norm = ( rawScore - mean ) / std
     return norm
 
 ## synteny scores
 
-def calcSynScores(scoresO,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
+def calcSynScores(scoresO,geneNames,geneOrderT,synWSize,tree,numSynToTake,numThreads):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
-genes that have an edge in scoresO. The synteny score is not defined
-for genes in the same strain.
+genes that have an edge in scoresO.
     '''
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
     # make list of groups of arguments to be passed to p.map. There
     # should be numThreads groups.
-    argumentL = [([],neighborTL,numSynToTake,geneNames,scoresO) for i in range(numThreads)]
+    argumentL = [([],tree,neighborTL,numSynToTake,geneNames,scoresO) for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -380,15 +419,15 @@ def synScoreGroup(argsT):
     scores. This function is intended to be called by p.map.
     '''
 
-    edgeL,neighborTL,numSynToTake,geneNames,scoresO = argsT
+    edgeL,tree,neighborTL,numSynToTake,geneNames,scoresO = argsT
 
     outL=[]
     for gn1,gn2 in edgeL:
-        outL.append(synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames))
+        outL.append(synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames))
         
     return outL
         
-def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames):
+def synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
@@ -402,7 +441,13 @@ def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames):
     # varies by species pair.)
     sp1 = geneNames.numToStrainNum(gn1)
     sp2 = geneNames.numToStrainNum(gn2)
-    mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
+
+    if sp1 == sp2:
+        # for same species, norm scores based on comparison with
+        # nearest neighbor
+        mean,std = getNearestNeighborAverageScore(sp1,tree,scoresO)
+    else:
+        mean,std = scoresO.scoreSummaryD[(sp1,sp2)]
 
     minNormScore = normScore(0,mean,std) # min raw score is 0
     L1 = list(neighborTL[gn1])

@@ -123,7 +123,7 @@ def calcScoresWrapper(paramD):
     scoresO,aabrhL=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresO,geneNames,paramD['aabrhFN'])
 
     ## synteny scores
-    scoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD['synWSize'],paramD['numSynToTake'],paramD['numThreads'])
+    scoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD['synWSize'],tree,paramD['numSynToTake'],paramD['numThreads'])
 
     ## core synteny scores
     scoresO = scores.calcCoreSynScores(scoresO,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])

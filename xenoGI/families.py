@@ -147,11 +147,8 @@ using a PhiGs-like algorithm, with synteny also considered.
     summaryL.append(["Number of families with multiple LocusFamilies",str(multipleLfFams)])
     summaryL.append(["Number of families with one gene",str(singleGeneFams)])
     summaryL.append(["Number of families with multiple genes",str(multipleGeneFams)])
-
-
     
     printTable(summaryL,indent=0,fileF=outputSummaryF)
-
     
     writeFamilies(familiesO,geneNames,strainNum2StrD,familyFN)
 
@@ -191,12 +188,10 @@ into a family.'''
     tipFamilyRawThresholdD = {}
     for leaf in trees.leafList(tree):
         # get average score at core genes for neighbors
-        threshold = 0
-        neighbL = trees.getNearestNeighborL(leaf,tree)
-        for neighb in neighbL:
-            threshold += scoresO.scoreSummaryD[(leaf,neighb)][0]
-        threshold /= len(neighbL)
 
+        # put in call to get average...
+        threshold,std = scores.getNearestNeighborAverageScore(leaf,tree,scoresO)
+        
         # multiply in an adjustment parameter (since average core gene
         # scores of neighbors would be way too high)
         threshold *= singleStrainFamilyThresholdAdjust
