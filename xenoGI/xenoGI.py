@@ -228,7 +228,7 @@ def interactiveAnalysisWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys
-    from xenoGI.analysis import createGene2FamD,createFam2IslandD,printScoreMatrix,matchFamilyIsland,printIslandNeighb,vPrintIslands,coreNonCoreCtAtNode,printOutsideFamilyScores
+    from xenoGI.analysis import createGene2FamD,createFam2IslandD,printScoreMatrix,matchFamilyIsland,printIslandNeighb,vPrintIslands,coreNonCoreCtAtNode,printOutsideFamilyScores,scoreHists,readScorePairs
 
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
