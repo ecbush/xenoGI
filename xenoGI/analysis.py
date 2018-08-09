@@ -396,7 +396,7 @@ is at node or above). Return count of non-core and core.'''
 
 # stuff for printing histograms of scores
 
-def scoreHists(scoresFN,outFN,numBins,geneNames,scoreType):
+def scoreHists(scoresO,outFN,numBins,geneNames,scoreType):
     '''Read through a scores file, and separate into all pairwise comparisons. Then plot hist of each.'''
 
     # currently, this seems to require a display for interactive
@@ -405,26 +405,22 @@ def scoreHists(scoresFN,outFN,numBins,geneNames,scoreType):
     import matplotlib.pyplot as pyplot
     from matplotlib.backends.backend_pdf import PdfPages
     
-    pairD = readScorePairs(scoresFN,geneNames,scoreType)
+    pairD = readScorePairs(scoresO,geneNames,scoreType)
 
     pyplot.ioff() # turn off interactive mode
     with PdfPages(outFN) as pdf:
         for key in pairD:
-            print(key)
             fig = pyplot.figure()
             pyplot.hist(pairD[key],bins=numBins)
             pyplot.title('-'.join(key))
             pdf.savefig()
             pyplot.close()
 
-
-def readScorePairs(scoresFN,geneNames,scoreType):
+def readScorePairs(scoresO,geneNames,scoreType):
     '''Read through a scores file, and separate into all pairwise
 comparisons. Return as dict.'''
     
     pairD = {}
-
-    scoresO = scores.readScores(scoresFN,geneNames=None)
     
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
         sc = scoresO.getScoreByEndNodes(gn1,gn2,scoreType)

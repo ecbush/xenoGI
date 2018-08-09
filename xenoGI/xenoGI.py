@@ -351,11 +351,19 @@ def debugWrapper(paramD):
     aabrhL = scores.loadOrthos(paramD['aabrhFN'])
     scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
 
-    tipFamilyRawThresholdD = families.getTipFamilyRawThresholdD(tree,scoresO,paramD['singleStrainFamilyThresholdAdjust'])
-    
-    neighborTL = scores.createNeighborL(geneNames,geneOrderT,paramD['synWSize'])
 
+    def examine(scoresO,geneNames,scoreType,strain):
 
-    scores.synScore(scoresO,4141,7904,tree,neighborTL,paramD['numSynToTake'],geneNames)
-    
+        pairD = {}
+
+        for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
+            sc = scoresO.getScoreByEndNodes(gn1,gn2,scoreType)
+            sp1 = geneNames.numToStrainName(gn1)
+            sp2 = geneNames.numToStrainName(gn2)
+
+            if sp1==strain and sp2==strain and sc < -9:
+                pairD[(gn1,gn2)]=sc
+
+        return pairD
+                
     code.interact(local=locals())
