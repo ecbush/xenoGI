@@ -40,9 +40,6 @@ similarity. Use these to fill endNodesToEdgeD.'''
                 g1 = geneNames.nameToNum(L[0])
                 g2 = geneNames.nameToNum(L[1])
 
-                if g1 == g2: # we don't want genes against themselves
-                    continue
-
                 # make sure g1 is the lower gene number (we do this so
                 # we only store in one orientation in dict).
                 if g1 > g2: g2,g1 = g1,g2

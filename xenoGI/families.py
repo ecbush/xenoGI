@@ -2,7 +2,7 @@
 # http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
 # (We've added the use of synteny)
 import sys
-from . import trees
+from . import trees,scores
 from .Family import *
 from .analysis import printTable
 
