@@ -91,15 +91,17 @@ based on the max and min possible scores for these sequences.'''
 def calcNormScores(tree,strainNum2StrD,blastFilePath,evalueThresh,scoresO,geneNames,aabrhFN):
     '''Given directory of blast output and a graph of raw similarity
 scores, calculate normalized similarity scores by comparing each score
-with the range of scores in all around best reciprocal hits in that
-pair of strains. For genes coming from different strains, we normalize
-using the mean and std for aabrh core gene raw scores between those
-strains. For genes from the same strain, we find the nearest neigbhor
-strain(s) to that strain, and then get the mean and std of scores
-between the starting strain and these. We then use this to calculate
-the norm score. This approach to genes from the same strain allows us
-to have norm scores for every pair of genes where there is a raw
-score.
+with the expection for two genes evolving at an "average" rate. We
+obtain this expectation by finding the strains for our two genes, and
+then getting all the scores from all around best reciprocal hits in
+that pair of strains. For genes coming from different strains, we
+normalize using the mean and std for aabrh core gene raw scores
+between those strains. For genes from the same strain, we find the
+nearest neigbhor strain(s) to that strain, and then get the mean and
+std of scores between the starting strain and these. We then use this
+to calculate the norm score. This approach to genes from the same
+strain allows us to have norm scores for every pair of genes where
+there is a raw score.
 
 Here are some things to think about in considering this. The idea of a
 norm score is that two genes who have evolved at an "average" rate
@@ -114,7 +116,6 @@ norm scores that are slightly positive for an average evolving pair of
 genes. However, these biases are small. We are doing it this way
 because it is an advantage (and a simplification) to have the same
 sorts of scores available for all pairs of genes.
-
     '''
 
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
@@ -372,13 +373,8 @@ genes that have an edge in scoresO.
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-
-        if geneNames.isSameStrain(gn1,gn2):
-            # synSc is undefined for genes in same strain
-            scoresO.addScoreByEndNodes(gn1,gn2,None,'synSc')
-        else:
-            argumentL[i%numThreads][0].append((gn1,gn2))
-            i+=1
+        argumentL[i%numThreads][0].append((gn1,gn2))
+        i+=1
 
     p=Pool(numThreads) # num threads
     synScoresLL = p.map(synScoreGroup, argumentL)

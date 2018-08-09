@@ -342,17 +342,20 @@ def debugWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code
+    from .xenoGI import scores
     
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
     strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
     aabrhL = scores.loadOrthos(paramD['aabrhFN'])
-    
     scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
-    
-    # nodeGenesL = families.createNodeGenesL(tree,geneNames)
 
-    # familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    tipFamilyRawThresholdD = families.getTipFamilyRawThresholdD(tree,scoresO,paramD['singleStrainFamilyThresholdAdjust'])
+    
+    neighborTL = scores.createNeighborL(geneNames,geneOrderT,paramD['synWSize'])
+
+
+    scores.synScore(scoresO,4141,7904,tree,neighborTL,paramD['numSynToTake'],geneNames)
     
     code.interact(local=locals())
