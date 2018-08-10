@@ -32,9 +32,11 @@ mrca for its family.'''
         '''Iterate through all genes in this locus family that are in a
         particular strain.
         '''
-        for gene in self.geneD[strain]:
-            yield gene
-        
+        if strain in self.geneD:
+            for gene in self.geneD[strain]:
+                yield gene
+        return
+
     def getStr(self,strainNum2StrD,geneNames,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
