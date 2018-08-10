@@ -212,7 +212,7 @@ gene2FamD which maps from gene number to family number.'''
     gene2FamD={}
     for lfO in familyO.iterLocusFamilies():
         famNum=lfO.famNum
-        for gene in lfO.genesL:
+        for gene in lfO.iterGenes():
             gene2FamD[gene]=famNum
     return gene2FamD
 

@@ -158,7 +158,8 @@ def makeIslandsWrapper(paramD):
 
     ## group gene families into islands
     islandFormationSummaryF = open(paramD['islandFormationSummaryFN'],'w')
-    islands.makeIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familyL,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],islandFormationSummaryF)
+    locusIslandByNodeLMerged = islands.makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familiesO,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],islandFormationSummaryF)
+
     islandFormationSummaryF.close()
 
 def printAnalysisWrapper(paramD):

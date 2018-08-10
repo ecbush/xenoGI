@@ -67,7 +67,7 @@ createFamiliesO
         else:
             multipleLfFams += 1
         # genes
-        if len(fam.getGeneNums()) == 1:
+        if len(set(fam.iterGenes())) == 1:
             singleGeneFams += 1
         else:
             multipleGeneFams += 1
@@ -444,12 +444,11 @@ linkage clustering, adding in anything in famGenesToSearchS with above
 threshold synteny. Note that these seeds are not the seed from family formation (which might not be syntenic) but rather an independently generated pair which we know belong in the same LocusFamily
     '''
 
-    lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca,[])
+    lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca)
     locusFamNumCounter+=1
     
-    for seedG in seedPairL:
-        famGenesToSearchS.remove(seedG)
-        lfO.addGene(seedG)
+    famGenesToSearchS.difference_update(seedPairL)
+    lfO.addGenes(seedPairL,geneNames)
 
     subtree=subtreeL[lfMrca]
     strainL = trees.leafList(subtree)
@@ -460,8 +459,7 @@ threshold synteny. Note that these seeds are not the seed from family formation 
             break
 
         famGenesToSearchS.difference_update(genesToAddS)
-        for gene in genesToAddS:
-            lfO.addGene(gene)
+        lfO.addGenes(genesToAddS,geneNames)
         
     return lfO,locusFamNumCounter,famGenesToSearchS
 
@@ -475,7 +473,7 @@ are in a child species of lfMrca. Return a list of genes to add.
         # test if searchGene is in a child species of lfMrca
         if geneNames.numToStrainNum(searchGene) in strainL:
             # this searchGene is in a strain that is a child of the lfMrca we're working on
-            for lfGene in lfO.genesL:
+            for lfGene in lfO.iterGenes():
                 # we don't use minNormThresh, minRawThresh, or
                 # synAdjustThresh. If the pair have values above
                 # minCoreSynThresh and minSynThres, then addIt will be
@@ -553,10 +551,9 @@ be single gene LocusFamilies, but some may be multi-gene
     lfOL=[]
     for lfGroupS in lfGroupsL:
 
-        lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca,[])
+        lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca)
         locusFamNumCounter+=1
-        for gene in lfGroupS:
-            lfO.addGene(gene)
+        lfO.addGenes(lfGroupS,geneNames)
         lfOL.append(lfO)
 
     return lfOL,locusFamNumCounter
@@ -609,7 +606,8 @@ def readFamilies(familyFN,tree,geneNames,strainStr2NumD):
             geneL=[]
             for geneName in lfSplitL[2:]:
                 geneL.append(geneNames.nameToNum(geneName))
-            lfO = LocusFamily(famNum,locusFamNum,lfMrca,geneL)
+            lfO = LocusFamily(famNum,locusFamNum,lfMrca)
+            lfO.addGenes(geneL,geneNames)
             familiesO.addLocusFamily(lfO)
 
     f.close()

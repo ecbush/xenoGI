@@ -1,22 +1,40 @@
 
 class LocusFamily:
-    def __init__(self, famNum, locusFamNum, lfMrca, genesL):
+    def __init__(self, famNum, locusFamNum, lfMrca):
         '''Initialize a LocusFamily object with a family number, a LocusFamily
 number, and the mrca for this locus family (which may differ from the
 mrca for its family.'''
         self.famNum = famNum
         self.locusFamNum = locusFamNum
         self.lfMrca = lfMrca
-        self.genesL = genesL
+        self.geneD = {}
 
-    def addGene(self, gene):
-        '''Add a gene to our set of genes. This should be the numerical
-representation of a gene.'''
-        self.genesL.append(gene)
+    def addGene(self, gene,geneNames):
+        '''Add a gene (in numerical form) to this LocusFamily.'''
+        strain = geneNames.numToStrainNum(gene)
+        if strain in self.geneD:
+            self.geneD[strain].append(gene)
+        else:
+            self.geneD[strain] = [gene]
+        
+    def addGenes(self,genesL,geneNames):
+        '''Add a list (or set etc.) of genes to this LocusFamily.'''
+        for gene in genesL:
+            self.addGene(gene,geneNames)
 
-    def getGeneNums(self):
-        return self.genesL
+    def iterGenes(self):
+        '''Iterate through all genes in this locus family.'''
+        for L in self.geneD.values():
+            for gene in L:
+                yield gene
 
+    def iterGenesByStrain(self,strain):
+        '''Iterate through all genes in this locus family that are in a
+        particular strain.
+        '''
+        for gene in self.geneD[strain]:
+            yield gene
+        
     def getStr(self,strainNum2StrD,geneNames,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
@@ -24,7 +42,7 @@ gene2...
         '''
         outL=[str(self.locusFamNum),strainNum2StrD[self.lfMrca]]
         
-        for geneNum in self.genesL:
+        for geneNum in self.iterGenes():
             outL.append(geneNames.numToName(geneNum))
 
         return sep.join(outL)
@@ -56,13 +74,11 @@ class Family:
     def getLocusFamilies(self):
         return self.locusFamiliesL
 
-    def getGeneNums(self):
-        '''Get all the genes associated with this family in numerical form.'''
-        famGenesL=[]
+    def iterGenes(self):
+        '''Iterate through all the genes associated with this family in numerical form.'''
         for lfO in self.getLocusFamilies():
-            for gene in lfO.getGeneNums():
-                famGenesL.append(gene)
-        return famGenesL
+            for gene in lfO.iterGenes():
+                yield gene
 
     def getOutsideConnections(self,scoresO):
         '''Given a score object, return a set of all outside genes with
@@ -154,7 +170,7 @@ to this instance of the Families class. Return as a set.
         '''
         allGenesS=set()
         for lfO in self.iterLocusFamilies():
-            allGenesS.update(lfO.genesL)
+            allGenesS.update(set(lfO.iterGenes()))
         return allGenesS
 
     def __repr__(self):
