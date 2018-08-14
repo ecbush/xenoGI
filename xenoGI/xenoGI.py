@@ -342,29 +342,13 @@ def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
 
     ## Set up the modules a bit differently for interactive mode
-    import code
-    from .xenoGI import scores
+    import code,sys
+    from .xenoGI import parameters,trees,genomes,families,islands,analysis
+    sys.path.insert(0,'/data/bushlab/htrans/dupDelProj/simCode')
+    import validationSim
+
+    moduleT=(parameters,trees,genomes,families,islands,analysis)
     
-    tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-
-    strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
-    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
-    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
-
-
-    def examine(scoresO,geneNames,scoreType,strain):
-
-        pairD = {}
-
-        for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-            sc = scoresO.getScoreByEndNodes(gn1,gn2,scoreType)
-            sp1 = geneNames.numToStrainName(gn1)
-            sp2 = geneNames.numToStrainName(gn2)
-
-            if sp1==strain and sp2==strain and sc < -9:
-                pairD[(gn1,gn2)]=sc
-
-        return pairD
-                
+    xgiIslandGeneSetByNodeL,simIslandGeneSetByNodeL=validationSim.runValidation(moduleT,'simParams.py','params.py')
+    
     code.interact(local=locals())
