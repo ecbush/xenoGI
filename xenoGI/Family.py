@@ -85,11 +85,11 @@ class Family:
     def getOutsideConnections(self,scoresO):
         '''Given a score object, return a set of all outside genes with
 connections to this family.'''
-        allGenesInFamL = self.getGeneNums()
+        allGenesInFamS = set(self.iterGenes())
         otherGenesS=set()
-        for geneNum in allGenesInFamL:
+        for geneNum in allGenesInFamS:
             for otherGene in scoresO.getConnectionsGene(geneNum):
-                if not otherGene in allGenesInFamL:
+                if not otherGene in allGenesInFamS:
                     otherGenesS.add(otherGene)
         return otherGenesS
     

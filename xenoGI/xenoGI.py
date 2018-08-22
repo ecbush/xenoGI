@@ -105,8 +105,6 @@ def loadMiscDataStructures(paramD):
 
     return tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT
 
-
-
 def calcScoresWrapper(paramD):
     """Wrapper running stuff to calculate scores."""
 

@@ -63,7 +63,7 @@ values associated with scoreType in the edges of this graph.
 
     familyGeneNumsL = []
     for lfO in familiesO.getFamily(familyNum).getLocusFamilies():
-        familyGeneNumsL.extend(lfO.getGeneNums())
+        familyGeneNumsL.extend(lfO.iterGenes())
     
     rowsL = []
     geneNamesL = [geneNames.numToName(gn) for gn in familyGeneNumsL]
@@ -90,7 +90,7 @@ scoresO.
     outsideGeneNumsS = family.getOutsideConnections(scoresO)
     
     rowL = []
-    for familyGeneNum in family.getGeneNums():
+    for familyGeneNum in family.iterGenes():
         familyGeneName = geneNames.numToName(familyGeneNum)
         for outsideGeneNum in outsideGeneNumsS:
             if scoresO.isEdgePresentByEndNodes(familyGeneNum,outsideGeneNum):
