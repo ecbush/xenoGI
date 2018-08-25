@@ -150,8 +150,15 @@ From within python, you can then run functions such as
   
     printFam(3500)
 
+* scoreHists
 
+  Create a pdf file contaning histograms of scores between all pairs of strains. For example here's a call that will create this for raw scores::
 
+    scoreHists(scoresO,'rawSc.pdf',80,geneNames,'rawSc')
+
+  The arguments are a scores object, the name for the pdf file, the number of bins to use, a geneNames object, and the type of score. Both scoresO and geneNames are already present in the environment when we run interactively. Histograms can be made for all four types of scores: rawSc, normSc, synSc, coreSynSc.
+    
+    
 Additional files
 ----------------
 
