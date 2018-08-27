@@ -16,10 +16,10 @@ Requirements
 * Package dependencies
 
   - Biopython (http://biopython.org/). This is for parsing genbank files and can be installed using pip:
-      ``pip install biopython``
+      ``pip3 install biopython``
 
   - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip:
-      ``pip install parasail``
+      ``pip3 install parasail``
 
 
 Installation
