@@ -503,25 +503,15 @@ boolean.
         return False
     
     coreSynSc = scoresO.getScoreByEndNodes(gene1,gene2,'coreSynSc')
+    synSc = scoresO.getScoreByEndNodes(gene1,gene2,'synSc')
     
-    if geneNames.isSameStrain(gene1,gene2):
-        # same strain, only use core syneny
-        if coreSynSc < minCoreSynThresh:
-            # doesn't meet min core synteny requirement to be in same
-            # LocusFamily
-            addIt = False
-        else:
-            addIt = True
+    if coreSynSc < minCoreSynThresh or synSc < minSynThresh:
+        # one of the two types of synteny below threshold, so this
+        # pair doesn't meet the requirements for being in the same
+        # LocusFamily
+        addIt = False
     else:
-        # different strains, use both types of synteny score
-        synSc = scoresO.getScoreByEndNodes(gene1,gene2,'synSc')
-        if coreSynSc < minCoreSynThresh or synSc < minSynThresh:
-            # one of the two types of synteny below threshold, so this
-            # pair doesn't meet the requirements for being in the same
-            # LocusFamily
-            addIt = False
-        else:
-            addIt = True
+        addIt = True
             
     return addIt
 
