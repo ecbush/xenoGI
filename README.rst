@@ -21,6 +21,7 @@ Requirements
   - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip:
       ``pip3 install parasail``
 
+(The pip you use needs to correspond to a version of Python 3. In some cases it may just be called pip instead of pip3).
 
 Installation
 ------------
@@ -28,8 +29,6 @@ Installation
 The easiest way to install is using pip::
 
   pip3 install xenoGI
-
-(The pip you use needs to correspond to a version of Python 3.)
 
 How to use
 ----------
