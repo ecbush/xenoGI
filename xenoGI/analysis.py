@@ -171,16 +171,24 @@ def vPrintIsland(island,subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,file
     printL.append(['Family'])
     for node in speciesNodesL:
         printL[0].append(strainNum2StrD[node])
+
     for fam in island.familyL:
         newRow=[]
         newRow.append(str(fam))
         for node in speciesNodesL:
             geneT = familyL[fam].famGeneT[node]
-            for geneNum in geneT:
-                geneName = geneNames.numToName(geneNum)
-                commonGeneName = "("+geneInfoD[geneName][0]+")" if geneInfoD[geneName][0] != '' else ''
-                newRow.append(",".join([geneName + commonGeneName for geneNum in geneT]))
+            if geneT == ():
+                entry = ''
+            else:
+                entryL=[]
+                for geneNum in geneT:
+                    geneName = geneNames.numToName(geneNum)
+                    commonGeneName = "("+geneInfoD[geneName][0]+")" if geneInfoD[geneName][0] != '' else ''
+                    entryL.append(geneName + commonGeneName)
+                entry = ",".join(entryL)
+            newRow.append(entry)
         printL.append(newRow)
+        
     printTable(printL,indent=4,fileF=fileF)
 
 
