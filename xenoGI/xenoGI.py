@@ -188,19 +188,18 @@ def printAnalysisWrapper(paramD):
     gene2FamD=analysis.createGene2FamD(familyL)
     fam2IslandD=analysis.createFam2IslandD(islandByNodeL)
 
-    # scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-    scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
 
     ## analysis
-    
-    # calc family error scores
-    families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
 
     # Print out all islands
     islandsOutF = open(islandsSummaryFN,'w')
     analysis.vPrintAllIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,islandsOutF)
     islandsOutF.close()
+
+    # score calculations
+    scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
+    families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
 
     # Print species files with all the genes, grouped by contig
     analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,geneNames,gene2FamD,fam2IslandD,geneInfoD,familyL,strainNum2StrD)
