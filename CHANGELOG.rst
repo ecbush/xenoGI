@@ -3,6 +3,12 @@ Change Log
 ==========
 
 -------------------
+1.1.2_ - 2018-10-06
+-------------------
+
+Fixed bug in printAnalysis which caused it to fail on larger data sets.
+
+-------------------
 1.1.1_ - 2018-06-11
 -------------------
 
@@ -22,7 +28,7 @@ Hereafter, tagged releases correspond to pypi releases. The master branch will h
 
 Initial release, corresponding to our article: "xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria".
 
-
+.. _1.1.2:  https://github.com/ecbush/xenoGI/compare/v1.1.1...v1.1.2
 .. _1.1.1:  https://github.com/ecbush/xenoGI/compare/v1.1.0...v1.1.1
 .. _1.1.0:  https://github.com/ecbush/xenoGI/compare/v1.0.0...v1.1.0
 .. _1.0.0:  https://github.com/ecbush/xenoGI/releases/tag/v1.0.0
