@@ -112,7 +112,7 @@ def calcScoresWrapper(paramD):
 
     # object for storing scores
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames)
+    scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
 
     ## similarity scores
     scoresO = scores.calcRawScores(paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresO)
@@ -337,6 +337,31 @@ def interactiveAnalysisWrapper(paramD):
 
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
+
+    ## Set up the modules a bit differently for interactive mode
+    import code,sys
+    from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
+
+    import numpy
+    from scipy.signal import find_peaks
+    tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+
+    #scoresO=Score.Score()
+    #scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
+
+    numBins = 80
+    binWidth = 1.0/numBins # since scores range from 0-1
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+
+    homologousPeakMissing,homologyRawThresholdD = scores.getHomologyRawThresholdD(scoresO)
+
+
+    
+    code.interact(local=locals())
+
+def simValidatonWrapper(paramD):
+    '''Take us into interactive mode for running validation with
+simulations. This will be a temporary flag only.'''
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys

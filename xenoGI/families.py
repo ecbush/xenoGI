@@ -38,7 +38,17 @@ createFamiliesO
     geneUsedL = [False for x in geneNames.nums]
     nodeGenesL = createNodeGenesL(tree,geneNames) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,singleStrainFamilyThresholdAdjust)
-    
+
+
+    # get homology thresholds for each strain pair in family
+    # formation. Below this threshold we won't add a gene to
+    homologousPeakMissing,homologyRawThresholdD = scores.getHomologyRawThresholdD(scoresO)
+
+    if homologousPeakMissing:
+        print("Warning: when examining raw score histograms between strain pairs, there was at least one strain pair where we failed to find a peak of scores corresponding to homology. We will use default values for score thresholds in family formation, however this is likely a sign that one or more species are too distantly related. It will likely result in poor family formation.",fileF=outputSummaryF)
+
+    # --p
+        
     for familyMrca,lchild,rchild in createNodeProcessOrderList(tree):
         # this is preorder, so we get internal nodes before tips
         if lchild != None:
@@ -130,7 +140,7 @@ into a family.'''
 
     return tipFamilyRawThresholdD
 
-
+    
 def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,minNormThresh,synAdjustThresh,synAdjustExtent,geneUsedL,familiesO,famNumCounter,locusFamNumCounter,minCoreSynThresh,minSynThresh):
     '''Creates all Families and subsidiary LocusFamilies descending from
 the node rooted familyMrca. Basic parts of the Phigs algorithm are
