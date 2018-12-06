@@ -355,7 +355,28 @@ def debugWrapper(paramD):
 
     homologousPeakMissing,homologyRawThresholdD = scores.getHomologyRawThresholdD(scoresO)
 
+    """
+    scoreIterator = scoresO.iterateScoreByStrainPair((3,3),'rawSc')
+    binHeightL,indexToBinCenterL = scores.scoreHist(scoreIterator,numBins)
 
+    homologPeakWidth = 0
+    widthRelHeight = 0.9
+    homologRequiredProminence = 6
+    homologLeftPeakLimit = 0.90
+    homologRightPeakLimit = 1.0
+
+    peakWidthInBins = homologPeakWidth / binWidth
+
+    peakMinMax = [0, .05 / binWidth]
+
+    tempBinHeightL = numpy.append(binHeightL,0)
+    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
+
+    peakIndL, propertiesD = find_peaks(tempBinHeightL, width = peakMinMax, rel_height = widthRelHeight, prominence = homologRequiredProminence)
+
+    print(peakIndL)
+    print(propertiesD)
+    """
     
     code.interact(local=locals())
 

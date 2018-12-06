@@ -611,22 +611,27 @@ peak. It takes the right base of the left non-homologous peak to be
 the threshold. Unless the left base of the right peak is actually smaller, in which case it takes that.
 
     '''
+
+    defaultHomologyThreshold = 0.75
+    
     numBins = 80
     binWidth = 1.0/numBins # since scores range from 0-1
 
     homologousPeakMissing = False
     homologyRawThresholdD = {}
     for strainPair in scoresO.getStrainPairs():
-        print(strainPair,"########")
         scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
         binHeightL,indexToBinCenterL = scoreHist(scoreIterator,numBins)
-        homologPeakLeftBasePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth)
+        homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth)
 
-        if homologPeakLeftBasePos == float('inf'):
+        if homologPeakLeftExtremePos == float('inf'):
             homologousPeakMissing = True
-            print("MISSING******")
-
-        threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftBasePos)
+            # if we can't find the homologous peak, there's really no
+            # point in examining the non-homologous peak. Just use
+            # default threshold.
+            threshold = defaultHomologyThreshold
+        else:
+            threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos)
         homologyRawThresholdD[strainPair] = threshold
 
 
@@ -654,12 +659,6 @@ histogram). If such a peak exists, this function returns the position
 exits, this function returns infinity.
 
     '''
-    # testing
-    peakIndL, propertiesD = find_peaks(binHeightL, width = .05/binWidth, rel_height = .9)
-    print(peakIndL)
-    print(propertiesD)
-
-    
     peakL = [] # collect them all first
     
     # case 1 (normal case)
@@ -701,7 +700,6 @@ exits, this function returns infinity.
     else:
         # if there's more than one, we'll return the leftBasePos of the highest.
         peakL.sort(reverse=True)
-        print(peakL)
         return peakL[0][2]
 
     
@@ -710,7 +708,7 @@ def findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,peakWidth,widthRelHei
 (which is given in units of score) and more prominent than
 requiredProminence, and fall between leftPeakLimit and
 rightPeakLimit. Returns tuple
-(peakHeight,peakPos,leftBaseOfPeakPos,rightBaseOfPeakPos) of any peaks
+(peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos) of any peaks
 that meet criteria. All position values are returned in units of
 score.
 
@@ -727,21 +725,21 @@ score.
         peakPos = indexToBinCenterL[peakInd]
         if leftPeakLimit < peakPos <= rightPeakLimit:
             # peak falls between the specified limits
-            leftBaseOfPeakPosInd = propertiesD["left_bases"][i]
-            leftBaseOfPeakPos = indexToBinCenterL[leftBaseOfPeakPosInd]
-            rightBaseOfPeakPosInd = propertiesD["right_bases"][i]
-            rightBaseOfPeakPos = indexToBinCenterL[rightBaseOfPeakPosInd]
-            peakPosInScoreUnitsL.append((peakHeight,peakPos,leftBaseOfPeakPos,rightBaseOfPeakPos))
+            leftExtremeOfPeakPosInd = int(round(propertiesD["left_ips"][i]))
+            leftExtremeOfPeakPos = indexToBinCenterL[leftExtremeOfPeakPosInd]
+            rightExtremeOfPeakPosInd = int(round(propertiesD["right_ips"][i]))
+            rightExtremeOfPeakPos = indexToBinCenterL[rightExtremeOfPeakPosInd]
+            peakPosInScoreUnitsL.append((peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos))
     return peakPosInScoreUnitsL
 
-def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftBasePos):
+def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos):
     '''Given a list of bin heights and another list giving the score
 values at the middle of each bin, determine a threshold above which a
-score should be taken to indicate homology.'''
-    # testing
-    #peakIndL, propertiesD = find_peaks(binHeightL, width = .05/binWidth, rel_height = .5,prominence=5)
-    #print(peakIndL)
-    #print(propertiesD)
+score should be taken to indicate homology. This function assumes
+there is a right homologous peak present and takes the left extreme of
+this peak as input.
+
+    '''
 
     nonHomologPeakWidth = 0.15
     widthRelHeight = 0.9
@@ -753,16 +751,13 @@ score should be taken to indicate homology.'''
     L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,nonHomologPeakWidth,widthRelHeight,nonHomologPeakProminence,nonHomologLeftPeakLimit,nonHomologRightPeakLimit)
 
     L.sort(reverse=True) # in the unlikely case there's more than one
-    peakHeight,peakPos,leftBaseOfPeakPos,rightBaseOfPeakPos = L[0]
+    peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = L[0]
 
-    # we'll use the right base of the best peak as our
-    # threshold. However if the previously determined homologous peak
-    # (which is on the right of the histogram) has a left base which
-    # is less, then we'll go with this.
-    print(homologPeakLeftBasePos)
-    threshold = min(rightBaseOfPeakPos,homologPeakLeftBasePos)
-    
-    # the right base of this peak will be our threshold.
+    # we now find the minimum of these two. We're after a threshold
+    # where we're confident that things below it are definitely not
+    # homologous.
+    threshold = min(rightExtremeOfPeakPos,homologPeakLeftExtremePos)
+
     return threshold
     
 ## Graph I/O
