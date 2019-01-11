@@ -107,7 +107,6 @@ compared against itself then we have only one file name in the list.
         '''Create the arrays for storing scores.'''
         
         self.scoreD['rawSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
-        self.scoreD['normSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
         self.scoreD['synSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
         self.scoreD['coreSynSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
 
@@ -200,7 +199,7 @@ particular strainPair.'''
     header line.
         '''
 
-        scoreTypeL = ['rawSc','normSc','synSc','coreSynSc']
+        scoreTypeL = ['rawSc','synSc','coreSynSc']
 
         # open file
         f=open(scoresFN,'w')
@@ -286,7 +285,7 @@ particular strainPair.'''
     def writeScoresBinary(self,scoresFN):
         '''Write scores to scoresFN as a binary file.'''
 
-        scoreTypeL = ['rawSc','normSc','synSc','coreSynSc']
+        scoreTypeL = ['rawSc','synSc','coreSynSc']
         f=open(scoresFN,'wb')
 
         # first 8 bytes are int, telling us how many edges
@@ -354,7 +353,6 @@ particular strainPair.'''
 
             # fill array
             scoresO.scoreD['rawSc'][edge] = struct.unpack('<d',f.read(8))[0]
-            scoresO.scoreD['normSc'][edge] = struct.unpack('<d',f.read(8))[0]
             scoresO.scoreD['synSc'][edge] = struct.unpack('<d',f.read(8))[0]
             scoresO.scoreD['coreSynSc'][edge] = struct.unpack('<d',f.read(8))[0]            
             

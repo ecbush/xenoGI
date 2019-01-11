@@ -10,14 +10,14 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'interactiveAnalysis', 'runAll', 'debug'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'debug'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeFamilies, makeIslands, printAnalysis, createIslandBed, interactiveAnalysis, or runAll.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeFamilies, makeIslands, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, or runAll.
 
    For example: 
       xenoGI params.py parseGenbank
@@ -57,6 +57,14 @@ def main():
     elif task == 'createIslandBed':
         createIslandBedWrapper(paramD)
 
+    #### interactiveAnalysis
+    elif task == 'interactiveAnalysis':
+        interactiveAnalysisWrapper(paramD)
+        
+    #### plotScoreHists
+    elif task == 'plotScoreHists':
+        plotScoreHistsWrapper(paramD)
+
     #### runAll
     elif task == 'runAll':
         parseGenbankWrapper(paramD)
@@ -66,10 +74,6 @@ def main():
         makeIslandsWrapper(paramD)
         printAnalysisWrapper(paramD)
         createIslandBedWrapper(paramD)
-
-    #### interactiveAnalysis
-    elif task == 'interactiveAnalysis':
-        interactiveAnalysisWrapper(paramD)
 
     #### debug
     elif task == 'debug':
@@ -117,15 +121,13 @@ def calcScoresWrapper(paramD):
     ## similarity scores
     scoresO = scores.calcRawScores(paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresO)
 
-    ## normalized scores
-    scoresO,aabrhL=scores.calcNormScores(tree,strainNum2StrD,paramD['blastFilePath'],paramD['evalueThresh'],scoresO,geneNames,paramD['aabrhFN'])
-
     ## synteny scores
     scoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD['synWSize'],tree,paramD['numSynToTake'],paramD['numThreads'])
 
     ## core synteny scores
-    scoresO = scores.calcCoreSynScores(scoresO,aabrhL,geneNames,geneOrderT,paramD['coreSynWsize'])
-
+    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
+    scoresO = scores.calcCoreSynScores(scoresO,strainNamesL,paramD['blastFilePath'],paramD['evalueThresh'],paramD['aabrhFN'],geneNames,geneOrderT,paramD['coreSynWsize'])
+    
     # write scores to file
     scores.writeScores(scoresO,geneNames,paramD['scoresFN'])
     
@@ -139,8 +141,8 @@ def makeFamiliesWrapper(paramD):
 
     ## make gene families
     familyFormationSummaryF = open(paramD['familyFormationSummaryFN'],'w')
-    familiesO = families.createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD['singleStrainFamilyThresholdAdjust'],subtreeL,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['synAdjustThresh'],paramD['synAdjustExtent'],familyFormationSummaryF,paramD['familyFN'])
-    
+    familiesO = families.createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD['singleStrainFamilyThresholdAdjust'],subtreeL,paramD['minCoreSynThresh'],paramD['synAdjustExtent'],familyFormationSummaryF,paramD['familyFN'])
+
     familyFormationSummaryF.close()
 
 def makeIslandsWrapper(paramD):
@@ -221,6 +223,41 @@ def createIslandBedWrapper(paramD):
 
     islandBed.createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['bedFilePath'],paramD['scoreNodeMapD'],paramD['potentialRgbL'],paramD['bedNumTries'])
 
+def plotScoreHistsWrapper(paramD):
+    """Wrapper to make pdf of histograms of scores."""
+
+    import matplotlib.pyplot as pyplot
+    from matplotlib.backends.backend_pdf import PdfPages
+    
+    numBins = 80 # num bins in histograms
+    tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
+    geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+    
+    def scoreHists(scoresFN,outFN,strainNum2StrD,numBins,geneNames,scoreType):
+        '''Read through a scores file, and separate into all pairwise comparisons. Then plot hist of each.'''
+
+        # currently, this seems to require a display for interactive
+        # plots. would be nice to make it run without that...
+
+        scoresO = scores.readScores(scoresFN,geneNames)
+
+        pyplot.ioff() # turn off interactive mode
+        with PdfPages(outFN) as pdf:
+            for strainPair in scoresO.getStrainPairs():
+                fig = pyplot.figure()
+                scoresL = list(scoresO.iterateScoreByStrainPair(strainPair,scoreType))
+                pyplot.hist(scoresL,bins=numBins, density = True)
+                pyplot.title(strainNum2StrD[strainPair[0]]+'-'+strainNum2StrD[strainPair[1]])
+                pdf.savefig()
+                pyplot.close()
+
+    # plot histograms
+    for scoreType,outFN in [('rawSc','rawSc.pdf'),('synSc','synSc.pdf'),('coreSynSc','coreSynSc.pdf'),]:
+    
+        scoreHists(paramD['scoresFN'],outFN,strainNum2StrD,numBins,geneNames,scoreType)
+
+    
 def interactiveAnalysisWrapper(paramD):
     """Enter interactive mode."""
 
