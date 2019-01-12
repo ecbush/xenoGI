@@ -1,12 +1,13 @@
 # Functions for a modified version of the PhiGs algorithm
 # http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
 # (We've added the use of synteny)
-import sys
+import sys,numpy
+from scipy.signal import find_peaks
 from . import trees,scores
 from .Family import *
 from .analysis import printTable
 
-## Main function
+#### Main function
 
 def createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,singleStrainFamilyThresholdAdjust,subtreeL,minCoreSynThresh,synAdjustExtent,outputSummaryF,familyFN):
     '''Given a graph of genes and their similarity scores find families
@@ -42,13 +43,13 @@ createFamiliesO
 
     # get homology thresholds for each strain pair in family
     # formation. Below this threshold we won't add a gene to
-    homologousPeakMissing,absMinRawThresholdForHomologyD = scores.getAbsMinRawThresholdForHomologyD(scoresO)
+    homologousPeakMissing,absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(scoresO)
 
     if homologousPeakMissing:
         print("Warning: when examining raw score histograms between strain pairs, there was at least one strain pair where we failed to find a peak of scores corresponding to homology. We will use default values for score thresholds in family formation, however this is a sign that one or more species are too distantly related. It will likely result in poor family formation.",file=outputSummaryF)
 
-    # temp. Create dummy synThresholdD for now
-    synThresholdD = {}
+    # Create synThresholdD
+    synThresholdD = getSynThresholdD(scoresO,tree)
         
     for familyMrca,lchild,rchild in createNodeProcessOrderList(tree):
         # this is preorder, so we get internal nodes before tips
@@ -157,7 +158,293 @@ scoresO.
     avScore /= len(neighbL)
     avStd /= len(neighbL)
     return avScore,avStd
+
+## Histograms and thresholds
+
+def getAbsMinRawThresholdForHomologyD(scoresO):
+    '''For each pair of strains (including vs. self) determine a minimum
+raw score above which we take scores to indicate homology. Return in a
+dictionary keyed by strain pair. It also returns a boolean flag,
+homologousPeakMissing. This will be true if any of the strain pairs
+failed to yield a peak on the right side of the histogram
+corresponding to homologous scores. This function works as
+follows. For a given strain pair, it expects the histogram of scores
+to have two peaks. A left non homologous peak, and a right homologous
+peak. It attempts to find the right peak, and then finds the left
+peak. It takes the right base of the left non-homologous peak to be
+the threshold. Unless the left base of the right peak is actually smaller, in which case it takes that.
+
+    '''
+
+    defaultHomologyThreshold = 0.75
     
+    numBins = 80
+    binWidth = 1.0/numBins # since scores range from 0-1
+
+    homologousPeakMissing = False
+    homologyRawThresholdD = {}
+    for strainPair in scoresO.getStrainPairs():
+        scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
+        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,numBins)
+        homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth)
+
+        if homologPeakLeftExtremePos == float('inf'):
+            homologousPeakMissing = True
+            # if we can't find the homologous peak, there's really no
+            # point in examining the non-homologous peak. Just use
+            # default threshold.
+            threshold = defaultHomologyThreshold
+        else:
+            threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos)
+        homologyRawThresholdD[strainPair] = threshold
+        homologyRawThresholdD[(strainPair[1],strainPair[0])] = threshold # flip order
+
+    return homologousPeakMissing,homologyRawThresholdD
+    
+def scoreHist(scoreIterator,numBins):
+    '''Get a histogram with numpy, and return the bin height, and also a
+list of indices to the middle position of each bin (in terms of the x value).'''
+    binHeightL,edges = numpy.histogram(list(scoreIterator),bins=numBins,density=True)
+
+    # make a list where the indices correspond to those of binHeightL,
+    # and the values give the score value at the center of that bin
+    indexToBinCenterL = []
+    for i in range(1,len(edges)):
+        center = (edges[i]+edges[i-1])/2
+        indexToBinCenterL.append(center)
+
+    return binHeightL,indexToBinCenterL
+
+def homologPeakChecker(binHeightL,indexToBinCenterL,binWidth):
+    '''Function to check for a peak due to homogology (right peak in
+histogram). If such a peak exists, this function returns the position
+(in score units) of the left most base of that peak. If no such peak
+exits, this function returns infinity.
+
+    '''
+    peakL = [] # collect them all first
+    
+    # case 1 (normal case)
+    homologPeakWidth = 0.10
+    widthRelHeight = 0.9
+    homologRequiredProminence = 0.2
+    homologLeftPeakLimit = 0.65
+    homologRightPeakLimit = 1.0
+    
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,homologPeakWidth,widthRelHeight,homologRequiredProminence,homologLeftPeakLimit,homologRightPeakLimit)
+    peakL.extend(L)
+
+    # case 2 (extreme prominence. But allow to be very narrow)
+    homologPeakWidth = 0
+    widthRelHeight = 0.9
+    homologRequiredProminence = 6
+    homologLeftPeakLimit = 0.90
+    homologRightPeakLimit = 1.0
+    
+    # in order to get a rightmost peak, if any, we add a dummy bin of height 0 on right
+    # add to indexToBinCenterL for case of right base of a peak in the last bin.
+    tempBinHeightL = numpy.append(binHeightL,0)
+    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
+    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,homologPeakWidth,widthRelHeight,homologRequiredProminence,homologLeftPeakLimit,homologRightPeakLimit)
+    peakL.extend(L)
+
+    # case 3 (wide width with low prominence)
+    homologPeakWidth = 0.25
+    widthRelHeight = 0.9
+    homologRequiredProminence = 0.10
+    homologLeftPeakLimit = 0.65
+    homologRightPeakLimit = 1.0
+    
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,homologPeakWidth,widthRelHeight,homologRequiredProminence,homologLeftPeakLimit,homologRightPeakLimit)
+    peakL.extend(L)
+
+    if peakL == []:
+        return float('inf')
+    else:
+        # if there's more than one, we'll return the leftBasePos of the highest.
+        peakL.sort(reverse=True)
+        return peakL[0][2]
+
+    
+def findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,peakWidth,widthRelHeight,requiredProminence,leftPeakLimit,rightPeakLimit):
+    '''Make one call to find_peaks. Peaks must be wider than peakWidth
+(which is given in units of score) and more prominent than
+requiredProminence, and fall between leftPeakLimit and
+rightPeakLimit. Returns tuple
+(peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos) of any peaks
+that meet criteria. All position values are returned in units of
+score.
+
+    '''
+    peakWidthInBins = peakWidth / binWidth
+    # we always measure width widthRelHeight down from peak toward base
+    peakIndL, propertiesD = find_peaks(binHeightL, width = peakWidthInBins, rel_height = widthRelHeight, prominence = requiredProminence)
+
+    # make sure they are to the right of leftPeakLimit
+    peakPosInScoreUnitsL = []
+    for i in range(len(peakIndL)):
+        peakInd = peakIndL[i]
+        peakHeight = binHeightL[peakInd]
+        peakPos = indexToBinCenterL[peakInd]
+        if leftPeakLimit < peakPos <= rightPeakLimit:
+            # peak falls between the specified limits
+            leftExtremeOfPeakPosInd = int(round(propertiesD["left_ips"][i]))
+            leftExtremeOfPeakPos = indexToBinCenterL[leftExtremeOfPeakPosInd]
+            rightExtremeOfPeakPosInd = int(round(propertiesD["right_ips"][i]))
+            rightExtremeOfPeakPos = indexToBinCenterL[rightExtremeOfPeakPosInd]
+            peakPosInScoreUnitsL.append((peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos))
+    return peakPosInScoreUnitsL
+
+def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos):
+    '''Given a list of bin heights and another list giving the score
+values at the middle of each bin, determine a threshold above which a
+score should be taken to indicate homology. This function assumes
+there is a right homologous peak present and takes the left extreme of
+this peak as input.
+
+    '''
+
+    nonHomologPeakWidth = 0.15
+    widthRelHeight = 0.9
+    nonHomologPeakProminence = 2
+    defaultLeftBasePos = 0.8
+    nonHomologLeftPeakLimit = 0
+    nonHomologRightPeakLimit = 0.6
+
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,nonHomologPeakWidth,widthRelHeight,nonHomologPeakProminence,nonHomologLeftPeakLimit,nonHomologRightPeakLimit)
+
+    L.sort(reverse=True) # in the unlikely case there's more than one
+    peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = L[0]
+
+    # we now find the minimum of these two. We're after a threshold
+    # where we're confident that things below it are definitely not
+    # homologous.
+    threshold = min(rightExtremeOfPeakPos,homologPeakLeftExtremePos)
+
+    return threshold
+
+def getSynThresholdD(scoresO,tree):
+    '''Creates a dictionary to store synteny thresholds. This dictionary
+itself contains two dictionaries one each for the minSynThresh
+(minimum synteny score allowed for family formation) and the
+synAdjustThreshold (the synteny score above which we adjust up the raw
+score to make family formation more likely.) These dictionaries in
+turn are keyed by strain pair.'''
+
+    numBins = 80
+    binWidth = 1.0/numBins # since scores range from 0-1
+
+    synThresholdD = {}
+    synThresholdD['minSynThreshold'] = {}
+    synThresholdD['synAdjustThreshold'] = {}
+    
+    for strainPair in scoresO.getStrainPairs():
+        scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'synSc')
+        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,numBins)
+
+        minSynThreshold,synAdjustThreshold = getSynThresholds(binWidth,binHeightL,indexToBinCenterL)
+
+        synThresholdD['minSynThreshold'][strainPair] = minSynThreshold
+        synThresholdD['minSynThreshold'][(strainPair[1],strainPair[0])] = minSynThreshold
+        
+        synThresholdD['synAdjustThreshold'][strainPair] = synAdjustThreshold
+        synThresholdD['synAdjustThreshold'][(strainPair[1],strainPair[0])] = synAdjustThreshold
+
+    # In the case of family formation at a tip, we're interested in
+    # genes that duplicated after the last species split off. So the
+    # thresholds at a tip really shouldn't be based on the given
+    # genome against itself. Basing them instead on what we saw at the
+    # parent node (of the last divergence) seems reasonable, and is
+    # what we'll do here. We'll now replace the entries in
+    # synThresholdD for tips with the values from the parent node.
+
+    for strainPair in scoresO.getStrainPairs():
+        if strainPair[0] == strainPair[1]:
+            # Tip
+            leafStrain = strainPair[0]
+            
+            minSynThreshold,synAdjustThreshold = getTipSynThresholds(synThresholdD,leafStrain,tree)
+            # since strainPair[0] and strainPair[1] same, no need to reverse
+            synThresholdD['minSynThreshold'][strainPair] = minSynThreshold
+            synThresholdD['synAdjustThreshold'][strainPair] = synAdjustThreshold
+    return synThresholdD
+            
+def getSynThresholds(binWidth,binHeightL,indexToBinCenterL):
+    '''Calculate and return minSynThresh and synAdjustThreshold.'''
+
+    defaultMinSynThreshold = 0.6
+    defaultSynAdjustThreshold = 0.8
+
+    minSynThresholdIncrement = 0.15
+    synAdjustThresholdIncrement = 0.02
+
+    
+    # get peak
+    peakL = []
+
+    # case 1 (High prominence, narrow peak. More closely related
+    # synteny)
+    synPeakWidth = 0.01
+    widthRelHeight = 0.9
+    synRequiredProminence = 2.0
+    synLeftPeakLimit = 0.6
+    synRightPeakLimit = 1.0
+
+    peakWidthInBins = synPeakWidth / binWidth
+
+    peakMinMax = [0, .05 / binWidth]
+
+    tempBinHeightL = numpy.append(binHeightL,0)
+    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
+
+
+    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,synPeakWidth,widthRelHeight,synRequiredProminence,synLeftPeakLimit,synRightPeakLimit)
+    peakL.extend(L)
+    
+    # case 2 (wide width, low prominence. Distant synteny.)
+    synPeakWidth = 0.10
+    widthRelHeight = 0.9
+    synRequiredProminence = 0.1
+    synLeftPeakLimit = 0.6
+    synRightPeakLimit = 1.0
+
+    peakWidthInBins = synPeakWidth / binWidth
+
+    peakMinMax = [0, .05 / binWidth]
+
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,synPeakWidth,widthRelHeight,synRequiredProminence,synLeftPeakLimit,synRightPeakLimit)
+    peakL.extend(L)
+    
+    if peakL == []:
+        minSynThreshold = defaultMinSynThreshold
+        synAdjustThreshold = defaultSynAdjustThreshold
+    else:
+        peakL.sort(key=lambda x: x[1]) # sort on position, in case more
+                                   # than one peak (unlikely), take leftmost.
+
+        peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = peakL[0]
+        minSynThreshold = leftExtremeOfPeakPos - minSynThresholdIncrement
+        synAdjustThreshold = leftExtremeOfPeakPos - synAdjustThresholdIncrement
+
+    return minSynThreshold,synAdjustThreshold
+
+def getTipSynThresholds(synThresholdD,leafStrain,tree):
+    '''Get the synteny threshold values at a tip called leafStrain by
+averaging the values between that strain and its nearest neighbors.'''
+    
+    neighbL = trees.getNearestNeighborL(leafStrain,tree)
+    avSyn = 0
+    avSynAdjust = 0
+    for neighb in neighbL:
+        avSyn += synThresholdD['minSynThreshold'][neighb,leafStrain]
+        avSynAdjust += synThresholdD['synAdjustThreshold'][neighb,leafStrain]
+    avSyn /= len(neighbL)
+    avSynAdjust /= len(neighbL)
+    return avSyn,avSynAdjust
+
+
+#### Family creation functions
+
 def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,geneUsedL,familiesO,famNumCounter,locusFamNumCounter,minCoreSynThresh):
     '''Creates all Families and subsidiary LocusFamilies descending from
 the node rooted familyMrca. Basic parts of the Phigs algorithm are
@@ -383,7 +670,8 @@ add it. Return boolean.
         synAdjustThresh = float('inf')
     else:
         # change later
-        synAdjustThresh = -2
+        synAdjustThresh = synThresholdD['synAdjustThreshold'][(strain1,strain2)]
+
         
     addIt = False
     if rawSc < absoluteMinRawThresh:
@@ -547,7 +835,9 @@ boolean.
     coreSynSc = scoresO.getScoreByEndNodes(gene1,gene2,'coreSynSc')
     synSc = scoresO.getScoreByEndNodes(gene1,gene2,'synSc')
 
-    minSynThresh = -4.0 # CHANGE LATER
+    strain1 = geneNames.numToStrainNum(gene1)
+    strain2 = geneNames.numToStrainNum(gene2)
+    minSynThresh = synThresholdD['minSynThreshold'][(strain1,strain2)]
     
     if coreSynSc < minCoreSynThresh or synSc < minSynThresh:
         # one of the two types of synteny below threshold, so this

@@ -383,37 +383,20 @@ def debugWrapper(paramD):
     from scipy.signal import find_peaks
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
-    #scoresO=Score.Score()
-    #scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
+
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
     numBins = 80
     binWidth = 1.0/numBins # since scores range from 0-1
-    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
-    homologousPeakMissing,homologyRawThresholdD = scores.getHomologyRawThresholdD(scoresO)
+    #scoreIterator = scoresO.iterateScoreByStrainPair((3,5),'synSc')
+    #scoreIterator = scoresO.iterateScoreByStrainPair((0,3),'synSc')
+    #binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,numBins)
 
-    """
-    scoreIterator = scoresO.iterateScoreByStrainPair((3,3),'rawSc')
-    binHeightL,indexToBinCenterL = scores.scoreHist(scoreIterator,numBins)
-
-    homologPeakWidth = 0
-    widthRelHeight = 0.9
-    homologRequiredProminence = 6
-    homologLeftPeakLimit = 0.90
-    homologRightPeakLimit = 1.0
-
-    peakWidthInBins = homologPeakWidth / binWidth
-
-    peakMinMax = [0, .05 / binWidth]
-
-    tempBinHeightL = numpy.append(binHeightL,0)
-    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
-
-    peakIndL, propertiesD = find_peaks(tempBinHeightL, width = peakMinMax, rel_height = widthRelHeight, prominence = homologRequiredProminence)
-
-    print(peakIndL)
-    print(propertiesD)
-    """
+    #minSynThreshold,synAdjustThreshold = families.getSynThresholds(binWidth,binHeightL,indexToBinCenterL)
+    #print(minSynThreshold,synAdjustThreshold)
+    
+    synThresholdD = families.getSynThresholdD(scoresO,tree)
     
     code.interact(local=locals())
 
