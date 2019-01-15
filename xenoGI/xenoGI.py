@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "1.1.1"
+__version__ = "1.5"
 import sys, glob, os
 from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
 
@@ -27,7 +27,7 @@ def main():
 
         
     #### load parameters and some other data we'll use below
-    paramD = parameters.loadParametersD(paramFN)
+    paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
         
     #### parseGenbank
     if task == 'parseGenbank':
@@ -35,7 +35,7 @@ def main():
         
     #### runBlast
     elif task == 'runBlast':
-        blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastExecutDirPath'],paramD['blastCLine'],paramD['numThreads'],paramD['treeFN'])
+        blast.runBlast(paramD)
 
     #### calcScores
     elif task == 'calcScores':
@@ -68,7 +68,7 @@ def main():
     #### runAll
     elif task == 'runAll':
         parseGenbankWrapper(paramD)
-        blast.runBlast(paramD['fastaFilePath'],paramD['blastFilePath'],paramD['blastExecutDirPath'],paramD['blastCLine'],paramD['numThreads'],paramD['treeFN'])
+        blast.runBlast(paramD)
         calcScoresWrapper(paramD)
         makeFamiliesWrapper(paramD)
         makeIslandsWrapper(paramD)
@@ -93,7 +93,7 @@ def parseGenbankWrapper(paramD):
     fileNameMapD = parameters.loadFileNameMapD(paramD['fileNameMapFN'],genbankFileList)
 
     # parse
-    genbank.parseGenbank(paramD['geneOrderFN'],paramD['redundProtsFN'],paramD['geneInfoFN'],fastaDir,genbankFileList,fileNameMapD)
+    genbank.parseGenbank(paramD,fastaDir,genbankFileList,fileNameMapD)
 
 def loadMiscDataStructures(paramD):
     """Creates a few data structures that are used in multiple tasks."""
@@ -119,14 +119,14 @@ def calcScoresWrapper(paramD):
     scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
 
     ## similarity scores
-    scoresO = scores.calcRawScores(paramD['fastaFilePath'],paramD['numThreads'],geneNames,paramD['gapOpen'],paramD['gapExtend'],paramD['matrix'],scoresO)
+    scoresO = scores.calcRawScores(paramD,geneNames,scoresO)
 
     ## synteny scores
-    scoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD['synWSize'],tree,paramD['numSynToTake'],paramD['numThreads'])
+    scoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD,tree)
 
     ## core synteny scores
     strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
-    scoresO = scores.calcCoreSynScores(scoresO,strainNamesL,paramD['blastFilePath'],paramD['evalueThresh'],paramD['aabrhFN'],geneNames,geneOrderT,paramD['coreSynWsize'])
+    scoresO = scores.calcCoreSynScores(scoresO,strainNamesL,paramD,geneNames,geneOrderT)
     
     # write scores to file
     scores.writeScores(scoresO,geneNames,paramD['scoresFN'])
@@ -141,8 +141,7 @@ def makeFamiliesWrapper(paramD):
 
     ## make gene families
     familyFormationSummaryF = open(paramD['familyFormationSummaryFN'],'w')
-    familiesO = families.createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD['singleStrainFamilyThresholdAdjust'],subtreeL,paramD['minCoreSynThresh'],paramD['synAdjustExtent'],familyFormationSummaryF,paramD['familyFN'])
-
+    familiesO = families.createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD,subtreeL,familyFormationSummaryF)
     familyFormationSummaryF.close()
 
 def makeIslandsWrapper(paramD):
@@ -158,8 +157,7 @@ def makeIslandsWrapper(paramD):
 
     ## group gene families into islands
     islandFormationSummaryF = open(paramD['islandFormationSummaryFN'],'w')
-    locusIslandByNodeLMerged = islands.makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD['proxThreshL'],familiesO,paramD['numThreads'],strainStr2NumD,strainNum2StrD,paramD['rootFocalClade'],paramD['islandOutFN'],islandFormationSummaryF)
-
+    locusIslandByNodeLMerged = islands.makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD,islandFormationSummaryF)
     islandFormationSummaryF.close()
 
 def printAnalysisWrapper(paramD):
@@ -180,31 +178,21 @@ def printAnalysisWrapper(paramD):
     ## load stuff
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
-
     nodesL=trees.nodeList(tree)
-    
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-
-    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-
-    gene2FamD=analysis.createGene2FamD(familyL)
-    fam2IslandD=analysis.createFam2IslandD(islandByNodeL)
-
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
 
     ## analysis
 
     # Print out all islands
     islandsOutF = open(islandsSummaryFN,'w')
-    analysis.vPrintAllIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familyL,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,islandsOutF)
+    analysis.vPrintAllLocusIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familiesO,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,islandsOutF)
     islandsOutF.close()
 
-    # score calculations
-    scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
-    families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
-
     # Print species files with all the genes, grouped by contig
-    analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,geneNames,gene2FamD,fam2IslandD,geneInfoD,familyL,strainNum2StrD)
+    gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeL,familiesO)
+    analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,geneNames,gene2FamIslandD,geneInfoD,familiesO,strainNum2StrD)
 
 def createIslandBedWrapper(paramD):
     """Wrapper to make output bed files."""
@@ -213,13 +201,13 @@ def createIslandBedWrapper(paramD):
     
     leafNodesL = trees.leafList(tree)
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
-    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
     islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
 
 
     # get islands organized by strain
-    islandByStrainD = islandBed.createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD)
+    islandByStrainD = islandBed.createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNames,geneInfoD)
 
     islandBed.createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['bedFilePath'],paramD['scoreNodeMapD'],paramD['potentialRgbL'],paramD['bedNumTries'])
 
@@ -280,7 +268,7 @@ def interactiveAnalysisWrapper(paramD):
         for lfO in familiesO.getFamily(familyNum).getLocusFamilies():
             print("    LocusFamily",lfO.getStr(strainNum2StrD,geneNames," "),file=fileF)
         
-        # print("Family error score (count of possibly misassigned genes):",familyL[familyNum].possibleErrorCt,file=fileF)
+        # print("Family error score (count of possibly misassigned genes):",familiesO[familyNum].possibleErrorCt,file=fileF)
 
         print(file=fileF)
         print("Matrix of raw similarity scores [0,1] between genes in the family",file=fileF)
@@ -321,7 +309,7 @@ def interactiveAnalysisWrapper(paramD):
         '''Print the island and its genomic context in each species. We
         include synWSize/2 genes in either direction beyond the island.
         '''
-        printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familyL,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD,fileF)
+        printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD,fileF)
 
 
     def printIslandsAtNode(nodeStr,fileF=sys.stdout):
@@ -331,7 +319,7 @@ def interactiveAnalysisWrapper(paramD):
     at the top level.
         '''
         node = strainStr2NumD[nodeStr]
-        vPrintIslands(islandByNodeL[node],subtreeL,familyL,strainNum2StrD,geneNames,geneInfoD,fileF)
+        vPrintIslands(islandByNodeL[node],subtreeL,familiesO,strainNum2StrD,geneNames,geneInfoD,fileF)
 
 
     def printCoreNonCoreByNode(fileF=sys.stdout):
@@ -348,7 +336,7 @@ def interactiveAnalysisWrapper(paramD):
         rowL.append(['Node','Core','Non-Core','Total','% Non-Core'])
         rowL.append(['----','----','--------','-----','----------'])
         for node in focInodesL:
-            nonCore,core=coreNonCoreCtAtNode(tree,node,familyByNodeL,familyL)
+            nonCore,core=coreNonCoreCtAtNode(tree,node,familyByNodeL,familiesO)
             rowL.append([strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
         printTable(rowL,fileF=fileF)
         print(file=fileF)
@@ -368,7 +356,7 @@ def interactiveAnalysisWrapper(paramD):
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
     scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
     # calc family error scores
-    #families.calcErrorScores(familyL,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
+    #families.calcErrorScores(familiesO,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
     
     code.interact(local=locals())
 
@@ -389,14 +377,44 @@ def debugWrapper(paramD):
     numBins = 80
     binWidth = 1.0/numBins # since scores range from 0-1
 
-    #scoreIterator = scoresO.iterateScoreByStrainPair((3,5),'synSc')
-    #scoreIterator = scoresO.iterateScoreByStrainPair((0,3),'synSc')
-    #binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,numBins)
+    scoreIterator = scoresO.iterateScoreByStrainPair((3,5),'rawSc')
+    binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,numBins)
 
-    #minSynThreshold,synAdjustThreshold = families.getSynThresholds(binWidth,binHeightL,indexToBinCenterL)
-    #print(minSynThreshold,synAdjustThreshold)
+    homologPeakLeftExtremePos=families.homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
+
+
+
+    ## setup output directory and file names
+    # if directory for analysis doesn't exist yet, make it
+    analDir = paramD['analysisFilePath'].split("*")[0]
+    if glob.glob(analDir)==[]:
+        os.mkdir(analDir)
+
+    islandSummaryStem = paramD['islandsSummaryStem']
+    analExtension = paramD['analysisFilePath'].split("*")[1]
+    islandsSummaryFN = os.path.join(analDir,islandSummaryStem+analExtension)
+
+    genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
     
-    synThresholdD = families.getSynThresholdD(scoresO,tree)
+    ## load stuff
+    tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    nodesL=trees.nodeList(tree)
+    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+
+    ## analysis
+
+    # Print out all islands
+    islandsOutF = open(islandsSummaryFN,'w')
+    analysis.vPrintAllLocusIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familiesO,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,islandsOutF)
+    islandsOutF.close()
+
+    # Print species files with all the genes, grouped by contig
+    #gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeL,familiesO)
+    #analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,geneNames,gene2FamIslandD,geneInfoD,familiesO,strainNum2StrD)
+
     
     code.interact(local=locals())
 

@@ -9,7 +9,7 @@ from .analysis import printTable
 
 #### Main function
 
-def createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,singleStrainFamilyThresholdAdjust,subtreeL,minCoreSynThresh,synAdjustExtent,outputSummaryF,familyFN):
+def createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD,subtreeL,outputSummaryF):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
 
@@ -38,28 +38,28 @@ createFamiliesO
     # other assorted things we'll need
     geneUsedL = [False for x in geneNames.nums]
     nodeGenesL = createNodeGenesL(tree,geneNames) # has genes divided by node
-    tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,singleStrainFamilyThresholdAdjust)
+    tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
 
 
     # get homology thresholds for each strain pair in family
     # formation. Below this threshold we won't add a gene to
-    homologousPeakMissing,absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(scoresO)
+    homologousPeakMissing,absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO)
 
     if homologousPeakMissing:
-        print("Warning: when examining raw score histograms between strain pairs, there was at least one strain pair where we failed to find a peak of scores corresponding to homology. We will use default values for score thresholds in family formation, however this is a sign that one or more species are too distantly related. It will likely result in poor family formation.",file=outputSummaryF)
+        print("Warning: when examining raw score histograms between strain pairs, there was at least one strain pair where we failed to find a peak of scores corresponding to homology. We will use default values for score thresholds in family formation, however it may be that one or more species are too distantly related (which would result in poor family formation.)",file=outputSummaryF)
 
     # Create synThresholdD
-    synThresholdD = getSynThresholdD(scoresO,tree)
+    synThresholdD = getSynThresholdD(scoresO,tree,paramD)
         
     for familyMrca,lchild,rchild in createNodeProcessOrderList(tree):
         # this is preorder, so we get internal nodes before tips
         if lchild != None:
             # not a tip
                         
-            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,geneUsedL,familiesO,famNumCounter,locusFamNumCounter,minCoreSynThresh)
+            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL,familiesO,famNumCounter,locusFamNumCounter)
 
         else:
-            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,familiesO,minCoreSynThresh,famNumCounter,locusFamNumCounter)
+            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter)
 
        
     # Write family formation summary file
@@ -92,7 +92,7 @@ createFamiliesO
     
     printTable(summaryL,indent=0,fileF=outputSummaryF)
     
-    writeFamilies(familiesO,geneNames,strainNum2StrD,familyFN)
+    writeFamilies(familiesO,geneNames,strainNum2StrD,paramD['familyFN'])
 
     return familiesO
 
@@ -121,7 +121,7 @@ node #, right node #).
         r = createNodeProcessOrderList(tree[2])
         return [(tree[0], tree[1][0], tree[2][0])] + l + r
 
-def getTipFamilyRawThresholdD(tree,scoresO,singleStrainFamilyThresholdAdjust):
+def getTipFamilyRawThresholdD(tree,scoresO,paramD):
     '''Return a dictionary containing a raw score threshold for each
 tip. This threshold is for use in forming families on the tip,
 defining the minimum distance within which we will combine two genes
@@ -136,7 +136,7 @@ into a family.'''
         
         # multiply in an adjustment parameter (since average core gene
         # scores of neighbors would be way too high)
-        threshold *= singleStrainFamilyThresholdAdjust
+        threshold *= paramD['singleStrainFamilyThresholdAdjust']
 
         tipFamilyRawThresholdD[leaf] = threshold
 
@@ -161,10 +161,10 @@ scoresO.
 
 ## Histograms and thresholds
 
-def getAbsMinRawThresholdForHomologyD(scoresO):
+def getAbsMinRawThresholdForHomologyD(paramD,scoresO):
     '''For each pair of strains (including vs. self) determine a minimum
-raw score above which we take scores to indicate homology. Return in a
-dictionary keyed by strain pair. It also returns a boolean flag,
+raw score below which we take scores to indicate non-homology. Return
+in a dictionary keyed by strain pair. It also returns a boolean flag,
 homologousPeakMissing. This will be true if any of the strain pairs
 failed to yield a peak on the right side of the histogram
 corresponding to homologous scores. This function works as
@@ -172,39 +172,40 @@ follows. For a given strain pair, it expects the histogram of scores
 to have two peaks. A left non homologous peak, and a right homologous
 peak. It attempts to find the right peak, and then finds the left
 peak. It takes the right base of the left non-homologous peak to be
-the threshold. Unless the left base of the right peak is actually smaller, in which case it takes that.
+the threshold. Unless the left base of the right peak is actually
+smaller, in which case it takes that.
 
     '''
 
-    defaultHomologyThreshold = 0.75
-    
-    numBins = 80
-    binWidth = 1.0/numBins # since scores range from 0-1
+    scoreHistNumBins = paramD['scoreHistNumBins']
+    binWidth = 1.0/scoreHistNumBins # since scores range from 0-1
 
     homologousPeakMissing = False
     homologyRawThresholdD = {}
     for strainPair in scoresO.getStrainPairs():
         scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
-        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,numBins)
-        homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth)
+        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,scoreHistNumBins)
+        homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
+
+        print(strainPair,homologPeakLeftExtremePos)
 
         if homologPeakLeftExtremePos == float('inf'):
             homologousPeakMissing = True
             # if we can't find the homologous peak, there's really no
             # point in examining the non-homologous peak. Just use
             # default threshold.
-            threshold = defaultHomologyThreshold
+            threshold = paramD['defaultAbsMinRawThresholdForHomology']
         else:
-            threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos)
+            threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos,paramD)
         homologyRawThresholdD[strainPair] = threshold
         homologyRawThresholdD[(strainPair[1],strainPair[0])] = threshold # flip order
 
     return homologousPeakMissing,homologyRawThresholdD
     
-def scoreHist(scoreIterator,numBins):
+def scoreHist(scoreIterator,scoreHistNumBins):
     '''Get a histogram with numpy, and return the bin height, and also a
 list of indices to the middle position of each bin (in terms of the x value).'''
-    binHeightL,edges = numpy.histogram(list(scoreIterator),bins=numBins,density=True)
+    binHeightL,edges = numpy.histogram(list(scoreIterator),bins=scoreHistNumBins,density=True)
 
     # make a list where the indices correspond to those of binHeightL,
     # and the values give the score value at the center of that bin
@@ -215,7 +216,7 @@ list of indices to the middle position of each bin (in terms of the x value).'''
 
     return binHeightL,indexToBinCenterL
 
-def homologPeakChecker(binHeightL,indexToBinCenterL,binWidth):
+def homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD):
     '''Function to check for a peak due to homogology (right peak in
 histogram). If such a peak exists, this function returns the position
 (in score units) of the left most base of that peak. If no such peak
@@ -225,37 +226,20 @@ exits, this function returns infinity.
     peakL = [] # collect them all first
     
     # case 1 (normal case)
-    homologPeakWidth = 0.10
-    widthRelHeight = 0.9
-    homologRequiredProminence = 0.2
-    homologLeftPeakLimit = 0.65
-    homologRightPeakLimit = 1.0
-    
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,homologPeakWidth,widthRelHeight,homologRequiredProminence,homologLeftPeakLimit,homologRightPeakLimit)
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['homologPeakWidthCase1'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase1'],paramD['homologLeftPeakLimitCase1'],paramD['homologRightPeakLimit'])
     peakL.extend(L)
 
     # case 2 (extreme prominence. But allow to be very narrow)
-    homologPeakWidth = 0
-    widthRelHeight = 0.9
-    homologRequiredProminence = 6
-    homologLeftPeakLimit = 0.90
-    homologRightPeakLimit = 1.0
-    
-    # in order to get a rightmost peak, if any, we add a dummy bin of height 0 on right
+    # in order to get a rightmost peak, if any, we add a dummy bin of
+    # height 0 on right
     # add to indexToBinCenterL for case of right base of a peak in the last bin.
     tempBinHeightL = numpy.append(binHeightL,0)
     tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
-    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,homologPeakWidth,widthRelHeight,homologRequiredProminence,homologLeftPeakLimit,homologRightPeakLimit)
+    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['homologPeakWidthCase2'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase2'],paramD['homologLeftPeakLimitCase2'],paramD['homologRightPeakLimit'])
     peakL.extend(L)
 
     # case 3 (wide width with low prominence)
-    homologPeakWidth = 0.25
-    widthRelHeight = 0.9
-    homologRequiredProminence = 0.10
-    homologLeftPeakLimit = 0.65
-    homologRightPeakLimit = 1.0
-    
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,homologPeakWidth,widthRelHeight,homologRequiredProminence,homologLeftPeakLimit,homologRightPeakLimit)
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['homologPeakWidthCase3'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase3'],paramD['homologLeftPeakLimitCase3'],paramD['homologRightPeakLimit'])
     peakL.extend(L)
 
     if peakL == []:
@@ -295,23 +279,16 @@ score.
             peakPosInScoreUnitsL.append((peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos))
     return peakPosInScoreUnitsL
 
-def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos):
+def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos,paramD):
     '''Given a list of bin heights and another list giving the score
-values at the middle of each bin, determine a threshold above which a
-score should be taken to indicate homology. This function assumes
-there is a right homologous peak present and takes the left extreme of
-this peak as input.
-
+values at the middle of each bin, determine a threshold below which a
+score should be taken to indicate non-homology. We do this by looking
+for the nonhomologous (left) peak in the score histogram. This
+function assumes there is a right homologous peak present and takes
+the left extreme of this peak as input.
     '''
 
-    nonHomologPeakWidth = 0.15
-    widthRelHeight = 0.9
-    nonHomologPeakProminence = 2
-    defaultLeftBasePos = 0.8
-    nonHomologLeftPeakLimit = 0
-    nonHomologRightPeakLimit = 0.6
-
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,nonHomologPeakWidth,widthRelHeight,nonHomologPeakProminence,nonHomologLeftPeakLimit,nonHomologRightPeakLimit)
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['nonHomologPeakWidth'],paramD['widthRelHeight'],paramD['nonHomologPeakProminence'],paramD['nonHomologLeftPeakLimit'],paramD['nonHomologRightPeakLimit'])
 
     L.sort(reverse=True) # in the unlikely case there's more than one
     peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = L[0]
@@ -323,7 +300,7 @@ this peak as input.
 
     return threshold
 
-def getSynThresholdD(scoresO,tree):
+def getSynThresholdD(scoresO,tree,paramD):
     '''Creates a dictionary to store synteny thresholds. This dictionary
 itself contains two dictionaries one each for the minSynThresh
 (minimum synteny score allowed for family formation) and the
@@ -331,18 +308,15 @@ synAdjustThreshold (the synteny score above which we adjust up the raw
 score to make family formation more likely.) These dictionaries in
 turn are keyed by strain pair.'''
 
-    numBins = 80
-    binWidth = 1.0/numBins # since scores range from 0-1
-
     synThresholdD = {}
     synThresholdD['minSynThreshold'] = {}
     synThresholdD['synAdjustThreshold'] = {}
     
     for strainPair in scoresO.getStrainPairs():
         scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'synSc')
-        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,numBins)
+        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,paramD['scoreHistNumBins'])
 
-        minSynThreshold,synAdjustThreshold = getSynThresholds(binWidth,binHeightL,indexToBinCenterL)
+        minSynThreshold,synAdjustThreshold = getSynThresholds(binHeightL,indexToBinCenterL,paramD)
 
         synThresholdD['minSynThreshold'][strainPair] = minSynThreshold
         synThresholdD['minSynThreshold'][(strainPair[1],strainPair[0])] = minSynThreshold
@@ -369,62 +343,37 @@ turn are keyed by strain pair.'''
             synThresholdD['synAdjustThreshold'][strainPair] = synAdjustThreshold
     return synThresholdD
             
-def getSynThresholds(binWidth,binHeightL,indexToBinCenterL):
+def getSynThresholds(binHeightL,indexToBinCenterL,paramD):
     '''Calculate and return minSynThresh and synAdjustThreshold.'''
 
-    defaultMinSynThreshold = 0.6
-    defaultSynAdjustThreshold = 0.8
-
-    minSynThresholdIncrement = 0.15
-    synAdjustThresholdIncrement = 0.02
-
+    binWidth = 1.0/paramD['scoreHistNumBins'] # since scores range from 0-1
     
-    # get peak
+    # get synteny peak
     peakL = []
 
-    # case 1 (High prominence, narrow peak. More closely related
-    # synteny)
-    synPeakWidth = 0.01
-    widthRelHeight = 0.9
-    synRequiredProminence = 2.0
-    synLeftPeakLimit = 0.6
-    synRightPeakLimit = 1.0
-
-    peakWidthInBins = synPeakWidth / binWidth
-
-    peakMinMax = [0, .05 / binWidth]
-
+    # case 1 (High prominence, narrow peak. Close relatedness
+    # in order to get a rightmost peak, if any, we add a dummy bin of
+    # height 0 on right
     tempBinHeightL = numpy.append(binHeightL,0)
     tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
 
-
-    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,synPeakWidth,widthRelHeight,synRequiredProminence,synLeftPeakLimit,synRightPeakLimit)
+    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['synPeakWidthCase1'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase1'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
     peakL.extend(L)
     
-    # case 2 (wide width, low prominence. Distant synteny.)
-    synPeakWidth = 0.10
-    widthRelHeight = 0.9
-    synRequiredProminence = 0.1
-    synLeftPeakLimit = 0.6
-    synRightPeakLimit = 1.0
-
-    peakWidthInBins = synPeakWidth / binWidth
-
-    peakMinMax = [0, .05 / binWidth]
-
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,synPeakWidth,widthRelHeight,synRequiredProminence,synLeftPeakLimit,synRightPeakLimit)
+    # case 2 (wide width, low prominence. Distant relatedness.)
+    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['synPeakWidthCase2'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase2'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
     peakL.extend(L)
     
     if peakL == []:
-        minSynThreshold = defaultMinSynThreshold
-        synAdjustThreshold = defaultSynAdjustThreshold
+        minSynThreshold = paramD['defaultMinSynThreshold']
+        synAdjustThreshold = paramD['defaultSynAdjustThreshold']
     else:
-        peakL.sort(key=lambda x: x[1]) # sort on position, in case more
-                                   # than one peak (unlikely), take leftmost.
+        # sort on position, in case more than one peak (unlikely), take leftmost.
+        peakL.sort(key=lambda x: x[1])
 
         peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = peakL[0]
-        minSynThreshold = leftExtremeOfPeakPos - minSynThresholdIncrement
-        synAdjustThreshold = leftExtremeOfPeakPos - synAdjustThresholdIncrement
+        minSynThreshold = leftExtremeOfPeakPos - paramD['minSynThresholdIncrement']
+        synAdjustThreshold = leftExtremeOfPeakPos - paramD['synAdjustThresholdIncrement']
 
     return minSynThreshold,synAdjustThreshold
 
@@ -445,7 +394,7 @@ averaging the values between that strain and its nearest neighbors.'''
 
 #### Family creation functions
 
-def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,geneUsedL,familiesO,famNumCounter,locusFamNumCounter,minCoreSynThresh):
+def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL,familiesO,famNumCounter,locusFamNumCounter):
     '''Creates all Families and subsidiary LocusFamilies descending from
 the node rooted familyMrca. Basic parts of the Phigs algorithm are
 here. Creating the seeds, and using them to get a family. (With very
@@ -461,7 +410,7 @@ is not Phigs.
 
     leftS,rightS = createLRSets(subtreeL,familyMrca,nodeGenesL,None)
 
-    seedL = createSeedL(leftS,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD)
+    seedL = createSeedL(leftS,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD)
     for seed in seedL:
         # each seed corresponds to a prospective gene family.
         seedRawSc,seedG1,seedG2 = seed
@@ -472,7 +421,7 @@ is not Phigs.
             break
         else:
             # getting initial family, using only raw score and synteny bump
-            famS=createFamilyFromSeed(seedG1,seedG2,geneUsedL,scoresO,leftS,rightS,geneNames,seedRawSc,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent)
+            famS=createFamilyFromSeed(seedG1,seedG2,geneUsedL,scoresO,leftS,rightS,geneNames,seedRawSc,absMinRawThresholdForHomologyD,synThresholdD,paramD)
 
             if famS == None:
                 # one of the genes the the family was already
@@ -486,12 +435,12 @@ is not Phigs.
                 # now set up familiesO to take this family and
                 # determine the corresponding locusFamilies
                 familiesO.initializeFamily(famNumCounter,familyMrca,[seedG1,seedG2])
-                locusFamNumCounter,familiesO = createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNames,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL)
+                locusFamNumCounter,familiesO = createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNames,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL)
                 famNumCounter+=1 # important to increment this after call to createAllLocusFamiliesDescendingFromInternalNode
                 
     return geneUsedL,locusFamNumCounter,famNumCounter,familiesO
 
-def createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,familiesO,minCoreSynThresh,famNumCounter,locusFamNumCounter):
+def createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter):
     '''Creates all Families and subsidiary LocusFamilies at the tip
 given by familyMrca. Because we've come through the nodes in
 pre-order, we know that all unused genes at this node are in a
@@ -517,7 +466,7 @@ families with mrca here. (they can still be multi gene families).
 
             if scoresO.isEdgePresentByEndNodes(seed,newGene):
 
-                addIt = isSameFamily(seed,newGene,scoresO,geneNames,tipFamilyRawThreshold,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent)
+                addIt = isSameFamily(seed,newGene,scoresO,geneNames,tipFamilyRawThreshold,absMinRawThresholdForHomologyD,synThresholdD,paramD)
                 
                 if addIt:
                     newFamS.add(newGene)
@@ -531,8 +480,8 @@ families with mrca here. (they can still be multi gene families).
 
 
         familiesO.initializeFamily(famNumCounter,familyMrca)
-        lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(newFamS,geneNames,familyMrca,scoresO,minCoreSynThresh,synThresholdD,famNumCounter,locusFamNumCounter)
-
+        lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(newFamS,geneNames,familyMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
+        
         for lfO in lfOL:
             familiesO.addLocusFamily(lfO)
 
@@ -562,7 +511,7 @@ restrictS is None, then use all genes.
         
     return(leftS,rightS)
 
-def closestMatch(gene,S,scoresO,geneNames,absMinRawThresholdForHomologyD):
+def closestMatch(gene,S,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD):
     '''Find the closest match to gene among the genes in the set S in the
 graph scoresO. Eliminate any matches that have a raw score below what
 is in homologyHomologyRawThresholdD, a coreSynSc below
@@ -573,13 +522,13 @@ minCoreSynThresh, or a synteny score below synThresholdD.
     bestEdgeScore = -float('inf')
     for otherGene in scoresO.getConnectionsGene(gene):
         if otherGene in S:
-            if isSameFamily(gene,otherGene,scoresO,geneNames,bestEdgeScore,absMinRawThresholdForHomologyD,None,None):
+            if isSameFamily(gene,otherGene,scoresO,geneNames,bestEdgeScore,absMinRawThresholdForHomologyD,None,paramD):
                 # we don't want to use synThresholdD, hence the Nones
                 bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
                 bestGene = otherGene
     return bestEdgeScore, gene, bestGene
     
-def createSeedL(leftS,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD):
+def createSeedL(leftS,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD):
     '''Create a list which has the closest match for each gene on the
 opposite side of the tree. e.g. if a gene is in tree[1] then we're
 looking for the gene in tree[2] with the closest match. We eliminate
@@ -589,13 +538,13 @@ and return.
     '''
     seedL=[]
     for gene in leftS:
-        seedL.append(closestMatch(gene,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD))
+        seedL.append(closestMatch(gene,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD))
     for gene in rightS:
-        seedL.append(closestMatch(gene,leftS,scoresO,geneNames,absMinRawThresholdForHomologyD))
+        seedL.append(closestMatch(gene,leftS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD))
     seedL.sort(reverse=True)
     return seedL
 
-def createFamilyFromSeed(g1,g2,geneUsedL,scoresO,leftS,rightS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent):
+def createFamilyFromSeed(g1,g2,geneUsedL,scoresO,leftS,rightS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
 the family than the two seeds are from each other. We have a normScore
@@ -618,7 +567,7 @@ containing genes in the family.
 
     while len(genesToSearchForConnectionsS) > 0:
         
-        matchesS = getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,geneUsedL)
+        matchesS = getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL)
 
         if matchesS == None:
             return None
@@ -628,7 +577,7 @@ containing genes in the family.
         
     return famS
 
-def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent,geneUsedL):
+def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL):
     ''''''
     matchesS=set()
     for famGene in genesToSearchForConnectionsS:
@@ -640,7 +589,7 @@ def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,gene
                     # it shouldn't been in our current list to search,
                     # or be one we've already put in the family (or
                     # we'll waste effort)
-                    addIt = isSameFamily(famGene,newGene,scoresO,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent)
+                    addIt = isSameFamily(famGene,newGene,scoresO,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD)
                     
                     if addIt:
                         if geneUsedL[newGene]:
@@ -652,7 +601,7 @@ def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,gene
                             matchesS.add(newGene)
     return matchesS
 
-def isSameFamily(famGene,newGene,scoresO,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,synAdjustExtent):
+def isSameFamily(famGene,newGene,scoresO,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
     '''Given famGene that is inside a family, and newGene we are
 considering adding, check the various scores to determine if we should
 add it. Return boolean.
@@ -694,14 +643,14 @@ add it. Return boolean.
         # because they weren't more similar than
         # an already very similar seed.
         # (Modification of PhiGs)
-        adjSc = rawSc * synAdjustExtent
+        adjSc = rawSc * paramD['synAdjustExtent']
         if adjSc > 1: adjSc = 1 # truncate back to 1
         if adjSc >= thisFamRawThresh:
             addIt = True
                 
     return addIt
 
-def createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNames,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,minCoreSynThresh,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL):
+def createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNames,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL):
     '''Given a family in famGenesToSearchS, break it up into subsidiary locus families
 based on synteny. We iterate through the subtree rooted at familyMrca
 in pre-order (ancestors first). Using seeds, we try to find groups
@@ -712,7 +661,7 @@ among famS that share high synteny.'''
 
         if lchild != None:
             # not a tip
-            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,synThresholdD,famNumCounter,locusFamNumCounter)
+            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
             
             for lfO in lfOL:
                 familiesO.addLocusFamily(lfO)
@@ -727,7 +676,7 @@ among famS that share high synteny.'''
             famGenesToSearchS.difference_update(genesAtThisTipS)
 
             # Get lf objects for all these genes
-            lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(genesAtThisTipS,geneNames,lfMrca,scoresO,minCoreSynThresh,synThresholdD,famNumCounter,locusFamNumCounter)            
+            lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(genesAtThisTipS,geneNames,lfMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)            
 
             # add to our families object
             for lfO in lfOL:
@@ -735,25 +684,25 @@ among famS that share high synteny.'''
 
     return locusFamNumCounter,familiesO
 
-def createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,synThresholdD,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
     '''Obtains all locus families at the internal node defined by lfMrca.'''
 
     lfOL = []
     while True:
 
-        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,synThresholdD)
+        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD)
         
         if lfSeedPairL == []:
             # there are no (more) seeds stradling this internal node,
             # break out
             break
 
-        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,minCoreSynThresh,synThresholdD)
+        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,paramD,synThresholdD)
         lfOL.append(lfO)
         
     return lfOL,locusFamNumCounter,famGenesToSearchS
             
-def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,minCoreSynThresh,synThresholdD):
+def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD):
     '''Given a set of genes famGenesToSearchS from a family, try to find a
 seed based at lfMrca. A seed consists of two genes, one in the left
 subtree and one in the right, which are syntenically consistent.
@@ -763,11 +712,11 @@ subtree and one in the right, which are syntenically consistent.
     
     for lGene in leftS:
         for rGene in rightS:
-            if isSameLocusFamily(lGene,rGene,scoresO,geneNames,minCoreSynThresh,synThresholdD):
+            if isSameLocusFamily(lGene,rGene,scoresO,geneNames,paramD,synThresholdD):
                 return [lGene,rGene]
     return []
         
-def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,minCoreSynThresh,synThresholdD):
+def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,paramD,synThresholdD):
     '''Returns a LocusFamily object, containing genes associated with
 those in seedPairL, in the subtree definied at lfMrca. Does single
 linkage clustering, adding in anything in famGenesToSearchS with above
@@ -784,7 +733,7 @@ threshold synteny. Note that these seeds are not the seed from family formation 
     strainL = trees.leafList(subtree)
         
     while True:
-        genesToAddS = getLocusFamilyMatches(lfO,famGenesToSearchS,geneNames,strainL,scoresO,minCoreSynThresh,synThresholdD)
+        genesToAddS = getLocusFamilyMatches(lfO,famGenesToSearchS,geneNames,strainL,scoresO,paramD,synThresholdD)
         if len(genesToAddS) == 0:
             break
 
@@ -793,7 +742,7 @@ threshold synteny. Note that these seeds are not the seed from family formation 
         
     return lfO,locusFamNumCounter,famGenesToSearchS
 
-def getLocusFamilyMatches(lfO,famGenesToSearchS,geneNames,strainL,scoresO,minCoreSynThresh,synThresholdD):
+def getLocusFamilyMatches(lfO,famGenesToSearchS,geneNames,strainL,scoresO,paramD,synThresholdD):
     '''Given a LocusFamily object lfO and some remaining genes, search
 through the remaining genes to find those that match syntenically and
 are in a child species of lfMrca. Return a list of genes to add.
@@ -808,14 +757,14 @@ are in a child species of lfMrca. Return a list of genes to add.
                 # synAdjustThresh. If the pair have values above
                 # minCoreSynThresh and minSynThres, then addIt will be
                 # True.
-                addIt = isSameLocusFamily(searchGene,lfGene,scoresO,geneNames,minCoreSynThresh,synThresholdD)
+                addIt = isSameLocusFamily(searchGene,lfGene,scoresO,geneNames,paramD,synThresholdD)
                 if addIt:
                     genesToAddS.add(searchGene)
                     break
                 
     return genesToAddS
 
-def isSameLocusFamily(gene1,gene2,scoresO,geneNames,minCoreSynThresh,synThresholdD):
+def isSameLocusFamily(gene1,gene2,scoresO,geneNames,paramD,synThresholdD):
     '''Given two genes in the same family, determine if they meet the
 synteny requirements to be put in the same LocusFamily. Returns
 boolean.
@@ -838,8 +787,8 @@ boolean.
     strain1 = geneNames.numToStrainNum(gene1)
     strain2 = geneNames.numToStrainNum(gene2)
     minSynThresh = synThresholdD['minSynThreshold'][(strain1,strain2)]
-    
-    if coreSynSc < minCoreSynThresh or synSc < minSynThresh:
+
+    if coreSynSc < paramD['minCoreSynThresh'] or synSc < minSynThresh:
         # one of the two types of synteny below threshold, so this
         # pair doesn't meet the requirements for being in the same
         # LocusFamily
@@ -849,7 +798,7 @@ boolean.
             
     return addIt
 
-def createAllLocusFamiliesAtTip(genesAtThisTipS,geneNames,lfMrca,scoresO,minCoreSynThresh,synThresholdD,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtTip(genesAtThisTipS,geneNames,lfMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
     '''Given a set of genes famGenesToSearchS, search for all those found
 on the tip given by lfMrca. Break these into LocusFamilies. Many will
 be single gene LocusFamilies, but some may be multi-gene
@@ -864,7 +813,7 @@ be single gene LocusFamilies, but some may be multi-gene
 
         currentGroupS=set([seed])
         for gene in genesAtThisTipS:
-            addIt = isSameLocusFamily(seed,gene,scoresO,geneNames,minCoreSynThresh,synThresholdD)
+            addIt = isSameLocusFamily(seed,gene,scoresO,geneNames,paramD,synThresholdD)
             if addIt:
                 currentGroupS.add(gene)
 
@@ -881,15 +830,6 @@ be single gene LocusFamilies, but some may be multi-gene
         lfOL.append(lfO)
 
     return lfOL,locusFamNumCounter
-    
-
-def calcErrorScores(familyL,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
-    '''NEEDS TO BE UPDATED. Given a list of family objects, calculate error scores for
-each. These values get saved as attributes of the objects.
-    '''
-    for famO in familyL:
-        famO.getPossibleErrorCt(scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
-
 
 ## Input/output
 

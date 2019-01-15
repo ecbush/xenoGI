@@ -27,7 +27,7 @@ redundancies), and set with redundancies.'''
     return uniqueS,redundS
     
 
-def parseGenbank(geneOrderOutFileName,redundancyOutFileName,geneInfoOutFileName,fastaOutFileDir,genbankFileList,fileNameMapD):
+def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     '''We pass through each genbank file twice. Once to identify redundant
 genes, so we can avoid them. And another time to get the stuff we
 want.'''
@@ -35,9 +35,9 @@ want.'''
     if genbankFileList == []:
         raise ValueError("List of genbank files to parse is empty.")
     
-    geneOrderOutFile = open(geneOrderOutFileName, 'w')
-    redundFile = open(redundancyOutFileName, 'w')
-    geneInfoFile = open(geneInfoOutFileName, 'w')
+    geneOrderOutFile = open(paramD['geneOrderFN'], 'w')
+    redundFile = open(paramD['redundProtsFN'], 'w')
+    geneInfoFile = open(paramD['geneInfoFN'], 'w')
     
     # iterate through list of genbank files
     for fileName in genbankFileList:

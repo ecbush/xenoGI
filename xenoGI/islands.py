@@ -8,9 +8,14 @@ from .Family import *
 
 ## Main function
 
-def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familiesO,numThreads,strainStr2NumD,strainNum2StrD,rootFocalClade,islandOutFN, outputSummaryF):
+def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD, outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
+    proxThreshL = paramD['proxThreshL']
+    numThreads = paramD['numThreads']
+    rootFocalClade = paramD['rootFocalClade']
+    islandOutFN = paramD['islandOutFN']
+    
     maxGeneProximityForIsland = max([thresh for thresh,rsc in proxThreshL])
     geneProximityD = genomes.createGeneProximityD(geneOrderT,maxGeneProximityForIsland)
     locusIslandByNodeL=createLocusIslandL(familiesO,tree)
@@ -37,7 +42,7 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,proxThreshL,familiesO,nu
 
     # print summary of merging
     printSummary(locusIslandByNodeLMerged,focalNodesL,strainNum2StrD,locusIslandByNodeL,outputSummaryF)
-    
+
     # write islands
     writeIslands(locusIslandByNodeLMerged,strainNum2StrD,islandOutFN)
 

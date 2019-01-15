@@ -6,11 +6,16 @@ from . import Score
 
 #### raw similarity scores
 
-def calcRawScores(fastaFilePath,numThreads,geneNames,gapOpen,gapExtend,matrix,scoresO):
+def calcRawScores(paramD,geneNames,scoresO):
     '''Get a global alignment based raw score for every edge in scoresO.'''
 
+    numThreads = paramD['numThreads']
+    gapOpen = paramD['gapOpen']
+    gapExtend = paramD['gapExtend']
+    matrix = paramD['matrix']
+    
     # load sequences
-    protFnL=glob.glob(fastaFilePath)
+    protFnL=glob.glob(paramD['fastaFilePath'])
     seqD=genomes.loadProt(protFnL)
                 
     # make list of sets of arguments to be passed to p.map. There
@@ -83,11 +88,15 @@ based on the max and min possible scores for these sequences.'''
 
 #### synteny scores
 
-def calcSynScores(scoresO,geneNames,geneOrderT,synWSize,tree,numSynToTake,numThreads):
+def calcSynScores(scoresO,geneNames,geneOrderT,paramD,tree):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
 genes that have an edge in scoresO.
     '''
+
+    synWSize = paramD['synWSize']
+    numSynToTake = paramD['numSynToTake']
+    numThreads = paramD['numThreads']
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
@@ -392,11 +401,16 @@ orthologs.'''
 
 #### Core synteny scores
 
-def calcCoreSynScores(scoresO,strainNamesL,blastFilePath,evalueThresh,aabrhFN,geneNames,geneOrderT,coreSynWsize):
+def calcCoreSynScores(scoresO,strainNamesL,paramD,geneNames,geneOrderT):
     '''Calculate synteny scores based on core genes given in
 aabrhL. Scores are between 0 and 1, giving the percentage of syntenic
 genes shared.'''
 
+    blastFilePath = paramD['blastFilePath']
+    evalueThresh = paramD['evalueThresh']
+    aabrhFN = paramD['aabrhFN']
+    coreSynWsize = paramD['coreSynWsize']
+    
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
     
     geneToAabrhT = createGeneToAabrhT(aabrhL,geneNames)

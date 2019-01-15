@@ -33,7 +33,12 @@ score function.
         elif orientation == 3:
             newFamilyL= other.locusFamilyL + self.locusFamilyL
         self.locusFamilyL=newFamilyL
-            
+
+    def iterLocusFamilies(self,familiesO):
+        '''Iterates, yielding LocusFamily objects.'''
+        for locusFamNum in self.locusFamilyL:
+            yield familiesO.getLocusFamily(locusFamNum)
+        
 def str2Island(islandStr,strainStr2NumD):
     '''Given a island string (e.g. produced by the fileStr method) parse to produce island.'''
     L=islandStr.split('\t')
