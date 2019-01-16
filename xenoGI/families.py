@@ -187,8 +187,8 @@ smaller, in which case it takes that.
         binHeightL,indexToBinCenterL = scoreHist(scoreIterator,scoreHistNumBins)
         homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
 
-        print(strainPair,homologPeakLeftExtremePos)
-
+        #print(strainPair,homologPeakLeftExtremePos)
+        
         if homologPeakLeftExtremePos == float('inf'):
             homologousPeakMissing = True
             # if we can't find the homologous peak, there's really no

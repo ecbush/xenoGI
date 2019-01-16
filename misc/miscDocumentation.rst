@@ -2,6 +2,7 @@
 Brief documentation for helper scripts in misc/
 ===============================================
 
+The scripts described here are not part of the main xenoGI functionality, and can't be run with the normal "xenoGI params.py flag" syntax. To use these scripts, you need to have downloaded a copy of the repository from GitHub. You can then run the scripts by calling python on them directly as described below.
 
 
 Tools for visualization with the IGB browser

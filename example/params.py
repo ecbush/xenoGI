@@ -125,7 +125,6 @@ proxThreshL = [(1,0),(2,2)]
 
 # output for browsers
 bedFilePath = 'bed/*-island.bed' # unix style file path to bed output files
-bedNumTries = 100 # number of random tries to find best coloring for islands
 
 # analysis output
 analysisFilePath = 'analysis/*.out'

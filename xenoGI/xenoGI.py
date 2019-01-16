@@ -200,16 +200,14 @@ def createIslandBedWrapper(paramD):
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     
     leafNodesL = trees.leafList(tree)
-    geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
     familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    islandByNodeL = islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
-
 
     # get islands organized by strain
     islandByStrainD = islandBed.createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNames,geneInfoD)
 
-    islandBed.createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['bedFilePath'],paramD['scoreNodeMapD'],paramD['potentialRgbL'],paramD['bedNumTries'])
+    islandBed.createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,strainStr2NumD,paramD)
 
 def plotScoreHistsWrapper(paramD):
     """Wrapper to make pdf of histograms of scores."""
@@ -251,7 +249,7 @@ def interactiveAnalysisWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys
-    from xenoGI.analysis import createGene2FamD,createFam2IslandD,printScoreMatrix,matchFamilyIsland,printIslandNeighb,vPrintIslands,coreNonCoreCtAtNode,printOutsideFamilyScores,scoreHists,readScorePairs
+    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printIslandNeighb,vPrintLocusIslandsAtNode,coreNonCoreCtAtNode,printOutsideFamilyScores
 
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
@@ -276,18 +274,12 @@ def interactiveAnalysisWrapper(paramD):
         print(file=fileF)
         print(file=fileF)
 
-        print(file=fileF)
-        print("Matrix of normalized similarity scores between genes in the family",file=fileF)
-        printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'normSc',fileF)
-        print(file=fileF)
-        print(file=fileF)
-
         print("Matrix of core synteny scores [0,1] between genes in the family",file=fileF)
         printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'coreSynSc',fileF)
         print(file=fileF)
         print(file=fileF)
 
-        print("Matrix of synteny scores between genes in the family",file=fileF)
+        print("Matrix of synteny scores [0,1] between genes in the family",file=fileF)
         printScoreMatrix(familyNum,subtreeL,familiesO,geneNames,scoresO,'synSc',fileF)
         print(file=fileF)
         print(file=fileF)
@@ -297,29 +289,30 @@ def interactiveAnalysisWrapper(paramD):
         print(file=fileF)
 
     def findIsland(searchStr,fileF=sys.stdout):
-        '''Print the gene, family and island associated with searchStr. This
-    is a wrapper that assumes various required objects are present at the
-    top level.'''
-        L=matchFamilyIsland(geneInfoD,geneNames,gene2FamD,fam2IslandD,searchStr)
-        for geneName,fam,isl in L:
-            print("<gene:"+str(geneName)+">","<family:"+str(fam)+">","<island:"+str(isl)+">",file=fileF)
-
-
-    def printIsland(islandNum,synWSize,fileF=sys.stdout):
-        '''Print the island and its genomic context in each species. We
-        include synWSize/2 genes in either direction beyond the island.
+        '''Print the gene, LocusIsland family and LocusFamily associated with
+    searchStr. This is a wrapper that assumes various required objects
+    are present at the top level.
         '''
-        printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2FamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD,fileF)
+        L=matchFamilyIsland(geneInfoD,geneNames,gene2FamIslandD,searchStr)
+        for geneName,locusIslandNum, famNum, locusFamNum in L:
+            print("<gene:"+str(geneName)+">","<locIsl:"+str(locusIslandNum)+">","<fam:"+str(famNum)+">","<locFam:"+str(locusFamNum)+">",file=fileF)
+
+
+    def printIsland(locusIslandNum,synWSize,fileF=sys.stdout):
+        '''Print a LocusIsland and its genomic context in each species. We
+        include synWSize/2 genes in either direction beyond the locus island.
+        '''
+        printIslandNeighb(locusIslandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2FamIslandD,geneInfoD,geneNames,strainNum2StrD,fileF)
 
 
     def printIslandsAtNode(nodeStr,fileF=sys.stdout):
-        '''This is a wrapper to provide an easy way to print all the islands
+        '''This is a wrapper to provide an easy way to print all the LocusIslands
     at a particular node in the tree. For ease of use, we take only a node
     number as argument, assuming all the other required stuff is available
     at the top level.
         '''
         node = strainStr2NumD[nodeStr]
-        vPrintIslands(islandByNodeL[node],subtreeL,familiesO,strainNum2StrD,geneNames,geneInfoD,fileF)
+        vPrintLocusIslandsAtNode(islandByNodeL[node],subtreeL,familiesO,strainNum2StrD,geneNames,geneInfoD,fileF)
 
 
     def printCoreNonCoreByNode(fileF=sys.stdout):
@@ -349,14 +342,10 @@ def interactiveAnalysisWrapper(paramD):
     nodesL=trees.nodeList(tree)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
     familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-    # islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
-    gene2FamD=createGene2FamD(familiesO)
-    #fam2IslandD=createFam2IslandD(islandByNodeL)
-
+    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    gene2FamIslandD = createGene2FamIslandD(islandByNodeL,familiesO)
     scoresO = scores.readScores(paramD['scoresFN'],geneNames)
     scoresO.createNodeConnectL(geneNames) # make nodeConnectL attribute
-    # calc family error scores
-    #families.calcErrorScores(familiesO,scoresO,paramD['minNormThresh'],paramD['minCoreSynThresh'],paramD['minSynThresh'],paramD['famErrorScoreIncrementD'])
     
     code.interact(local=locals())
 
@@ -370,50 +359,6 @@ def debugWrapper(paramD):
     import numpy
     from scipy.signal import find_peaks
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-
-
-    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-
-    numBins = 80
-    binWidth = 1.0/numBins # since scores range from 0-1
-
-    scoreIterator = scoresO.iterateScoreByStrainPair((3,5),'rawSc')
-    binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,numBins)
-
-    homologPeakLeftExtremePos=families.homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
-
-
-
-    ## setup output directory and file names
-    # if directory for analysis doesn't exist yet, make it
-    analDir = paramD['analysisFilePath'].split("*")[0]
-    if glob.glob(analDir)==[]:
-        os.mkdir(analDir)
-
-    islandSummaryStem = paramD['islandsSummaryStem']
-    analExtension = paramD['analysisFilePath'].split("*")[1]
-    islandsSummaryFN = os.path.join(analDir,islandSummaryStem+analExtension)
-
-    genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
-    
-    ## load stuff
-    tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
-    nodesL=trees.nodeList(tree)
-    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
-    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-
-    ## analysis
-
-    # Print out all islands
-    islandsOutF = open(islandsSummaryFN,'w')
-    analysis.vPrintAllLocusIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familiesO,strainStr2NumD,strainNum2StrD,geneNames,geneInfoD,islandsOutF)
-    islandsOutF.close()
-
-    # Print species files with all the genes, grouped by contig
-    #gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeL,familiesO)
-    #analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,geneNames,gene2FamIslandD,geneInfoD,familiesO,strainNum2StrD)
 
     
     code.interact(local=locals())

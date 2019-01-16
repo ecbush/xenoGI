@@ -21,6 +21,12 @@ Requirements
   - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip:
       ``pip3 install parasail``
 
+  - Numpy (http://www.numpy.org/).
+      ``pip3 install numpy``
+    
+  - Scipy (https://www.scipy.org/).
+    ``pip3 install scipy``
+
 (The pip you use needs to correspond to a version of Python 3. In some cases it may just be called pip instead of pip3).
 
 Installation

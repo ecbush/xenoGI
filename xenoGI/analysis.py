@@ -30,7 +30,7 @@ print nicely so columns line up. Indent is an optional number of blank spaces to
         printStr = " "*indent + " | ".join(row)
         print(printStr.rstrip(),file=fileF)
 
-def matchFamilyIsland(geneInfoD,geneNames,gene2FamD,fam2IslandD,searchStr):
+def matchFamilyIsland(geneInfoD,geneNames,gene2FamIslandD,searchStr):
     '''Return the island number, family number, and gene name(s)
 associated with searchStr in geneInfoD. Searches for a match in all
 fields of geneInfoD.'''
@@ -48,9 +48,8 @@ fields of geneInfoD.'''
     outL=[]
     for geneName in geneMatchL:
         geneNum = geneNames.nameToNum(geneName)
-        fam=gene2FamD[geneNum]
-        isl=fam2IslandD[fam]
-        outL.append((geneName,fam,isl.id))
+        (locusIslandNum, famNum, locusFamNum) = gene2FamIslandD[geneNum]
+        outL.append((geneName,locusIslandNum, famNum, locusFamNum))
     return outL
         
 ## Print scores associated with a family
@@ -96,39 +95,16 @@ scoresO.
             if scoresO.isEdgePresentByEndNodes(familyGeneNum,outsideGeneNum):
                 outsideGeneName = geneNames.numToName(outsideGeneNum)
                 rawSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'rawSc')
-                normSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'normSc')
-                coreSynSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'coreSynSc')
                 synSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'synSc')
-                rowL.append([familyGeneName,outsideGeneName,format(rawSc,".3f"),format(normSc,".3f"),format(coreSynSc,".3f"),format(synSc,".3f")])
+                coreSynSc=scoresO.getScoreByEndNodes(familyGeneNum,outsideGeneNum,'coreSynSc')
+                rowL.append([familyGeneName,outsideGeneName,format(rawSc,".3f"),format(synSc,".3f"),format(coreSynSc,".3f")])
 
     rowL.sort(key=lambda x: x[2],reverse=True) # sort by score
-    rowL.insert(0,['----------','-----------','---','----','-------','---'])
-    rowL.insert(0,['Inside fam','Outside fam','Raw','Norm','CoreSyn','Syn'])
+    rowL.insert(0,['----------','-----------','---','---','-------'])
+    rowL.insert(0,['Inside fam','Outside fam','Raw','Syn','CoreSyn'])
                 
     print("Printing all scores with non-family members",file=fileF)
     printTable(rowL,indent=2,fileF=fileF)
-
-## Print strains where family is present, and not present
-
-def familyPrintStrainsPresentAbsent(tree,strainNum2StrD,familyL,famNum,fileF=sys.stdout):
-    '''Print a list of strains where the family is present, and another where it is absent.'''
-
-    presL=[]
-    notPresL=[]
-    for leafNum in trees.leafList(tree):
-        if familyL[famNum].isInStrain(leafNum):
-            presL.append(strainNum2StrD[leafNum])
-        else:
-            notPresL.append(strainNum2StrD[leafNum])
-    print("Family:",famNum,file=fileF)
-    print("  Strains possessing:",file=fileF)
-    for strain in presL:
-        print("    "+strain,file=fileF)
-    print(file=fileF)
-    print("  Strains lacking:",file=fileF)
-    for strain in notPresL:
-        print("    "+strain,file=fileF)
-
 
     
 ## Print all islands at node
@@ -248,20 +224,20 @@ information, as well as a brief description of the gene's function.'''
     
 ## Print neighborhood of an island
 
-def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2LocFamD,fam2IslandD,geneInfoD,geneNames,strainNum2StrD,fileF):
+def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2FamIslandD,geneInfoD,geneNames,strainNum2StrD,fileF):
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
-    print("  Island:",islandNum,file=fileF)
+    print("  LocusIsland:",islandNum,file=fileF)
     
     genesInEitherDirec = int(synWSize/2)
 
     # get the island object for this islandNum
     for listOfIslands in islandByNodeL:
-        _,island = islands.searchIslandsByID(listOfIslands,islandNum)
+        _,island = islands.searchLocIslandsByID(listOfIslands,islandNum)
         if island != None: break
 
     if island == None:
-        raise ValueError("Island "+str(islandNum)+" not found.")
+        raise ValueError("LocusIsland "+str(islandNum)+" not found.")
         
     mrca = island.mrca
     print("  mrca:",strainNum2StrD[mrca],file=fileF)
@@ -287,16 +263,15 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOr
 
             print("(Coordinates",chrom+":"+str(startPos)+"-"+str(endPos)+")",file=fileF)
 
-            printGenes(neighbGenesL,geneNames,gene2LocFamD,fam2IslandD,geneInfoD,islandGenesInStrainL,familiesO,strainNum2StrD,fileF)
+            printGenes(neighbGenesL,geneNames,gene2FamIslandD,geneInfoD,islandGenesInStrainL,familiesO,strainNum2StrD,fileF)
 
 
 def getIslandGenesInStrain(island,strainNum,familiesO):
-    '''Given an island, a strain number, and our tuple of family
-objects, return all the genes in the island for that strain.'''
+    '''Given an island, a strain number, and our families object, return
+all the genes in the island for that strain.'''
     genesL=[]
-    for familyNum in island.familyL:
-        geneT=familyL[familyNum].famGeneT[strainNum]
-        genesL.extend(geneT)
+    for locFam in island.iterLocusFamilies(familiesO):
+        genesL.extend(locFam.iterGenesByStrain(strainNum))
     return genesL
 
 def getNeighborhoodGenes(strainNum,geneOrderT,islandGenesInStrainL,genesInEitherDirec):

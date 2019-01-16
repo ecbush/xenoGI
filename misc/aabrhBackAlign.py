@@ -1,5 +1,5 @@
 import sys,glob,os
-sys.path.append(os.path.join(sys.path[0],'..'))
+sys.path.insert(0,os.path.join(sys.path[0],'..'))
 from xenoGI import fasta
 
 ## funcs
