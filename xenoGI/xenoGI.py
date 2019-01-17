@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "1.5"
+__version__ = "1.5.0"
 import sys, glob, os
 from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
 
@@ -10,14 +10,14 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'debug'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'version', 'debug', 'simValidation'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeFamilies, makeIslands, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, or runAll.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeFamilies, makeIslands, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll or version.
 
    For example: 
       xenoGI params.py parseGenbank
@@ -75,9 +75,17 @@ def main():
         printAnalysisWrapper(paramD)
         createIslandBedWrapper(paramD)
 
+    #### version
+    elif task == 'version':
+        print("xenoGI",__version__)
+        
     #### debug
     elif task == 'debug':
         debugWrapper(paramD)
+
+    #### validation via simulation
+    elif task == 'simValidation':
+        simValidationWrapper(paramD)
         
 ######## Task related functions
 
@@ -360,15 +368,27 @@ def debugWrapper(paramD):
     from scipy.signal import find_peaks
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+
+    scoreHistNumBins = paramD['scoreHistNumBins']
+    binWidth = 1.0/scoreHistNumBins # since scores range from 0-1
+
+    scoreIterator = scoresO.iterateScoreByStrainPair((10,10),'rawSc')
+    binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,paramD['scoreHistNumBins'])
+
+    
+    L=families.findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['nonHomologPeakWidth'],paramD['widthRelHeight'],paramD['nonHomologPeakProminence'],paramD['nonHomologLeftPeakLimit'],paramD['nonHomologRightPeakLimit'])
+
+    print(L)
     
     code.interact(local=locals())
 
-def simValidatonWrapper(paramD):
+def simValidationWrapper(paramD):
     '''Take us into interactive mode for running validation with
-simulations. This will be a temporary flag only.'''
+simulations. This is not really intended for the end user...'''
 
     ## Set up the modules a bit differently for interactive mode
-    import code,sys
+    import sys
     from .xenoGI import parameters,trees,genomes,families,islands,analysis
     sys.path.insert(0,'/data/bushlab/htrans/dupDelProj/simCode')
     import validationSim
@@ -376,5 +396,3 @@ simulations. This will be a temporary flag only.'''
     moduleT=(parameters,trees,genomes,families,islands,analysis)
     
     xgiIslandGeneSetByNodeL,simIslandGeneSetByNodeL=validationSim.runValidation(moduleT,'simParams.py','params.py')
-    
-    code.interact(local=locals())

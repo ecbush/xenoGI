@@ -37,6 +37,12 @@ mrca for its family.'''
                 yield gene
         return
 
+    def iterStrains(self):
+        '''Iterator that yields all the strains in which this locus family
+occurs.'''
+        for strain in self.geneD.keys():
+            yield strain
+    
     def getStr(self,strainNum2StrD,geneNames,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
@@ -82,6 +88,14 @@ class Family:
             for gene in lfO.iterGenes():
                 yield gene
 
+    def iterStrains(self):
+        '''Iterator that yields all the strains in which this family
+occurs.
+        '''
+        for lfO in self.getLocusFamilies():
+            for strain in lfO.iterStrains():
+                yield strain
+                
     def getOutsideConnections(self,scoresO):
         '''Given a score object, return a set of all outside genes with
 connections to this family.'''

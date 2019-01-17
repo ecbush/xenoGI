@@ -51,7 +51,7 @@ homologLeftPeakLimitCase3 = 0.65
 # parameters for finding the non-homologous (left) peak in raw score
 # histograms.
 nonHomologPeakWidth = 0.15
-nonHomologPeakProminence = 2
+nonHomologPeakProminence = 1
 nonHomologLeftPeakLimit = 0
 nonHomologRightPeakLimit = 0.6
 

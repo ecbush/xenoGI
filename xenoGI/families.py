@@ -43,10 +43,19 @@ createFamiliesO
 
     # get homology thresholds for each strain pair in family
     # formation. Below this threshold we won't add a gene to
-    homologousPeakMissing,absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO)
+    homologousPeakMissingL,absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO)
 
-    if homologousPeakMissing:
-        print("Warning: when examining raw score histograms between strain pairs, there was at least one strain pair where we failed to find a peak of scores corresponding to homology. We will use default values for score thresholds in family formation, however it may be that one or more species are too distantly related (which would result in poor family formation.)",file=outputSummaryF)
+    if homologousPeakMissingL != []:
+        print("""Warning: for one or more strain pairs, we failed to find a homologous
+(right) peak in the raw score histogram. For these cases we will use
+default values for score thresholds in family formation. The pair(s)
+in question are:""",file=outputSummaryF)
+        for pairT in homologousPeakMissingL:
+            print("  ",strainNum2StrD[pairT[0]],'-',strainNum2StrD[pairT[1]],file=outputSummaryF)
+        
+        print("""A possible explanation for this failure is that one or more species
+is too distantly related. If this is the case it will result in poor
+family formation."""+"\n",file=outputSummaryF)
 
     # Create synThresholdD
     synThresholdD = getSynThresholdD(scoresO,tree,paramD)
@@ -65,30 +74,30 @@ createFamiliesO
     # Write family formation summary file
 
     summaryL=[]
-    summaryL.append(["Total number of families",str(len(familiesO.familiesD))])
+    summaryL.append(["Total number of Families",str(len(familiesO.familiesD))])
     summaryL.append(["Total number of LocusFamilies",str(len(familiesO.locusFamiliesD))])
 
     singleLfFams = 0
     multipleLfFams = 0
-    singleGeneFams = 0
-    multipleGeneFams = 0
+    singleStrainFams = 0
+    multipleStrainFams = 0
     for fam in familiesO.iterFamilies():
         # locus families
         if len(fam.getLocusFamilies()) == 1:
             singleLfFams += 1
         else:
             multipleLfFams += 1
-        # genes
-        if len(set(fam.iterGenes())) == 1:
-            singleGeneFams += 1
+        # strains
+        if len(set(fam.iterStrains())) == 1:
+            singleStrainFams += 1
         else:
-            multipleGeneFams += 1
+            multipleStrainFams += 1
 
 
     summaryL.append(["Number of families with one LocusFamily",str(singleLfFams)])
     summaryL.append(["Number of families with multiple LocusFamilies",str(multipleLfFams)])
-    summaryL.append(["Number of families with one gene",str(singleGeneFams)])
-    summaryL.append(["Number of families with multiple genes",str(multipleGeneFams)])
+    summaryL.append(["Number of families with gene(s) in only one strain",str(singleStrainFams)])
+    summaryL.append(["Number of families with genes in multiple strains",str(multipleStrainFams)])
     
     printTable(summaryL,indent=0,fileF=outputSummaryF)
     
@@ -180,17 +189,16 @@ smaller, in which case it takes that.
     scoreHistNumBins = paramD['scoreHistNumBins']
     binWidth = 1.0/scoreHistNumBins # since scores range from 0-1
 
-    homologousPeakMissing = False
+    homologousPeakMissingL = []
     homologyRawThresholdD = {}
     for strainPair in scoresO.getStrainPairs():
+
         scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
         binHeightL,indexToBinCenterL = scoreHist(scoreIterator,scoreHistNumBins)
         homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
 
-        #print(strainPair,homologPeakLeftExtremePos)
-        
         if homologPeakLeftExtremePos == float('inf'):
-            homologousPeakMissing = True
+            homologousPeakMissingL.append(strainPair)
             # if we can't find the homologous peak, there's really no
             # point in examining the non-homologous peak. Just use
             # default threshold.
@@ -200,7 +208,7 @@ smaller, in which case it takes that.
         homologyRawThresholdD[strainPair] = threshold
         homologyRawThresholdD[(strainPair[1],strainPair[0])] = threshold # flip order
 
-    return homologousPeakMissing,homologyRawThresholdD
+    return homologousPeakMissingL,homologyRawThresholdD
     
 def scoreHist(scoreIterator,scoreHistNumBins):
     '''Get a histogram with numpy, and return the bin height, and also a
@@ -223,23 +231,24 @@ histogram). If such a peak exists, this function returns the position
 exits, this function returns infinity.
 
     '''
-    peakL = [] # collect them all first
+    peakL = [] # to collect in
+
+    # in order to get a rightmost peak (if any) we add a dummy bin of
+    # height 0 on right. add 1 to indexToBinCenterL for case of right
+    # base of a peak in the last bin.
+    tempBinHeightL = numpy.append(binHeightL,0)
+    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
     
     # case 1 (normal case)
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['homologPeakWidthCase1'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase1'],paramD['homologLeftPeakLimitCase1'],paramD['homologRightPeakLimit'])
+    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['homologPeakWidthCase1'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase1'],paramD['homologLeftPeakLimitCase1'],paramD['homologRightPeakLimit'])
     peakL.extend(L)
 
     # case 2 (extreme prominence. But allow to be very narrow)
-    # in order to get a rightmost peak, if any, we add a dummy bin of
-    # height 0 on right
-    # add to indexToBinCenterL for case of right base of a peak in the last bin.
-    tempBinHeightL = numpy.append(binHeightL,0)
-    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
     L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['homologPeakWidthCase2'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase2'],paramD['homologLeftPeakLimitCase2'],paramD['homologRightPeakLimit'])
     peakL.extend(L)
 
     # case 3 (wide width with low prominence)
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['homologPeakWidthCase3'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase3'],paramD['homologLeftPeakLimitCase3'],paramD['homologRightPeakLimit'])
+    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['homologPeakWidthCase3'],paramD['widthRelHeight'],paramD['homologRequiredProminenceCase3'],paramD['homologLeftPeakLimitCase3'],paramD['homologRightPeakLimit'])
     peakL.extend(L)
 
     if peakL == []:
@@ -283,20 +292,24 @@ def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtr
     '''Given a list of bin heights and another list giving the score
 values at the middle of each bin, determine a threshold below which a
 score should be taken to indicate non-homology. We do this by looking
-for the nonhomologous (left) peak in the score histogram. This
+for the non-homologous (left) peak in the score histogram. This
 function assumes there is a right homologous peak present and takes
 the left extreme of this peak as input.
     '''
 
     L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['nonHomologPeakWidth'],paramD['widthRelHeight'],paramD['nonHomologPeakProminence'],paramD['nonHomologLeftPeakLimit'],paramD['nonHomologRightPeakLimit'])
 
-    L.sort(reverse=True) # in the unlikely case there's more than one
-    peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = L[0]
+    if L == []:
+        # no peak found, use default threshold
+        threshold = paramD['defaultAbsMinRawThresholdForHomology']
+    else:
+        L.sort(reverse=True) # in the unlikely case there's more than one
+        peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = L[0]
 
-    # we now find the minimum of these two. We're after a threshold
-    # where we're confident that things below it are definitely not
-    # homologous.
-    threshold = min(rightExtremeOfPeakPos,homologPeakLeftExtremePos)
+        # we now find the minimum of these two. We're after a threshold
+        # where we're confident that things below it are definitely not
+        # homologous.
+        threshold = min(rightExtremeOfPeakPos,homologPeakLeftExtremePos)
 
     return threshold
 
