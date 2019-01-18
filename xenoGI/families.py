@@ -51,11 +51,12 @@ createFamiliesO
 default values for score thresholds in family formation. The pair(s)
 in question are:""",file=outputSummaryF)
         for pairT in homologousPeakMissingL:
-            print("  ",strainNum2StrD[pairT[0]],'-',strainNum2StrD[pairT[1]],file=outputSummaryF)
+            print("  ",strainNum2StrD[pairT[0]]+'-'+strainNum2StrD[pairT[1]],file=outputSummaryF)
         
         print("""A possible explanation for this failure is that one or more species
 is too distantly related. If this is the case it will result in poor
-family formation."""+"\n",file=outputSummaryF)
+family formation, and most families (e.g. 80% or more) will have genes
+in only one strain."""+"\n",file=outputSummaryF)
 
     # Create synThresholdD
     synThresholdD = getSynThresholdD(scoresO,tree,paramD)

@@ -24,7 +24,7 @@ scoreHistNumBins = 80
 # A gene with a raw score below absMinRawThresholdForHomology will not
 # be added to a family. If we cannot find a homologous peak in the
 # histogram, we will just go with the following default.
-defaultAbsMinRawThresholdForHomology = 0.75
+defaultAbsMinRawThresholdForHomology = 0.5
 
 # parameters for finding the homologous (right) peak in raw score
 # histograms. These put restrictions on the peaks we can
