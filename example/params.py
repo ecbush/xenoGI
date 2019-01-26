@@ -110,17 +110,6 @@ coreSynWsize = 20
 # gene on that side.
 minCoreSynThresh = 0.5
 
-# In deciding whether to merge two islands, we judge partly based on
-# the proximity of their genes. The elements of this list are tuples
-# of the form (proximity threshold, rscore level). For example (1,0)
-# says we'll consider proximity to mean adjacency (proximity 1 means
-# adjacent genes), and we'll join islands if the rscore values is 0 or
-# above. The algorithm loops through the list, using the criteria in
-# the first tuple first, then proceeding to the second if there is on
-# and so on.
-proxThreshL = [(1,0),(2,2)]
-
-
 #### Visualization and analysis output files ####
 
 # output for browsers
