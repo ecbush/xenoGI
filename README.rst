@@ -117,7 +117,7 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
 
   This script also produces a set of species specific genome files. These contain all the genes in a strain laid out in the order they occur on the contigs. Each gene entry include island and family information, as well as a brief description of the gene's function. These files all have the name genes in their stem, followed by the strain name, and the extension .out.
 
-* ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the islands in different colors.
+* ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the islands in different colors. (Color is specified in the RGB field of the bed).
 
 Interactive analysis
 ~~~~~~~~~~~~~~~~~~~~
