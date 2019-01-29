@@ -4,9 +4,10 @@ from . import trees
 
 def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNames,geneInfoD):
     '''Return a dict keyed by strain name. Values are lists of tuples
-    (islandNum, familyL) where familyL is a list of tuples in the island
-    present in that strain. Family tuples are (family,[genes in
-    family]).
+    (locIslandNum, locFamilyL) where locFamilyL is a list of tuples in
+    the locus island present in that strain. locusFamily tuples are
+    (locusFamily,[genes in locusFamily]).
+
     '''
     islandByStrainD = {}
     for leaf in leafNodesL:
@@ -32,9 +33,9 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,gene
                         tempStrainD[strainNum2StrD[leaf]].append((locFam.locusFamNum,geneNamesL))
 
 
-            # now make island tuple (minStart,island, familyL) where
+            # now make island tuple (minStart,island, locFamilyL) where
             # minStart is the lowest start coord we've seen in the
-            # island, island is the island id, and familyL is the thing
+            # island, island is the island id, and locFamilyL is the thing
             # in tempStrainD
             for strain in islandByStrainD:
                 # only add if the island is present in this strain
@@ -50,7 +51,7 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,gene
     
     return islandByStrainD
 
-def getIslandPositions(familyL,geneInfoD,strainNum2StrD,locIslandID,mrcaNum,strain):
+def getIslandPositions(locFamilyL,geneInfoD,strainNum2StrD,locIslandID,mrcaNum,strain):
     '''Given a list of families (from a single island in a single strain),
 return its chrom,start,end.
     '''
@@ -58,7 +59,7 @@ return its chrom,start,end.
     islandMin=float('inf')
     islandMax=-float('inf')
     geneMidpointL=[]
-    for fam,geneL in familyL:
+    for locFam,geneL in locFamilyL:
         for gene in geneL:
             commonName,locusTag,descrip,chrom,start,end,strand=geneInfoD[gene]
             chromL.append(chrom)
@@ -85,7 +86,7 @@ def orderedIslandsInStrain(strainName,islandByStrainD):
     chromStartIslandLL = []
     #for each island in the strain, order first by chromosome and then by island start pos
     for islandT in islandsInStrainL:
-        chrom,_,start,_,_,islandNum,familyL=islandT
+        chrom,_,start,_,_,locIslandNum,locFamilyL=islandT
         chromStartIslandLL.append([chrom,start,islandT])
     sortedChromStartIslandLL = sorted(chromStartIslandLL)
     #make an ordered list of just the islands without the other information
@@ -102,12 +103,12 @@ scores to adjacent islands. Counter keeps track of how many islands
 we've done already.
     '''
     bedL=[]
-    chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,grNum,familyL = islandT
-    islandID = 'island_'+str(grNum)
-    score = str(islandColorD[str(grNum)])
+    chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,locIslandNum,locFamilyL = islandT
+    locIslandID = 'locIsland_'+str(locIslandNum)
+    score = str(islandColorD[str(locIslandNum)])
     
     # loop over families to get genes
-    for fam,geneL in familyL:
+    for locFam,geneL in locFamilyL:
         for gene in geneL:
             commonName,locusTag,descrip,chrom,start,end,strand=geneInfoD[gene]
             if commonName != '':
@@ -115,7 +116,7 @@ we've done already.
             else:
                 Name=gene
 
-            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+islandID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip
+            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+locIslandID+" | locFam_"+str(locFam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip
             
             bedL.append('\t'.join([chrom,start,end,Name,'0',str(strand),start,start,score,'1',str(int(end)-int(start)),'0',gene,attributes]))
 
