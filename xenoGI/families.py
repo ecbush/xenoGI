@@ -23,7 +23,15 @@ createFamiliesO
         createLocusFamilyFromSeed
      createAllLocusFamiliesAtTip
     '''
-
+    # Do an initial check the placement of the rootFocalClade on the
+    # tree. If there are no outgroups, write a warning to our output
+    # file
+    if strainNum2StrD[tree[0]] == paramD['rootFocalClade']:
+        print("""Warning: the chosen rootFocalClade falls at the root of the input
+tree and thus does not have any outgroups. This is not recommended
+because it can lead to problems accurately recognizing core gene
+families in the presence of gene deletion."""+"\n",file=outputSummaryF)
+    
     # initialize scoresO.nodeConnectL and scoresO.ScoreSummaryD for
     # use below
     strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
