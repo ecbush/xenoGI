@@ -78,6 +78,8 @@ Now back in example/ run::
 
   python3 path-to-xenoGI-github-repository/misc/concatenateAlignment.py alignedNucs.fa alignedNucsConcat.fa
 
+  Note that one of the inputs to aabrhBackAlign.py is the number of strains (4 in this case).
+  
 Making a tree suitable for xenoGI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
