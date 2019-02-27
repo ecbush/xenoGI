@@ -108,18 +108,18 @@ information such as description, start position and so on.
     return geneInfoD
 
 def getProximityInWindow(geneWinT,geneProximityD):
-    '''Given a window of genes, calculate the distances between each pair
-(in number of genes) and store in geneProximityD. Updates
-geneProximityD in place, returning None.'''
-    for i in range(len(geneWinT)-1):
-        for j in range(i+1,len(geneWinT)):
-            gnA=geneWinT[i]
-            gnB=geneWinT[j]
+    '''Given a window of genes, calculate the distances between first gene
+and the rest (in number of genes) and store in geneProximityD. Updates
+geneProximityD in place, returning None.
+    '''
+    gnA=geneWinT[0]
+    for i in range(1,len(geneWinT)):
+        gnB=geneWinT[i]
 
-            if gnA<gnB: # always put lower gene number first
-                geneProximityD[(gnA,gnB)]=j-i
-            else:
-                geneProximityD[(gnB,gnA)]=j-i
+        if gnA<gnB: # always put lower gene number first
+            geneProximityD[(gnA,gnB)]=i
+        else:
+            geneProximityD[(gnB,gnA)]=i
 
 def createGeneProximityD(geneOrderT,geneProximityForGroup):
     '''Go though a gene order tuple pulling out pairs of genes that are
@@ -131,7 +131,7 @@ measured in number of genes.'''
         if contigT != None:
             # internal nodes are None, having no genes to be adjacent
             for geneNumT in contigT:
-                for i in range(len(geneNumT)-geneProximityForGroup):
+                for i in range(len(geneNumT)):
                     # slide over genes w/win geneProximityForGroup+1
                     # wide.
                     getProximityInWindow(geneNumT[i:i+(geneProximityForGroup+1)],geneProximityD)

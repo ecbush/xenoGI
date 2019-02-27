@@ -30,6 +30,13 @@ def nodeList(tree):
     else:
         return [tree[0]] + nodeList(tree[1]) + nodeList(tree[2])
     
+def leafCount(tree):
+    '''How many leaves in tree?'''
+    if tree[1]==():
+        return 1
+    else:
+        return leafCount(tree[1]) + leafCount(tree[2])
+
 def leafList(tree):
     '''Return list of leaves in tree.'''
     if tree[1]==():
