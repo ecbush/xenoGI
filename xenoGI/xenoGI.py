@@ -364,24 +364,14 @@ def debugWrapper(paramD):
     import code,sys
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
-    import numpy
-    from scipy.signal import find_peaks
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    nodesL=trees.nodeList(tree)
+    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
-    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-
-    scoreHistNumBins = paramD['scoreHistNumBins']
-    binWidth = 1.0/scoreHistNumBins # since scores range from 0-1
-
-    scoreIterator = scoresO.iterateScoreByStrainPair((10,10),'rawSc')
-    binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,paramD['scoreHistNumBins'])
-
+    mergedL = islands.speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD)
     
-    L=families.findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['nonHomologPeakWidth'],paramD['widthRelHeight'],paramD['nonHomologPeakProminence'],paramD['nonHomologLeftPeakLimit'],paramD['nonHomologRightPeakLimit'])
-
-    print(L)
-    
-    code.interact(local=locals())
+    #code.interact(local=locals())
 
 def simValidationWrapper(paramD):
     '''Take us into interactive mode for running validation with

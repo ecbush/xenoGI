@@ -99,17 +99,20 @@ synAdjustExtent = 1.05
 # parameter to get the value we use as a threshold.
 singleStrainFamilyThresholdAdjust = 0.5
 
-#### Family formation ####
+#### LocusIsland formation ####
+
+# geneProximityRange tells us how far out we want to go from each gene
+# in recording proximity for geneProximityD
+geneProximityRange = 2
 
 # In deciding whether to merge two islands, we judge partly based on
-# the proximity of their genes. The elements of this list are tuples
-# of the form (proximity threshold, rscore level). For example (1,0)
-# says we'll consider proximity to mean adjacency (proximity 1 means
-# adjacent genes), and we'll join islands if the rscore values is 0 or
-# above. The algorithm loops through the list, using the criteria in
-# the first tuple first, then proceeding to the second if there is on
-# and so on.
-proxThreshL = [(1,0),(2,2)]
+# the proximity of their genes. proximityThreshold defines what
+# proximity is. A proximityThreshold of 1 means adjacent genes
+proximityThresholdMerge1 = 1
+
+# rscThreshold of 0 means that we merge islands if their rscore is 0
+# or above
+rscThresholdMerge1 = 0
 
 
 #### Visualization and analysis ####
