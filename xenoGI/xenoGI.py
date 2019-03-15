@@ -369,7 +369,7 @@ def debugWrapper(paramD):
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
     familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
-    mergedL = islands.speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD)
+    outputL = islands.speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD)
     
     #code.interact(local=locals())
 

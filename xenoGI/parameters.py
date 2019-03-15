@@ -114,6 +114,10 @@ proximityThresholdMerge1 = 1
 # or above
 rscThresholdMerge1 = 0
 
+# maxClusterSize is the maximum size that we make clusters of islands
+# in the first step of the merging process
+maxClusterSize = 50
+
 
 #### Visualization and analysis ####
 
