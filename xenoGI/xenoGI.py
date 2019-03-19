@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "1.5.0"
+__version__ = "2.0.0"
 import sys, glob, os
 from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
 
@@ -368,6 +368,8 @@ def debugWrapper(paramD):
     nodesL=trees.nodeList(tree)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
     familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+
+    locIslByNodeL=islands.createLocIslByNodeL(familiesO,tree)
 
     outputL = islands.speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD)
     

@@ -24,7 +24,7 @@ def speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainSt
     maxClusterSize = 50
     geneProximityRange = 2 # can adjust here for now. Should be >= 1.
 
-    testNode = strainStr2NumD['i0']
+    testNode = strainStr2NumD['i2']
     
     ##
 
@@ -38,12 +38,12 @@ def speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainSt
     
     print("num islands at node to start",len(islandsAtMrcaNodeL))
 
-    writeFamilies(islandsAtMrcaNodeL,'famsi0_initial.txt')
+    #writeFamilies(islandsAtMrcaNodeL,'famsi0_initial.txt')
 
 
     mrcaClustersL,mrcaSingletonClustersL = createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThresholdMerge1,maxClusterSize)
     
-    writeFamilies(extractFromClusters(mrcaClustersL+mrcaSingletonClustersL),'famsi0_cluster.txt')
+    #writeFamilies(extractFromClusters(mrcaClustersL+mrcaSingletonClustersL),'famsi0_cluster.txt')
     
     
 
@@ -56,7 +56,7 @@ def speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainSt
 
     print("num islands after cluster merge",len(extractFromClusters(mergedL+mrcaSingletonClustersL)))
 
-    writeFamilies(extractFromClusters(mergedL+mrcaSingletonClustersL),'famsi0_aftercluster.txt')
+    #writeFamilies(extractFromClusters(mergedL+mrcaSingletonClustersL),'famsi0_aftercluster.txt')
 
 
     # merge at nodes
@@ -66,7 +66,7 @@ def speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainSt
     
     print("num islands at end",len(outputL))
     
-    writeFamilies(outputL,'famsi0_final.txt')
+    #writeFamilies(outputL,'famsi0_final.txt')
     
     return outputL
 
@@ -126,6 +126,8 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainS
 
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeL,focalNodesL,subtreeL,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
 
+    print("Clusters made.",file=sys.stderr)
+    
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
     argumentL = []
     for clusterL in locusIslandClusterL:
@@ -136,6 +138,7 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainS
     # update locIslByNodeL with the merged nodes
     locIslByNodeL = updateIslandByNodeLEntries(locIslByNodeL,focalNodesL,mergedL)
 
+    print("Cluster merge done.",file=sys.stderr)
     
     ## Family improvement
 
@@ -290,32 +293,6 @@ clusterL, but which need to be used to search first.
                 return clusterL,islandsAtMrcaNodeL
 
     return clusterL,islandsAtMrcaNodeL
-            
-            
-def populateClusterJacob(islandsAtMrcaNodeL,subtreeL,familiesO,geneProximityD,proximityThreshold,maxClusterSize,mrcaNode, currentCluster):
-    '''Takes in a island  and parses 
-    though all of the nodes in the mrcaNode that is 
-    not already used in another cluster if it is within 
-    proximity adds it to newCluster'''
-    
-    index = 1
-    while index<len(islandsAtMrcaNodeL):
-        if len(currentCluster) > maxClusterSize:
-            break 
-            
-        subtree = subtreeL[mrcaNode]
-
-        currentFam = familiesO.getLocusFamily(currentCluster[0].locusFamilyL[0])
-
-        comparisonFam = familiesO.getLocusFamily(islandsAtMrcaNodeL[index].locusFamilyL[0])
-
-        proxB = proximitySubtree(currentFam,comparisonFam,geneProximityD,proximityThreshold,subtree)
-           
-        if proxB: 
-            currentCluster.append(islandsAtMrcaNodeL[index])
-            islandsAtMrcaNodeL.remove(islandsAtMrcaNodeL[index])
-        else:
-            index+=1
         
 def proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subtree):
     '''Given two gene families with the same mrcaNode, return boolean
@@ -363,7 +340,12 @@ longer merge islands.
     # Pre-calculate costDiff scores between all families in locusIslandL
     lFamNumL = []
     for liO in locusIslandL:
-        lFamNumL.extend(liO.locusFamilyL)
+        # we only need to consider first and last loc fams
+        lFamNumL.append(liO.locusFamilyL[0]) # add first
+        if len(liO) > 1:
+            # this li has more than one loc fam, add last as well
+            lFamNumL.append(liO.locusFamilyL[-1])
+        
     costDiffD = costDiffDict((lFamNumL,familiesO,geneProximityD,proximityThreshold,subtree))
     
     # create initial scoreD
@@ -388,7 +370,8 @@ longer merge islands.
 
         # calculate new scores for li0 against all other islands
         addScores(scoreD,li0,locusIslandL,costDiffD)
-
+        
+    print("Finished cluster/group at node",liO.mrca,file=sys.stderr) # remove later
     return locusIslandL
 
 def maxScore(scoreD):
@@ -439,7 +422,7 @@ def costDiffDict(argT):
 families in lFamNumL.'''
 
     lFamNumL,familiesO,geneProximityD,proximityThreshold,subtree=argT
-    
+
     cdD={}
     for i in range(len(lFamNumL)-1):
         lf1 = familiesO.getLocusFamily(lFamNumL[i])
@@ -455,8 +438,9 @@ def costDiff(lfam1,lfam2,geneProximityD,proximityThreshold,subtree):
 whether we assume the root is not proximate or proximate. lfam1 and
 lfam2 are family tuples specifying the genes present in a family.
     '''
-    t=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,True)
-    f=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,False)
+    memoD = {}
+    t=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,True,memoD)
+    f=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,False,memoD)
     return(f-t)
 
 def createScoreD(locusIslandL,costDiffD):
@@ -495,29 +479,35 @@ is measured in genes, e.g. 1 means the adjacent gene.
                 return True
     return False
   
-def rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,rootProximate):
-    '''Parsimony based calculation of cost of evolutionary rearrangement
-given lfam1 and lfam2 begin at root of subtree. Assume either proximate
-(nearby) or not at root (specificed by rootProximate). Charge 1 for
-each rearrangment.
+def rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,rootProximate,memoD):
+    '''Memoized, parsimony based calculation of cost of evolutionary rearrangement
+given lfam1 and lfam2 begin at root of subtree. Assume either
+proximate (nearby) or not proximate at root. This is specificed by the
+argument rootProximate. Charge 1 for each rearrangment.
     '''
-    if subtree[1]==():
+    memoKey = (lfam1.locusFamNum,lfam2.locusFamNum,subtree,rootProximate)
+    if memoKey in memoD:
+        return memoD[memoKey]
+    elif subtree[1]==():
         prox=proximity(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[0])
         if (prox and rootProximate) or (not prox and not rootProximate):
             # state given by rootProximate matches adjacency info in our data
-            return 0
+            output = 0
         else:
-            return 1
+            output = 1
     else:
         # left subtree
-        left = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[1],rootProximate)
-        chLeft = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[1],not rootProximate)
+        left = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[1],rootProximate,memoD)
+        chLeft = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[1],not rootProximate,memoD)
 
         # right subtree
-        right = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[2],rootProximate)
-        chRight = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[2],not rootProximate)
+        right = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[2],rootProximate,memoD)
+        chRight = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[2],not rootProximate,memoD)
 
-        return min(left,chLeft) + min(right,chRight)
+        output = min(left,chLeft) + min(right,chRight)
+        
+    memoD[memoKey] = output
+    return output
 
 def rscore(li0,li1,costDiffD):
     '''Returns rearrangement score and orientation between LocusIslands

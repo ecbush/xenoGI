@@ -38,6 +38,12 @@ score function.
         '''Iterates, yielding LocusFamily objects.'''
         for locusFamNum in self.locusFamilyL:
             yield familiesO.getLocusFamily(locusFamNum)
+
+    def iterGenes(self,familiesO):
+        '''Iterate though all the genes in this LocusIsland.'''
+        for lfO in self.iterLocusFamilies(familiesO):
+            for gene in lfO.iterGenes():
+                yield gene
         
 def str2Island(islandStr,strainStr2NumD):
     '''Given a island string (e.g. produced by the fileStr method) parse to produce island.'''
