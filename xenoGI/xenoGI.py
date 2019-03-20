@@ -365,15 +365,8 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-    nodesL=trees.nodeList(tree)
-    geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
 
-    locIslByNodeL=islands.createLocIslByNodeL(familiesO,tree)
-
-    outputL = islands.speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD)
-    
-    #code.interact(local=locals())
+    code.interact(local=locals())
 
 def simValidationWrapper(paramD):
     '''Take us into interactive mode for running validation with
