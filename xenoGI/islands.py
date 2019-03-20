@@ -6,103 +6,6 @@ from . import analysis
 from .Island import *
 from .Family import *
 import math 
-
-
-## temp debugging
-
-def speedTestLocIsl(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD):
-    '''Test function to merge locus islands at a single node.'''
-
-    numThreads = paramD['numThreads']
-    rootFocalClade = paramD['rootFocalClade']
-    islandOutFN = paramD['islandOutFN']
-    geneProximityRange = paramD['geneProximityRange']
-    proximityThresholdMerge1 = paramD['proximityThresholdMerge1']
-    rscThresholdMerge1 = paramD['rscThresholdMerge1']
-    
-    ## Temp parameters (later add to parameters.py)
-    maxClusterSize = 50
-    geneProximityRange = 2 # can adjust here for now. Should be >= 1.
-
-    testNode = strainStr2NumD['i2']
-    
-    ##
-
-    geneProximityD = genomes.createGeneProximityD(geneOrderT,geneProximityRange )
-    locIslByNodeL=createLocIslByNodeL(familiesO,tree)
-    numIslandsAtEachNodeAtStartL = [len(L) for L in locIslByNodeL]
-
-    subtree = subtreeL[testNode]
-
-    islandsAtMrcaNodeL = locIslByNodeL[testNode]
-    
-    print("num islands at node to start",len(islandsAtMrcaNodeL))
-
-    #writeFamilies(islandsAtMrcaNodeL,'famsi0_initial.txt')
-
-
-    mrcaClustersL,mrcaSingletonClustersL = createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThresholdMerge1,maxClusterSize)
-    
-    #writeFamilies(extractFromClusters(mrcaClustersL+mrcaSingletonClustersL),'famsi0_cluster.txt')
-    
-    
-
-
-    argumentL = []
-    for clusterL in mrcaClustersL:
-        argumentL.append((clusterL,geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeL[clusterL[0].mrca],familiesO))
-    p=Pool(numThreads)
-    mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
-
-    print("num islands after cluster merge",len(extractFromClusters(mergedL+mrcaSingletonClustersL)))
-
-    #writeFamilies(extractFromClusters(mergedL+mrcaSingletonClustersL),'famsi0_aftercluster.txt')
-
-
-    # merge at nodes
-    mergedL = mergeLocIslandsAtNode((extractFromClusters(mergedL),geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtree,familiesO))
-
-    outputL = mergedL + extractFromClusters(mrcaSingletonClustersL)
-    
-    print("num islands at end",len(outputL))
-    
-    #writeFamilies(outputL,'famsi0_final.txt')
-    
-    return outputL
-
-def extractFromClusters(clusterL):
-
-    liL=[]
-    for cl in clusterL:
-        liL.extend(cl)
-
-    return liL
-        
-def writeFamilies(liL,fn):
-    '''Given a list of islands, write all the families contained within to file, one family per line.'''
-
-    lFamNumL = []
-    for liO in liL:
-       lFamNumL.extend(liO.locusFamilyL) 
-
-    lFamNumL.sort()
-       
-    f=open(fn,'w')
-    for lfNum in lFamNumL:
-        print(lfNum,file=f)
-    f.close()
-
-def printClusterCounts(islandsL,tree):
-
-    L=[0 for i in range(trees.nodeCount(tree))]
-
-    for island in islandsL:
-        L[island.mrca] += 1
-
-    print(L)
-       
-
-    
     
 ## Main function  
     
@@ -126,8 +29,6 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainS
 
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeL,focalNodesL,subtreeL,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
 
-    print("Clusters made.",file=sys.stderr)
-    
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
     argumentL = []
     for clusterL in locusIslandClusterL:
@@ -138,8 +39,6 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainS
     # update locIslByNodeL with the merged nodes
     locIslByNodeL = updateIslandByNodeLEntries(locIslByNodeL,focalNodesL,mergedL)
 
-    print("Cluster merge done.",file=sys.stderr)
-    
     ## Family improvement
 
     # not currently doing this
@@ -371,7 +270,6 @@ longer merge islands.
         # calculate new scores for li0 against all other islands
         addScores(scoreD,li0,locusIslandL,costDiffD)
         
-    print("Finished cluster/group at node",liO.mrca,file=sys.stderr) # remove later
     return locusIslandL
 
 def maxScore(scoreD):
