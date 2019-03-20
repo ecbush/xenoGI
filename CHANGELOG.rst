@@ -8,7 +8,7 @@ Change Log
 
 This is a major release, meaning things like parameter files and output files have changed.
 
-- Reduced RAM requirements. We've eliminated the norm score. Synteny scores are now based on raw scores, and thresholds for family formation calculated directly for each strain pair.)
+- Reduced RAM requirements. We've eliminated the norm score. Synteny scores are now based on raw scores, and thresholds for family formation calculated directly for each strain pair.
 - Improved speed. This results from changes to island formation, and makes a particularly big difference for large data sets (50 or more strains).
 - Simplified the user parameters file. Parameters users are unlikely to ever change have been moved elsewhere.
 - Added plotScoreHists flag. Makes rawSc.pdf, synSc.pdf, coreSynSc.pdf.
