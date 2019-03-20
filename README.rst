@@ -21,6 +21,13 @@ Requirements
   - Parasail (https://github.com/jeffdaily/parasail). This is an optimized alignment library, used in calculating scores between proteins. It can also be installed using pip:
       ``pip3 install parasail``
 
+  - Numpy (http://www.numpy.org/).
+      ``pip3 install numpy``
+    
+  - Scipy (https://www.scipy.org/).
+    ``pip3 install scipy``
+
+(The pip you use needs to correspond to a version of Python 3. In some cases it may just be called pip instead of pip3).
 
 Installation
 ------------
@@ -29,7 +36,6 @@ The easiest way to install is using pip::
 
   pip3 install xenoGI
 
-(The pip you use needs to correspond to a version of Python 3.)
 
 How to use
 ----------
@@ -112,7 +118,7 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
 
   This script also produces a set of species specific genome files. These contain all the genes in a strain laid out in the order they occur on the contigs. Each gene entry include island and family information, as well as a brief description of the gene's function. These files all have the name genes in their stem, followed by the strain name, and the extension .out.
 
-* ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the islands in different colors.
+* ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the islands in different colors. (Color is specified in the RGB field of the bed).
 
 Interactive analysis
 ~~~~~~~~~~~~~~~~~~~~
@@ -151,7 +157,21 @@ From within python, you can then run functions such as
     printFam(3500)
 
 
+Additional flags
+~~~~~~~~~~~~~~~~
 
+::
+   
+  xenoGI params.py version
+
+will print the version number, and::
+
+
+  xenoGI params.py plotScoreHists
+
+will produce a set of pdf files showing histograms of scores between all possible strains.
+  
+    
 Additional files
 ----------------
 

@@ -30,6 +30,13 @@ def nodeList(tree):
     else:
         return [tree[0]] + nodeList(tree[1]) + nodeList(tree[2])
     
+def leafCount(tree):
+    '''How many leaves in tree?'''
+    if tree[1]==():
+        return 1
+    else:
+        return leafCount(tree[1]) + leafCount(tree[2])
+
 def leafList(tree):
     '''Return list of leaves in tree.'''
     if tree[1]==():
@@ -129,6 +136,30 @@ def createSubtreeL(tree):
     else:
         return [tree]+createSubtreeL(tree[1]) + createSubtreeL(tree[2])
 
+def getNearestNeighborL(leaf,tree):
+    '''Given a leaf and a tree, return a list containing the other leaf or
+leaves which are most closely related to leaf.'''
+
+    parent = getParent(leaf,tree) # assume leaf is in tree
+    leafL = leafList(subtree(tree,parent))
+    leafL.remove(leaf)
+    return leafL
+    
+def getParent(leaf,tree):
+    '''Return parent node of leaf.'''
+    if tree[1] == ():
+        # We've come too far, it wasn't there
+        return None
+    elif tree[1][0] == leaf or tree[2][0] == leaf:
+        return tree[0]
+    else:
+        left = getParent(leaf,tree[1])
+        right = getParent(leaf,tree[2])
+
+        if left != None:
+            return left
+        else: return right
+        
 def tupleTree2Newick(tree):
     '''Convert a four tuple based tree (root,left,right,branchLen) into a
 newick formated string.'''

@@ -1,12 +1,13 @@
-import sys,statistics,os,glob
+import sys,statistics,os,glob,random
 from urllib import parse
-import random
+from . import trees
 
-def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD):
+def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNames,geneInfoD):
     '''Return a dict keyed by strain name. Values are lists of tuples
-    (islandNum, familyL) where familyL is a list of tuples in the island
-    present in that strain. Family tuples are (family,[genes in
-    family]).
+    (locIslandNum, locFamilyL) where locFamilyL is a list of tuples in
+    the locus island present in that strain. locusFamily tuples are
+    (locusFamily,[genes in locusFamily]).
+
     '''
     islandByStrainD = {}
     for leaf in leafNodesL:
@@ -16,45 +17,33 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNa
     # extract the genes present in each strain and put in right entry
     # in islandByStrainD
     for mrcaNum in range(len(islandByNodeL)):
-        for gr in islandByNodeL[mrcaNum]:
+        for locIsland in islandByNodeL[mrcaNum]:
 
             # make dict to collect fams for each strain
             tempStrainD = {}
             for leaf in leafNodesL:
                 tempStrainD[strainNum2StrD[leaf]]=[]
 
-            for fam in gr.familyL:
-
-                # famGeneT is a tuple, where index is strain
-                # number. It only has non zero entries at
-                # tips. Located at each index is a tuple of gene (gene
-                # count, (tuple of genes)). We access by looping over
-                # leaf nodes
-                fgT = familyL[fam].famGeneT
-
+            # put LocusFamily number and genes tuple for each strain in tempStrainD
+            for locFam in locIsland.iterLocusFamilies(familiesO):
                 for leaf in leafNodesL:
-                    geneT = fgT[leaf]
-
-                    # if the family has a gene or genes in this
-                    # strain, add tuple (family,[genes in family]) to
-                    # list for this strain
-                    if len(geneT) > 0:
-                        geneNamesL=[geneNames.numToName(gene) for gene in geneT]
-                        tempStrainD[strainNum2StrD[leaf]].append((fam,geneNamesL))
+                    geneNamesL=[geneNames.numToName(gene) for gene in locFam.iterGenesByStrain(leaf)]
+                    if geneNamesL != []:
+                        # only add if the family has some genes in this strain.
+                        tempStrainD[strainNum2StrD[leaf]].append((locFam.locusFamNum,geneNamesL))
 
 
-            # now make island tuple (minStart,island, familyL) where
+            # now make island tuple (minStart,island, locFamilyL) where
             # minStart is the lowest start coord we've seen in the
-            # island, island is the island id, and familyL is the thing
+            # island, island is the island id, and locFamilyL is the thing
             # in tempStrainD
             for strain in islandByStrainD:
                 # only add if the island is present in this strain
 
                 if tempStrainD[strain] != []:
-                    #print(gr.id,mrcaNum,strain)
-                    chrom,islandMedianMidpoint,islandMin,islandMax = getIslandPositions(tempStrainD[strain],geneInfoD,strainNum2StrD,gr.id,mrcaNum,strain)
-                    grT = (chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,gr.id,tempStrainD[strain])
-                    islandByStrainD[strain].append(grT)
+                    chrom,islandMedianMidpoint,islandMin,islandMax = getIslandPositions(tempStrainD[strain],geneInfoD,strainNum2StrD,locIsland.id,mrcaNum,strain)
+                    locIslandT = (chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,locIsland.id,tempStrainD[strain])
+                    islandByStrainD[strain].append(locIslandT)
                     
     # sort each list in islandByStrainD by chrom and islandMedianMidpoint
     for strain in islandByStrainD:
@@ -62,7 +51,7 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNa
     
     return islandByStrainD
 
-def getIslandPositions(familyL,geneInfoD,strainNum2StrD,grID,mrcaNum,strain):
+def getIslandPositions(locFamilyL,geneInfoD,strainNum2StrD,locIslandID,mrcaNum,strain):
     '''Given a list of families (from a single island in a single strain),
 return its chrom,start,end.
     '''
@@ -70,7 +59,7 @@ return its chrom,start,end.
     islandMin=float('inf')
     islandMax=-float('inf')
     geneMidpointL=[]
-    for fam,geneL in familyL:
+    for locFam,geneL in locFamilyL:
         for gene in geneL:
             commonName,locusTag,descrip,chrom,start,end,strand=geneInfoD[gene]
             chromL.append(chrom)
@@ -85,7 +74,7 @@ return its chrom,start,end.
                 
     # sanity check: all entries in chromL should be same
     if not all((c==chromL[0] for c in chromL)):
-        print("Genes in island",grID,"at mrca",strainNum2StrD[mrcaNum],"in strain",strain,"are not all on the same chromosome.",file=sys.stderr)
+        print("Genes in island",locIslandID,"at mrca",strainNum2StrD[mrcaNum],"in strain",strain,"are not all on the same chromosome.",file=sys.stderr)
 
     islandMedianMidpoint = statistics.median(geneMidpointL)
     
@@ -97,7 +86,7 @@ def orderedIslandsInStrain(strainName,islandByStrainD):
     chromStartIslandLL = []
     #for each island in the strain, order first by chromosome and then by island start pos
     for islandT in islandsInStrainL:
-        chrom,_,start,_,_,islandNum,familyL=islandT
+        chrom,_,start,_,_,locIslandNum,locFamilyL=islandT
         chromStartIslandLL.append([chrom,start,islandT])
     sortedChromStartIslandLL = sorted(chromStartIslandLL)
     #make an ordered list of just the islands without the other information
@@ -105,7 +94,7 @@ def orderedIslandsInStrain(strainName,islandByStrainD):
     return sortedIslandsL
 
 
-def islandToBed(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD, islandColorD):
+def islandToBed(islandT,geneInfoD,tree,strainNum2StrD, islandColorD):
     '''Given a islandT (the values of islandByStrainD are lists of these)
 convert into a string suitable for writing in a bed file. Return
 this. Note that we're using the score field to color the genes in
@@ -114,12 +103,12 @@ scores to adjacent islands. Counter keeps track of how many islands
 we've done already.
     '''
     bedL=[]
-    chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,grNum,familyL = islandT
-    islandID = 'island_'+str(grNum)
-    score = str(islandColorD[str(grNum)])
+    chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,locIslandNum,locFamilyL = islandT
+    locIslandID = 'locIsland_'+str(locIslandNum)
+    score = str(islandColorD[str(locIslandNum)])
     
     # loop over families to get genes
-    for fam,geneL in familyL:
+    for locFam,geneL in locFamilyL:
         for gene in geneL:
             commonName,locusTag,descrip,chrom,start,end,strand=geneInfoD[gene]
             if commonName != '':
@@ -127,25 +116,34 @@ we've done already.
             else:
                 Name=gene
 
-            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+islandID+" | fam_"+str(fam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip
+            attributes = 'ID='+gene+';Name='+Name+';gene='+Name+';Note= | '+locIslandID+" | locFam_"+str(locFam)+" | mrca_"+strainNum2StrD[mrcaNum] + " | "+descrip
             
             bedL.append('\t'.join([chrom,start,end,Name,'0',str(strand),start,start,score,'1',str(int(end)-int(start)),'0',gene,attributes]))
 
     bedStr = '\n'.join(bedL)
     return bedStr
     
-def writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileName,scoreNodeMapD,islandColorD):
+def writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileName,islandColorD):
     '''For a given strain, Write bed file.'''
     f=open(bedFileName,'w')
     f.write('track name='+strain+' type=bedDetail visibility=full itemRgb="On" useScore=0 \n')
     orderedIslandsInStrainL = orderedIslandsInStrain(strain,islandByStrainD)
     for islandT in orderedIslandsInStrainL:
-        bedStr = islandToBed(islandT,geneInfoD,tree,strainNum2StrD,scoreNodeMapD,islandColorD)
+        bedStr = islandToBed(islandT,geneInfoD,tree,strainNum2StrD,islandColorD)
         f.write(bedStr+'\n')
     f.close()
 
-def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scoreNodeMapD,potentialRgbL,bedNumTries):
+def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,strainStr2NumD,paramD):
 
+    bedFilePath = paramD['bedFilePath']
+    potentialRgbL = paramD['potentialRgbL']
+    bedNumTries = paramD['bedNumTries']
+
+    # create a set of all leaf nodes outside the rootFocalClade
+    allLeavesS = set(trees.leafList(tree))
+    focalLeavesS = set(trees.leafList(trees.subtree(tree,strainStr2NumD[paramD['rootFocalClade']])))
+    nodesOutsideFocalCladeS= allLeavesS - focalLeavesS
+    
     # if directory for beds doesn't exist yet, make it
     bedDir = bedFilePath.split("*")[0]
     if glob.glob(bedDir)==[]:
@@ -156,7 +154,7 @@ def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scor
     strainL = list(islandByStrainD.keys())
     for i in range(0,bedNumTries):
         random.shuffle(strainL)
-        numberOfIslandsMiscolored,islandColorD  = createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL,islandByStrainD)
+        numberOfIslandsMiscolored,islandColorD  = createIslandColorD(strainL,nodesOutsideFocalCladeS,strainNum2StrD,potentialRgbL,islandByStrainD)
         if numberOfIslandsMiscolored<minIslandsMiscolored:
             bestColorD = islandColorD
             minIslandsMiscolored = numberOfIslandsMiscolored
@@ -165,24 +163,24 @@ def createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,bedFilePath,scor
     
     for strain in islandByStrainD:
         bedFileName = bedDir+strain+bedExtension
-        writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileName,scoreNodeMapD,islandColorD)
+        writeStrainBed(islandByStrainD,geneInfoD,tree,strainNum2StrD,strain,bedFileName,islandColorD)
 
     print('Number of islands miscolored is '+str(numberOfIslandsMiscolored)+' after '+str(bedNumTries)+' tries.',file=sys.stderr)
 
 
-def islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD,strainNum2StrD):
+def islandsNextToSameColorCount(islandByStrainD,islandColorD,nodesOutsideFocalCladeS,strainNum2StrD):
     '''counts the number of islands that are adjacent to the same color island'''
     miscolorCount = 0
     for strain in islandByStrainD:
         orderedIslandsInStrainL = orderedIslandsInStrain(strain,islandByStrainD)
         for islandIndex in range(1,len(orderedIslandsInStrainL)):
             mrcaNum = orderedIslandsInStrainL[islandIndex-1][-3]
-            if strainNum2StrD[mrcaNum] not in scoreNodeMapD:
+            if strainNum2StrD[mrcaNum] not in nodesOutsideFocalCladeS:
                 if islandColorD[str(orderedIslandsInStrainL[islandIndex][-2])] is islandColorD[str(orderedIslandsInStrainL[islandIndex-1][-2])]: miscolorCount+=1
                    
     return miscolorCount
 
-def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL,islandByStrainD):
+def createIslandColorD(strainL,nodesOutsideFocalCladeS,strainNum2StrD,potentialRgbL,islandByStrainD):
     '''make the island color dictionary'''
     islandColorD = {}
     for strain in strainL:
@@ -198,7 +196,7 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL,island
             islandNum= str(island[-2])
 
             # create score for coloring islands
-            if strainNum2StrD[mrcaNum] in scoreNodeMapD:
+            if strainNum2StrD[mrcaNum] in nodesOutsideFocalCladeS:
                 score = '0,0,0'
                 islandColorD[islandNum]=str(score)
             elif str(islandNum) in islandColorD:
@@ -210,12 +208,12 @@ def createIslandColorD(strainL,scoreNodeMapD,strainNum2StrD,potentialRgbL,island
 
             #for all islands except the first one, see if the previous island is the same
             #color. if so, pick the next color and increment the counter
-            if (islandIndex != 0) and (strainNum2StrD[mrcaNum] not in scoreNodeMapD):
+            if (islandIndex != 0) and (strainNum2StrD[mrcaNum] not in nodesOutsideFocalCladeS):
                 if islandColorD[islandNum] is islandColorD[prevIslandNum]:
                     score = str(potentialRgbL[counter%len(potentialRgbL)])
                     islandColorD[islandNum]=str(score)
                     counter += 1
 
-    numberOfIslandsMiscolored = islandsNextToSameColorCount(islandByStrainD,islandColorD,scoreNodeMapD,strainNum2StrD)
+    numberOfIslandsMiscolored = islandsNextToSameColorCount(islandByStrainD,islandColorD,nodesOutsideFocalCladeS,strainNum2StrD)
 
     return numberOfIslandsMiscolored, islandColorD

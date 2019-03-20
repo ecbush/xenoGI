@@ -4,16 +4,18 @@ from . import genomes
 from . import trees
 from . import Score
 
-#### Functions
+#### raw similarity scores
 
-
-## raw similarity scores
-
-def calcRawScores(fastaFilePath,numThreads,geneNames,gapOpen, gapExtend, matrix, scoresO):
+def calcRawScores(paramD,geneNames,scoresO):
     '''Get a global alignment based raw score for every edge in scoresO.'''
 
+    numThreads = paramD['numThreads']
+    gapOpen = paramD['gapOpen']
+    gapExtend = paramD['gapExtend']
+    matrix = paramD['matrix']
+    
     # load sequences
-    protFnL=glob.glob(fastaFilePath)
+    protFnL=glob.glob(paramD['fastaFilePath'])
     seqD=genomes.loadProt(protFnL)
                 
     # make list of sets of arguments to be passed to p.map. There
@@ -84,37 +86,128 @@ based on the max and min possible scores for these sequences.'''
     return scaled
 
 
+#### synteny scores
 
-## normalized scores
+def calcSynScores(scoresO,geneNames,geneOrderT,paramD,tree):
+    '''Calculate the synteny score between two genes and add to edge
+attributes of scoresO. We only bother making synteny scores for those
+genes that have an edge in scoresO.
+    '''
 
+    synWSize = paramD['synWSize']
+    numSynToTake = paramD['numSynToTake']
+    numThreads = paramD['numThreads']
+    
+    neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
-def calcNormScores(tree,strainNum2StrD,blastFilePath,evalueThresh,scoresO,geneNames,aabrhFN):
-    '''Given directory of blast output and a graph of raw similarity
-scores, calculate normalized similarity scores by comparing each score
-with the range of scores in in all around best reciprocal hits in that
-pair of strains.'''
+    # make list of groups of arguments to be passed to p.map. There
+    # should be numThreads groups.
+    argumentL = [([],tree,neighborTL,numSynToTake,geneNames,scoresO) for i in range(numThreads)]
 
-    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
-    aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
-
-    aabrhRawScoreSummmaryD=getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,scoresO,geneNames)
-   
-    # loop over each edge in scoresO, normalizing score and saving there
+    i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
+        argumentL[i%numThreads][0].append((gn1,gn2))
+        i+=1
 
-        rawSc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+    p=Pool(numThreads) # num threads
+    synScoresLL = p.map(synScoreGroup, argumentL)
+    p.close()
+    p.join()
+    
+    # add to scores object
+    for synScoresL in synScoresLL:
+        for gn1,gn2,sc in synScoresL:
+            scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
 
-        # find mean,std from aabrhRawScoreSummmaryD.
-        gnName1 = geneNames.numToName(gn1)
-        sp1,restOfName1 = gnName1.split('-')
-        gnName2 = geneNames.numToName(gn2)
-        sp2,restOfName1 = gnName2.split('-')
-        mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
-        normSc = normScore(rawSc,mean,std)
-        scoresO.addScoreByEndNodes(gn1,gn2,normSc,'normSc')
+    return scoresO
 
-    return scoresO,aabrhL,aabrhRawScoreSummmaryD
+def createNeighborL(geneNames,geneOrderT,synWSize):
+    '''Return a list which specifies the neighbors of each gene. Index of
+list corresponds to gene number, and the value located at that index
+is a tuple of all genes within a synWSize window. e.g. synWSize 10 means we
+go 5 genes in either direction.'''
 
+    lenInEitherDirec = int(synWSize/2)
+    
+    neighborTL = [None for x in geneNames.nums]
+    
+    for contigT in geneOrderT:
+        if not contigT == None:
+            for geneNumT in contigT:
+                for i in range(len(geneNumT)):
+                    end = i + lenInEitherDirec
+                    st = i-lenInEitherDirec if i-lenInEitherDirec>0 else 0 # st can't be less than 0
+                    L = list(geneNumT[st:end])
+                    L.remove(geneNumT[i])
+                    neighborTL[geneNumT[i]] = tuple(L)
+
+    return neighborTL
+
+def synScoreGroup(argsT):
+    '''Given an argument list, including pairs of genes, calculate synteny
+    scores. This function is intended to be called by p.map.
+    '''
+
+    edgeL,tree,neighborTL,numSynToTake,geneNames,scoresO = argsT
+
+    outL=[]
+    for gn1,gn2 in edgeL:
+        outL.append(synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames))
+        
+    return outL
+        
+def synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
+    '''Given two genes, calculate a synteny score for them. We are given
+    the genes, neighborTL, which contains lists of neighbors for each
+    gene. For the two sets of neighbors, we find the numSynToTake top
+    pairs, and return the average of their scores. The approach is
+    greedy. We find the pair with the best score, add it, then remove
+    those genes and iterate.
+    '''
+
+    # get the min possible score for these two species (this is
+    # really for the case of using normalized scores, where it
+    # varies by species pair.)
+    sp1 = geneNames.numToStrainNum(gn1)
+    sp2 = geneNames.numToStrainNum(gn2)
+
+    L1 = list(neighborTL[gn1])
+    L2 = list(neighborTL[gn2])
+
+    topScL= [0] * numSynToTake # min raw score is 0
+
+    for i in range(numSynToTake):
+        ind1,ind2,sc = topScore(L1,L2,scoresO)
+        if sc == -float('inf'):
+            break
+        topScL[i] = sc
+        del(L1[ind1]) # remove this index
+        del(L2[ind2])
+        
+    synSc = sum(topScL) / numSynToTake
+    
+    return gn1, gn2, synSc
+
+def topScore(L1,L2,scoresO):
+    '''Find the best norm score between genes in L1 and L2. Return the index of
+each and the score.'''
+    besti1 = 0
+    besti2 = 0
+    bestSc = -float('inf')
+
+    for i1,gn1 in enumerate(L1):
+        for i2,gn2 in enumerate(L2):
+            if scoresO.isEdgePresentByEndNodes(gn1,gn2):
+                sc = scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+                if sc > bestSc:
+                    bestSc = sc
+                    besti1 = i1
+                    besti2 = i2
+    return besti1,besti2,bestSc
+
+
+#### Calculating the set of all around best reciprocal hit homologs
+#    (used in core synteny scores below)
 
 def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
     '''Get the sets of all around best reciprocal hits.'''
@@ -137,6 +230,7 @@ def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
     f.close()
         
     return aabrhL
+
 
 def loadOrthos(aabrhFN):
     '''Reads the all around best reciprocal hits orthologs file. One set
@@ -304,184 +398,21 @@ orthologs.'''
             aabrhL.append((gene,)+hitsT)
     return aabrhL
 
-def getAabrhRawScoreSummmaryD(strainNamesL,aabrhL,scoresO,geneNames):
-    '''Given raw scores and a directory with blast output, finds the sets of all around best reciprocal hits. Then for each pair of species, calculates the mean and standard deviation of scores and stores in a dictionary.'''
 
-    # now loop through these, sorting scores into a dict keyed by species pair.
+#### Core synteny scores
 
-    # create dictionary, (representing an upper triangular matrix)
-    spScoreD={}
-    for i in range(len(strainNamesL)-1):
-        strain1 = strainNamesL[i]
-        for j in range(i+1,len(strainNamesL)):
-            strain2 = strainNamesL[j]
-            spScoreD[(strain1,strain2)]=[]
-
-    # loop through aabrhL and populate
-    for orthoT in aabrhL:
-        spScoreD = addPairwiseScores(spScoreD,orthoT,scoresO,geneNames)
-
-    # get mean and standard deviation
-    summaryD = {}
-    for sp1,sp2 in spScoreD:
-        mean = statistics.mean(spScoreD[(sp1,sp2)])
-        std = statistics.stdev(spScoreD[(sp1,sp2)])
-        summaryD[(sp1,sp2)] = (mean,std)
-        summaryD[(sp2,sp1)] = (mean,std)
-        
-    return summaryD
-
-def addPairwiseScores(spScoreD,orthoT,scoresO,geneNames):
-    '''Given a dictionary for storing pairwise scores, and ortholog set in
-orthoT, and a network of scores, scoresO, pull out all species pairs, and
-add score for each in appropriate place in spScoreD.'''
-
-    for i in range(len(orthoT)-1):
-        gene1 = orthoT[i]
-        sp1,restOfName1=gene1.split('-')
-        geneNum1=geneNames.nameToNum(gene1)
-        for j in range(i+1,len(orthoT)):
-            gene2 = orthoT[j]
-            geneNum2=geneNames.nameToNum(gene2)
-            sp2,restOfName1=gene2.split('-')
-            sc = scoresO.getScoreByEndNodes(geneNum1,geneNum2,'rawSc')
-            key = tuple(sorted([sp1,sp2]))
-            spScoreD[key].append(sc)
-    return spScoreD
-
-def normScore(rawScore,mean,std):
-    '''Given a raw score and mean and std of all raw scores, return a
-score normalized by std and centered around zero.'''
-    norm = ( rawScore - mean ) / std
-    return norm
-
-## synteny scores
-
-def calcSynScores(scoresO,aabrhRawScoreSummmaryD,geneNames,geneOrderT,synWSize,numSynToTake,numThreads):
-    '''Calculate the synteny score between two genes and add to edge
-attributes of scoresO. We only bother making synteny scores for those
-genes that have an edge in scoresO.
-    '''
-    
-    neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
-
-    # make list of groups of arguments to be passed to p.map. There
-    # should be numThreads groups.
-    argumentL = [([],neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD,scoresO) for i in range(numThreads)]
-
-    i=0
-    for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-        argumentL[i%numThreads][0].append((gn1,gn2))
-        i+=1
-
-    p=Pool(numThreads) # num threads
-    synScoresLL = p.map(synScoreGroup, argumentL)
-    p.close()
-    p.join()
-    
-    # add to scores object
-    for synScoresL in synScoresLL:
-        for gn1,gn2,sc in synScoresL:
-            scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
-
-    return scoresO
-
-def createNeighborL(geneNames,geneOrderT,synWSize):
-    '''Return a list which specifies the neighbors of each gene. Index of
-list corresponds to gene number, and the value located at that index
-is a tuple of all genes within a synWSize window. e.g. synWSize 10 means we
-go 5 genes in either direction.'''
-
-    lenInEitherDirec = int(synWSize/2)
-    
-    neighborTL = [None for x in geneNames.nums]
-    
-    for contigT in geneOrderT:
-        if not contigT == None:
-            for geneNumT in contigT:
-                for i in range(len(geneNumT)):
-                    end = i + lenInEitherDirec
-                    st = i-lenInEitherDirec if i-lenInEitherDirec>0 else 0 # st can't be less than 0
-                    L = list(geneNumT[st:end])
-                    L.remove(geneNumT[i])
-                    neighborTL[geneNumT[i]] = tuple(L)
-
-    return neighborTL
-
-def synScoreGroup(argsT):
-    '''Given an argument list, including pairs of genes, calculate synteny
-    scores. This function is intended to be called by p.map.
-    '''
-
-    edgeL,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD,scoresO = argsT
-
-    outL=[]
-    for gn1,gn2 in edgeL:
-        outL.append(synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD))
-        
-    return outL
-        
-def synScore(scoresO,gn1,gn2,neighborTL,numSynToTake,geneNames,aabrhRawScoreSummmaryD):
-    '''Given two genes, calculate a synteny score for them. We are given
-    the genes, neighborTL, which contains lists of neighbors for each
-    gene. For the two sets of neighbors, we find the numSynToTake top
-    pairs, and return the average of their scores. The approach is
-    greedy. We find the pair with the best score, add it, then remove
-    those genes and iterate.
-    '''
-
-    # get the min possible score for these two species (this is
-    # really for the case of using normalized scores, where it
-    # varies by species pair.)
-    gnName1 = geneNames.numToName(gn1)
-    sp1,restOfName1 = gnName1.split('-')
-    gnName2 = geneNames.numToName(gn2)
-    sp2,restOfName1 = gnName2.split('-')
-    mean,std = aabrhRawScoreSummmaryD[(sp1,sp2)]
-
-    minNormScore = normScore(0,mean,std) # min raw score is 0
-    L1 = list(neighborTL[gn1])
-    L2 = list(neighborTL[gn2])
-
-    topScL= [minNormScore] * numSynToTake
-
-    for i in range(numSynToTake):
-        ind1,ind2,sc = topScore(L1,L2,scoresO)
-        if sc == -float('inf'):
-            break
-        topScL[i] = sc
-        del(L1[ind1]) # remove this index
-        del(L2[ind2])
-        
-    synSc = sum(topScL) / numSynToTake
-    
-    return gn1, gn2, synSc
-
-def topScore(L1,L2,scoresO):
-    '''Find the best norm score between genes in L1 and L2. Return the index of
-each and the score.'''
-    besti1 = 0
-    besti2 = 0
-    bestSc = -float('inf')
-
-    for i1,gn1 in enumerate(L1):
-        for i2,gn2 in enumerate(L2):
-            if scoresO.isEdgePresentByEndNodes(gn1,gn2):
-                sc = scoresO.getScoreByEndNodes(gn1,gn2,'normSc')
-                if sc > bestSc:
-                    bestSc = sc
-                    besti1 = i1
-                    besti2 = i2
-    return besti1,besti2,bestSc
-
-
-## Core synteny scores
-
-def calcCoreSynScores(scoresO,aabrhL,geneNames,geneOrderT,coreSynWsize):
+def calcCoreSynScores(scoresO,strainNamesL,paramD,geneNames,geneOrderT):
     '''Calculate synteny scores based on core genes given in
 aabrhL. Scores are between 0 and 1, giving the percentage of syntenic
 genes shared.'''
 
+    blastFilePath = paramD['blastFilePath']
+    evalueThresh = paramD['evalueThresh']
+    aabrhFN = paramD['aabrhFN']
+    coreSynWsize = paramD['coreSynWsize']
+    
+    aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
+    
     geneToAabrhT = createGeneToAabrhT(aabrhL,geneNames)
     coreSyntenyT = createCoreSyntenyT(geneToAabrhT,geneOrderT,coreSynWsize)
 
@@ -495,7 +426,10 @@ genes shared.'''
     return scoresO
 
 def createGeneToAabrhT(aabrhL,geneNames):
-    '''Create a tuple where the index corresponds to gene number and the value at that location is the number of the aabrh group to which the gene belongs, or None. The aabrh groups are numbered, simply based on the index where they occur in aabrhL.'''
+    '''Create a tuple where the index corresponds to gene number and the
+value at that location is the number of the aabrh group to which the
+gene belongs, or None. The aabrh groups are numbered, simply based on
+the index where they occur in aabrhL.'''
 
     geneToAabrhL =[None] * len(geneNames.nums)
 
@@ -506,7 +440,9 @@ def createGeneToAabrhT(aabrhL,geneNames):
     return tuple(geneToAabrhL)
 
 def createCoreSyntenyT(geneToAabrhT,geneOrderT,coreSynWsize):
-    '''Create and return core synteny tuple. The index of this corresponds to gene number. The value at that index is a tuple of the aabrh numbers for the syntenic genes within coreSynWsize.'''
+    '''Create and return core synteny tuple. The index of this corresponds
+to gene number. The value at that index is a tuple of the aabrh
+numbers for the syntenic genes within coreSynWsize.'''
 
     coreSyntenyL =[None] * len(geneToAabrhT)
     geneAabrhOrderL = createGeneAabrhOrderL(geneToAabrhT,geneOrderT)
@@ -582,8 +518,9 @@ between 0 and 1.'''
         if cgene in synT2:
             ct+=1
     return ct/coreSynWsize
-    
-## Graph I/O
+
+
+#### Score I/O
 
 def writeScores(scoresO,geneNames,scoresFN):
     '''Write graph G to file. If scoresFN has the .bout extension, write

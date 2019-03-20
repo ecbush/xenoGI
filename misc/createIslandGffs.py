@@ -1,68 +1,7 @@
 import sys,statistics,os,glob
 from urllib import parse
-sys.path.append(os.path.join(sys.path[0],'..'))
-from xenoGI import trees, genomes, families, islands, parameters
-
-
-def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD):
-    '''Return a dict keyed by strain name. Values are lists of tuples
-    (islandNum, familyL) where familyL is a list of tuples in the island
-    present in that strain. Family tuples are (family,[genes in
-    family]).
-    '''
-    islandByStrainD = {}
-    for leaf in leafNodesL:
-        islandByStrainD[strainNum2StrD[leaf]]=[]
-
-    # loop over every node in tree. examine each island. from each
-    # extract the genes present in each strain and put in right entry
-    # in islandByStrainD
-    for mrcaNum in range(len(islandByNodeL)):
-        for gr in islandByNodeL[mrcaNum]:
-
-            # make dict to collect fams for each strain
-            tempStrainD = {}
-            for leaf in leafNodesL:
-                tempStrainD[strainNum2StrD[leaf]]=[]
-
-            for fam in gr.familyL:
-
-                # famGeneT is a tuple, where index is strain
-                # number. It only has non zero entries at
-                # tips. Located at each index is a tuple of gene (gene
-                # count, (tuple of genes)). We access by looping over
-                # leaf nodes
-                fgT = familyL[fam].famGeneT
-
-                for leaf in leafNodesL:
-                    geneT = fgT[leaf]
-
-                    # if the family has a gene or genes in this
-                    # strain, add tuple (family,[genes in family]) to
-                    # list for this strain
-                    if len(geneT) > 0:
-                        geneNamesL=[geneNames.numToName(gene) for gene in geneT]
-                        tempStrainD[strainNum2StrD[leaf]].append((fam,geneNamesL))
-
-
-            # now make island tuple (minStart,island, familyL) where
-            # minStart is the lowest start coord we've seen in the
-            # island, island is the island id, and familyL is the thing
-            # in tempStrainD
-            for strain in islandByStrainD:
-                # only add if the island is present in this strain
-
-                if tempStrainD[strain] != []:
-                    #print(gr.id,mrcaNum,strain)
-                    chrom,islandMedianMidpoint,islandMin,islandMax = getIslandPositions(tempStrainD[strain],geneInfoD,strainNum2StrD,gr.id,mrcaNum,strain)
-                    grT = (chrom,islandMedianMidpoint,islandMin,islandMax,mrcaNum,gr.id,tempStrainD[strain])
-                    islandByStrainD[strain].append(grT)
-                    
-    # sort each list in islandByStrainD by chrom and islandMedianMidpoint
-    for strain in islandByStrainD:
-        islandByStrainD[strain].sort(key=lambda x: x[:2])
-    
-    return islandByStrainD
+sys.path.insert(0,os.path.join(sys.path[0],'../'))
+from xenoGI import trees, genomes, families, islands, parameters, islandBed
 
 def getIslandPositions(familyL,geneInfoD,strainNum2StrD,grID,mrcaNum,strain):
     '''Given a list of families (from a single island in a single strain),
@@ -187,18 +126,32 @@ file. Doubtless there's a better way to make this list.
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    paramD = parameters.loadParametersD(paramFN)
+    paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
 
+    ## Various other parameters (we're not including these in paramD)
+    
+    # We want to display different islands with different colors. We do
+    # this by giving different 'score' values to different islands. Scores
+    # can range from 1 to 1000, but we only give certain discrete scores.
+    scoreNodeMapD = {'i1':1,'i2':6} # islands with these mrca values always get this score
+
+    # The score for rest is based on the list below. It was made with
+    # createIslandGffs.createPotentialScoresL(100,1001,200,50)
+    potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 600, 800, 1000, 250, 450, 650, 850]
+
+    gffFilePath = 'gff/*-island.gff'
+    
     ## load data structures we'll use below
     tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
     leafNodesL = trees.leafList(tree)
     geneNames = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
-    familyL = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNames,strainStr2NumD)
     islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
 
+    ## Run
     
     # get islands organized by strain
-    islandByStrainD = createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familyL,geneNames,geneInfoD)
+    islandByStrainD = islandBed.createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNames,geneInfoD)
 
-    createAllGffs(islandByStrainD,geneInfoD,tree,strainNum2StrD,paramD['gffFilePath'],paramD['scoreNodeMapD'],paramD['potentialScoresL'])
+    createAllGffs(islandByStrainD,geneInfoD,tree,strainNum2StrD,gffFilePath,scoreNodeMapD,potentialScoresL)

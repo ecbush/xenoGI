@@ -2,6 +2,7 @@
 Brief documentation for helper scripts in misc/
 ===============================================
 
+The scripts described here are not part of the main xenoGI functionality, and can't be run with the normal "xenoGI params.py flag" syntax. To use these scripts, you need to have downloaded a copy of the repository from GitHub. You can then run the scripts by calling python on them directly as described below.
 
 
 Tools for visualization with the IGB browser
@@ -77,6 +78,8 @@ Now back in example/ run::
 
   python3 path-to-xenoGI-github-repository/misc/concatenateAlignment.py alignedNucs.fa alignedNucsConcat.fa
 
+  Note that one of the inputs to aabrhBackAlign.py is the number of strains (4 in this case).
+  
 Making a tree suitable for xenoGI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

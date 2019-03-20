@@ -1,226 +1,193 @@
 
-class Family:
+class LocusFamily:
+    def __init__(self, famNum, locusFamNum, lfMrca):
+        '''Initialize a LocusFamily object with a family number, a LocusFamily
+number, and the mrca for this locus family (which may differ from the
+mrca for its family.'''
+        self.famNum = famNum
+        self.locusFamNum = locusFamNum
+        self.lfMrca = lfMrca
+        self.geneD = {}
 
-    def __init__(self, idnum, mrca, genesL,numNodesInTree,geneNames):
-        '''Given an family ID number, a most recent common ancestor, and a
-list of genes create a family object. Handles genes specified either
-numerically or by name. numNodesInTree is the number of nodes found in
-the tree (the full tree) we're working with for the
-project. possibleErrorCt is a count of near miss genes, that either
-were added but almost weren't, or were not added but almost were.
-        '''
-
-        self.id = idnum
-        self.mrca = mrca
-
-        # create the family gene tuple, This has indexes corresponding
-        # to nodes on the tree. At each position we have the genes at
-        # that node.
-
-        famGeneL = [[] for j in range(numNodesInTree)]
-        geneNumL=[]
+    def addGene(self, gene,geneNames):
+        '''Add a gene (in numerical form) to this LocusFamily.'''
+        strain = geneNames.numToStrainNum(gene)
+        if strain in self.geneD:
+            self.geneD[strain].append(gene)
+        else:
+            self.geneD[strain] = [gene]
+        
+    def addGenes(self,genesL,geneNames):
+        '''Add a list (or set etc.) of genes to this LocusFamily.'''
         for gene in genesL:
-            # if we're being passed in genes with string names,
-            # convert to number
-            if type(gene)==int:
-                geneNum=gene
-            else:
-                geneNum=geneNames.nameToNum(gene)
+            self.addGene(gene,geneNames)
 
-            strainNum=geneNames.numToStrainNum(geneNum)
-            famGeneL[strainNum].append(geneNum)
+    def iterGenes(self):
+        '''Iterate through all genes in this locus family.'''
+        for L in self.geneD.values():
+            for gene in L:
+                yield gene
 
-        # tuple-ize
-        newFamGeneL=[]
-        for L in famGeneL:
-            newFamGeneL.append(tuple(L))
+    def iterGenesByStrain(self,strain):
+        '''Iterate through all genes in this locus family that are in a
+        particular strain.
+        '''
+        if strain in self.geneD:
+            for gene in self.geneD[strain]:
+                yield gene
+        return
+
+    def iterStrains(self):
+        '''Iterator that yields all the strains in which this locus family
+occurs.'''
+        for strain in self.geneD.keys():
+            yield strain
+    
+    def getStr(self,strainNum2StrD,geneNames,sep):
+        '''Return a string representation of a single LocusFamily. Separator
+between elements given by sep. Elements are: locusFamNum lfMrca gene1
+gene2...
+        '''
+        outL=[str(self.locusFamNum),strainNum2StrD[self.lfMrca]]
         
-        self.famGeneT = tuple(newFamGeneL)
+        for geneNum in self.iterGenes():
+            outL.append(geneNames.numToName(geneNum))
 
-    def getGeneNums(self):
-        '''Extract and return all the gene numbers from this family.'''
-        genesL=[]
-        for geneT in self.famGeneT:
-            genesL.extend(geneT)
-        return genesL
+        return sep.join(outL)
+    
+    def fileStr(self,strainNum2StrD,geneNames):
+        '''Return a string representation of a single LocusFamily. Format is
+        comma separated: 
+        '''
+        return self.getStr(strainNum2StrD,geneNames,',')
 
-    def getGeneNames(self,geneNames):
-        '''Extract and return all the gene names from this family.'''
-        genesL=[]
-        for num in self.getGeneNums():
-            genesL.append(geneNames.numToName(num))
-        return genesL
-
-    def isInStrain(self,strainNum):
-        '''Is this family present in strainNum, return boolean.'''
-        if len(self.famGeneT[strainNum]) > 0:
-            return True
-        else: return False
-        
     def __repr__(self):
-        '''String representation of a family containing family number.'''
-        return "<Family: "+str(self.id) + ">"
+        '''String representation of a LocusFamily, for display purposes.'''
+        return "<lf "+str(self.locusFamNum)+">"
+        
+        
+class Family:
+    def __init__(self,famNum,mrca,seedPairL=None):
+        '''Initialize an object of class Family.'''
 
-    def fileStr(self,geneNames,strainNum2StrD):
-        '''String representation suitable for writing the family to
-file. Genes and mrca are expressed in word form.'''
+        self.famNum = famNum
+        self.mrca = mrca
+        self.seedPairL = seedPairL # original seeds from PHiGS. This will be
+                                   # None if single gene family
+        self.locusFamiliesL = []   # will contain locusFamily objects for this family
 
-        outL =[str(self.id)]
+    def addLocusFamily(self,lfO):
+        self.locusFamiliesL.append(lfO)
+
+    def getLocusFamilies(self):
+        return self.locusFamiliesL
+
+    def iterGenes(self):
+        '''Iterate through all the genes associated with this family in numerical form.'''
+        for lfO in self.getLocusFamilies():
+            for gene in lfO.iterGenes():
+                yield gene
+
+    def iterStrains(self):
+        '''Iterator that yields all the strains in which this family
+occurs.
+        '''
+        for lfO in self.getLocusFamilies():
+            for strain in lfO.iterStrains():
+                yield strain
+                
+    def getOutsideConnections(self,scoresO):
+        '''Given a score object, return a set of all outside genes with
+connections to this family.'''
+        allGenesInFamS = set(self.iterGenes())
+        otherGenesS=set()
+        for geneNum in allGenesInFamS:
+            for otherGene in scoresO.getConnectionsGene(geneNum):
+                if not otherGene in allGenesInFamS:
+                    otherGenesS.add(otherGene)
+        return otherGenesS
+    
+    def fileStr(self,strainNum2StrD,geneNames):
+        '''Return string representation of single family. Format is: famNum <tab> 
+        mrca <tab> seedG1 <tab> seedG2 <tab> locusFamNum1,locusFamGenes <tab>
+        locusFamNum2,locusFamGenes...
+        The LocusFamily object representations are comma separated.
+        '''
+        
+        outL =[str(self.famNum)]
         outL.append(strainNum2StrD[self.mrca])
-        outL.extend(self.getGeneNames(geneNames))
+
+        if self.seedPairL == None:
+            outL.extend(["-","-"])
+        else:
+            for seed in self.seedPairL:
+                outL.append(geneNames.numToName(seed))
+
+        for lfO in self.locusFamiliesL:
+            outL.append(lfO.fileStr(strainNum2StrD,geneNames))
+                
         return "\t".join(outL)
 
-    def getOutsideConnections(self,scoresO):
-        '''Given a score object, return a tuple of all outside genes with
-connections to this family.'''
-        allGenesInFamL = self.getGeneNums()
-        otherGenesS=set()
-        for geneNum in allGenesInFamL:
-            for otherGene in scoresO.getConnectionsGene(geneNum):
-                if not otherGene in allGenesInFamL:
-                    otherGenesS.add(otherGene)
-        return tuple(otherGenesS)
+    def __repr__(self):
+        return "<fam:"+str(self.famNum)+">"
     
-    def getPossibleErrorCt(self, scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
-        '''Given a family, returns the number of near misses internally and externally'''
-        internalPossibleErrors,externalPossibleErrors = 0,0
-        allGenesInFamL = self.getGeneNums()
-        internalEdgeL = makeMSN(allGenesInFamL,scoresO)
-        externalGenesTuple=self.getOutsideConnections(scoresO)
-        externalEdgeL = makeExternalEdgeL(externalGenesTuple, allGenesInFamL, scoresO)
-        for g1,g2 in internalEdgeL:
-            internalPossibleErrors+=isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
-        for g1,g2 in externalEdgeL:
-            externalPossibleErrors+=isPossibleErrorExternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD)
 
-        self.possibleErrorCt = internalPossibleErrors + externalPossibleErrors
+class Families:
 
+    def __init__(self,tree):
+        '''Initialize an object of class Families.'''
 
-# Functions to help in calculating possible error count
+        self.tree = tree
+        self.locusFamiliesD = {}
+        self.familiesD = {} 
 
-def makeExternalEdgeL(externalGenesTuple, genesInFam, scoresO):
-    '''given a family, returns a list of tuples '''
-    returnEdgeL = [0]*len(externalGenesTuple)
-    for extGeneIndex in range(0,len(externalGenesTuple)):
-        bestScore = float('-inf')
-        extGene = externalGenesTuple[extGeneIndex]
-        connectedGenes = scoresO.getConnectionsGene(extGene)
-        for conGene in connectedGenes:
-            if conGene in genesInFam:
-                rawSc=scoresO.getScoreByEndNodes(extGene,conGene, 'rawSc')
-                if rawSc>bestScore:
-                    bestScore=rawSc
-                    returnEdgeL[extGeneIndex]=(extGene,conGene)
-    return returnEdgeL
+        ## locusFamiliesD has key locusFamNum and value a LocusFamily
+        ## object. familiesD has key famNum and value
+        ## [mrca,seedG1,seedG2,[List of lf numbers]]
 
-def makeInternalEdgeL(genesInFam,scoresO):
-    '''Given a list of all genes in the family, it returns a
-list of lists sorted in descending order by raw score'''
-    # compare every gene to every other gene that comes
-    # in the list after it
-    # format: [[rawScore, gene1, gene2], ....]] for every edge in the fam
-    totalGenesNum = len(genesInFam)
-    internalEdgeL = []
-    for gene1Index in range(0,totalGenesNum-1):
-        for gene2Index in range(gene1Index+1,totalGenesNum):
-            g1=genesInFam[gene1Index]
-            g2=genesInFam[gene2Index]
-            if scoresO.isEdgePresentByEndNodes(g1,g2):
-                rawSc = scoresO.getScoreByEndNodes(g1,g2, 'rawSc')
-                internalEdgeL.append([rawSc,g1,g2])
-    internalEdgeL.sort(reverse=True)
-    return internalEdgeL
-
-
-def makeUnconnectedGsetL(genesInFam):
-    '''Given a list of all genes in the family, make a set of disjoint genes'''
-    unconnectedGsetL = []
-    for gene in genesInFam:
-        geneSet = set()
-        geneSet.add(gene)
-        unconnectedGsetL.append(geneSet)
-    return unconnectedGsetL
-
-
-def updateConnections(gSetL, g1, g2):
-    '''Given 2 genes and a gene set list, returns True if the genes
-are disconnected, false otherwise. If genes are disconnected, join the
-genes and update gSetL accordingly'''
-    for setIndex1 in range(0,len(gSetL)):
-        if g1 in gSetL[setIndex1]:
-               if g2 in gSetL[setIndex1]: return False,gSetL
-               else:
-                   for setIndex2 in range(0, len(gSetL)):
-                       if g2 in gSetL[setIndex2]:
-                           gSetL[setIndex1]=gSetL[setIndex1].union(gSetL[setIndex2])
-                           gSetL.remove(gSetL[setIndex2])
-                           return True, gSetL
-    return False, gSetL
         
+    def initializeFamily(self,famNum,mrca,seedPairL=None):
+        '''Set up an entry for family famNum.'''
+        # the seed genes are the original PHiGs seed.
 
-def makeMSN(genesInFam,scoresO):
-    '''Given a tuple of genes in the family, it makes the max spanning network based on
-the largest raw scores'''
-    returnEdgeList = []
-    internalEdgeL = makeInternalEdgeL(genesInFam,scoresO)
-    gSetL = makeUnconnectedGsetL(genesInFam)
-    while len(gSetL) > 1:
-        currEdge = internalEdgeL[0]
-        internalEdgeL.remove(currEdge)
-        g1,g2 = currEdge[1],currEdge[2]
-        isDisconnected, gSetL = updateConnections(gSetL, g1, g2)
-        if isDisconnected:
-            returnEdgeList.append((g1,g2))
-    return returnEdgeList
+        self.familiesD[famNum] = Family(famNum,mrca,seedPairL=seedPairL)
 
-def isPossibleErrorInternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
-    '''Given g1 and g2 both inside a family, check the various scores to
-    determine if it was a near miss, ie almost was not in the
-    family. Returns boolean.
-    '''
-    # get scores
-    normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
-    synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
-    coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
-    
-    if not (normSc - famErrorScoreIncrementD['normSc']) >= minNormThresh:
-        # Was over, but now is below threshold. Is a possible error
-        return True
-    elif not (coreSynSc - famErrorScoreIncrementD['coreSynSc']) >= minCoreSynThresh:
-        return True
-    elif not (synSc - famErrorScoreIncrementD['synSc']) >= minSynThresh:
-        return True
-    else: return False
+    def addLocusFamily(self, lfO):
+        '''Add a LocusFamily. Assumes initializeFamily has already been called
+to create the corresponding family.
+        '''
+        self.locusFamiliesD[lfO.locusFamNum] =  lfO
+        self.familiesD[lfO.famNum].addLocusFamily(lfO)
 
-def isPossibleErrorExternal(g1,g2,scoresO,minNormThresh,minCoreSynThresh,minSynThresh,famErrorScoreIncrementD):
-    '''Given g1 inside and g2 outside a family, check the various scores
-    to determine if it was a near miss, ie almost was put in the
-    family. We consider normSc, synSc, and coreSynSc. We define near
-    miss to be cases when 2/3 of these were above threshold, and the
-    third was below, but within an increment of the threshold
-    (increments provided in famErrorScoreIncrementD). Returns boolean.
-    '''
-    # get scores
-    normSc = scoresO.getScoreByEndNodes(g1,g2,'normSc')
-    synSc = scoresO.getScoreByEndNodes(g1,g2,'synSc')
-    coreSynSc = scoresO.getScoreByEndNodes(g1,g2,'coreSynSc')
+    def getLocusFamily(self,locusFamNum):
+        return self.locusFamiliesD[locusFamNum]
 
-    # w/out increment
-    normB = normSc >= minNormThresh
-    coreSynB = coreSynSc >= minCoreSynThresh
-    synB = synSc >= minSynThresh
+    def getFamily(self,famNum):
+        return self.familiesD[famNum]
 
-    # with increment
-    normIncB = (normSc + famErrorScoreIncrementD['normSc']) >= minNormThresh
-    coreSynIncB = (coreSynSc + famErrorScoreIncrementD['coreSynSc']) >= minCoreSynThresh
-    synIncB = (synSc + famErrorScoreIncrementD['synSc']) >= minSynThresh
-    
-    if coreSynB and synB and not normB and normIncB:
-        # core and syn were over without increment, but norm is only
-        # over once we add the increment
-        return True
-    elif normB and synB and not coreSynB and coreSynIncB:
-        return True
-    elif coreSynB and normB and not synB and synIncB:
-        return True
-    else: return False
+    def iterLocusFamilies(self):
+        '''Iterate over all LocusFamilies in order of locusFamNum.
+        '''
+        maxLocusFamNum = max(self.locusFamiliesD.keys())
+        for i in range(maxLocusFamNum+1):
+            if i in self.locusFamiliesD:
+                yield self.locusFamiliesD[i]
+        
+    def iterFamilies(self):
+        '''Iterate over all Families in order of famNum.'''
+        maxFamNum = max(self.familiesD.keys())
+        for i in range(maxFamNum+1):
+            if i in self.familiesD:
+                yield self.familiesD[i]
+                
+    def getAllGenes(self):
+        '''Collect all the genes present in the LocusFamily objects belonging
+to this instance of the Families class. Return as a set.
+        '''
+        allGenesS=set()
+        for lfO in self.iterLocusFamilies():
+            allGenesS.update(set(lfO.iterGenes()))
+        return allGenesS
+
+    def __repr__(self):
+        return "<Families object--"+str(len(self.familiesD))+" Families, "+str(len(self.locusFamiliesD))+" LocusFamilies>"

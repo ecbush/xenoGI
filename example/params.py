@@ -39,15 +39,15 @@ fileNameMapFN = 'ncbiHumanMap.txt'
 fastaFilePath = 'fasta/*.fa'
 
 
-#### Blast output ####
+#### Blast ####
 
 # absolute path to the directory containing the blastp and makeblastdb
 # executables. On Windows you may need to put in a second slash as an
 # escape, e.g. 'C:\\Users\\guest\\blast-2.7.1+\\bin'
 blastExecutDirPath = '/usr/bin/'
 
-# blast command line (except for db,query and outfiles)
-blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -evalue 0.01 -seg yes -outfmt 6'
+# Blast e-value threshold
+evalueThresh = 1e-8
 
 # unix style file path to blast output files
 blastFilePath = 'blast/*.out'
@@ -56,10 +56,8 @@ blastFilePath = 'blast/*.out'
 #### Algorithm output files ####
 
 # Note: for scores output files, if the extension we use here is
-# .bout, the output will be saved in binary format (a pickle of a
-# networkx graph). Otherwise it will be a less compact text based
-# format
-
+# .bout, the output will be saved in binary format. Otherwise it will
+# be a less compact text based format
 scoresFN = 'scores.bout'
 
 # sets of all around best reciprocal hits
@@ -79,10 +77,6 @@ islandFormationSummaryFN = 'islandFormationSummary.out'
 
 # in parallel code, how many threads to use
 numThreads = 50
-
-# in calculation of normalized scores, we get set of all around best
-# reciprocal hits. This is the evalue threshold used there.
-evalueThresh = 0.001
 
 # alignment parameters for making scores
 # note, since parasail doesn't charge extend on the first base its
@@ -116,69 +110,10 @@ coreSynWsize = 20
 # gene on that side.
 minCoreSynThresh = 0.5
 
-# Minimum normalized score for family formation. This should be used
-# as an extreme lower bound, to eliminate those things that are so
-# obiously dissimilar that they could not be homologous by descent
-# from the node under consideration. In units of standard deviation,
-# centered around 0.
-minNormThresh = -11.0
-
-# Minimum synteny score value we'll accept when putting a gene in a
-# family. Also applies to seeds. Note synteny scores are based on
-# normalized scores
-minSynThresh = -4.0
-
-# Synteny score threshold for using synteny to adjust a raw
-# score. Setting this lower makes us use synteny more, and thus will
-# tend to make us put more genes in families. This is a normScore type
-# score
-synAdjustThresh = -2
-
-# We use syntenty scores to adjust similarity scores in family
-# finding. This parameter specifies the amount we multiply a rawScore
-# by during this adjustment.
-synAdjustExtent = 1.05
-
-# In deciding whether to merge two islands, we judge partly based on
-# the proximity of their genes. The elements of this list are tuples
-# of the form (proximity threshold, rscore level). For example (1,0)
-# says we'll consider proximity to mean adjacency (proximity 1 means
-# adjacent genes), and we'll join islands if the rscore values is 0 or
-# above. The algorithm loops through the list, using the criteria in
-# the first tuple first, then proceeding to the second if there is on
-# and so on.
-proxThreshL = [(1,0),(2,2)]
-
-
-#### Visualization and analysis ####
-
-# We count possible errors in a family. This dictionary specifies the
-# increments with which we identify near misses in adding families to
-# genes. If adding or subtracting this amount to a gene's score
-# changes our choice about whether to add it, then we have a near
-# miss, and will count it in our possible error count for the family.
-famErrorScoreIncrementD = {'normSc':1.0, 'synSc':1.0, 'coreSynSc':0.1}
-
-# Creating gff files of islands for visualization in the IGB browser.
-# We want to display different islands with different colors. We do
-# this by giving different 'score' values to different islands. Scores
-# can range from 1 to 1000, but we only give certain discrete scores.
-
-scoreNodeMapD = {'i1':1,'i2':6} # islands with these mrca values always get this score
-
-# The score for rest is based on the list below. It was made with
-# createIslandGffs.createPotentialScoresL(100,1001,200,50)
-potentialScoresL=[100, 300, 500, 700, 900, 150, 350, 550, 750, 950, 200, 400, 600, 800, 1000, 250, 450, 650, 850]
-
-# The possible rgb values for bed files is based on the list below. 
-potentialRgbL = ['245,130,48', '188,143,14','0,102,0','230,26,135','0,0,128', '145,30,180','0,255,255','128,0,0','0,255,0', '255,0,255','240,230,140','32,178,170','240,128,128','255,0,0','100,149,237','60,179,113','0,255,130','128,128,128','94,94,94','102,51,0']
-
 #### Visualization and analysis output files ####
 
 # output for browsers
 bedFilePath = 'bed/*-island.bed' # unix style file path to bed output files
-bedNumTries = 100 # number of random tries to find best coloring for islands
-gffFilePath = 'gff/*-island.gff'
 
 # analysis output
 analysisFilePath = 'analysis/*.out'

@@ -1,5 +1,5 @@
 import sys, os
-sys.path.append(os.path.join(sys.path[0],'..'))
+sys.path.insert(0,os.path.join(sys.path[0],'..'))
 from xenoGI import genomes,scores,parameters
 
 def loadStrainNames(geneOrderFN):
@@ -18,7 +18,7 @@ is strain name.'''
 if __name__ == "__main__":
 
     paramFN=sys.argv[1]
-    paramD = parameters.loadParametersD(paramFN)
+    paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
 
     strainNamesL = loadStrainNames(paramD['geneOrderFN'])
     aabrhL = scores.createAabrhL(paramD['blastFilePath'],strainNamesL,paramD['evalueThresh'],paramD['aabrhFN'])
