@@ -217,7 +217,8 @@ locIslByNodeL, then add the contents of mergedL.'''
 
     # fill them with LocusIslands from mergedL
     for clusterL in mergedL:
-        locIslByNodeL[clusterL[0].mrca].extend(clusterL)
+        if clusterL != []:
+            locIslByNodeL[clusterL[0].mrca].extend(clusterL)
 
     return locIslByNodeL
     
