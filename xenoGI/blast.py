@@ -71,7 +71,7 @@ needed to run blastp on a pair of databases.'''
             dbstem = os.path.split(db)[-1]
             dbstem = os.path.splitext(dbstem)[0]
 
-            outFN = os.path.join( blastDir, qstem + '-' + dbstem + blastExtension )
+            outFN = os.path.join( blastDir, qstem + '-VS-' + dbstem + blastExtension )
             L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
             clineL.append(L)
 

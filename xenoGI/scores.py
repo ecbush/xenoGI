@@ -274,9 +274,9 @@ two strains in each direction, then go through and keep only the
 reciprocal hits. Returns dictionary where keys are genes in strain 1
 and values are corresponding genes in strain 2.'''
     # get best hits of 1 blasted against 2...
-    hits1D = getHits(blastDir+strainName1+'-'+strainName2+'.out', evalueThresh)
+    hits1D = getHits(blastDir+strainName1+'-VS-'+strainName2+'.out', evalueThresh)
     # ...and 2 blasted against 1
-    hits2D = getHits(blastDir+strainName2+'-'+strainName1+'.out', evalueThresh)
+    hits2D = getHits(blastDir+strainName2+'-VS-'+strainName1+'.out', evalueThresh)
 
     # then store only the reciprocal best hits
     recipHitsD = {}

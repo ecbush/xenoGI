@@ -91,7 +91,7 @@ compared against itself then we have only one file name in the list.
         blastFnByPairD ={}
         
         for fileStr in blastFnL:
-            strain1,strain2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split('-')
+            strain1,strain2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split('-VS-')
             strainNum1 = strainStr2NumD[strain1]
             strainNum2 = strainStr2NumD[strain2]            
             key = tuple(sorted([strainNum1,strainNum2]))
