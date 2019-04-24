@@ -13,10 +13,12 @@ class Score:
     def initializeDataAttributes(self,blastFilePath,geneNames,strainStr2NumD):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
-edges. Also creates the arrays for storing scores, initialized to 0.'''
+edges. Also creates the array for storing raw scores, initialized to
+0. Arrays for other score types will be created later.
+        '''
         self.fillEndNodesToEdgeD(blastFilePath,geneNames,strainStr2NumD)
         self.numEdges=len(self.endNodesToEdgeD)
-        self.initializeScoreD()
+        self.initializeScoreArray('rawSc')
 
     def fillEndNodesToEdgeD(self,blastFilePath,geneNames,strainStr2NumD):
         '''Run through blast files, finding all pairs of genes with signicant
@@ -103,12 +105,9 @@ compared against itself then we have only one file name in the list.
             
         return blastFnByPairD
                 
-    def initializeScoreD(self):
-        '''Create the arrays for storing scores.'''
-        
-        self.scoreD['rawSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
-        self.scoreD['synSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
-        self.scoreD['coreSynSc'] = numpy.zeros(self.numEdges,dtype=numpy.float64)
+    def initializeScoreArray(self,scoreType):
+        '''Create array for storing scores.'''
+        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=numpy.float64)
 
     def getStrainPairs(self):
         '''Return all the strain pairs associated with this scores object as a
@@ -259,7 +258,9 @@ particular strainPair.'''
 
         # Set up the arrays
         scoresO.numEdges = maxEndInd
-        scoresO.initializeScoreD()
+        scoresO.initializeScoreArray('rawSc')
+        scoresO.initializeScoreArray('synSc')
+        scoresO.initializeScoreArray('coreSynSc')
 
         separaterLineL = s.split()
         scoreTypeL=separaterLineL[5:] # the types of scores are listed in this separator line
@@ -341,7 +342,9 @@ particular strainPair.'''
             scoresO.strainPairScoreLocationD[(strain1,strain2)] = (stInd,endInd)
             
         # initialize score arrays
-        scoresO.initializeScoreD()
+        scoresO.initializeScoreArray('rawSc')
+        scoresO.initializeScoreArray('synSc')
+        scoresO.initializeScoreArray('coreSynSc')
         
         # loop over blocks of bytes where each block is an edge
         for i in range(scoresO.numEdges):

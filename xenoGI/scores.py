@@ -115,6 +115,7 @@ genes that have an edge in scoresO.
     p.join()
     
     # add to scores object
+    scoresO.initializeScoreArray('synSc') # create array
     for synScoresL in synScoresLL:
         for gn1,gn2,sc in synScoresL:
             scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
@@ -419,6 +420,7 @@ genes shared.'''
     # Not parallelized. Pretty fast already.
 
     # loop over all edges in scoresO, adding corresponding core syn score
+    scoresO.initializeScoreArray('coreSynSc') # create array
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
         coreSynSc=coreSynScore(coreSyntenyT[gn1],coreSyntenyT[gn2],coreSynWsize)
         scoresO.addScoreByEndNodes(gn1,gn2,coreSynSc,'coreSynSc')
