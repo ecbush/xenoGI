@@ -1,4 +1,4 @@
-import os
+import os,sys
 from Bio import SeqIO
 
 def getUniqueRedundSets(fileName,speciesName):
@@ -48,6 +48,13 @@ want.'''
 
         uniqueS,redundS=getUniqueRedundSets(fileName,speciesName)
 
+        # Check if we've been passed a .gbff file with no protein
+        # annotations, and if so tell user
+        if len(uniqueS) == 0 and len(redundS) == 0:
+            
+
+            raise ValueError("The genbank file " + fileName + " does not have any protein annotations in it.")
+            
         # write the redundant ones for this species to our redund file
         for gene in redundS:
             redundFile.write(gene + "\n")
