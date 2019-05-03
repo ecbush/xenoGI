@@ -1,5 +1,6 @@
-import parasail,pickle,glob,statistics
+import parasail,pickle,glob,statistics,os
 from multiprocessing import set_start_method, Pool
+from multiprocessing.reduction import ForkingPickler
 from . import genomes
 from . import trees
 from . import Score
@@ -100,15 +101,34 @@ genes that have an edge in scoresO.
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
 
+    ## Prepare argument list
+    
     # make list of groups of arguments to be passed to p.map. There
     # should be numThreads groups.
-    argumentL = [([],tree,neighborTL,numSynToTake,geneNames,scoresO) for i in range(numThreads)]
+    argumentL = [[[],tree,neighborTL,numSynToTake,geneNames,scoresO] for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
         argumentL[i%numThreads][0].append((gn1,gn2))
         i+=1
 
+    # Check if the elements in argumentL are too big to be passed
+    # through multiprocessing's pickling approach
+    pickleLen = len(ForkingPickler.dumps(argumentL[0]))
+
+    # if pickleLen >= 2**31 we'll have a problem (struct.pack("!i", n)
+    # will give error). Therefore, we write scores to file, and will
+    # load them from within each of our child processes.
+    if pickleLen >= 2**31:
+        # write scoresO to temp file.
+        scoresO.writeScoresBinary(['rawSc'],"tempRawSc.bout")
+
+        # update argument list so scoresO is not being passed in
+        for argGroup in argumentL:
+            argGroup[-1] = None # value in scoresO position is now None
+
+    ## Run
+    
     p=Pool(numThreads) # num threads
     synScoresLL = p.map(synScoreGroup, argumentL)
     p.close()
@@ -120,6 +140,10 @@ genes that have an edge in scoresO.
         for gn1,gn2,sc in synScoresL:
             scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
 
+    # remove temp score file if present
+    if os.path.isfile("tempRawSc.bout"):
+        os.remove("tempRawSc.bout")
+            
     return scoresO
 
 def createNeighborL(geneNames,geneOrderT,synWSize):
@@ -151,6 +175,10 @@ def synScoreGroup(argsT):
 
     edgeL,tree,neighborTL,numSynToTake,geneNames,scoresO = argsT
 
+    # if scoresO is None, load scores from temp file
+    if scoresO is None:
+        scoresO = Score.Score.readScoresBinary(['rawSc'],"tempRawSc.bout")
+    
     outL=[]
     for gn1,gn2 in edgeL:
         outL.append(synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames))
@@ -525,21 +553,24 @@ between 0 and 1.'''
 #### Score I/O
 
 def writeScores(scoresO,geneNames,scoresFN):
-    '''Write graph G to file. If scoresFN has the .bout extension, write
-binary pickle of G, otherwise write in text output format.'''
+    '''Write a scores object to file. If scoresFN has the .bout extension, write
+binary version, otherwise write in text output format.'''
 
+    scoreTypeL = ['rawSc','synSc','coreSynSc']
     if scoresFN.split('.')[-1] == 'bout':
-        scoresO.writeScoresBinary(scoresFN)
+        scoresO.writeScoresBinary(scoreTypeL,scoresFN)
     else:
-        scoresO.writeScoresText(geneNames,scoresFN)
+        scoresO.writeScoresText(geneNames,scoreTypeL,scoresFN)
 
 
 def readScores(scoresFN,geneNames=None):
     '''Read scores from file creating a Score object of scores. If
 scoresFN has the .bout extension, read binary pickle of object,
 otherwise read text format.'''
+
+    scoreTypeL = ['rawSc','synSc','coreSynSc']
     if scoresFN.split('.')[-1] == 'bout':
-        scoresO = Score.Score.readScoresBinary(scoresFN)
+        scoresO = Score.Score.readScoresBinary(scoreTypeL,scoresFN)
     else:
-        scoresO = Score.Score.readScoresText(scoresFN,geneNames)
+        scoresO = Score.Score.readScoresText(geneNames,scoreTypeL,scoresFN)
     return scoresO

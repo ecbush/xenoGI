@@ -366,8 +366,8 @@ def debugWrapper(paramD):
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
-    dbFileL,clineL = blast.runBlast(paramD)
-    
+    scoresO = Score.Score.readScoresBinary(["rawSc"],"tempRawSc.bout")
+
     code.interact(local=locals())
 
 def simValidationWrapper(paramD):

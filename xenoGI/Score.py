@@ -193,13 +193,10 @@ particular strainPair.'''
         # we made it, they're the same
         return True
         
-    def writeScoresText(self,geneNames,scoresFN):
+    def writeScoresText(self,geneNames,scoreTypeL,scoresFN):
         '''Save all edges (pairs of genes) to a tab delimited text file with a
     header line.
         '''
-
-        scoreTypeL = ['rawSc','synSc','coreSynSc']
-
         # open file
         f=open(scoresFN,'w')
 
@@ -226,7 +223,7 @@ particular strainPair.'''
 
         f.close()
 
-    def readScoresText(scoresFN,geneNames):
+    def readScoresText(geneNames,scoreTypeL,scoresFN):
         '''Read scores from a text file of scores and use to create Score
         object
         '''
@@ -258,9 +255,8 @@ particular strainPair.'''
 
         # Set up the arrays
         scoresO.numEdges = maxEndInd
-        scoresO.initializeScoreArray('rawSc')
-        scoresO.initializeScoreArray('synSc')
-        scoresO.initializeScoreArray('coreSynSc')
+        for scoreType in scoreTypeL:
+            scoresO.initializeScoreArray(scoreType)
 
         separaterLineL = s.split()
         scoreTypeL=separaterLineL[5:] # the types of scores are listed in this separator line
@@ -283,10 +279,9 @@ particular strainPair.'''
         f.close()
         return scoresO
 
-    def writeScoresBinary(self,scoresFN):
+    def writeScoresBinary(self,scoreTypeL,scoresFN):
         '''Write scores to scoresFN as a binary file.'''
 
-        scoreTypeL = ['rawSc','synSc','coreSynSc']
         f=open(scoresFN,'wb')
 
         # first 8 bytes are int, telling us how many edges
@@ -318,7 +313,7 @@ particular strainPair.'''
         
         f.close()
         
-    def readScoresBinary(scoresFN):
+    def readScoresBinary(scoreTypeL,scoresFN):
         '''Read scores from a binary files.'''
 
         scoresO=Score()
@@ -342,9 +337,8 @@ particular strainPair.'''
             scoresO.strainPairScoreLocationD[(strain1,strain2)] = (stInd,endInd)
             
         # initialize score arrays
-        scoresO.initializeScoreArray('rawSc')
-        scoresO.initializeScoreArray('synSc')
-        scoresO.initializeScoreArray('coreSynSc')
+        for scoreType in scoreTypeL:
+            scoresO.initializeScoreArray(scoreType)
         
         # loop over blocks of bytes where each block is an edge
         for i in range(scoresO.numEdges):
@@ -355,9 +349,8 @@ particular strainPair.'''
             scoresO.endNodesToEdgeD[(g1,g2)] = edge
 
             # fill array
-            scoresO.scoreD['rawSc'][edge] = struct.unpack('<d',f.read(8))[0]
-            scoresO.scoreD['synSc'][edge] = struct.unpack('<d',f.read(8))[0]
-            scoresO.scoreD['coreSynSc'][edge] = struct.unpack('<d',f.read(8))[0]            
+            for scoreType in scoreTypeL:
+                scoresO.scoreD[scoreType][edge] = struct.unpack('<d',f.read(8))[0]
             
         f.close()
         return scoresO

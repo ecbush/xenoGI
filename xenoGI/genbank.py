@@ -25,7 +25,7 @@ redundancies), and set with redundancies.'''
         else:
             uniqueS.add(gene)
     return uniqueS,redundS
-    
+
 
 def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     '''We pass through each genbank file twice. Once to identify redundant
@@ -38,6 +38,8 @@ want.'''
     geneOrderOutFile = open(paramD['geneOrderFN'], 'w')
     redundFile = open(paramD['redundProtsFN'], 'w')
     geneInfoFile = open(paramD['geneInfoFN'], 'w')
+
+    problemGenbankFileL = []
     
     # iterate through list of genbank files
     for fileName in genbankFileList:
@@ -51,10 +53,9 @@ want.'''
         # Check if we've been passed a .gbff file with no protein
         # annotations, and if so tell user
         if len(uniqueS) == 0 and len(redundS) == 0:
-            
+            problemGenbankFileL.append(fileName)
+            continue
 
-            raise ValueError("The genbank file " + fileName + " does not have any protein annotations in it.")
-            
         # write the redundant ones for this species to our redund file
         for gene in redundS:
             redundFile.write(gene + "\n")
@@ -128,3 +129,9 @@ want.'''
     geneOrderOutFile.close()
     redundFile.close()
     geneInfoFile.close()
+
+    # If there are any files in problemGenbankFileL, throw error
+    if problemGenbankFileL != []:
+    
+        raise ValueError("The following genbank files lack protein annotations:\n" + "\n".join(problemGenbankFileL))
+
