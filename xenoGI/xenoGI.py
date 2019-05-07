@@ -35,8 +35,8 @@ def main():
         
     #### runBlast
     elif task == 'runBlast':
-        blast.runBlast(paramD)
-
+        runBlastWrapper(paramD)
+        
     #### calcScores
     elif task == 'calcScores':
         calcScoresWrapper(paramD)
@@ -68,7 +68,7 @@ def main():
     #### runAll
     elif task == 'runAll':
         parseGenbankWrapper(paramD)
-        blast.runBlast(paramD)
+        runBlastWrapper(paramD)
         calcScoresWrapper(paramD)
         makeFamiliesWrapper(paramD)
         makeIslandsWrapper(paramD)
@@ -103,6 +103,12 @@ def parseGenbankWrapper(paramD):
     # parse
     genbank.parseGenbank(paramD,fastaDir,genbankFileList,fileNameMapD)
 
+def runBlastWrapper(paramD):
+    """Wrapper to blast all genome files against each other."""
+    dbFileL=blast.getDbFileL(paramD['fastaFilePath'],paramD['treeFN'])
+    blast.runBlast(dbFileL,dbFileL,paramD)
+
+    
 def loadMiscDataStructures(paramD):
     """Creates a few data structures that are used in multiple tasks."""
 

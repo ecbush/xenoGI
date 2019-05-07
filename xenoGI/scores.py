@@ -174,9 +174,9 @@ def synScoreGroup(argsT):
     '''
 
     edgeL,tree,neighborTL,numSynToTake,geneNames,scoresO = argsT
-
-    # if scoresO is None, load scores from temp file
+    
     if scoresO is None:
+        # scoresO was too big to pass in, load from temp file
         scoresO = Score.Score.readScoresBinary(['rawSc'],"tempRawSc.bout")
     
     outL=[]
@@ -194,9 +194,6 @@ def synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
     those genes and iterate.
     '''
 
-    # get the min possible score for these two species (this is
-    # really for the case of using normalized scores, where it
-    # varies by species pair.)
     sp1 = geneNames.numToStrainNum(gn1)
     sp2 = geneNames.numToStrainNum(gn2)
 

@@ -42,7 +42,7 @@ executable.'''
         subprocess.call([makeblastdbExecutable, '-dbtype' ,'prot', '-in', dbFileName],stdout=subprocess.PIPE)
     return
 
-def makeBlastClineList(dbFileL,paramD):
+def makeBlastClineList(dbFileL_1, dbFileL_2,paramD):
     '''Create a list of lists, where the sublists have the command line
 needed to run blastp on a pair of databases.'''
 
@@ -62,8 +62,8 @@ needed to run blastp on a pair of databases.'''
     blastExtension = rest.split("*")[-1]
 
     clineL=[]
-    for query in dbFileL:
-        for db in dbFileL:
+    for query in dbFileL_1:
+        for db in dbFileL_2:
 
             qstem = os.path.split(query)[-1]
             qstem = os.path.splitext(qstem)[0]
@@ -84,24 +84,22 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
-def runBlast(paramD):
-    '''Run blast comparing every database against every other in
-fastaFilePath. Save to the directory indicated by blastFilePath, using
-the blast parameters in blastCLine.'''
+def runBlast(dbFileL_1,dbFileL_2,paramD):
+    '''Run blast comparing every database in dbFileL_1 against every
+database in dbFileL_2.
+    '''
 
     # format the databases
-    dbFileL=getDbFileL(paramD['fastaFilePath'],paramD['treeFN'])
-
-    formatDb(dbFileL,paramD['blastExecutDirPath'])
+    uniqueDbL=list(set(dbFileL_1+dbFileL_2))
+    formatDb(uniqueDbL,paramD['blastExecutDirPath'])
     
     # if directory for blast doesn't exist yet, make it
     blastDir = os.path.split(paramD['blastFilePath'])[0]
     if glob.glob(blastDir)==[]:
         os.mkdir(blastDir)
 
-    clineL =  makeBlastClineList(dbFileL,paramD)
+    clineL =  makeBlastClineList(dbFileL_1,dbFileL_2,paramD)
 
     p=Pool(paramD['numThreads'])
     stderrL = p.map(subprocessWrapper, clineL)
-    
-    return dbFileL,clineL
+
