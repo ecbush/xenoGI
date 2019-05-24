@@ -1,9 +1,13 @@
-import parasail,pickle,glob,statistics,os
+import parasail,glob,statistics,sys
 from multiprocessing import set_start_method, Pool
-from multiprocessing.reduction import ForkingPickler
 from . import genomes
 from . import trees
 from . import Score
+
+
+#### Global variables for use with multithreading
+
+sharedScoresO = Score.sharedScore()
 
 #### raw similarity scores
 
@@ -18,7 +22,7 @@ def calcRawScores(paramD,geneNames,scoresO):
     # load sequences
     protFnL=glob.glob(paramD['fastaFilePath'])
     seqD=genomes.loadProt(protFnL)
-                
+
     # make list of sets of arguments to be passed to p.map. There
     # should be numThreads sets.
     argumentL = [([],seqD,gapOpen, gapExtend, matrix) for i in range(numThreads)]
@@ -29,18 +33,13 @@ def calcRawScores(paramD,geneNames,scoresO):
         edgeT = edgeNum,geneNames.numToName(g1),geneNames.numToName(g2)
         argumentL[i%numThreads][0].append(edgeT)
         i+=1
-        
-    # run
-    p=Pool(numThreads)
-    scoresLL = p.map(rawScoreGroup, argumentL)
-    p.close()
-    p.join()
 
-    
-    # store in scoresO
-    for scoresL in scoresLL:
-        for edgeNum,sc in scoresL:
-            scoresO.addScoreByEdge(edgeNum,sc,'rawSc')
+    # run in multiple processes
+    with Pool(processes=numThreads) as p:
+        # store the results to scoresO as they come in
+        for scoresL in p.imap_unordered(rawScoreGroup, argumentL):
+            for edgeNum,sc in scoresL:
+                scoresO.addScoreByEdge(edgeNum,sc,'rawSc')
 
     return scoresO
 
@@ -55,7 +54,6 @@ through each pair and get a needleman wunch based score.
         scaled = rawScore(seqD[g1],seqD[g2],gapOpen,gapExtend,matrix)
         scoresL.append((edgeNum,scaled))
     return scoresL
-      
    
 def rawScore(s1,s2,gapOpen, gapExtend, matrix):
     '''Calculate score between a pair of protein sequences, based on a
@@ -100,50 +98,30 @@ genes that have an edge in scoresO.
     numThreads = paramD['numThreads']
     
     neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
-
+    scoresO.initializeScoreArray('synSc') # array to store final synSc result in
+    
     ## Prepare argument list
     
-    # make list of groups of arguments to be passed to p.map. There
+    # make list of groups of arguments to be passed to p.imap. There
     # should be numThreads groups.
-    argumentL = [[[],tree,neighborTL,numSynToTake,geneNames,scoresO] for i in range(numThreads)]
+    argumentL = [[[],tree,neighborTL,numSynToTake,geneNames] for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
         argumentL[i%numThreads][0].append((gn1,gn2))
         i+=1
 
-    # Check if the elements in argumentL are too big to be passed
-    # through multiprocessing's pickling approach
-    pickleLen = len(ForkingPickler.dumps(argumentL[0]))
+    ## prepare raw arrays to share
+    sharedScoresO.createArrays(scoresO)
 
-    # if pickleLen >= 2**31 we'll have a problem (struct.pack("!i", n)
-    # will give error). Therefore, we write scores to file, and will
-    # load them from within each of our child processes.
-    if pickleLen >= 2**31:
-        # write scoresO to temp file.
-        scoresO.writeScoresBinary(['rawSc'],"tempRawSc.bout")
-
-        # update argument list so scoresO is not being passed in
-        for argGroup in argumentL:
-            argGroup[-1] = None # value in scoresO position is now None
-
+    rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr = sharedScoresO.returnArrays()
+    
     ## Run
-    
-    p=Pool(numThreads) # num threads
-    synScoresLL = p.map(synScoreGroup, argumentL)
-    p.close()
-    p.join()
-    
-    # add to scores object
-    scoresO.initializeScoreArray('synSc') # create array
-    for synScoresL in synScoresLL:
-        for gn1,gn2,sc in synScoresL:
-            scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
+    with Pool(processes=numThreads,initializer=synScoreGroupInit,initargs=(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr)) as p:
+        for synScoresL in p.imap_unordered(synScoreGroup, argumentL):
+            for gn1,gn2,sc in synScoresL:
+                scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
 
-    # remove temp score file if present
-    if os.path.isfile("tempRawSc.bout"):
-        os.remove("tempRawSc.bout")
-            
     return scoresO
 
 def createNeighborL(geneNames,geneOrderT,synWSize):
@@ -168,20 +146,23 @@ go 5 genes in either direction.'''
 
     return neighborTL
 
+def synScoreGroupInit(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr):
+    '''Initializer for each separate process doing the synSc
+calculation. Loads the global sharedScoresO object with shared
+arrays.'''
+    sharedScoresO.insertArrays(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr)
+
+    
 def synScoreGroup(argsT):
     '''Given an argument list, including pairs of genes, calculate synteny
     scores. This function is intended to be called by p.map.
     '''
 
-    edgeL,tree,neighborTL,numSynToTake,geneNames,scoresO = argsT
-    
-    if scoresO is None:
-        # scoresO was too big to pass in, load from temp file
-        scoresO = Score.Score.readScoresBinary(['rawSc'],"tempRawSc.bout")
+    edgeL,tree,neighborTL,numSynToTake,geneNames = argsT
     
     outL=[]
     for gn1,gn2 in edgeL:
-        outL.append(synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames))
+        outL.append(synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames))
         
     return outL
         
@@ -223,12 +204,11 @@ each and the score.'''
 
     for i1,gn1 in enumerate(L1):
         for i2,gn2 in enumerate(L2):
-            if scoresO.isEdgePresentByEndNodes(gn1,gn2):
-                sc = scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
-                if sc > bestSc:
-                    bestSc = sc
-                    besti1 = i1
-                    besti2 = i2
+            sc = scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+            if sc != None and sc > bestSc:
+                bestSc = sc
+                besti1 = i1
+                besti2 = i2
     return besti1,besti2,bestSc
 
 
@@ -562,8 +542,9 @@ binary version, otherwise write in text output format.'''
 
 def readScores(scoresFN,geneNames=None):
     '''Read scores from file creating a Score object of scores. If
-scoresFN has the .bout extension, read binary pickle of object,
-otherwise read text format.'''
+scoresFN has the .bout extension, read binary, otherwise read text
+format.
+    '''
 
     scoreTypeL = ['rawSc','synSc','coreSynSc']
     if scoresFN.split('.')[-1] == 'bout':

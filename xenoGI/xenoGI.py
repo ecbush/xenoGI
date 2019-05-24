@@ -372,8 +372,17 @@ def debugWrapper(paramD):
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
-    scoresO = Score.Score.readScoresBinary(["rawSc"],"tempRawSc.bout")
+    # object for storing scores
+    scoresO=Score.Score()
+    scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
 
+    ## similarity scores
+    scoresO = scores.calcRawScores(paramD,geneNames,scoresO)
+
+    ## synteny scores
+    sharedScoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD,tree)
+
+    
     code.interact(local=locals())
 
 def simValidationWrapper(paramD):

@@ -1,4 +1,6 @@
-import numpy,glob,os,struct,statistics
+import numpy,glob,os,struct,statistics,ctypes
+from multiprocessing import RawArray
+
 
 class Score:
 
@@ -107,7 +109,7 @@ compared against itself then we have only one file name in the list.
                 
     def initializeScoreArray(self,scoreType):
         '''Create array for storing scores.'''
-        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=numpy.float64)
+        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=ctypes.c_longdouble)
 
     def getStrainPairs(self):
         '''Return all the strain pairs associated with this scores object as a
@@ -455,3 +457,187 @@ recalculated before it will be used.
                 key = tuple(sorted([sp1,sp2]))
                 spScoreD[key].append(sc)
         return spScoreD
+
+    
+class sharedScore:
+
+    def __init__(self):
+        '''Create an object for storing scores which will efficiently share
+memory across processes.'''
+
+        self.scoreD = {}
+
+        
+    
+    def createArrays(self,scoresO):
+        '''Creates a group of multiprocessing raw arrays for use in a
+sharedScores object.
+        '''
+
+        # Move this to parameters.py later...
+        hashArrayScaleFactor = 2
+
+        
+        self.numEdges = scoresO.numEdges
+        self.hashArrayLen = hashArrayScaleFactor * self.numEdges
+        
+        
+        ## Preliminary processing
+        tempHashL=[[] for i in range(self.hashArrayLen)]
+        maxGnNum=0 # get maximum numeric value used to represent a gene
+        for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
+            edge = scoresO.endNodesToEdge(gn1,gn2)
+            hs = self.hashByGenePair(gn1,gn2)
+            tempHashL[hs].append((gn1,gn2,edge))
+            
+            if max(gn1,gn2) > maxGnNum:
+                maxGnNum = max(gn1,gn2)
+            
+        # get length for collisionAr
+        collisionArLen = 0
+        maxEdgesPerHash = 0
+        for L in tempHashL:
+            L.sort() # sort on gn1
+            if len(L) > 0:
+                # add extra 1 because first block of this region will
+                # hold the length of the region
+                collisionArLen += len(L)
+            if len(L) > maxEdgesPerHash:
+                maxEdgesPerHash = len(L)
+        self.collisionArLen = collisionArLen
+                
+        ## some checks
+        
+        # make sure data isn't too big. Assumes hash and gene arrays are c_uint32 (32
+        # bit, unsigned)
+        maxPossibleGeneOrEdgeNumber = 2**32-1
+        if self.numEdges-1 > maxPossibleGeneOrEdgeNumber:
+            raise ValueError("Error creating sharedScore object. Data set has too many score pairs for the data type we're using in our shared score arrays (c_uint32).")
+
+        if maxEdgesPerHash > 2**16:
+            raise ValueError("Error creating sharedScore object. The maximum number of score pairs per hash exceeds what lenOfRegionA can hold.")
+
+        if maxGnNum > maxPossibleGeneOrEdgeNumber:
+            raise ValueError("Error creating sharedScore object. At least one gene has been given a number too large for the array data type we are using.")
+
+
+        ## create arrays
+
+        rawScoreAr = RawArray(ctypes.c_longdouble, self.numEdges)
+        hasEdgeAr = RawArray(ctypes.c_bool, self.hashArrayLen) # tells if any edges at given hash
+        hashAr = RawArray(ctypes.c_uint32, self.hashArrayLen) # stores index to col Ars
+        lenOfRegionAr = RawArray(ctypes.c_uint16, self.hashArrayLen) # stores length of region holding stuff from a given hash
+        colGn1Ar = RawArray(ctypes.c_uint32, self.collisionArLen)
+        colGn2Ar = RawArray(ctypes.c_uint32, self.collisionArLen)
+        colEdgeAr = RawArray(ctypes.c_uint32, self.collisionArLen)
+        
+        ## fill rawScoreAr
+        for edge in scoresO.iterateEdges():
+            sc = scoresO.getScoreByEdge(edge,'rawSc')
+            rawScoreAr[edge] = sc
+
+        ## fill hash and collision Ars
+        colAr_i = 0 # index into col Ars, e.g. colGn1Ar
+        for hs in range(len(tempHashL)):
+            if tempHashL[hs] == []:
+                hasEdgeAr[hs] = False
+            else:
+                hasEdgeAr[hs] = True
+                lenOfRegionAr[hs] = len(tempHashL[hs])
+                hashAr[hs] = colAr_i
+                for gn1,gn2,edge in tempHashL[hs]:
+                    colGn1Ar[colAr_i] = gn1
+                    colGn2Ar[colAr_i] = gn2
+                    colEdgeAr[colAr_i] = edge
+                    colAr_i += 1
+
+        self.insertArrays(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr)
+
+    def hashByGenePair(self,gn1,gn2):
+        '''Hash to an int, modulo array len.'''
+        # python hash works better than cantor pairing func
+        return hash((gn1,gn2)) % self.hashArrayLen
+
+    def insertArrays(self,rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr):
+        '''Attach the input arrays to self.'''
+        self.scoreD['rawSc'] = rawScoreAr
+        self.hasEdgeAr = hasEdgeAr
+        self.hashAr = hashAr
+        self.lenOfRegionAr = lenOfRegionAr
+        self.colGn1Ar = colGn1Ar
+        self.colGn2Ar = colGn2Ar
+        self.colEdgeAr = colEdgeAr
+
+    def returnArrays(self):
+        '''Return all our arrays.'''
+        return self.scoreD['rawSc'],self.hasEdgeAr,self.hashAr,self.lenOfRegionAr,self.colGn1Ar,self.colGn2Ar,self.colEdgeAr
+        
+    def endNodesToEdge(self,gn1,gn2):
+        '''Given two genes, return the number of the edge between them. If
+there isn't any, return None.'''
+
+        hs = self.hashByGenePair(gn1,gn2)
+
+        if not self.hasEdgeAr[hs]:
+            # no score pairs here
+            return None
+        else:
+            # one or more gene pairs are stored in a region
+            # corresponding to this hash. check if any of them are the
+            # gene pair we're after.
+            stInd = self.hashAr[hs]
+            regionLen = self.lenOfRegionAr[hs]
+            return self.searchCollisionArrays(gn1,gn2,stInd,regionLen)
+
+    def searchCollisionArrays(self,gn1,gn2,stInd,regionLen):
+        '''Search the collision arrays for a match to gn1,gn2. If found, return index,
+    otherwise return None.
+        '''
+
+        # find the first occurence of gn1, if any
+        # The colGn1Ar is sorted in numerical order between stInd and stInd+regionLen
+        endInd = stInd + regionLen
+        searchStart = self.binarySearchGn1Array(gn1,stInd,endInd)
+        if searchStart == None:
+            return None
+
+        for i in range(searchStart,endInd):
+            if self.colGn1Ar[i] != gn1:
+                # it's no longer gn1, thus we won't find it
+                return None
+            elif self.colGn2Ar[i] == gn2:
+                # self.colGn1Ar[i] == gn1 since we got this far
+                return self.colEdgeAr[i]
+        return None
+        
+    def binarySearchGn1Array(self,gn1,st,end):
+        '''Find the first occurrence of gn1 in self.colGn1Ar using binary
+search. (colGn1Ar can be assumed to be sorted over the region st to
+end).
+        '''
+        while st < end:
+            mid = (st + end) // 2
+            if self.colGn1Ar[mid] < gn1:
+                st = mid + 1
+            elif self.colGn1Ar[mid] > gn1:
+                end = mid
+            elif mid > 0 and self.colGn1Ar[mid-1] == gn1:
+                end = mid
+            else:
+                return mid
+
+        return None
+
+    def getScoreByEdge(self,edge,scoreType):
+        '''Given an edge get the score corresponding to scoreType.'''
+        return self.scoreD[scoreType][edge]
+
+    def getScoreByEndNodes(self,g1,g2,scoreType):
+        '''Given two genes get the score corresponding to scoreType.'''
+
+        if g1 > g2: g2,g1 = g1,g2 # make sure g1 is lower gene num
+        edge = self.endNodesToEdge(g1,g2)
+        if edge == None:
+            return None
+        else:
+            return self.getScoreByEdge(edge,scoreType)
