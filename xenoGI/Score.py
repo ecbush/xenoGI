@@ -109,7 +109,7 @@ compared against itself then we have only one file name in the list.
                 
     def initializeScoreArray(self,scoreType):
         '''Create array for storing scores.'''
-        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=ctypes.c_longdouble)
+        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=numpy.float64)
 
     def getStrainPairs(self):
         '''Return all the strain pairs associated with this scores object as a
