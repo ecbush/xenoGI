@@ -14,6 +14,13 @@ baseParamStr = """
 # and outfiles)
 blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -seg yes -outfmt 6 -evalue '
 
+#### Scores calculation ####
+
+# This helps determine the size of the arrays for our hash table of
+# scores. It should be a value >= to 1. If one, it means the hash
+# arrays have as many entries as there are score pairs.
+hashArrayScaleFactor = 2
+
 #### Family formation ####
 
 # Family formation involves several thresholds. We determine these by

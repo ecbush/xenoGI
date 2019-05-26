@@ -112,7 +112,7 @@ genes that have an edge in scoresO.
         i+=1
 
     ## prepare raw arrays to share
-    sharedScoresO.createArrays(scoresO)
+    sharedScoresO.createArrays(scoresO,paramD)
 
     rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr = sharedScoresO.returnArrays()
     

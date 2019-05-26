@@ -109,7 +109,7 @@ compared against itself then we have only one file name in the list.
                 
     def initializeScoreArray(self,scoreType):
         '''Create array for storing scores.'''
-        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=numpy.float64)
+        self.scoreD[scoreType] = numpy.zeros(self.numEdges,dtype=ctypes.c_double)
 
     def getStrainPairs(self):
         '''Return all the strain pairs associated with this scores object as a
@@ -469,18 +469,15 @@ memory across processes.'''
 
         
     
-    def createArrays(self,scoresO):
+    def createArrays(self,scoresO,paramD):
         '''Creates a group of multiprocessing raw arrays for use in a
 sharedScores object.
         '''
 
-        # Move this to parameters.py later...
-        hashArrayScaleFactor = 2
-
+        hashArrayScaleFactor = paramD['hashArrayScaleFactor']
         
         self.numEdges = scoresO.numEdges
         self.hashArrayLen = hashArrayScaleFactor * self.numEdges
-        
         
         ## Preliminary processing
         tempHashL=[[] for i in range(self.hashArrayLen)]
@@ -523,7 +520,7 @@ sharedScores object.
 
         ## create arrays
 
-        rawScoreAr = RawArray(ctypes.c_longdouble, self.numEdges)
+        rawScoreAr = RawArray(ctypes.c_double, self.numEdges)
         hasEdgeAr = RawArray(ctypes.c_bool, self.hashArrayLen) # tells if any edges at given hash
         hashAr = RawArray(ctypes.c_uint32, self.hashArrayLen) # stores index to col Ars
         lenOfRegionAr = RawArray(ctypes.c_uint16, self.hashArrayLen) # stores length of region holding stuff from a given hash
