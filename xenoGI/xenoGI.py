@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 import sys, glob, os
 from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
 
@@ -372,17 +372,32 @@ def debugWrapper(paramD):
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
-    # object for storing scores
-    scoresO=Score.Score()
-    scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
-
-    ## similarity scores
-    scoresO = scores.calcRawScores(paramD,geneNames,scoresO)
-
-    ## synteny scores
-    sharedScoresO = scores.calcSynScores(scoresO,geneNames,geneOrderT,paramD,tree)
-
+    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
+    sharedScoresO = Score.sharedScore()
+    sharedScoresO.createArrays(scoresO,paramD)
     
+    import time,random
+
+    ## random gene pairs
+    gpL=[]
+    for i in range(5000000):
+        gpL.append((random.choice(geneNames.nums),random.choice(geneNames.nums)))
+
+    # scoresO
+    st=time.time()
+    for gn1,gn2 in gpL:
+        if scoresO.isEdgePresentByEndNodes(gn1,gn2):
+            sc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+    end= time.time()
+    print("scoresO:",end-st)
+    
+    # sharedScoresO
+    st=time.time()
+    for gn1,gn2 in gpL:
+        sc=sharedScoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+    end= time.time()
+    print("sharedScoresO:",end-st)
+        
     code.interact(local=locals())
 
 def simValidationWrapper(paramD):
