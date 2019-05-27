@@ -9,7 +9,7 @@ Requirements
 
 * NCBI blast+
 
-  We need blastp and makeblastdb executables.
+  We need blastp and makeblastdb executables (ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/).
 
 * Python 3
 
