@@ -114,10 +114,10 @@ genes that have an edge in scoresO.
     ## prepare raw arrays to share
     sharedScoresO.createArrays(scoresO,paramD)
 
-    rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr = sharedScoresO.returnArrays()
+    rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen = sharedScoresO.returnArrays()
     
     ## Run
-    with Pool(processes=numThreads,initializer=synScoreGroupInit,initargs=(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr)) as p:
+    with Pool(processes=numThreads,initializer=synScoreGroupInit,initargs=(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen)) as p:
         for synScoresL in p.imap_unordered(synScoreGroup, argumentL):
             for gn1,gn2,sc in synScoresL:
                 scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')
@@ -146,11 +146,11 @@ go 5 genes in either direction.'''
 
     return neighborTL
 
-def synScoreGroupInit(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr):
+def synScoreGroupInit(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen):
     '''Initializer for each separate process doing the synSc
 calculation. Loads the global sharedScoresO object with shared
 arrays.'''
-    sharedScoresO.insertArrays(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr)
+    sharedScoresO.insertArrays(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen)
 
     
 def synScoreGroup(argsT):
@@ -166,7 +166,7 @@ def synScoreGroup(argsT):
         
     return outL
         
-def synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
+def synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
@@ -184,7 +184,7 @@ def synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
     topScL= [0] * numSynToTake # min raw score is 0
 
     for i in range(numSynToTake):
-        ind1,ind2,sc = topScore(L1,L2,scoresO)
+        ind1,ind2,sc = topScore(L1,L2,sharedScoresO)
         if sc == -float('inf'):
             break
         topScL[i] = sc
@@ -195,7 +195,7 @@ def synScore(scoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
     
     return gn1, gn2, synSc
 
-def topScore(L1,L2,scoresO):
+def topScore(L1,L2,sharedScoresO):
     '''Find the best norm score between genes in L1 and L2. Return the index of
 each and the score.'''
     besti1 = 0
@@ -204,7 +204,7 @@ each and the score.'''
 
     for i1,gn1 in enumerate(L1):
         for i2,gn2 in enumerate(L2):
-            sc = scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
+            sc = sharedScoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
             if sc != None and sc > bestSc:
                 bestSc = sc
                 besti1 = i1

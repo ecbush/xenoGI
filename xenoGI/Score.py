@@ -466,8 +466,6 @@ class sharedScore:
 memory across processes.'''
 
         self.scoreD = {}
-
-        
     
     def createArrays(self,scoresO,paramD):
         '''Creates a group of multiprocessing raw arrays for use in a
@@ -476,8 +474,8 @@ sharedScores object.
 
         hashArrayScaleFactor = paramD['hashArrayScaleFactor']
         
-        self.numEdges = scoresO.numEdges
-        self.hashArrayLen = hashArrayScaleFactor * self.numEdges
+        numEdges = scoresO.numEdges
+        self.hashArrayLen = hashArrayScaleFactor * numEdges
         
         ## Preliminary processing
         tempHashL=[[] for i in range(self.hashArrayLen)]
@@ -508,7 +506,7 @@ sharedScores object.
         # make sure data isn't too big. Assumes hash and gene arrays are c_uint32 (32
         # bit, unsigned)
         maxPossibleGeneOrEdgeNumber = 2**32-1
-        if self.numEdges-1 > maxPossibleGeneOrEdgeNumber:
+        if numEdges-1 > maxPossibleGeneOrEdgeNumber:
             raise ValueError("Error creating sharedScore object. Data set has too many score pairs for the data type we're using in our shared score arrays (c_uint32).")
 
         if maxEdgesPerHash > 2**16:
@@ -520,7 +518,7 @@ sharedScores object.
 
         ## create arrays
 
-        rawScoreAr = RawArray(ctypes.c_double, self.numEdges)
+        rawScoreAr = RawArray(ctypes.c_double, numEdges)
         hasEdgeAr = RawArray(ctypes.c_bool, self.hashArrayLen) # tells if any edges at given hash
         hashAr = RawArray(ctypes.c_uint32, self.hashArrayLen) # stores index to col Ars
         lenOfRegionAr = RawArray(ctypes.c_uint16, self.hashArrayLen) # stores length of region holding stuff from a given hash
@@ -548,14 +546,14 @@ sharedScores object.
                     colEdgeAr[colAr_i] = edge
                     colAr_i += 1
 
-        self.insertArrays(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr)
+        self.insertArrays(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,self.hashArrayLen)
 
     def hashByGenePair(self,gn1,gn2):
         '''Hash to an int, modulo array len.'''
         # python hash works better than cantor pairing func
         return hash((gn1,gn2)) % self.hashArrayLen
 
-    def insertArrays(self,rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr):
+    def insertArrays(self,rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen):
         '''Attach the input arrays to self.'''
         self.scoreD['rawSc'] = rawScoreAr
         self.hasEdgeAr = hasEdgeAr
@@ -564,10 +562,11 @@ sharedScores object.
         self.colGn1Ar = colGn1Ar
         self.colGn2Ar = colGn2Ar
         self.colEdgeAr = colEdgeAr
+        self.hashArrayLen = hashArrayLen
 
     def returnArrays(self):
         '''Return all our arrays.'''
-        return self.scoreD['rawSc'],self.hasEdgeAr,self.hashAr,self.lenOfRegionAr,self.colGn1Ar,self.colGn2Ar,self.colEdgeAr
+        return self.scoreD['rawSc'],self.hasEdgeAr,self.hashAr,self.lenOfRegionAr,self.colGn1Ar,self.colGn2Ar,self.colEdgeAr,self.hashArrayLen
         
     def endNodesToEdge(self,gn1,gn2):
         '''Given two genes, return the number of the edge between them. If

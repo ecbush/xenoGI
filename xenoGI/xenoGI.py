@@ -371,32 +371,6 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-
-    scoresO = scores.readScores(paramD['scoresFN'],geneNames)
-    sharedScoresO = Score.sharedScore()
-    sharedScoresO.createArrays(scoresO,paramD)
-    
-    import time,random
-
-    ## random gene pairs
-    gpL=[]
-    for i in range(5000000):
-        gpL.append((random.choice(geneNames.nums),random.choice(geneNames.nums)))
-
-    # scoresO
-    st=time.time()
-    for gn1,gn2 in gpL:
-        if scoresO.isEdgePresentByEndNodes(gn1,gn2):
-            sc=scoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
-    end= time.time()
-    print("scoresO:",end-st)
-    
-    # sharedScoresO
-    st=time.time()
-    for gn1,gn2 in gpL:
-        sc=sharedScoresO.getScoreByEndNodes(gn1,gn2,'rawSc')
-    end= time.time()
-    print("sharedScoresO:",end-st)
         
     code.interact(local=locals())
 

@@ -49,7 +49,13 @@ needed to run blastp on a pair of databases.'''
     fastaFilePath = paramD['fastaFilePath']
     blastFilePath = paramD['blastFilePath']
     blastExecutDirPath = paramD['blastExecutDirPath']
-    blastCLine = paramD['blastCLine'] + str(paramD['evalueThresh'])
+
+    # catch blast clines from old params files which don't have
+    # trailing whitespace (can get rid of this eventually).
+    if paramD['blastCLine'][-1] != ' ':
+        blastCLine = paramD['blastCLine'] + ' ' + str(paramD['evalueThresh'])
+    else:
+        blastCLine = paramD['blastCLine'] + str(paramD['evalueThresh'])
     
     # get a tuple of the blastp command line args for use below
     blastCLineL = blastCLine.split()
