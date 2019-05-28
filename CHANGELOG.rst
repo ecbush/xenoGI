@@ -3,6 +3,15 @@ Change Log
 ==========
 
 -------------------
+2.1.0_ - 2019-05-28
+-------------------
+
+- Fixed a bug in island formation that arose when there were no islands on a branch.
+- Changed naming for blast files to avoid conflicts with strain names. (In particular with the '-' character.)
+- parseGenbank now throws an error when it encounters a gbff file that lacks protein annotations.
+- Created a sharedScores class that shares memory between separate processes. This reduces memory usage significantly in calcScores.
+
+-------------------
 2.0.0_ - 2019-03-20
 -------------------
 
@@ -41,6 +50,7 @@ Hereafter, tagged releases correspond to pypi releases. The master branch will h
 
 Initial release, corresponding to our article: "xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria".
 
+.. _2.1.0:  https://github.com/ecbush/xenoGI/compare/v2.0.0...v2.1.0
 .. _2.0.0:  https://github.com/ecbush/xenoGI/compare/v1.1.2...v2.0.0
 .. _1.1.2:  https://github.com/ecbush/xenoGI/compare/v1.1.1...v1.1.2
 .. _1.1.1:  https://github.com/ecbush/xenoGI/compare/v1.1.0...v1.1.1
