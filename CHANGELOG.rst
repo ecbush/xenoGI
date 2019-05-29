@@ -3,7 +3,7 @@ Change Log
 ==========
 
 -------------------
-2.1.0_ - 2019-05-28
+2.1.0_ - 2019-05-29
 -------------------
 
 - Fixed a bug in island formation that arose when there were no islands on a branch.
