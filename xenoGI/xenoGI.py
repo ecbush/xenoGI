@@ -39,7 +39,8 @@ def main():
         
     #### calcScores
     elif task == 'calcScores':
-        calcScoresWrapper(paramD)
+        blastFnL=glob.glob(paramD['blastFilePath'])
+        calcScoresWrapper(paramD,blastFnL)
 
     #### makeFamilies
     elif task == 'makeFamilies':
@@ -107,7 +108,6 @@ def runBlastWrapper(paramD):
     """Wrapper to blast all genome files against each other."""
     dbFileL=blast.getDbFileL(paramD['fastaFilePath'],paramD['treeFN'])
     blast.runBlast(dbFileL,dbFileL,paramD)
-
     
 def loadMiscDataStructures(paramD):
     """Creates a few data structures that are used in multiple tasks."""
@@ -123,14 +123,14 @@ def loadMiscDataStructures(paramD):
 
     return tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT
 
-def calcScoresWrapper(paramD):
+def calcScoresWrapper(paramD,blastFnL):
     """Wrapper running stuff to calculate scores."""
 
     tree,strainStr2NumD,strainNum2StrD,geneNames,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
     # object for storing scores
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(paramD['blastFilePath'],geneNames,strainStr2NumD)
+    scoresO.initializeDataAttributes(blastFnL,geneNames,strainStr2NumD)
 
     ## similarity scores
     scoresO = scores.calcRawScores(paramD,geneNames,scoresO)

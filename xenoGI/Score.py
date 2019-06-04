@@ -12,17 +12,17 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFilePath,geneNames,strainStr2NumD):
+    def initializeDataAttributes(self,blastFnL,geneNames,strainStr2NumD):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
 0. Arrays for other score types will be created later.
         '''
-        self.fillEndNodesToEdgeD(blastFilePath,geneNames,strainStr2NumD)
+        self.fillEndNodesToEdgeD(blastFnL,geneNames,strainStr2NumD)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFilePath,geneNames,strainStr2NumD):
+    def fillEndNodesToEdgeD(self,blastFnL,geneNames,strainStr2NumD):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -31,7 +31,7 @@ strainPairScoreLocationD.
 
         # get blast files organized by strain pairs
         
-        blastFnByPairD = self.getBlastFnByPairD(blastFilePath,strainStr2NumD)
+        blastFnByPairD = self.getBlastFnByPairD(blastFnL,strainStr2NumD)
 
         edgeNum=0
         for strainPair in blastFnByPairD:
@@ -81,7 +81,7 @@ strainPairScoreLocationD.
             self.strainPairScoreLocationD[strainPair] = (strainPairSt,strainPairEnd)
             
 
-    def getBlastFnByPairD(self,blastFilePath,strainStr2NumD):
+    def getBlastFnByPairD(self,blastFnL,strainStr2NumD):
         '''Get the set of blast files and organize by the pair of strains
 compared. Returns a dict keyed by tuple of strain number
 (e.g. (1,2)). The value is a list with all the blast files comparing
@@ -90,8 +90,6 @@ two strains. For example one list might contain
 'blast/E_coli_K12-E_albertii.out']. For cases where a strain is
 compared against itself then we have only one file name in the list.
         '''
-        blastFnL=glob.glob(blastFilePath)
-
         blastFnByPairD ={}
         
         for fileStr in blastFnL:
