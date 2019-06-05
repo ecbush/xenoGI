@@ -78,8 +78,11 @@ needed to run blastp on a pair of databases.'''
             dbstem = os.path.splitext(dbstem)[0]
 
             outFN = os.path.join( blastDir, qstem + '_-VS-_' + dbstem + blastExtension )
-            L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
-            clineL.append(L)
+
+            # only add to list if this blast file doesn't already exist
+            if not os.path.isfile(outFN):
+                L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
+                clineL.append(L)
 
     return clineL
 
@@ -106,6 +109,7 @@ database in dbFileL_2.
 
     clineL =  makeBlastClineList(dbFileL_1,dbFileL_2,paramD)
 
-    p=Pool(paramD['numThreads'])
-    stderrL = p.map(subprocessWrapper, clineL)
+    with Pool(processes=paramD['numThreads']) as p:
+        for stderr in p.imap_unordered(subprocessWrapper, clineL):
+            pass # ignore stderr
 
