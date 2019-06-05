@@ -94,7 +94,7 @@ What the steps do
 
 * ``parseGenbank`` runs through the genbank files and produces input files that are used by subsequent code.
   
-* ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file.
+* ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file. Before running a particular comparison, runBlast checks to see if the output file for that comparison already exists (e.g. from a previous run). If so it skips the comparison.
   
 * ``calcScores`` calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
   

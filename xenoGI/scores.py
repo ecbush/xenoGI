@@ -11,7 +11,7 @@ sharedScoresO = Score.sharedScore()
 
 #### raw similarity scores
 
-def calcRawScores(paramD,geneNames,scoresO):
+def calcRawScores(paramD,geneNamesO,scoresO):
     '''Get a global alignment based raw score for every edge in scoresO.'''
 
     numThreads = paramD['numThreads']
@@ -30,7 +30,7 @@ def calcRawScores(paramD,geneNames,scoresO):
     i=0
     for g1,g2 in scoresO.iterateEdgesByEndNodes():
         edgeNum = scoresO.endNodesToEdge(g1,g2)
-        edgeT = edgeNum,geneNames.numToName(g1),geneNames.numToName(g2)
+        edgeT = edgeNum,geneNamesO.numToName(g1),geneNamesO.numToName(g2)
         argumentL[i%numThreads][0].append(edgeT)
         i+=1
 
@@ -87,7 +87,7 @@ based on the max and min possible scores for these sequences.'''
 
 #### synteny scores
 
-def calcSynScores(scoresO,geneNames,geneOrderT,paramD,tree):
+def calcSynScores(scoresO,geneNamesO,geneOrderT,paramD,tree):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
 genes that have an edge in scoresO.
@@ -97,14 +97,14 @@ genes that have an edge in scoresO.
     numSynToTake = paramD['numSynToTake']
     numThreads = paramD['numThreads']
     
-    neighborTL = createNeighborL(geneNames,geneOrderT,synWSize)
+    neighborTL = createNeighborL(geneNamesO,geneOrderT,synWSize)
     scoresO.initializeScoreArray('synSc') # array to store final synSc result in
     
     ## Prepare argument list
     
     # make list of groups of arguments to be passed to p.imap. There
     # should be numThreads groups.
-    argumentL = [[[],tree,neighborTL,numSynToTake,geneNames] for i in range(numThreads)]
+    argumentL = [[[],tree,neighborTL,numSynToTake,geneNamesO] for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -124,7 +124,7 @@ genes that have an edge in scoresO.
 
     return scoresO
 
-def createNeighborL(geneNames,geneOrderT,synWSize):
+def createNeighborL(geneNamesO,geneOrderT,synWSize):
     '''Return a list which specifies the neighbors of each gene. Index of
 list corresponds to gene number, and the value located at that index
 is a tuple of all genes within a synWSize window. e.g. synWSize 10 means we
@@ -132,7 +132,7 @@ go 5 genes in either direction.'''
 
     lenInEitherDirec = int(synWSize/2)
     
-    neighborTL = [None for x in geneNames.nums]
+    neighborTL = [None for x in geneNamesO.nums]
     
     for contigT in geneOrderT:
         if not contigT == None:
@@ -158,15 +158,15 @@ def synScoreGroup(argsT):
     scores. This function is intended to be called by p.map.
     '''
 
-    edgeL,tree,neighborTL,numSynToTake,geneNames = argsT
+    edgeL,tree,neighborTL,numSynToTake,geneNamesO = argsT
     
     outL=[]
     for gn1,gn2 in edgeL:
-        outL.append(synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames))
+        outL.append(synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNamesO))
         
     return outL
         
-def synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
+def synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNamesO):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
@@ -175,8 +175,8 @@ def synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNames):
     those genes and iterate.
     '''
 
-    sp1 = geneNames.numToStrainNum(gn1)
-    sp2 = geneNames.numToStrainNum(gn2)
+    sp1 = geneNamesO.numToStrainNum(gn1)
+    sp2 = geneNamesO.numToStrainNum(gn2)
 
     L1 = list(neighborTL[gn1])
     L2 = list(neighborTL[gn2])
@@ -407,7 +407,7 @@ orthologs.'''
 
 #### Core synteny scores
 
-def calcCoreSynScores(scoresO,strainNamesL,paramD,geneNames,geneOrderT):
+def calcCoreSynScores(scoresO,strainNamesL,paramD,geneNamesO,geneOrderT):
     '''Calculate synteny scores based on core genes given in
 aabrhL. Scores are between 0 and 1, giving the percentage of syntenic
 genes shared.'''
@@ -419,7 +419,7 @@ genes shared.'''
     
     aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
     
-    geneToAabrhT = createGeneToAabrhT(aabrhL,geneNames)
+    geneToAabrhT = createGeneToAabrhT(aabrhL,geneNamesO)
     coreSyntenyT = createCoreSyntenyT(geneToAabrhT,geneOrderT,coreSynWsize)
 
     # Not parallelized. Pretty fast already.
@@ -432,17 +432,17 @@ genes shared.'''
         
     return scoresO
 
-def createGeneToAabrhT(aabrhL,geneNames):
+def createGeneToAabrhT(aabrhL,geneNamesO):
     '''Create a tuple where the index corresponds to gene number and the
 value at that location is the number of the aabrh group to which the
 gene belongs, or None. The aabrh groups are numbered, simply based on
 the index where they occur in aabrhL.'''
 
-    geneToAabrhL =[None] * len(geneNames.nums)
+    geneToAabrhL =[None] * len(geneNamesO.nums)
 
     for aabrhNum in range(len(aabrhL)):
         for geneName in aabrhL[aabrhNum]:
-            geneNum = geneNames.nameToNum(geneName)
+            geneNum = geneNamesO.nameToNum(geneName)
             geneToAabrhL[geneNum] = aabrhNum
     return tuple(geneToAabrhL)
 
@@ -529,7 +529,7 @@ between 0 and 1.'''
 
 #### Score I/O
 
-def writeScores(scoresO,geneNames,scoresFN):
+def writeScores(scoresO,geneNamesO,scoresFN):
     '''Write a scores object to file. If scoresFN has the .bout extension, write
 binary version, otherwise write in text output format.'''
 
@@ -537,10 +537,10 @@ binary version, otherwise write in text output format.'''
     if scoresFN.split('.')[-1] == 'bout':
         scoresO.writeScoresBinary(scoreTypeL,scoresFN)
     else:
-        scoresO.writeScoresText(geneNames,scoreTypeL,scoresFN)
+        scoresO.writeScoresText(geneNamesO,scoreTypeL,scoresFN)
 
 
-def readScores(scoresFN,geneNames=None):
+def readScores(scoresFN,geneNamesO=None):
     '''Read scores from file creating a Score object of scores. If
 scoresFN has the .bout extension, read binary, otherwise read text
 format.
@@ -550,5 +550,5 @@ format.
     if scoresFN.split('.')[-1] == 'bout':
         scoresO = Score.Score.readScoresBinary(scoreTypeL,scoresFN)
     else:
-        scoresO = Score.Score.readScoresText(geneNames,scoreTypeL,scoresFN)
+        scoresO = Score.Score.readScoresText(geneNamesO,scoreTypeL,scoresFN)
     return scoresO

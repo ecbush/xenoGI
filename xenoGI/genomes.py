@@ -91,6 +91,32 @@ strain. Returns boolean.
         
     def __repr__(self):
         return "<geneName object with "+str(len(self.names))+" genes.>"
+
+
+class compactGeneNames:
+    def __init__(self, geneOrderFN):
+        '''Like geneNames, but only converts name to num..'''
+
+        self.geneNameToNumD = {}
+
+        num=0
+        f = open(geneOrderFN,'r')
+        while True:
+            s = f.readline()
+            if s == '':
+                break
+            L=s.split()
+            for i in range(1,len(L)): 
+                geneName=L[i]
+                names.append(geneName)
+                self.geneNameToNumD[geneName] = num
+                num+=1
+
+        f.close()
+
+    def nameToNum(self,geneName):
+        return self.geneNameToNumD[geneName]
+
     
 def readGeneInfoD(geneInfoFN):
     '''Read gene info from file, returning a dict keyed by gene name with
@@ -138,7 +164,7 @@ measured in number of genes.'''
                     
     return geneProximityD
 
-def createGeneOrderTs(geneOrderFN,geneNames,subtreeL,strainStr2NumD):
+def createGeneOrderTs(geneOrderFN,geneNamesO,subtreeL,strainStr2NumD):
     '''Go though gene order file and get orderings into a set of
 tuples. Returns a tuple whose index is strain number, and the value at
 that index is a set of tuples representing the contigs.'''
@@ -155,7 +181,7 @@ that index is a set of tuples representing the contigs.'''
         strain = L[0]
         contigL=[]
         for contig in L[1:]:
-            geneNumT=tuple((geneNames.nameToNum(g) for g in contig.split(' ')))
+            geneNumT=tuple((geneNamesO.nameToNum(g) for g in contig.split(' ')))
             contigL.append(geneNumT)
             
         geneOrderL[strainStr2NumD[strain]]=tuple(contigL)

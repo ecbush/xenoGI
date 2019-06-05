@@ -2,7 +2,7 @@ import sys,statistics,os,glob,random
 from urllib import parse
 from . import trees
 
-def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNames,geneInfoD):
+def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNamesO,geneInfoD):
     '''Return a dict keyed by strain name. Values are lists of tuples
     (locIslandNum, locFamilyL) where locFamilyL is a list of tuples in
     the locus island present in that strain. locusFamily tuples are
@@ -27,7 +27,7 @@ def createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,gene
             # put LocusFamily number and genes tuple for each strain in tempStrainD
             for locFam in locIsland.iterLocusFamilies(familiesO):
                 for leaf in leafNodesL:
-                    geneNamesL=[geneNames.numToName(gene) for gene in locFam.iterGenesByStrain(leaf)]
+                    geneNamesL=[geneNamesO.numToName(gene) for gene in locFam.iterGenesByStrain(leaf)]
                     if geneNamesL != []:
                         # only add if the family has some genes in this strain.
                         tempStrainD[strainNum2StrD[leaf]].append((locFam.locusFamNum,geneNamesL))

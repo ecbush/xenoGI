@@ -9,7 +9,7 @@ from .analysis import printTable
 
 #### Main function
 
-def createFamiliesO(tree,strainNum2StrD,scoresO,geneNames,aabrhL,paramD,subtreeL,outputSummaryF):
+def createFamiliesO(tree,strainNum2StrD,scoresO,geneNamesO,aabrhL,paramD,subtreeL,outputSummaryF):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
 
@@ -35,8 +35,8 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     # initialize scoresO.nodeConnectL and scoresO.ScoreSummaryD for
     # use below
     strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
-    scoresO.createNodeConnectL(geneNames)
-    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNames)
+    scoresO.createNodeConnectL(geneNamesO)
+    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNamesO)
 
     # create an object of class Families to store this in.
     familiesO = Families(tree)
@@ -44,8 +44,8 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     locusFamNumCounter = 0
 
     # other assorted things we'll need
-    geneUsedL = [False for x in geneNames.nums]
-    nodeGenesL = createNodeGenesL(tree,geneNames) # has genes divided by node
+    geneUsedL = [False for x in geneNamesO.nums]
+    nodeGenesL = createNodeGenesL(tree,geneNamesO) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
 
 
@@ -74,10 +74,10 @@ in only one strain."""+"\n",file=outputSummaryF)
         if lchild != None:
             # not a tip
                         
-            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL,familiesO,famNumCounter,locusFamNumCounter)
+            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNamesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL,familiesO,famNumCounter,locusFamNumCounter)
 
         else:
-            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter)
+            geneUsedL,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNamesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter)
 
        
     # Write family formation summary file
@@ -110,20 +110,20 @@ in only one strain."""+"\n",file=outputSummaryF)
     
     printTable(summaryL,indent=0,fileF=outputSummaryF)
     
-    writeFamilies(familiesO,geneNames,strainNum2StrD,paramD['familyFN'])
+    writeFamilies(familiesO,geneNamesO,strainNum2StrD,paramD['familyFN'])
 
     return familiesO
 
 ## Support functions
 
-def createNodeGenesL(tree,geneNames):
+def createNodeGenesL(tree,geneNamesO):
     '''Create a data structure to organize genes by strain. Returns a list
 where the indices correspond to strain number and the elements are
 sets.
     '''
     nodeGenesL=[set() for i in range(trees.nodeCount(tree))]
-    for gene in geneNames.nums:
-        strain = geneNames.numToStrainNum(gene)
+    for gene in geneNamesO.nums:
+        strain = geneNamesO.numToStrainNum(gene)
         nodeGenesL[strain].add(gene)
     return nodeGenesL
 
@@ -416,7 +416,7 @@ averaging the values between that strain and its nearest neighbors.'''
 
 #### Family creation functions
 
-def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL,familiesO,famNumCounter,locusFamNumCounter):
+def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,geneNamesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL,familiesO,famNumCounter,locusFamNumCounter):
     '''Creates all Families and subsidiary LocusFamilies descending from
 the node rooted familyMrca. Basic parts of the Phigs algorithm are
 here. Creating the seeds, and using them to get a family. (With very
@@ -432,7 +432,7 @@ is not Phigs.
 
     leftS,rightS = createLRSets(subtreeL,familyMrca,nodeGenesL,None)
 
-    seedL = createSeedL(leftS,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD)
+    seedL = createSeedL(leftS,rightS,scoresO,geneNamesO,absMinRawThresholdForHomologyD,paramD)
     for seed in seedL:
         # each seed corresponds to a prospective gene family.
         seedRawSc,seedG1,seedG2 = seed
@@ -443,7 +443,7 @@ is not Phigs.
             break
         else:
             # getting initial family, using only raw score and synteny bump
-            famS=createFamilyFromSeed(seedG1,seedG2,geneUsedL,scoresO,leftS,rightS,geneNames,seedRawSc,absMinRawThresholdForHomologyD,synThresholdD,paramD)
+            famS=createFamilyFromSeed(seedG1,seedG2,geneUsedL,scoresO,leftS,rightS,geneNamesO,seedRawSc,absMinRawThresholdForHomologyD,synThresholdD,paramD)
 
             if famS == None:
                 # one of the genes the the family was already
@@ -457,12 +457,12 @@ is not Phigs.
                 # now set up familiesO to take this family and
                 # determine the corresponding locusFamilies
                 familiesO.initializeFamily(famNumCounter,familyMrca,[seedG1,seedG2])
-                locusFamNumCounter,familiesO = createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNames,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL)
+                locusFamNumCounter,familiesO = createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNamesO,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL)
                 famNumCounter+=1 # important to increment this after call to createAllLocusFamiliesDescendingFromInternalNode
                 
     return geneUsedL,locusFamNumCounter,famNumCounter,familiesO
 
-def createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNames,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter):
+def createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedL,tipFamilyRawThresholdD,scoresO,geneNamesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter):
     '''Creates all Families and subsidiary LocusFamilies at the tip
 given by familyMrca. Because we've come through the nodes in
 pre-order, we know that all unused genes at this node are in a
@@ -488,7 +488,7 @@ families with mrca here. (they can still be multi gene families).
 
             if scoresO.isEdgePresentByEndNodes(seed,newGene):
 
-                addIt = isSameFamily(seed,newGene,scoresO,geneNames,tipFamilyRawThreshold,absMinRawThresholdForHomologyD,synThresholdD,paramD)
+                addIt = isSameFamily(seed,newGene,scoresO,geneNamesO,tipFamilyRawThreshold,absMinRawThresholdForHomologyD,synThresholdD,paramD)
                 
                 if addIt:
                     newFamS.add(newGene)
@@ -502,7 +502,7 @@ families with mrca here. (they can still be multi gene families).
 
 
         familiesO.initializeFamily(famNumCounter,familyMrca)
-        lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(newFamS,geneNames,familyMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
+        lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(newFamS,geneNamesO,familyMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
         
         for lfO in lfOL:
             familiesO.addLocusFamily(lfO)
@@ -533,7 +533,7 @@ restrictS is None, then use all genes.
         
     return(leftS,rightS)
 
-def closestMatch(gene,S,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD):
+def closestMatch(gene,S,scoresO,geneNamesO,absMinRawThresholdForHomologyD,paramD):
     '''Find the closest match to gene among the genes in the set S in the
 graph scoresO. Eliminate any matches that have a raw score below what
 is in homologyHomologyRawThresholdD, a coreSynSc below
@@ -544,13 +544,13 @@ minCoreSynThresh, or a synteny score below synThresholdD.
     bestEdgeScore = -float('inf')
     for otherGene in scoresO.getConnectionsGene(gene):
         if otherGene in S:
-            if isSameFamily(gene,otherGene,scoresO,geneNames,bestEdgeScore,absMinRawThresholdForHomologyD,None,paramD):
+            if isSameFamily(gene,otherGene,scoresO,geneNamesO,bestEdgeScore,absMinRawThresholdForHomologyD,None,paramD):
                 # we don't want to use synThresholdD, hence the Nones
                 bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
                 bestGene = otherGene
     return bestEdgeScore, gene, bestGene
     
-def createSeedL(leftS,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD):
+def createSeedL(leftS,rightS,scoresO,geneNamesO,absMinRawThresholdForHomologyD,paramD):
     '''Create a list which has the closest match for each gene on the
 opposite side of the tree. e.g. if a gene is in tree[1] then we're
 looking for the gene in tree[2] with the closest match. We eliminate
@@ -560,13 +560,13 @@ and return.
     '''
     seedL=[]
     for gene in leftS:
-        seedL.append(closestMatch(gene,rightS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD))
+        seedL.append(closestMatch(gene,rightS,scoresO,geneNamesO,absMinRawThresholdForHomologyD,paramD))
     for gene in rightS:
-        seedL.append(closestMatch(gene,leftS,scoresO,geneNames,absMinRawThresholdForHomologyD,paramD))
+        seedL.append(closestMatch(gene,leftS,scoresO,geneNamesO,absMinRawThresholdForHomologyD,paramD))
     seedL.sort(reverse=True)
     return seedL
 
-def createFamilyFromSeed(g1,g2,geneUsedL,scoresO,leftS,rightS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
+def createFamilyFromSeed(g1,g2,geneUsedL,scoresO,leftS,rightS,geneNamesO,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
 the family than the two seeds are from each other. We have a normScore
@@ -589,7 +589,7 @@ containing genes in the family.
 
     while len(genesToSearchForConnectionsS) > 0:
         
-        matchesS = getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL)
+        matchesS = getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNamesO,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL)
 
         if matchesS == None:
             return None
@@ -599,7 +599,7 @@ containing genes in the family.
         
     return famS
 
-def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL):
+def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,geneNamesO,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedL):
     ''''''
     matchesS=set()
     for famGene in genesToSearchForConnectionsS:
@@ -611,7 +611,7 @@ def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,gene
                     # it shouldn't been in our current list to search,
                     # or be one we've already put in the family (or
                     # we'll waste effort)
-                    addIt = isSameFamily(famGene,newGene,scoresO,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD)
+                    addIt = isSameFamily(famGene,newGene,scoresO,geneNamesO,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD)
                     
                     if addIt:
                         if geneUsedL[newGene]:
@@ -623,7 +623,7 @@ def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,gene
                             matchesS.add(newGene)
     return matchesS
 
-def isSameFamily(famGene,newGene,scoresO,geneNames,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
+def isSameFamily(famGene,newGene,scoresO,geneNamesO,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
     '''Given famGene that is inside a family, and newGene we are
 considering adding, check the various scores to determine if we should
 add it. Return boolean.
@@ -633,8 +633,8 @@ add it. Return boolean.
     synSc = scoresO.getScoreByEndNodes(famGene,newGene,'synSc')
 
     # get minThresh from absMinRawThresholdForHomologyD
-    strain1 = geneNames.numToStrainNum(famGene)
-    strain2 = geneNames.numToStrainNum(newGene)
+    strain1 = geneNamesO.numToStrainNum(famGene)
+    strain2 = geneNamesO.numToStrainNum(newGene)
     absoluteMinRawThresh = absMinRawThresholdForHomologyD[(strain1,strain2)]
 
     if synThresholdD == None:
@@ -672,7 +672,7 @@ add it. Return boolean.
                 
     return addIt
 
-def createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNames,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL):
+def createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,geneNamesO,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL):
     '''Given a family in famGenesToSearchS, break it up into subsidiary locus families
 based on synteny. We iterate through the subtree rooted at familyMrca
 in pre-order (ancestors first). Using seeds, we try to find groups
@@ -683,7 +683,7 @@ among famS that share high synteny.'''
 
         if lchild != None:
             # not a tip
-            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
+            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNamesO,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
             
             for lfO in lfOL:
                 familiesO.addLocusFamily(lfO)
@@ -698,7 +698,7 @@ among famS that share high synteny.'''
             famGenesToSearchS.difference_update(genesAtThisTipS)
 
             # Get lf objects for all these genes
-            lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(genesAtThisTipS,geneNames,lfMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)            
+            lfOL,locusFamNumCounter = createAllLocusFamiliesAtTip(genesAtThisTipS,geneNamesO,lfMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)            
 
             # add to our families object
             for lfO in lfOL:
@@ -706,25 +706,25 @@ among famS that share high synteny.'''
 
     return locusFamNumCounter,familiesO
 
-def createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,geneNamesO,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
     '''Obtains all locus families at the internal node defined by lfMrca.'''
 
     lfOL = []
     while True:
 
-        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD)
+        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNamesO,famGenesToSearchS,scoresO,paramD,synThresholdD)
         
         if lfSeedPairL == []:
             # there are no (more) seeds stradling this internal node,
             # break out
             break
 
-        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,paramD,synThresholdD)
+        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,geneNamesO,scoresO,paramD,synThresholdD)
         lfOL.append(lfO)
         
     return lfOL,locusFamNumCounter,famGenesToSearchS
             
-def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNames,famGenesToSearchS,scoresO,paramD,synThresholdD):
+def createLFSeed(subtreeL,lfMrca,nodeGenesL,geneNamesO,famGenesToSearchS,scoresO,paramD,synThresholdD):
     '''Given a set of genes famGenesToSearchS from a family, try to find a
 seed based at lfMrca. A seed consists of two genes, one in the left
 subtree and one in the right, which are syntenically consistent.
@@ -734,11 +734,11 @@ subtree and one in the right, which are syntenically consistent.
     
     for lGene in leftS:
         for rGene in rightS:
-            if isSameLocusFamily(lGene,rGene,scoresO,geneNames,paramD,synThresholdD):
+            if isSameLocusFamily(lGene,rGene,scoresO,geneNamesO,paramD,synThresholdD):
                 return [lGene,rGene]
     return []
         
-def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeL,geneNames,scoresO,paramD,synThresholdD):
+def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeL,geneNamesO,scoresO,paramD,synThresholdD):
     '''Returns a LocusFamily object, containing genes associated with
 those in seedPairL, in the subtree definied at lfMrca. Does single
 linkage clustering, adding in anything in famGenesToSearchS with above
@@ -749,22 +749,22 @@ threshold synteny. Note that these seeds are not the seed from family formation 
     locusFamNumCounter+=1
     
     famGenesToSearchS.difference_update(seedPairL)
-    lfO.addGenes(seedPairL,geneNames)
+    lfO.addGenes(seedPairL,geneNamesO)
 
     subtree=subtreeL[lfMrca]
     strainL = trees.leafList(subtree)
         
     while True:
-        genesToAddS = getLocusFamilyMatches(lfO,famGenesToSearchS,geneNames,strainL,scoresO,paramD,synThresholdD)
+        genesToAddS = getLocusFamilyMatches(lfO,famGenesToSearchS,geneNamesO,strainL,scoresO,paramD,synThresholdD)
         if len(genesToAddS) == 0:
             break
 
         famGenesToSearchS.difference_update(genesToAddS)
-        lfO.addGenes(genesToAddS,geneNames)
+        lfO.addGenes(genesToAddS,geneNamesO)
         
     return lfO,locusFamNumCounter,famGenesToSearchS
 
-def getLocusFamilyMatches(lfO,famGenesToSearchS,geneNames,strainL,scoresO,paramD,synThresholdD):
+def getLocusFamilyMatches(lfO,famGenesToSearchS,geneNamesO,strainL,scoresO,paramD,synThresholdD):
     '''Given a LocusFamily object lfO and some remaining genes, search
 through the remaining genes to find those that match syntenically and
 are in a child species of lfMrca. Return a list of genes to add.
@@ -772,21 +772,21 @@ are in a child species of lfMrca. Return a list of genes to add.
     genesToAddS=set()
     for searchGene in famGenesToSearchS:
         # test if searchGene is in a child species of lfMrca
-        if geneNames.numToStrainNum(searchGene) in strainL:
+        if geneNamesO.numToStrainNum(searchGene) in strainL:
             # this searchGene is in a strain that is a child of the lfMrca we're working on
             for lfGene in lfO.iterGenes():
                 # we don't use absMinRawThreshold, thisFamRawThresh, or
                 # synAdjustThresh. If the pair have values above
                 # minCoreSynThresh and minSynThres, then addIt will be
                 # True.
-                addIt = isSameLocusFamily(searchGene,lfGene,scoresO,geneNames,paramD,synThresholdD)
+                addIt = isSameLocusFamily(searchGene,lfGene,scoresO,geneNamesO,paramD,synThresholdD)
                 if addIt:
                     genesToAddS.add(searchGene)
                     break
                 
     return genesToAddS
 
-def isSameLocusFamily(gene1,gene2,scoresO,geneNames,paramD,synThresholdD):
+def isSameLocusFamily(gene1,gene2,scoresO,geneNamesO,paramD,synThresholdD):
     '''Given two genes in the same family, determine if they meet the
 synteny requirements to be put in the same LocusFamily. Returns
 boolean.
@@ -806,8 +806,8 @@ boolean.
     coreSynSc = scoresO.getScoreByEndNodes(gene1,gene2,'coreSynSc')
     synSc = scoresO.getScoreByEndNodes(gene1,gene2,'synSc')
 
-    strain1 = geneNames.numToStrainNum(gene1)
-    strain2 = geneNames.numToStrainNum(gene2)
+    strain1 = geneNamesO.numToStrainNum(gene1)
+    strain2 = geneNamesO.numToStrainNum(gene2)
     minSynThresh = synThresholdD['minSynThreshold'][(strain1,strain2)]
 
     if coreSynSc < paramD['minCoreSynThresh'] or synSc < minSynThresh:
@@ -820,7 +820,7 @@ boolean.
             
     return addIt
 
-def createAllLocusFamiliesAtTip(genesAtThisTipS,geneNames,lfMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtTip(genesAtThisTipS,geneNamesO,lfMrca,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
     '''Given a set of genes famGenesToSearchS, search for all those found
 on the tip given by lfMrca. Break these into LocusFamilies. Many will
 be single gene LocusFamilies, but some may be multi-gene
@@ -835,7 +835,7 @@ be single gene LocusFamilies, but some may be multi-gene
 
         currentGroupS=set([seed])
         for gene in genesAtThisTipS:
-            addIt = isSameLocusFamily(seed,gene,scoresO,geneNames,paramD,synThresholdD)
+            addIt = isSameLocusFamily(seed,gene,scoresO,geneNamesO,paramD,synThresholdD)
             if addIt:
                 currentGroupS.add(gene)
 
@@ -848,22 +848,22 @@ be single gene LocusFamilies, but some may be multi-gene
 
         lfO = LocusFamily(famNumCounter,locusFamNumCounter,lfMrca)
         locusFamNumCounter+=1
-        lfO.addGenes(lfGroupS,geneNames)
+        lfO.addGenes(lfGroupS,geneNamesO)
         lfOL.append(lfO)
 
     return lfOL,locusFamNumCounter
 
 ## Input/output
 
-def writeFamilies(familiesO,geneNames,strainNum2StrD,fileName):
+def writeFamilies(familiesO,geneNamesO,strainNum2StrD,fileName):
     '''Write all gene families to fileName, one family per line.'''
     f=open(fileName,'w')
     for fam in familiesO.iterFamilies():
-        f.write(fam.fileStr(strainNum2StrD,geneNames)+'\n')
+        f.write(fam.fileStr(strainNum2StrD,geneNamesO)+'\n')
     f.close()
 
 
-def readFamilies(familyFN,tree,geneNames,strainStr2NumD):
+def readFamilies(familyFN,tree,geneNamesO,strainStr2NumD):
     '''Read the family file named familyFN, creating a Families object.
     '''
 
@@ -891,9 +891,9 @@ def readFamilies(familyFN,tree,geneNames,strainStr2NumD):
             lfMrca = strainStr2NumD[lfSplitL[1]]
             geneL=[]
             for geneName in lfSplitL[2:]:
-                geneL.append(geneNames.nameToNum(geneName))
+                geneL.append(geneNamesO.nameToNum(geneName))
             lfO = LocusFamily(famNum,locusFamNum,lfMrca)
-            lfO.addGenes(geneL,geneNames)
+            lfO.addGenes(geneL,geneNamesO)
             familiesO.addLocusFamily(lfO)
 
     f.close()
