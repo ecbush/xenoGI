@@ -108,7 +108,6 @@ class compactGeneNames:
             L=s.split()
             for i in range(1,len(L)): 
                 geneName=L[i]
-                names.append(geneName)
                 self.geneNameToNumD[geneName] = num
                 num+=1
 
