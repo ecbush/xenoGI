@@ -95,10 +95,14 @@ strain. Returns boolean.
 
 class compactGeneNames:
     def __init__(self, geneOrderFN):
-        '''Like geneNames, but only converts name to num..'''
+        '''Like geneNames, but contains only a single dictionary to convert
+one way, either from geneName to number or visa versa. The method
+flipDict inverts keys and values in the dictionary. We have the two
+methods nameToNum and numToName for consistency with the geneNames
+class.'''
 
-        self.geneNameToNumD = {}
-
+        self.geneD = {}
+        
         num=0
         f = open(geneOrderFN,'r')
         while True:
@@ -108,14 +112,28 @@ class compactGeneNames:
             L=s.split()
             for i in range(1,len(L)): 
                 geneName=L[i]
-                self.geneNameToNumD[geneName] = num
+                self.geneD[geneName] = num
                 num+=1
 
         f.close()
 
+    def flipDict(self):
+        '''Reverse keys and values in geneD.'''
+        newD = {}
+        while self.geneD != {}:
+            key,value = self.geneD.popitem()
+            newD[value] = key
+        self.geneD = newD
+        
     def nameToNum(self,geneName):
-        return self.geneNameToNumD[geneName]
+        '''Given name, return num.'''
+        return self.geneD[geneName]
 
+    def numToName(self,geneNumber):
+        '''Given number, return name.'''
+        return self.geneD[geneNumber]
+
+    
     
 def readGeneInfoD(geneInfoFN):
     '''Read gene info from file, returning a dict keyed by gene name with
