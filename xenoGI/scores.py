@@ -23,6 +23,10 @@ def calcRawScores(paramD,geneNamesO,scoresO):
     protFnL=glob.glob(paramD['fastaFilePath'])
     seqD=genomes.loadProt(protFnL)
 
+    # get a copy of geneNamesO with the dict keyed by num
+    byNumGeneNamesO = geneNamesO.copy()
+    byNumGeneNamesO.flipDict()
+
     # make list of sets of arguments to be passed to p.map. There
     # should be numThreads sets.
     argumentL = [([],seqD,gapOpen, gapExtend, matrix) for i in range(numThreads)]
@@ -30,7 +34,7 @@ def calcRawScores(paramD,geneNamesO,scoresO):
     i=0
     for g1,g2 in scoresO.iterateEdgesByEndNodes():
         edgeNum = scoresO.endNodesToEdge(g1,g2)
-        edgeT = edgeNum,geneNamesO.numToName(g1),geneNamesO.numToName(g2)
+        edgeT = edgeNum,byNumGeneNamesO.numToName(g1),byNumGeneNamesO.numToName(g2)
         argumentL[i%numThreads][0].append(edgeT)
         i+=1
 
@@ -132,7 +136,7 @@ go 5 genes in either direction.'''
 
     lenInEitherDirec = int(synWSize/2)
     
-    neighborTL = [None for x in geneNamesO.nums]
+    neighborTL = [None for x in geneNamesO.iterGeneNums()]
     
     for contigT in geneOrderT:
         if not contigT == None:
@@ -438,7 +442,7 @@ value at that location is the number of the aabrh group to which the
 gene belongs, or None. The aabrh groups are numbered, simply based on
 the index where they occur in aabrhL.'''
 
-    geneToAabrhL =[None] * len(geneNamesO.nums)
+    geneToAabrhL =[None] * len(geneNamesO.iterGeneNums())
 
     for aabrhNum in range(len(aabrhL)):
         for geneName in aabrhL[aabrhNum]:

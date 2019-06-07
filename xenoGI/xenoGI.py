@@ -113,25 +113,24 @@ def runBlastWrapper(paramD):
 def loadMiscDataStructures(paramD):
     """Creates a few data structures that are used in multiple tasks."""
 
-    tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
-    
-    # an object for gene name conversions
-    geneNamesO = genomes.geneNames(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
+    geneNamesO = genomes.geneNames(paramD['geneOrderFN'])
+    tree,strainNamesO = trees.readTree(paramD['treeFN'])
+    geneNamesO.addStrainNamesO(strainNamesO)
 
     subtreeL=trees.createSubtreeL(tree)
     subtreeL.sort()
-    geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNamesO,subtreeL,strainStr2NumD)
+    geneOrderT=genomes.createGeneOrderTs(paramD['geneOrderFN'],geneNamesO,subtreeL,strainNamesO)
 
-    return tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT
+    return tree,strainNamesO,geneNamesO,subtreeL,geneOrderT
 
 def calcScoresWrapper(paramD,blastFnL):
     """Wrapper running stuff to calculate scores."""
 
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
 
     # object for storing scores
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(blastFnL,geneNamesO,strainStr2NumD)
+    scoresO.initializeDataAttributes(blastFnL,geneNamesO,strainNamesO)
 
     ## similarity scores
     scoresO = scores.calcRawScores(paramD,geneNamesO,scoresO)
@@ -140,7 +139,7 @@ def calcScoresWrapper(paramD,blastFnL):
     scoresO = scores.calcSynScores(scoresO,geneNamesO,geneOrderT,paramD,tree)
 
     ## core synteny scores
-    strainNamesL=sorted([strainNum2StrD[leaf] for leaf in trees.leafList(tree)])
+    strainNamesL=sorted([strainNamesO.numToName(leaf) for leaf in trees.leafList(tree)])
     scoresO = scores.calcCoreSynScores(scoresO,strainNamesL,paramD,geneNamesO,geneOrderT)
     
     # write scores to file
@@ -149,30 +148,30 @@ def calcScoresWrapper(paramD,blastFnL):
 def makeFamiliesWrapper(paramD):
     """Wrapper to create gene families."""
 
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     ## read scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
     aabrhL = scores.loadOrthos(paramD['aabrhFN'])
 
     ## make gene families
     familyFormationSummaryF = open(paramD['familyFormationSummaryFN'],'w')
-    familiesO = families.createFamiliesO(tree,strainNum2StrD,scoresO,geneNamesO,aabrhL,paramD,subtreeL,familyFormationSummaryF)
+    familiesO = families.createFamiliesO(tree,strainNamesO,scoresO,geneNamesO,aabrhL,paramD,subtreeL,familyFormationSummaryF)
     familyFormationSummaryF.close()
 
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
 
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     
     ## read scores
     scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
 
     ## read gene families
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
 
     ## group gene families into islands
     islandFormationSummaryF = open(paramD['islandFormationSummaryFN'],'w')
-    locusIslandByNodeLMerged = islands.makeLocusIslands(geneOrderT,geneNamesO,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD,islandFormationSummaryF)
+    locusIslandByNodeLMerged = islands.makeLocusIslands(geneOrderT,subtreeL,tree,paramD,familiesO,strainNamesO,islandFormationSummaryF)
     islandFormationSummaryF.close()
 
 def printAnalysisWrapper(paramD):
@@ -191,38 +190,42 @@ def printAnalysisWrapper(paramD):
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
     
     ## load stuff
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainNamesO)
     nodesL=trees.nodeList(tree)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
     scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
 
+    # get a copy of geneNamesO with the dict keyed by num
+    byNumGeneNamesO = geneNamesO.copy()
+    byNumGeneNamesO.flipDict()
+    
     ## analysis
 
     # Print out all islands
     islandsOutF = open(islandsSummaryFN,'w')
-    analysis.vPrintAllLocusIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familiesO,strainStr2NumD,strainNum2StrD,geneNamesO,geneInfoD,islandsOutF)
+    analysis.vPrintAllLocusIslands(islandByNodeL,tree,paramD['rootFocalClade'],subtreeL,familiesO,strainNamesO,byNumGeneNamesO,geneInfoD,islandsOutF)
     islandsOutF.close()
 
     # Print species files with all the genes, grouped by contig
     gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeL,familiesO)
-    analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,geneNamesO,gene2FamIslandD,geneInfoD,familiesO,strainNum2StrD)
+    analysis.printSpeciesContigs(geneOrderT,genesFNstem,analExtension,byNumGeneNamesO,gene2FamIslandD,geneInfoD,familiesO,strainNamesO)
 
 def createIslandBedWrapper(paramD):
     """Wrapper to make output bed files."""
 
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     
     leafNodesL = trees.leafList(tree)
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainStr2NumD)
-    islandByNodeL = islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
+    islandByNodeL = islands.readIslands(paramD['islandOutFN'],tree,strainNamesO)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])    
 
     # get islands organized by strain
-    islandByStrainD = islandBed.createIslandByStrainD(leafNodesL,strainNum2StrD,islandByNodeL,familiesO,geneNamesO,geneInfoD)
+    islandByStrainD = islandBed.createIslandByStrainD(leafNodesL,strainNamesO,islandByNodeL,familiesO,geneNamesO,geneInfoD)
 
-    islandBed.createAllBeds(islandByStrainD,geneInfoD,tree,strainNum2StrD,strainStr2NumD,paramD)
+    islandBed.createAllBeds(islandByStrainD,geneInfoD,tree,strainNamesO,paramD)
 
 def plotScoreHistsWrapper(paramD):
     """Wrapper to make pdf of histograms of scores."""
@@ -231,11 +234,11 @@ def plotScoreHistsWrapper(paramD):
     from matplotlib.backends.backend_pdf import PdfPages
     
     numBins = 80 # num bins in histograms
-    tree,strainStr2NumD,strainNum2StrD = trees.readTree(paramD['treeFN'])
-    geneNamesO = genomes.geneNamesO(paramD['geneOrderFN'],strainStr2NumD,strainNum2StrD)
+    tree,strainNamesO = trees.readTree(paramD['treeFN'])
+    geneNamesO = genomes.geneNamesO(paramD['geneOrderFN'],strainNamesO)
     scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
     
-    def scoreHists(scoresFN,outFN,strainNum2StrD,numBins,geneNamesO,scoreType):
+    def scoreHists(scoresFN,outFN,strainNamesO,numBins,geneNamesO,scoreType):
         '''Read through a scores file, and separate into all pairwise comparisons. Then plot hist of each.'''
 
         # currently, this seems to require a display for interactive
@@ -249,14 +252,14 @@ def plotScoreHistsWrapper(paramD):
                 fig = pyplot.figure()
                 scoresL = list(scoresO.iterateScoreByStrainPair(strainPair,scoreType))
                 pyplot.hist(scoresL,bins=numBins, density = True)
-                pyplot.title(strainNum2StrD[strainPair[0]]+'-'+strainNum2StrD[strainPair[1]])
+                pyplot.title(strainNamesO.numToName(strainPair[0])+'-'+strainNamesO.numToName(strainPair[1]))
                 pdf.savefig()
                 pyplot.close()
 
     # plot histograms
     for scoreType,outFN in [('rawSc','rawSc.pdf'),('synSc','synSc.pdf'),('coreSynSc','coreSynSc.pdf'),]:
     
-        scoreHists(paramD['scoresFN'],outFN,strainNum2StrD,numBins,geneNamesO,scoreType)
+        scoreHists(paramD['scoresFN'],outFN,strainNamesO,numBins,geneNamesO,scoreType)
 
     
 def interactiveAnalysisWrapper(paramD):
@@ -279,7 +282,7 @@ def interactiveAnalysisWrapper(paramD):
         print("Family",familyNum,file=fileF)
         # print out the locus families
         for lfO in familiesO.getFamily(familyNum).getLocusFamilies():
-            print("    LocusFamily",lfO.getStr(strainNum2StrD,geneNamesO," "),file=fileF)
+            print("    LocusFamily",lfO.getStr(strainNamesO,geneNamesO," "),file=fileF)
         
         # print("Family error score (count of possibly misassigned genes):",familiesO[familyNum].possibleErrorCt,file=fileF)
 
@@ -317,7 +320,7 @@ def interactiveAnalysisWrapper(paramD):
         '''Print a LocusIsland and its genomic context in each species. We
         include synWSize/2 genes in either direction beyond the locus island.
         '''
-        printIslandNeighb(locusIslandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2FamIslandD,geneInfoD,geneNamesO,strainNum2StrD,fileF)
+        printIslandNeighb(locusIslandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderT,gene2FamIslandD,geneInfoD,geneNamesO,strainNamesO,fileF)
 
 
     def printIslandsAtNode(nodeStr,fileF=sys.stdout):
@@ -326,8 +329,8 @@ def interactiveAnalysisWrapper(paramD):
     number as argument, assuming all the other required stuff is available
     at the top level.
         '''
-        node = strainStr2NumD[nodeStr]
-        vPrintLocusIslandsAtNode(islandByNodeL[node],subtreeL,familiesO,strainNum2StrD,geneNamesO,geneInfoD,fileF)
+        node = strainNamesO.nameToNum(nodeStr)
+        vPrintLocusIslandsAtNode(islandByNodeL[node],subtreeL,familiesO,strainNamesO,geneNamesO,geneInfoD,fileF)
 
 
     def printCoreNonCoreByNode(fileF=sys.stdout):
@@ -336,7 +339,7 @@ def interactiveAnalysisWrapper(paramD):
     in descendent species. We then look at their mrcas. Those with an mrca
     below the node in question are non-core, others are core.'''
 
-        focTree = trees.subtree(tree,strainStr2NumD[paramD['rootFocalClade']])
+        focTree = trees.subtree(tree,strainNamesO.nameToNum(paramD['rootFocalClade']))
         focInodesL=trees.iNodeList(focTree)
         familyByNodeL=createFamilyByNodeL(geneOrderT,gene2FamD)
 
@@ -345,7 +348,7 @@ def interactiveAnalysisWrapper(paramD):
         rowL.append(['----','----','--------','-----','----------'])
         for node in focInodesL:
             nonCore,core=coreNonCoreCtAtNode(tree,node,familyByNodeL,familiesO)
-            rowL.append([strainNum2StrD[node],str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
+            rowL.append([strainNamesO.numToName(node),str(core),str(nonCore),str(core+nonCore),str(format(nonCore/(core+nonCore),".3f"))])
         printTable(rowL,fileF=fileF)
         print(file=fileF)
         return
@@ -353,11 +356,11 @@ def interactiveAnalysisWrapper(paramD):
 
     ## Load data
     
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     nodesL=trees.nodeList(tree)
     geneInfoD = genomes.readGeneInfoD(paramD['geneInfoFN'])
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainStr2NumD)
-    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainStr2NumD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
+    islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainNamesO)
     gene2FamIslandD = createGene2FamIslandD(islandByNodeL,familiesO)
     scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
     scoresO.createNodeConnectL(geneNamesO) # make nodeConnectL attribute
@@ -371,7 +374,7 @@ def debugWrapper(paramD):
     import code,sys
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
-    tree,strainStr2NumD,strainNum2StrD,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
+    tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
         
     code.interact(local=locals())
 

@@ -12,17 +12,17 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFnL,geneNamesO,strainStr2NumD):
+    def initializeDataAttributes(self,blastFnL,geneNamesO,strainNamesO):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
 0. Arrays for other score types will be created later.
         '''
-        self.fillEndNodesToEdgeD(blastFnL,geneNamesO,strainStr2NumD)
+        self.fillEndNodesToEdgeD(blastFnL,geneNamesO,strainNamesO)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFnL,geneNamesO,strainStr2NumD):
+    def fillEndNodesToEdgeD(self,blastFnL,geneNamesO,strainNamesO):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -31,7 +31,7 @@ strainPairScoreLocationD.
 
         # get blast files organized by strain pairs
         
-        blastFnByPairD = self.getBlastFnByPairD(blastFnL,strainStr2NumD)
+        blastFnByPairD = self.getBlastFnByPairD(blastFnL,strainNamesO)
 
         edgeNum=0
         for strainPair in blastFnByPairD:
@@ -81,7 +81,7 @@ strainPairScoreLocationD.
             self.strainPairScoreLocationD[strainPair] = (strainPairSt,strainPairEnd)
             
 
-    def getBlastFnByPairD(self,blastFnL,strainStr2NumD):
+    def getBlastFnByPairD(self,blastFnL,strainNamesO):
         '''Get the set of blast files and organize by the pair of strains
 compared. Returns a dict keyed by tuple of strain number
 (e.g. (1,2)). The value is a list with all the blast files comparing
@@ -94,8 +94,8 @@ compared against itself then we have only one file name in the list.
         
         for fileStr in blastFnL:
             strain1,strain2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split('_-VS-_')
-            strainNum1 = strainStr2NumD[strain1]
-            strainNum2 = strainStr2NumD[strain2]            
+            strainNum1 = strainNamesO.nameToNum(strain1)
+            strainNum2 = strainNamesO.nameToNum(strain2)
             key = tuple(sorted([strainNum1,strainNum2]))
             if key in blastFnByPairD:
                 # we've already looked at the one that had them in the other order
@@ -206,15 +206,19 @@ particular strainPair.'''
             strain1,strain2 = key
             stInd,endInd = self.strainPairScoreLocationD[key]
             f.write("\t".join(map(str,[strain1,strain2,stInd,endInd]))+"\n")
-            
+
+        # get a copy of geneNamesO with the dict keyed by num
+        byNumGeneNamesO = geneNamesO.copy()
+        byNumGeneNamesO.flipDict()
+        
         # write header
         f.write("# Scores: "+"\t".join(['gene1','gene2','edge']+scoreTypeL)+'\n')
 
         for gene1Num,gene2Num in self.endNodesToEdgeD:
             edge = self.endNodesToEdgeD[(gene1Num,gene2Num)]
             outStrL=[]
-            outStrL.append(geneNamesO.numToName(gene1Num))
-            outStrL.append(geneNamesO.numToName(gene2Num))
+            outStrL.append(byNumGeneNamesO.numToName(gene1Num))
+            outStrL.append(byNumGeneNamesO.numToName(gene2Num))
             outStrL.append(str(edge))
             for scoreType in scoreTypeL:
                 outStrL.append(format(self.getScoreByEndNodes(gene1Num,gene2Num,scoreType),".6f"))
@@ -365,7 +369,7 @@ gene. Value at that index is a list of the genes which a given gene
 connects to. This attribute is not saved in our file formats. It must
 be recalculated before it will be used (e.g. in family formation).'''
 
-        self.nodeConnectL = [[] for gn in geneNamesO.nums]
+        self.nodeConnectL = [[] for gn in geneNamesO.iterGeneNums()]
 
         # loop over endNodesToEdgeD populating nodeConnectL
         for gn1,gn2 in self.endNodesToEdgeD:
@@ -382,7 +386,7 @@ gene. Value at that index is a list of the edges which a give gene
 connects to. This attribute is not saved in our file formats. It must
 be recalculated before it will be used.'''
 
-        self.nodeEdgeL = [[] for gn in geneNamesO.nums]
+        self.nodeEdgeL = [[] for gn in geneNamesO.iterGeneNums()]
 
         # loop over endNodesToEdgeD populating nodeEdgeL
         for gn1,gn2 in self.endNodesToEdgeD:

@@ -16,93 +16,26 @@ name.
     return seqD
 
 class geneNames:
-    def __init__(self, geneOrderFN,strainNameToNumD,strainNumToNameD):
-        '''Create a geneName object with lists of genes and methods to interconvert.'''
-
-        self.strainNameToNumD = strainNameToNumD
-        self.strainNumToNameD = strainNumToNameD
-        
-        # get lists of genes
-        names=[]
-        num=0
-        geneNumToStrainNumD={}
-        f = open(geneOrderFN,'r')
-        while True:
-            s = f.readline()
-            if s == '':
-                break
-            L=s.split()
-            strain = L[0]
-        
-            for i in range(1,len(L)): 
-                geneName=L[i]
-                names.append(geneName)
-                geneNumToStrainNumD[num] = strainNameToNumD[strain]
-
-                num+=1
-
-        f.close()
-
-        namesS=set(names)
-        if len(namesS) < len(names):
-            raise ValueError("There appear to be redudancies in the gene order file.")
-
-        self.geneNumToStrainNumD = geneNumToStrainNumD
-        self.names=tuple(names)
-        self.nums=tuple(range(len(names))) # these will be the gene numbers for the genes
-        
-        # create dictionaries for interconverting
-        geneNameToNumD={}
-        geneNumToNameD={}
-        for i in range(len(self.names)):
-            geneName=self.names[i]
-            num = self.nums[i]
-        
-            geneNameToNumD[geneName]=num
-            geneNumToNameD[num]=geneName
-
-        self.geneNameToNumD = geneNameToNumD
-        self.geneNumToNameD = geneNumToNameD
-
-
-    def nameToNum(self,geneName):
-        return self.geneNameToNumD[geneName]
-
-    def numToName(self,geneNumber):
-        return self.geneNumToNameD[geneNumber]
-
-    def numToStrainNum(self,geneNumber):
-        return self.geneNumToStrainNumD[geneNumber]
-
-    def nameToStrainNum(self,geneName):
-        return self.geneNumToStrainNumD[self.nameToNum(geneName)]
-
-    def numToStrainName(self,geneNumber):
-        return self.strainNumToNameD[self.geneNumToStrainNumD[geneNumber]]
-
-    def nameToStrainName(self,geneName):
-        return self.strainNumToNameD[self.geneNumToStrainNumD[self.nameToNum(geneName)]]
-
-    def isSameStrain(self,geneNum1,geneNum2):
-        '''Tests if two genes, given in numerical form, are in the same
-strain. Returns boolean.
-        '''
-        return self.numToStrainNum(geneNum1) == self.numToStrainNum(geneNum2)
-        
-    def __repr__(self):
-        return "<geneName object with "+str(len(self.names))+" genes.>"
-
-
-class compactGeneNames:
-    def __init__(self, geneOrderFN):
-        '''Like geneNames, but contains only a single dictionary to convert
+    def __init__(self, geneOrderFN=None):
+        '''geneNames object to interconvert between the numerical and string
+representation of genes. Contains only a single dictionary to convert
 one way, either from geneName to number or visa versa. The method
-flipDict inverts keys and values in the dictionary. We have the two
-methods nameToNum and numToName for consistency with the geneNames
-class.'''
+flipDict inverts keys and values in the dictionary.
+        '''
 
         self.geneD = {}
+        self.numGenes = 0
+        self.strainGeneRangeT = ()
+        self.strainNamesO = None
         
+        if geneOrderFN != None:
+            self.initializeGeneD(geneOrderFN)
+
+    def initializeGeneD(self,geneOrderFN):
+        '''Given a geneOrder file, fill a gene dict keyed by geneName with
+value geneNumber.'''
+
+        strainGeneRangeL = []
         num=0
         f = open(geneOrderFN,'r')
         while True:
@@ -110,13 +43,23 @@ class.'''
             if s == '':
                 break
             L=s.split()
+            strainName = L[0]
             for i in range(1,len(L)): 
                 geneName=L[i]
                 self.geneD[geneName] = num
                 num+=1
-
+            endOfRange = num
+            # strain ranges will help us get strain from genes
+            strainGeneRangeL.append((strainName,endOfRange))
+            
         f.close()
+        self.numGenes = num
+        self.strainGeneRangeT = tuple(strainGeneRangeL)
 
+    def addStrainNamesO(self,strainNamesO):
+        '''Add the strainNamesO object in for convenience. We don't do this when initializing because sometimes we may want a geneNames object before we have a tree or strainNamesO.'''
+        self.strainNamesO = strainNamesO
+        
     def flipDict(self):
         '''Reverse keys and values in geneD.'''
         newD = {}
@@ -126,15 +69,75 @@ class.'''
         self.geneD = newD
         
     def nameToNum(self,geneName):
-        '''Given name, return num.'''
+        '''Given gene name, return gene number.'''
+        if type(geneName) != str:
+            raise ValueError("Input of wrong type. Expected a gene in string form.")
         return self.geneD[geneName]
 
     def numToName(self,geneNumber):
-        '''Given number, return name.'''
+        '''Given gene number, return gene name.'''
+        if type(geneNumber) != int:
+            raise ValueError("Input of wrong type. Expected a gene in integer form.")
         return self.geneD[geneNumber]
 
+    def iterGeneNums(self):
+        return range(0,self.numGenes)
+
+    def copy(self):
+        '''Return a copy of self. We will do a deep copy on geneD.'''
+
+        gnO = geneNames()
+
+        # get deep copy of geneD
+        newGeneD={}
+        for key,value in self.geneD.items():
+            newGeneD[key]=value
+        gnO.geneD = newGeneD
+
+        # get rest of attributes
+        gnO.numGenes = self.numGenes
+        gnO.strainGeneRangeT = self.strainGeneRangeT
+        gnO.strainNamesO = self.strainNamesO
+        
+        return gnO
+
+    def numToStrainName(self,geneNum):
+        '''Given a gene number, return the strain name corresponding.'''
+        return self.numToStrainNameHelper(geneNum,self.strainGeneRangeT)
+        
+    def numToStrainNameHelper(self,geneNum,strainGeneRangeT):
+        '''Recursive helper function to return the strain name corresponding
+to geneNum. Checks if geneNum falls in the first range, if not chops
+it and recurses.
+        '''
+        if strainGeneRangeT == ():
+            raise IndexError("geneNum falls outside the range of gene numbers for these strains.")
+        else:
+            strainName,endOfRange = strainGeneRangeT[0]
+            if geneNum < endOfRange:
+                # its this one
+                return strainName
+            else:
+                return self.numToStrainNameHelper(geneNum,strainGeneRangeT[1:])
+
+    def numToStrainNum(self,geneNum):
+        '''Given a gene number, return the strain number corresponding.'''
+        return self.strainNamesO.nameToNum(self.numToStrainName(geneNum))
+            
+    def nameToStrainName(self,geneName):
+        '''Given a gene name, return the strain name corresponding.'''
+        return self.numToStrainName(self.nameToNum(geneName))
+
+    def nameToStrainNum(self,geneName):
+        '''Given a gene name, return the strain number corresponding.'''
+        return self.strainNamesO.nameToNum(self.nameToStrainName(geneName))
     
+    def __len__(self):
+        return len(self.geneD)
     
+    def __repr__(self):
+        return "<geneName object with "+str(len(self.names))+" genes.>"
+        
 def readGeneInfoD(geneInfoFN):
     '''Read gene info from file, returning a dict keyed by gene name with
 information such as description, start position and so on.
@@ -181,7 +184,7 @@ measured in number of genes.'''
                     
     return geneProximityD
 
-def createGeneOrderTs(geneOrderFN,geneNamesO,subtreeL,strainStr2NumD):
+def createGeneOrderTs(geneOrderFN,geneNamesO,subtreeL,strainNamesO):
     '''Go though gene order file and get orderings into a set of
 tuples. Returns a tuple whose index is strain number, and the value at
 that index is a set of tuples representing the contigs.'''
@@ -200,8 +203,7 @@ that index is a set of tuples representing the contigs.'''
         for contig in L[1:]:
             geneNumT=tuple((geneNamesO.nameToNum(g) for g in contig.split(' ')))
             contigL.append(geneNumT)
-            
-        geneOrderL[strainStr2NumD[strain]]=tuple(contigL)
+        geneOrderL[strainNamesO.nameToNum(strain)]=tuple(contigL)
     f.close()
     return tuple(geneOrderL)
 

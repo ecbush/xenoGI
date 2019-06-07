@@ -81,15 +81,6 @@ numbered nodes. Return tree with numbered nodes.'''
         numTree=(counter,leftNumTree,rightNumTree,tree[3])
         return numTree,counter+1
 
-def makeTreeD(tree1,tree2,treeD):
-    '''Make a dictionary to convert from node names in tree1 to node names
-in the identically shaped tree2.'''
-    treeD[tree1[0]]=tree2[0]
-    if tree1[1]==(): return
-    else:
-        makeTreeD(tree1[1],tree2[1],treeD)
-        makeTreeD(tree1[2],tree2[2],treeD)
-        return
 
 def checkTree(bpTree):
     '''Check that a biopython tree is rooted and has named internal
@@ -122,12 +113,9 @@ def readTree(filename):
     counter=0
     numTree,counter=strTree2numTree(stringTree,counter)
 
-    # make dictionaries for converting between number and string strain names
-    strainStr2NumD={}
-    makeTreeD(stringTree,numTree,strainStr2NumD)
-    strainNum2StrD={}
-    makeTreeD(numTree,stringTree,strainNum2StrD)
-    return numTree,strainStr2NumD,strainNum2StrD
+    strainNamesO = strainNames(stringTree,numTree)
+    
+    return numTree,strainNamesO
 
 def createSubtreeL(tree):
     '''Return a list containing all subtrees.'''
@@ -175,3 +163,32 @@ def writeTree(tree,fileName):
     f=open(fileName,"w")
     f.write("("+tupleTree2Newick(tree)+");")
     f.close()
+
+class strainNames:
+
+    def __init__(self,stringTree,numTree):
+        '''Create an object for converting between the numerical and string
+versions of strain names.'''
+
+        # make dictionaries for converting between number and string strain names
+        self.strToNumD={}
+        self.makeTreeD(stringTree,numTree,self.strToNumD)
+        self.numToStrD={}
+        self.makeTreeD(numTree,stringTree,self.numToStrD)
+
+
+    def makeTreeD(self,tree1,tree2,treeD):
+        '''Make a dictionary to convert from node names in tree1 to node names
+    in the identically shaped tree2.'''
+        treeD[tree1[0]]=tree2[0]
+        if tree1[1]==(): return
+        else:
+            self.makeTreeD(tree1[1],tree2[1],treeD)
+            self.makeTreeD(tree1[2],tree2[2],treeD)
+            return
+
+    def nameToNum(self,strainStr):
+        return self.strToNumD[strainStr]
+
+    def numToName(self,strainNum):
+        return self.numToStrD[strainNum]

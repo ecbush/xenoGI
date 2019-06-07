@@ -9,7 +9,7 @@ from .analysis import printTable
 
 #### Main function
 
-def createFamiliesO(tree,strainNum2StrD,scoresO,geneNamesO,aabrhL,paramD,subtreeL,outputSummaryF):
+def createFamiliesO(tree,strainNamesO,scoresO,geneNamesO,aabrhL,paramD,subtreeL,outputSummaryF):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
 
@@ -26,7 +26,7 @@ createFamiliesO
     # Do an initial check the placement of the rootFocalClade on the
     # tree. If there are no outgroups, write a warning to our output
     # file
-    if strainNum2StrD[tree[0]] == paramD['rootFocalClade']:
+    if strainNamesO.numToName(tree[0]) == paramD['rootFocalClade']:
         print("""Warning: the chosen rootFocalClade falls at the root of the input
 tree and thus does not have any outgroups. This is not recommended
 because it can lead to problems accurately recognizing core gene
@@ -44,7 +44,7 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     locusFamNumCounter = 0
 
     # other assorted things we'll need
-    geneUsedL = [False for x in geneNamesO.nums]
+    geneUsedL = [False for x in geneNamesO.iterGeneNums()]
     nodeGenesL = createNodeGenesL(tree,geneNamesO) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
 
@@ -59,7 +59,7 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
 default values for score thresholds in family formation. The pair(s)
 in question are:""",file=outputSummaryF)
         for pairT in homologousPeakMissingL:
-            print("  ",strainNum2StrD[pairT[0]]+'-'+strainNum2StrD[pairT[1]],file=outputSummaryF)
+            print("  ",strainNamesO.numToName(pairT[0])+'-'+strainNamesO.numToName(pairT[1]),file=outputSummaryF)
         
         print("""A possible explanation for this failure is that one or more species
 is too distantly related. If this is the case it will result in poor
@@ -110,7 +110,7 @@ in only one strain."""+"\n",file=outputSummaryF)
     
     printTable(summaryL,indent=0,fileF=outputSummaryF)
     
-    writeFamilies(familiesO,geneNamesO,strainNum2StrD,paramD['familyFN'])
+    writeFamilies(familiesO,geneNamesO,strainNamesO,paramD['familyFN'])
 
     return familiesO
 
@@ -122,7 +122,7 @@ where the indices correspond to strain number and the elements are
 sets.
     '''
     nodeGenesL=[set() for i in range(trees.nodeCount(tree))]
-    for gene in geneNamesO.nums:
+    for gene in geneNamesO.iterGeneNums():
         strain = geneNamesO.numToStrainNum(gene)
         nodeGenesL[strain].add(gene)
     return nodeGenesL
@@ -855,15 +855,20 @@ be single gene LocusFamilies, but some may be multi-gene
 
 ## Input/output
 
-def writeFamilies(familiesO,geneNamesO,strainNum2StrD,fileName):
+def writeFamilies(familiesO,geneNamesO,strainNamesO,fileName):
     '''Write all gene families to fileName, one family per line.'''
+
+    # get a copy of geneNamesO with the dict keyed by num
+    byNumGeneNamesO = geneNamesO.copy()
+    byNumGeneNamesO.flipDict()
+
     f=open(fileName,'w')
     for fam in familiesO.iterFamilies():
-        f.write(fam.fileStr(strainNum2StrD,geneNamesO)+'\n')
+        f.write(fam.fileStr(strainNamesO,byNumGeneNamesO)+'\n')
     f.close()
 
 
-def readFamilies(familyFN,tree,geneNamesO,strainStr2NumD):
+def readFamilies(familyFN,tree,geneNamesO,strainNamesO):
     '''Read the family file named familyFN, creating a Families object.
     '''
 
@@ -875,7 +880,7 @@ def readFamilies(familyFN,tree,geneNamesO,strainStr2NumD):
             break
         L=s.split('\t')
         famNum=int(L[0])
-        mrca = strainStr2NumD[L[1]]
+        mrca = strainNamesO.nameToNum(L[1])
         if L[2] == "-":
             seedPairL = None
         else:
@@ -888,7 +893,7 @@ def readFamilies(familyFN,tree,geneNamesO,strainStr2NumD):
         for lfStr in lfL:
             lfSplitL = lfStr.rstrip().split(',')
             locusFamNum=int(lfSplitL[0])
-            lfMrca = strainStr2NumD[lfSplitL[1]]
+            lfMrca = strainNamesO.nameToNum(lfSplitL[1])
             geneL=[]
             for geneName in lfSplitL[2:]:
                 geneL.append(geneNamesO.nameToNum(geneName))

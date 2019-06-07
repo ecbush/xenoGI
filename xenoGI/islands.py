@@ -8,8 +8,8 @@ from .Family import *
 import math 
     
 ## Main function  
-    
-def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainStr2NumD,strainNum2StrD, outputSummaryF):
+
+def makeLocusIslands(geneOrderT,subtreeL,tree,paramD,familiesO,strainNamesO,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
     numThreads = paramD['numThreads']
@@ -23,7 +23,7 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainS
     geneProximityD = genomes.createGeneProximityD(geneOrderT,geneProximityRange )
     locIslByNodeL=createLocIslByNodeL(familiesO,tree)
     numIslandsAtEachNodeAtStartL = [len(L) for L in locIslByNodeL]
-    focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,strainStr2NumD,rootFocalClade)
+    focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,strainNamesO,rootFocalClade)
 
     ##  Merge in clusters
 
@@ -61,10 +61,10 @@ def makeLocusIslands(geneOrderT,geneNames,subtreeL,tree,paramD,familiesO,strainS
     ## Summary and output
 
     # print summary of merging
-    printSummary(focalNodesL,strainNum2StrD,numIslandsAtEachNodeAtStartL,numIslandsAtEachNodeAtEndL,outputSummaryF)
+    printSummary(focalNodesL,strainNamesO,numIslandsAtEachNodeAtStartL,numIslandsAtEachNodeAtEndL,outputSummaryF)
     
     # write islands
-    writeIslands(locIslByNodeL,strainNum2StrD,islandOutFN)
+    writeIslands(locIslByNodeL,strainNamesO,islandOutFN)
 
     return locIslByNodeL
 
@@ -87,12 +87,12 @@ corresponds to the mrca)
     
     return locIslByNodeL
 
-def getFocalNodesInOrderOfNumDescendants(tree,strainStr2NumD,rootFocalClade):
+def getFocalNodesInOrderOfNumDescendants(tree,strainNamesO,rootFocalClade):
     '''Get a list of all the nodes in the rootFocalClade. Then sort these
 according to the number of leaves descending from them, biggest
 first.'''
 
-    focalSubtree = trees.subtree(tree,strainStr2NumD[rootFocalClade])
+    focalSubtree = trees.subtree(tree,strainNamesO.nameToNum(rootFocalClade))
     focalNodesL = []
     for node in trees.nodeList(focalSubtree):
         # go through every node in the focal clade
@@ -458,7 +458,7 @@ orientation the (best) score came from.
 
 ## Output
 
-def printSummary(focalNodesL,strainNum2StrD,numIslandsAtEachNodeAtStartL,numIslandsAtEachNodeAtEndL,outputSummaryF):
+def printSummary(focalNodesL,strainNamesO,numIslandsAtEachNodeAtStartL,numIslandsAtEachNodeAtEndL,outputSummaryF):
     '''Print a summary of the merging saying how many islands there were
 at each node in the focal clade, before and after merging.'''
 
@@ -468,22 +468,22 @@ at each node in the focal clade, before and after merging.'''
     rowL.append(['----','------------','-----------'])
     for mrcaNode in focalNodesL:
 
-        rowL.append([strainNum2StrD[mrcaNode],str(numIslandsAtEachNodeAtStartL[mrcaNode]),str(numIslandsAtEachNodeAtEndL[mrcaNode])])
+        rowL.append([strainNamesO.numToName(mrcaNode),str(numIslandsAtEachNodeAtStartL[mrcaNode]),str(numIslandsAtEachNodeAtEndL[mrcaNode])])
     
     analysis.printTable(rowL,indent=2,fileF=outputSummaryF)
 
     return
 
-def writeIslands(locIslByNodeL,strainNum2StrD,islandOutFN):
+def writeIslands(locIslByNodeL,strainNamesO,islandOutFN):
     '''Write the islands to a file'''
     f=open(islandOutFN,"w")
     for branch in range(len(locIslByNodeL)):
         for island in locIslByNodeL[branch]:
-            print(island.fileStr(strainNum2StrD),file=f)
+            print(island.fileStr(strainNamesO),file=f)
     f.close()
 
 
-def readIslands(islandFN,tree,strainStr2NumD):
+def readIslands(islandFN,tree,strainNamesO):
     '''Given a file name for a islands output file, load back
 recreating locIslByNodeL.'''
 
@@ -494,7 +494,7 @@ recreating locIslByNodeL.'''
         s=f.readline()
         if s == '':
             break
-        gr=str2Island(s.rstrip(),strainStr2NumD)
+        gr=str2Island(s.rstrip(),strainNamesO)
         locIslByNodeL[gr.mrca].append(gr)
     f.close()
 
