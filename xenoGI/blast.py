@@ -18,8 +18,8 @@ to run blast before making that.
     # load tree if present
     try:
         newDbFileL=[]
-        tree,strainStr2NumD,strainNum2StrD = trees.readTree(treeFN)
-        leavesL=[strainNum2StrD[strainNum] for strainNum in trees.leafList(tree)]
+        tree,strainNamesO = trees.readTree(treeFN)
+        leavesL=[strainNamesO.numToName(strainNum) for strainNum in trees.leafList(tree)]
 
         for dbFile in dbFileL:
             dbStem = os.path.split(dbFile)[-1] # strain + extension
