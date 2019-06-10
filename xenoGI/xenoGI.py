@@ -377,7 +377,9 @@ def debugWrapper(paramD):
     tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
     familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
 
-    L=list(families.getGeneSubsetFromLocusFamilies(familiesO,tree,geneNamesO))
+    #L=list(families.getGeneSubsetFromLocusFamilies(familiesO,tree,paramD['numRepresentativeGenesPerLocFam'],geneNamesO))
+
+    L=list(families.getGeneSubsetFromLocusFamilies(familiesO,tree,2,geneNamesO))
     
     code.interact(local=locals())
 

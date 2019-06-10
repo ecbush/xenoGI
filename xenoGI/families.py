@@ -855,10 +855,9 @@ be single gene LocusFamilies, but some may be multi-gene
 
 ## xlMode
 
-def getGeneSubsetFromLocusFamilies(familiesO,tree,geneNamesO):
-    ''''''
-
-    numRepresentativeGenesPerLocFam = 2 # later move to paramD
+def getGeneSubsetFromLocusFamilies(familiesO,tree,numRepresentativeGenesPerLocFam,geneNamesO):
+    '''Loop over all locus families and sample
+numRepresentativeGenesPerLocFam from each.'''
 
     # get some stuff from tree
     leafL = trees.leafList(tree)
