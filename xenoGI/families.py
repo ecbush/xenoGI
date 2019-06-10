@@ -1,7 +1,7 @@
 # Functions for a modified version of the PhiGs algorithm
 # http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
 # (We've added the use of synteny)
-import sys,numpy
+import sys,numpy,random
 from scipy.signal import find_peaks
 from . import trees,scores
 from .Family import *
@@ -853,6 +853,51 @@ be single gene LocusFamilies, but some may be multi-gene
 
     return lfOL,locusFamNumCounter
 
+## xlMode
+
+def getGeneSubsetFromLocusFamilies(familiesO,tree,geneNamesO):
+    ''''''
+
+    numRepresentativeGenesPerLocFam = 2 # later move to paramD
+
+    # get some stuff from tree
+    leafL = trees.leafList(tree)
+    subtreeL=trees.createSubtreeL(tree)
+    subtreeL.sort()
+    numNodes = trees.nodeCount(tree)
+    
+    for lfO in familiesO.iterLocusFamilies():
+        for geneNum in getGeneSubsetFromOneLocusFamily(lfO,numRepresentativeGenesPerLocFam,leafL,numNodes,geneNamesO,subtreeL):
+            yield geneNum
+
+def getGeneSubsetFromOneLocusFamily(lfO,numRepresentativeGenesPerLocFam,leafL,numNodes,geneNamesO,subtreeL):
+    '''Sample numRepresentativeGenesPerLocFam genes from one
+LocusFamily. This function simply divides the LocusFamily genes into
+sets on the left and right branches, and attempts to take a similar
+sized sample from each.'''
+
+    lfGenesL = list(lfO.iterGenes())
+    if len(lfGenesL) <= numRepresentativeGenesPerLocFam:
+        return lfGenesL
+    elif lfO.lfMrca in leafL:
+        # it's a tip
+        return random.sample(lfGenesL,numRepresentativeGenesPerLocFam)
+    else:
+        # divide up the genes by node
+        nodeGenesL=[[] for i in range(numNodes)]
+        for geneNum in lfGenesL:
+            strain = geneNamesO.numToStrainNum(geneNum)
+            nodeGenesL[strain].append(geneNum)
+        # get ones from left and right
+        leftS,rightS = createLRSets(subtreeL,lfO.lfMrca,nodeGenesL,None)
+
+        numLeft = min(len(leftS),numRepresentativeGenesPerLocFam // 2)
+        numRight = min(len(rightS),numRepresentativeGenesPerLocFam - numLeft)
+
+        sampleL = random.sample(leftS,numLeft) + random.sample(rightS,numRight)
+
+        return sampleL
+    
 ## Input/output
 
 def writeFamilies(familiesO,geneNamesO,strainNamesO,fileName):

@@ -375,7 +375,10 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-        
+    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
+
+    L=list(families.getGeneSubsetFromLocusFamilies(familiesO,tree,geneNamesO))
+    
     code.interact(local=locals())
 
 def simValidationWrapper(paramD):
