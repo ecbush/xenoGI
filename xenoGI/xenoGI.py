@@ -136,7 +136,7 @@ def calcScoresWrapper(paramD,blastFnL):
     scoresO = scores.calcRawScores(paramD,geneNamesO,scoresO)
 
     ## synteny scores
-    scoresO = scores.calcSynScores(scoresO,geneNamesO,geneOrderT,paramD,tree)
+    scoresO = scores.calcSynScores(scoresO,geneNamesO,geneOrderT,paramD)
 
     ## core synteny scores
     strainNamesL=sorted([strainNamesO.numToName(leaf) for leaf in trees.leafList(tree)])

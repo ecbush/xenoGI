@@ -91,7 +91,7 @@ based on the max and min possible scores for these sequences.'''
 
 #### synteny scores
 
-def calcSynScores(scoresO,geneNamesO,geneOrderT,paramD,tree):
+def calcSynScores(scoresO,geneNamesO,geneOrderT,paramD):
     '''Calculate the synteny score between two genes and add to edge
 attributes of scoresO. We only bother making synteny scores for those
 genes that have an edge in scoresO.
@@ -108,7 +108,7 @@ genes that have an edge in scoresO.
     
     # make list of groups of arguments to be passed to p.imap. There
     # should be numThreads groups.
-    argumentL = [[[],tree,neighborTL,numSynToTake,geneNamesO] for i in range(numThreads)]
+    argumentL = [[[],neighborTL,numSynToTake,geneNamesO] for i in range(numThreads)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
@@ -162,15 +162,15 @@ def synScoreGroup(argsT):
     scores. This function is intended to be called by p.map.
     '''
 
-    edgeL,tree,neighborTL,numSynToTake,geneNamesO = argsT
+    edgeL,neighborTL,numSynToTake,geneNamesO = argsT
     
     outL=[]
     for gn1,gn2 in edgeL:
-        outL.append(synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNamesO))
+        outL.append(synScore(sharedScoresO,gn1,gn2,neighborTL,numSynToTake,geneNamesO))
         
     return outL
         
-def synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNamesO):
+def synScore(sharedScoresO,gn1,gn2,neighborTL,numSynToTake,geneNamesO):
     '''Given two genes, calculate a synteny score for them. We are given
     the genes, neighborTL, which contains lists of neighbors for each
     gene. For the two sets of neighbors, we find the numSynToTake top
@@ -178,9 +178,6 @@ def synScore(sharedScoresO,gn1,gn2,tree,neighborTL,numSynToTake,geneNamesO):
     greedy. We find the pair with the best score, add it, then remove
     those genes and iterate.
     '''
-
-    sp1 = geneNamesO.numToStrainNum(gn1)
-    sp2 = geneNamesO.numToStrainNum(gn2)
 
     L1 = list(neighborTL[gn1])
     L2 = list(neighborTL[gn2])
