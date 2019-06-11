@@ -199,6 +199,9 @@ that index is a set of tuples representing the contigs.'''
         # genes within them separated by a space character.
         L=s.split('\t')
         strain = L[0]
+        if not strain in strainNamesO.strToNumD:
+            # we only load those things that are in strainNamesO
+            continue
         contigL=[]
         for contig in L[1:]:
             geneNumT=tuple((geneNamesO.nameToNum(g) for g in contig.split(' ')))
