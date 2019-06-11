@@ -171,10 +171,10 @@ class strainNames:
 versions of strain names.'''
 
         # make dictionaries for converting between number and string strain names
-        self.strToNumD={}
-        self.makeTreeD(stringTree,numTree,self.strToNumD)
-        self.numToStrD={}
-        self.makeTreeD(numTree,stringTree,self.numToStrD)
+        self.nameToNumD={}
+        self.makeTreeD(stringTree,numTree,self.nameToNumD)
+        self.numToNameD={}
+        self.makeTreeD(numTree,stringTree,self.numToNameD)
 
 
     def makeTreeD(self,tree1,tree2,treeD):
@@ -188,7 +188,13 @@ versions of strain names.'''
             return
 
     def nameToNum(self,strainStr):
-        return self.strToNumD[strainStr]
+        return self.nameToNumD[strainStr]
 
     def numToName(self,strainNum):
-        return self.numToStrD[strainNum]
+        return self.numToNameD[strainNum]
+
+    def isStrainPresentByName(self,strainName):
+        return strainName in self.nameToNumD
+
+    def isStrainPresentByNum(self,strainNum):
+        return strainNum in self.numToNameD
