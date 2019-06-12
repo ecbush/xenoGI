@@ -363,23 +363,33 @@ particular strainPair.'''
     ## attributes. These attributes are not saved in the file format,
     ## and so must be calculated each time we intend to use them.
 
-    def createNodeConnectL(self,geneNamesO):
-        '''Create an attribute nodeConnectL. Index in this list corresponds to
-gene. Value at that index is a list of the genes which a given gene
-connects to. This attribute is not saved in our file formats. It must
-be recalculated before it will be used (e.g. in family formation).'''
+    def createNodeConnectD(self):
+        '''Create an attribute nodeConnectD. Keys corresponds to gene. Value
+is a list of the genes which a given gene connects to. This attribute
+is not saved in our file formats. It must be recalculated before it
+will be used (e.g. in family formation).
+        '''
 
-        self.nodeConnectL = [[] for gn in geneNamesO.iterGeneNums()]
+        self.nodeConnectD = {}
 
-        # loop over endNodesToEdgeD populating nodeConnectL
+        # loop over endNodesToEdgeD populating nodeConnectD
         for gn1,gn2 in self.endNodesToEdgeD:
-            self.nodeConnectL[gn1].append(gn2)
-            self.nodeConnectL[gn2].append(gn1)
+            if gn1 not in self.nodeConnectD:
+                self.nodeConnectD[gn1] = [gn2]
+            else:
+                self.nodeConnectD[gn1].append(gn2)
+            if gn2 not in self.nodeConnectD:
+                self.nodeConnectD[gn2] = [gn1]
+            else:
+                self.nodeConnectD[gn2].append(gn1)
 
     def getConnectionsGene(self,gene):
         '''Return a list containing all the genes connected to gene.'''
-        return self.nodeConnectL[gene]
-
+        if gene in self.nodeConnectD:
+            return self.nodeConnectD[gene]
+        else:
+            return None
+        
     def createNodeEdgeL(self,geneNamesO):
         '''Create an attribute nodeEdgeL. Index in this list corresponds to
 gene. Value at that index is a list of the edges which a give gene

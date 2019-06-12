@@ -32,10 +32,10 @@ tree and thus does not have any outgroups. This is not recommended
 because it can lead to problems accurately recognizing core gene
 families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     
-    # initialize scoresO.nodeConnectL and scoresO.ScoreSummaryD for
+    # initialize scoresO.nodeConnectD and scoresO.ScoreSummaryD for
     # use below
     strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
-    scoresO.createNodeConnectL(geneNamesO)
+    scoresO.createNodeConnectD()
     scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,geneNamesO)
 
     # create an object of class Families to store this in.
@@ -542,12 +542,14 @@ minCoreSynThresh, or a synteny score below synThresholdD.
     '''
     bestGene=None
     bestEdgeScore = -float('inf')
-    for otherGene in scoresO.getConnectionsGene(gene):
-        if otherGene in S:
-            if isSameFamily(gene,otherGene,scoresO,geneNamesO,bestEdgeScore,absMinRawThresholdForHomologyD,None,paramD):
-                # we don't want to use synThresholdD, hence the Nones
-                bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
-                bestGene = otherGene
+    connectL = scoresO.getConnectionsGene(gene)
+    if connectL != None:
+        for otherGene in connectL:
+            if otherGene in S:
+                if isSameFamily(gene,otherGene,scoresO,geneNamesO,bestEdgeScore,absMinRawThresholdForHomologyD,None,paramD):
+                    # we don't want to use synThresholdD, hence the Nones
+                    bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
+                    bestGene = otherGene
     return bestEdgeScore, gene, bestGene
     
 def createSeedL(leftS,rightS,scoresO,geneNamesO,absMinRawThresholdForHomologyD,paramD):

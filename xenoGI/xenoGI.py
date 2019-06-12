@@ -363,7 +363,7 @@ def interactiveAnalysisWrapper(paramD):
     islandByNodeL=islands.readIslands(paramD['islandOutFN'],tree,strainNamesO)
     gene2FamIslandD = createGene2FamIslandD(islandByNodeL,familiesO)
     scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
-    scoresO.createNodeConnectL(geneNamesO) # make nodeConnectL attribute
+    scoresO.createNodeConnectD() # make nodeConnectD attribute
     
     code.interact(local=locals())
 
@@ -375,11 +375,11 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     tree,strainNamesO,geneNamesO,subtreeL,geneOrderT = loadMiscDataStructures(paramD)
-    familiesO = families.readFamilies(paramD['familyFN'],tree,geneNamesO,strainNamesO)
+    scoresO = scores.readScores(paramD['scoresFN'],geneNamesO)
+    scoresO.createNodeConnectD() # make nodeConnectD attribute
 
-    #L=list(families.getGeneSubsetFromLocusFamilies(familiesO,tree,paramD['numRepresentativeGenesPerLocFam'],geneNamesO))
+    
 
-    L=list(families.getGeneSubsetFromLocusFamilies(familiesO,tree,2,geneNamesO))
     
     code.interact(local=locals())
 
