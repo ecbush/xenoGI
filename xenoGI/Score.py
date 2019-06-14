@@ -12,17 +12,19 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFnL,geneNamesO,strainNamesO):
+    def initializeDataAttributes(self,blastFnL,strainNamesO):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
-0. Arrays for other score types will be created later.
+0. Arrays for other score types will be created later. The genes
+included here depend on what is found in the blast files in blastFnL.
+
         '''
-        self.fillEndNodesToEdgeD(blastFnL,geneNamesO,strainNamesO)
+        self.fillEndNodesToEdgeD(blastFnL,strainNamesO)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFnL,geneNamesO,strainNamesO):
+    def fillEndNodesToEdgeD(self,blastFnL,strainNamesO):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -54,9 +56,9 @@ strainPairScoreLocationD.
                     if len(L) != 12: # we only want lines with 12 columns
                         continue
 
-                    g1 = geneNamesO.nameToNum(L[0])
-                    g2 = geneNamesO.nameToNum(L[1])
-
+                    g1 = int(L[0].split("_")[0])
+                    g2 = int(L[1].split("_")[0])
+                    
                     # because we have blast files going both ways
                     # (e.g. strain 1 vs strain 2 and also strain 2 vs
                     # strain 1), we check if we've added this
@@ -171,6 +173,16 @@ particular strainPair.'''
         for edge in range(stInd,endInd):
             yield self.getScoreByEdge(edge,scoreType)
 
+    def getStrains(self):
+        '''Return a set of the strains used in this scores object (in number
+form).'''
+        strainS = set()
+        for key in self.strainPairScoreLocationD:
+            strain1,strain2 = key
+            strainS.add(strain1)
+            strainS.add(strain2)
+        return strainS
+        
     def __eq__(self,other):
         '''Determine if other has the same values as self. Useful mainly for debugging.'''
 
@@ -193,7 +205,7 @@ particular strainPair.'''
         # we made it, they're the same
         return True
         
-    def writeScoresText(self,geneNamesO,scoreTypeL,scoresFN):
+    def writeScoresText(self,scoreTypeL,scoresFN,genesO,strainNamesO,geneInfoFN):
         '''Save all edges (pairs of genes) to a tab delimited text file with a
     header line.
         '''
@@ -207,18 +219,17 @@ particular strainPair.'''
             stInd,endInd = self.strainPairScoreLocationD[key]
             f.write("\t".join(map(str,[strain1,strain2,stInd,endInd]))+"\n")
 
-        # get a copy of geneNamesO with the dict keyed by num
-        byNumGeneNamesO = geneNamesO.copy()
-        byNumGeneNamesO.flipDict()
-        
+        strainS = set((strainNamesO.numToName(s) for s in self.getStrains()))
+        genesO.initializeGeneNumToNameD(geneInfoFN,strainS)
+            
         # write header
         f.write("# Scores: "+"\t".join(['gene1','gene2','edge']+scoreTypeL)+'\n')
 
         for gene1Num,gene2Num in self.endNodesToEdgeD:
             edge = self.endNodesToEdgeD[(gene1Num,gene2Num)]
             outStrL=[]
-            outStrL.append(byNumGeneNamesO.numToName(gene1Num))
-            outStrL.append(byNumGeneNamesO.numToName(gene2Num))
+            outStrL.append(genesO.numToName(gene1Num))
+            outStrL.append(genesO.numToName(gene2Num))
             outStrL.append(str(edge))
             for scoreType in scoreTypeL:
                 outStrL.append(format(self.getScoreByEndNodes(gene1Num,gene2Num,scoreType),".6f"))
@@ -227,7 +238,7 @@ particular strainPair.'''
 
         f.close()
 
-    def readScoresText(geneNamesO,scoreTypeL,scoresFN):
+    def readScoresText(scoreTypeL,scoresFN):
         '''Read scores from a text file of scores and use to create Score
         object
         '''
@@ -271,8 +282,9 @@ particular strainPair.'''
                 break
             lineL=s.split('\t')
 
-            g1 = geneNamesO.nameToNum(lineL[0])
-            g2 = geneNamesO.nameToNum(lineL[1])
+            g1 = int(lineL[0].split('_')[0])
+            g2 = int(lineL[1].split('_')[0])
+            
             edge = int(lineL[2])
             scoresO.endNodesToEdgeD[(g1,g2)] = edge
 
@@ -424,7 +436,7 @@ recalculated before it will be used.
         '''Given and edge, return the numbers for the two genes on either end.'''
         return self.edgeToEndNodeL[edge]
 
-    def createAabrhScoreSummaryD(self,strainNumsL,aabrhL,geneNamesO):
+    def createAabrhScoreSummaryD(self,strainNumsL,aabrhL,genesO):
         '''Given raw scores and set of all around best reciprocal hits,
     calculates the mean and standard deviation of scores and stores in a
     dictionary.'''
@@ -442,7 +454,7 @@ recalculated before it will be used.
 
         # loop through aabrhL and populate
         for orthoT in aabrhL:
-            spScoreD = self.addPairwiseScores(spScoreD,orthoT,geneNamesO)
+            spScoreD = self.addPairwiseScores(spScoreD,orthoT,genesO)
 
         # get mean and standard deviation
         self.scoreSummaryD = {}
@@ -452,20 +464,18 @@ recalculated before it will be used.
             self.scoreSummaryD[(sp1,sp2)] = (mean,std)
             self.scoreSummaryD[(sp2,sp1)] = (mean,std)
 
-    def addPairwiseScores(self,spScoreD,orthoT,geneNamesO):
+    def addPairwiseScores(self,spScoreD,orthoT,genesO):
         '''Given a dictionary for storing pairwise scores, and ortholog set in
     orthoT, and a network of scores, scoresO, pull out all species pairs, and
     add score for each in appropriate place in spScoreD.'''
 
         for i in range(len(orthoT)-1):
             gene1 = orthoT[i]
-            geneNum1=geneNamesO.nameToNum(gene1)
-            sp1 = geneNamesO.nameToStrainNum(gene1)
+            sp1 = genesO.numToStrainNum(gene1)
             for j in range(i+1,len(orthoT)):
                 gene2 = orthoT[j]
-                geneNum2=geneNamesO.nameToNum(gene2)
-                sp2 = geneNamesO.nameToStrainNum(gene2)
-                sc = self.getScoreByEndNodes(geneNum1,geneNum2,'rawSc')
+                sp2 = genesO.numToStrainNum(gene2)
+                sc = self.getScoreByEndNodes(gene1,gene2,'rawSc')
                 key = tuple(sorted([sp1,sp2]))
                 spScoreD[key].append(sc)
         return spScoreD

@@ -1,15 +1,13 @@
 import sys
 from multiprocessing import Pool
-from . import trees
-from . import genomes
-from . import analysis
+from . import trees,genomes,analysis
 from .Island import *
 from .Family import *
 import math 
     
 ## Main function  
 
-def makeLocusIslands(geneOrderT,subtreeL,tree,paramD,familiesO,strainNamesO,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,strainNamesO,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
     numThreads = paramD['numThreads']
@@ -20,7 +18,7 @@ def makeLocusIslands(geneOrderT,subtreeL,tree,paramD,familiesO,strainNamesO,outp
     rscThresholdMerge1 = paramD['rscThresholdMerge1']
     maxClusterSize = paramD['maxClusterSize']
     
-    geneProximityD = genomes.createGeneProximityD(geneOrderT,geneProximityRange )
+    geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange )
     locIslByNodeL=createLocIslByNodeL(familiesO,tree)
     numIslandsAtEachNodeAtStartL = [len(L) for L in locIslByNodeL]
     focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,strainNamesO,rootFocalClade)

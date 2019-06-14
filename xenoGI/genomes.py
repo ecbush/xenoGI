@@ -11,100 +11,128 @@ name.
     seqD={}
     for fn in protFnL:
         for header,seq in fasta.load(fn):
-            gn = header.split()[0][1:]
+            gn = int(header.split("_")[0][1:])
             seqD[gn]=seq
     return seqD
 
-class geneNames:
-    def __init__(self, geneOrderFN=None):
-        '''geneNames object to interconvert between the numerical and string
-representation of genes. Contains only a single dictionary to convert
+class genes:
+    def __init__(self, geneInfoFN):
+        '''genes object. Keeps track of genes present (organized by strain). Also can optionally load a dictionary which allows us to interconvert from numerical to strain represenatations of a gene.'''
+
+        '''
+  For later.
+ Contains only a single dictionary to convert
 one way, either from geneName to number or visa versa. The method
 flipDict inverts keys and values in the dictionary.
         '''
 
-        self.geneD = {}
+        self.geneRangeByStrainD = {}
         self.numGenes = 0
         self.strainGeneRangeT = ()
+        self.geneNumToNameD = None
+        self.geneInfoD = None
         self.strainNamesO = None
         
-        if geneOrderFN != None:
-            self.initializeGeneD(geneOrderFN)
+        self.initializeGeneRangeByStrainD(geneInfoFN)
+        self.initializeStrainGeneRangeT()
 
-    def initializeGeneD(self,geneOrderFN):
-        '''Given a geneOrder file, fill a gene dict keyed by geneName with
-value geneNumber.'''
+    def initializeGeneRangeByStrainD(self,geneInfoFN):
+        '''Given a geneInfo file, fill a dict keyed by strain name with values
+giving the range of gene numbers in the strain.'''
 
-        strainGeneRangeL = []
-        num=0
-        f = open(geneOrderFN,'r')
+        f = open(geneInfoFN,'r')
+
+        # handle first line, which gives first strain
+        strainName = f.readline().rstrip()[2:]
+        enteringNewSpecies = True
+        
         while True:
             s = f.readline()
             if s == '':
                 break
-            L=s.split()
-            strainName = L[0]
-            for i in range(1,len(L)): 
-                geneName=L[i]
-                self.geneD[geneName] = num
-                num+=1
-            endOfRange = num
-            # strain ranges will help us get strain from genes
-            strainGeneRangeL.append((strainName,endOfRange))
-            
-        f.close()
-        self.numGenes = num
-        self.strainGeneRangeT = tuple(strainGeneRangeL)
+            elif s[0] == '#':
 
+                # save previous block
+                strainRangeEnd = geneNum+1 # make it the number after the last we saw
+                self.geneRangeByStrainD[strainName] = (strainRangeStart,strainRangeEnd)
+
+                # get set for next block
+                strainName = s.rstrip()[2:] # strainName for next block
+                enteringNewSpecies = True
+                
+            else:
+                geneNum,geneName,commonName,locusTag,descrip,chrom,start,end,strand=s.rstrip().split('\t')
+                geneNum = int(geneNum)
+                if enteringNewSpecies == True:
+                    strainRangeStart = geneNum
+                enteringNewSpecies = False
+
+        f.close()
+
+        # get last strain
+        strainRangeEnd = geneNum+1
+        self.geneRangeByStrainD[strainName] = (strainRangeStart,strainRangeEnd)
+        self.numGenes = strainRangeEnd
+
+    def initializeStrainGeneRangeT(self):
+        '''The numToStrainName function works best with a tuple version of the
+strain ranges. This method intializes that.'''
+        strainRangeL = [(strain,end) for strain,(start,end) in self.geneRangeByStrainD.items()]
+        strainRangeL.sort(key=lambda x: x[1]) # sort by end
+        self.strainGeneRangeT = tuple(strainRangeL)
+
+    def initializeGeneNumToNameD(self,geneInfoFN,strainNamesL=None):
+        '''Given geneInfo file, fill a gene dict keyed by geneNum with value
+geneName. If strainNamesL is provided, only load from those strains
+present in it. This is an optional part of this data structure, which
+isn't loaded by default.
+
+        '''
+        self.geneNumToNameD = self.loadDictFromGeneInfoFile(geneInfoFN,strainNamesL,True)
+
+    def initializeGeneInfoD(self,geneInfoFN,strainNamesL=None):
+        '''Read gene info from file, returning a dict keyed by gene name with
+    information such as description, start position and so on.
+        '''
+        self.geneInfoD = self.loadDictFromGeneInfoFile(geneInfoFN,strainNamesL,False)
+
+    def loadDictFromGeneInfoFile(self,geneInfoFN,strainNamesL,onlyNames):
+        '''Reads in a dictionary from geneInfo file. Keys are geneNum. If
+onlyNames is True, then we make the values geneName, otherwise all
+other fields.'''
+
+        D = {}
+        f = open(geneInfoFN,'r')
+        while True:
+            s = f.readline()
+            if s == '':
+                break
+            elif s[0] == '#':
+                strainName = s.rstrip()[2:]
+                if strainNamesL == None or strainName in strainNamesL:
+                    keepGenes = True
+                else:
+                    keepGenes = False
+            else:
+                geneNum,geneName,commonName,locusTag,descrip,chrom,start,end,strand=s.rstrip().split('\t')
+                if keepGenes == True:
+                    geneNum = int(geneNum)
+                    if onlyNames:
+                        D[geneNum] = geneName
+                    else:
+                        D[geneNum] = geneName,commonName,locusTag,descrip,chrom,start,end,strand
+                        
+        f.close()
+        return D
+        
     def addStrainNamesO(self,strainNamesO):
         '''Add the strainNamesO object in for convenience. We don't do this when initializing because sometimes we may want a geneNames object before we have a tree or strainNamesO.'''
         self.strainNamesO = strainNamesO
         
-    def flipDict(self):
-        '''Reverse keys and values in geneD.'''
-        newD = {}
-        while self.geneD != {}:
-            key,value = self.geneD.popitem()
-            newD[value] = key
-        self.geneD = newD
-        
-    def nameToNum(self,geneName):
-        '''Given gene name, return gene number.'''
-        if type(geneName) != str:
-            raise ValueError("Input of wrong type. Expected a gene in string form.")
-        return self.geneD[geneName]
-
-    def numToName(self,geneNumber):
-        '''Given gene number, return gene name.'''
-        if type(geneNumber) != int:
-            raise ValueError("Input of wrong type. Expected a gene in integer form.")
-        return self.geneD[geneNumber]
-
-    def iterGeneNums(self):
-        return range(0,self.numGenes)
-
-    def copy(self):
-        '''Return a copy of self. We will do a deep copy on geneD.'''
-
-        gnO = geneNames()
-
-        # get deep copy of geneD
-        newGeneD={}
-        for key,value in self.geneD.items():
-            newGeneD[key]=value
-        gnO.geneD = newGeneD
-
-        # get rest of attributes
-        gnO.numGenes = self.numGenes
-        gnO.strainGeneRangeT = self.strainGeneRangeT
-        gnO.strainNamesO = self.strainNamesO
-        
-        return gnO
-
     def numToStrainName(self,geneNum):
         '''Given a gene number, return the strain name corresponding.'''
         return self.numToStrainNameHelper(geneNum,self.strainGeneRangeT)
-        
+
     def numToStrainNameHelper(self,geneNum,strainGeneRangeT):
         '''Recursive helper function to return the strain name corresponding
 to geneNum. Checks if geneNum falls in the first range, if not chops
@@ -124,35 +152,39 @@ it and recurses.
         '''Given a gene number, return the strain number corresponding.'''
         return self.strainNamesO.nameToNum(self.numToStrainName(geneNum))
             
-    def nameToStrainName(self,geneName):
-        '''Given a gene name, return the strain name corresponding.'''
-        return self.numToStrainName(self.nameToNum(geneName))
+    def numToName(self,geneNumber):
+        '''Given gene number, return gene name. Assumes self.geneNumToNameD
+has been initialized.'''
+        return self.geneNumToNameD[geneNumber]
 
-    def nameToStrainNum(self,geneName):
-        '''Given a gene name, return the strain number corresponding.'''
-        return self.strainNamesO.nameToNum(self.nameToStrainName(geneName))
+    def iterGenes(self,strainL=None):
+        '''Iterate over genes. If strainL is None (or is not given) iterates
+over all genes. If strainL is given, iterates over genes from only the
+strains present in strainL.'''
+
+        for strainName,endRange in self.strainGeneRangeT:
+            # this will give in order of gene number
+            if strainL == None or strainName in strainL:
+                for geneNum in self.iterGenesStrain(strainName):
+                    yield geneNum
+
+    def iterGenesStrain(self,strainName):
+        '''Iterates over all genes in strainName.'''
+        rangeStart,rangeEnd = self.geneRangeByStrainD[strainName]
+        return range(rangeStart,rangeEnd)
+
+    def numToGeneInfo(self,geneNumber):
+        '''Given gene number, return other info about gene. Assumes
+self.geneInfoD has been initialized.
+        '''
+        return self.geneInfoD[geneNumber]
     
     def __len__(self):
-        return len(self.geneD)
+        return self.numGenes
     
     def __repr__(self):
-        return "<geneName object with "+str(len(self.names))+" genes.>"
+        return "<genes object with "+str(len(self))+" genes.>"
         
-def readGeneInfoD(geneInfoFN):
-    '''Read gene info from file, returning a dict keyed by gene name with
-information such as description, start position and so on.
-    '''
-    geneInfoD = {}
-    f = open(geneInfoFN,'r')
-    while True:
-        s = f.readline()
-        if s == '':
-            break
-        geneName,commonName,locusTag,descrip,chrom,start,end,strand=s.rstrip().split('\t')
-        geneInfoD[geneName]=(commonName,locusTag,descrip,chrom,start,end,strand)
-    f.close()
-    return geneInfoD
-
 def getProximityInWindow(geneWinT,geneProximityD):
     '''Given a window of genes, calculate the distances between first gene
 and the rest (in number of genes) and store in geneProximityD. Updates
@@ -167,29 +199,29 @@ geneProximityD in place, returning None.
         else:
             geneProximityD[(gnB,gnA)]=i
 
-def createGeneProximityD(geneOrderT,geneProximityForGroup):
+def createGeneProximityD(geneOrderD,geneProximityForGroup):
     '''Go though a gene order tuple pulling out pairs of genes that are
 within geneProximityForGroup genes of each other. Store in a dict keyed by
 gene pair, with value equal to the distance between the two genes,
 measured in number of genes.'''
     geneProximityD = {}
-    for contigT in geneOrderT:
-        if contigT != None:
-            # internal nodes are None, having no genes to be adjacent
-            for geneNumT in contigT:
-                for i in range(len(geneNumT)):
-                    # slide over genes w/win geneProximityForGroup+1
-                    # wide.
-                    getProximityInWindow(geneNumT[i:i+(geneProximityForGroup+1)],geneProximityD)
+    for contigT in geneOrderD.values():
+        for geneNumT in contigT:
+            for i in range(len(geneNumT)):
+                # slide over genes w/win geneProximityForGroup+1
+                # wide.
+                getProximityInWindow(geneNumT[i:i+(geneProximityForGroup+1)],geneProximityD)
                     
     return geneProximityD
 
-def createGeneOrderTs(geneOrderFN,geneNamesO,subtreeL,strainNamesO):
+def createGeneOrderD(geneOrderFN,strainNamesL):
     '''Go though gene order file and get orderings into a set of
-tuples. Returns a tuple whose index is strain number, and the value at
-that index is a set of tuples representing the contigs.'''
+tuples. Put in a dict, keyed by strain name. We include only the
+strains in strainNamesL. If strainNamesL is None, load all.
+
+    '''
+    geneOrderD = {}
     f = open(geneOrderFN,'r')
-    geneOrderL=[None for x in range(trees.nodeCount(subtreeL[-1]))] # an index for each node
     while True:
         s = f.readline()
         if s == '':
@@ -199,14 +231,14 @@ that index is a set of tuples representing the contigs.'''
         # genes within them separated by a space character.
         L=s.split('\t')
         strain = L[0]
-        if not strainNamesO.isStrainPresentByName(strain):
-            # we only load those strains that are in strainNamesO
-            continue
-        contigL=[]
-        for contig in L[1:]:
-            geneNumT=tuple((geneNamesO.nameToNum(g) for g in contig.split(' ')))
-            contigL.append(geneNumT)
-        geneOrderL[strainNamesO.nameToNum(strain)]=tuple(contigL)
+        if strainNamesL == None or strain in strainNamesL:
+            # we only load those strains that are in strainNamesL (or all
+            # if strainNamesL is None)
+            contigL=[]
+            for contig in L[1:]:
+                geneNumT=tuple((int(g) for g in contig.split(' ')))
+                contigL.append(geneNumT)
+            geneOrderD[strain] = tuple(contigL)
     f.close()
-    return tuple(geneOrderL)
+    return geneOrderD
 

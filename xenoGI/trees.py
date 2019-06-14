@@ -81,7 +81,6 @@ numbered nodes. Return tree with numbered nodes.'''
         numTree=(counter,leftNumTree,rightNumTree,tree[3])
         return numTree,counter+1
 
-
 def checkTree(bpTree):
     '''Check that a biopython tree is rooted and has named internal
 nodes. Throw error if not. Returns None.'''
@@ -176,7 +175,6 @@ versions of strain names.'''
         self.numToNameD={}
         self.makeTreeD(numTree,stringTree,self.numToNameD)
 
-
     def makeTreeD(self,tree1,tree2,treeD):
         '''Make a dictionary to convert from node names in tree1 to node names
     in the identically shaped tree2.'''
@@ -198,3 +196,11 @@ versions of strain names.'''
 
     def isStrainPresentByNum(self,strainNum):
         return strainNum in self.numToNameD
+
+    def iterStrainNums(self):
+        for strainNum in self.numToNameD.keys():
+            yield strainNum
+
+    def iterStrainNames(self):
+        for strainName in self.nameToNumD.keys():
+            yield strainName

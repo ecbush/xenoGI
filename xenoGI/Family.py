@@ -9,18 +9,18 @@ mrca for its family.'''
         self.lfMrca = lfMrca
         self.geneD = {}
 
-    def addGene(self, gene,geneNamesO):
+    def addGene(self, gene,genesO):
         '''Add a gene (in numerical form) to this LocusFamily.'''
-        strain = geneNamesO.numToStrainNum(gene)
+        strain = genesO.numToStrainNum(gene)
         if strain in self.geneD:
             self.geneD[strain].append(gene)
         else:
             self.geneD[strain] = [gene]
         
-    def addGenes(self,genesL,geneNamesO):
+    def addGenes(self,genesL,genesO):
         '''Add a list (or set etc.) of genes to this LocusFamily.'''
         for gene in genesL:
-            self.addGene(gene,geneNamesO)
+            self.addGene(gene,genesO)
 
     def iterGenes(self):
         '''Iterate through all genes in this locus family.'''
@@ -43,7 +43,7 @@ occurs.'''
         for strain in self.geneD.keys():
             yield strain
     
-    def getStr(self,strainNamesO,byNumGeneNamesO,sep):
+    def getStr(self,strainNamesO,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
 gene2...
@@ -51,15 +51,15 @@ gene2...
         outL=[str(self.locusFamNum),strainNamesO.numToName(self.lfMrca)]
         
         for geneNum in self.iterGenes():
-            outL.append(byNumGeneNamesO.numToName(geneNum))
+            outL.append(genesO.numToName(geneNum))
 
         return sep.join(outL)
     
-    def fileStr(self,strainNamesO,byNumGeneNamesO):
+    def fileStr(self,strainNamesO,genesO):
         '''Return a string representation of a single LocusFamily. Format is
         comma separated: 
         '''
-        return self.getStr(strainNamesO,byNumGeneNamesO,',')
+        return self.getStr(strainNamesO,genesO,',')
 
     def __repr__(self):
         '''String representation of a LocusFamily, for display purposes.'''
@@ -107,7 +107,7 @@ connections to this family.'''
                     otherGenesS.add(otherGene)
         return otherGenesS
     
-    def fileStr(self,strainNamesO,byNumGeneNamesO):
+    def fileStr(self,strainNamesO,genesO):
         '''Return string representation of single family. Format is: famNum <tab> 
         mrca <tab> seedG1 <tab> seedG2 <tab> locusFamNum1,locusFamGenes <tab>
         locusFamNum2,locusFamGenes...
@@ -121,10 +121,10 @@ connections to this family.'''
             outL.extend(["-","-"])
         else:
             for seed in self.seedPairL:
-                outL.append(byNumGeneNamesO.numToName(seed))
+                outL.append(genesO.numToName(seed))
 
         for lfO in self.locusFamiliesL:
-            outL.append(lfO.fileStr(strainNamesO,byNumGeneNamesO))
+            outL.append(lfO.fileStr(strainNamesO,genesO))
                 
         return "\t".join(outL)
 
