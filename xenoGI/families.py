@@ -892,7 +892,7 @@ sized sample from each.'''
             subtreeNodeGenesD[strainName].append(geneNum)
             
         # get ones from left and right
-        leftS,rightS = createLRSets(subtreeD,lfO.lfMrca,nodeGenesL,None)
+        leftS,rightS = createLRSets(subtreeD,lfO.lfMrca,subtreeNodeGenesD,None)
 
         numLeft = min(len(leftS),numRepresentativeGenesPerLocFam // 2)
         numRight = min(len(rightS),numRepresentativeGenesPerLocFam - numLeft)

@@ -7,7 +7,7 @@ import math
     
 ## Main function  
 
-def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
     numThreads = paramD['numThreads']
@@ -25,12 +25,12 @@ def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,outputSummaryF):
 
     ##  Merge in clusters
 
-    locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeL,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
+    locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
 
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
     argumentL = []
     for clusterL in locusIslandClusterL:
-        argumentL.append((clusterL,geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeL[clusterL[0].mrca],familiesO))
+        argumentL.append((clusterL,geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeD[clusterL[0].mrca],familiesO))
     p=Pool(numThreads)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
@@ -44,7 +44,7 @@ def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,outputSummaryF):
     ##  Merge at mrca nodes
     argumentL = []
     for mrcaNode in focalNodesL:
-        argumentL.append((locIslByNodeD[mrcaNode],geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeL[mrcaNode],familiesO))
+        argumentL.append((locIslByNodeD[mrcaNode],geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeD[mrcaNode],familiesO))
     p=Pool(numThreads)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
@@ -102,7 +102,7 @@ first.'''
 
 ## Cluster formation
 
-def createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeL,familiesO,geneProximityD,proximityThreshold,maxClusterSize):
+def createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,proximityThreshold,maxClusterSize):
     '''For every node in the focal clade, take the set of single family
 LocusIslands in locIslByNodeD. Break this up into smaller
 clusters based on the chromosomal distances between members of the
@@ -115,7 +115,7 @@ are likely to merge.'''
     #loop through all of the mrcaNode lists 
     for mrcaNode in focalNodesL:
 
-        subtree = subtreeL[mrcaNode]
+        subtree = subtreeD[mrcaNode]
         islandsAtMrcaNodeL = locIslByNodeD[mrcaNode] 
         
         mrcaClustersL,mrcaSingletonClustersL = createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThreshold,maxClusterSize)
