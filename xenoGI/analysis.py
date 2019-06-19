@@ -54,7 +54,7 @@ fields of geneInfoD.'''
         
 ## Print scores associated with a family
 
-def printScoreMatrix(familyNum,subtreeL,familiesO,genesO,scoresO,scoreType,fileF):
+def printScoreMatrix(familyNum,familiesO,genesO,scoresO,scoreType,fileF):
     '''Print a matrix of scores between all the genes in a family given by
 familyNum. Scores are provided by scoresO, and we're extracting the
 values associated with scoreType in the edges of this graph.
@@ -79,7 +79,7 @@ values associated with scoreType in the edges of this graph.
 
     printTable(rowsL,indent=2,fileF=fileF)
 
-def printOutsideFamilyScores(familyNum,subtreeL,familiesO,genesO,scoresO,fileF):
+def printOutsideFamilyScores(familyNum,familiesO,genesO,scoresO,fileF):
     '''Given a family, print scores for all non-family members with a
 connection to genes in family. Scores are provided in the network
 scoresO.
@@ -219,7 +219,7 @@ information, as well as a brief description of the gene's function.'''
     
 ## Print neighborhood of an island
 
-def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOrderD,gene2FamIslandD,genesO,strainNamesO,fileF):
+def printIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF):
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
     print("  LocusIsland:",islandNum,file=fileF)
@@ -227,7 +227,7 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOr
     genesInEitherDirec = int(synWSize/2)
 
     # get the island object for this islandNum
-    for listOfIslands in islandByNodeL:
+    for listOfIslands in islandByNodeD.values():
         _,island = islands.searchLocIslandsByID(listOfIslands,islandNum)
         if island != None: break
 
@@ -235,16 +235,15 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOr
         raise ValueError("LocusIsland "+str(islandNum)+" not found.")
         
     mrca = island.mrca
-    print("  mrca:",strainNamesO.numToName(mrca),file=fileF)
+    print("  mrca:",mrca,file=fileF)
 
-    leavesL=trees.leafList(subtreeL[mrca])
+    leavesL=trees.leafList(subtreeD[mrca])
 
-    for strainNum in leavesL:
+    for strainName in leavesL:
 
-        strainName = strainNamesO.numToName(strainNum)
         print("  In",strainName,end=' ',file=fileF)
 
-        islandGenesInStrainL = getIslandGenesInStrain(island,strainNum,familiesO)
+        islandGenesInStrainL = getIslandGenesInStrain(island,strainName,familiesO)
 
         if islandGenesInStrainL == []:
             print("the island is not found.",file=fileF)
@@ -261,12 +260,12 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOr
             printGenes(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF)
 
 
-def getIslandGenesInStrain(island,strainNum,familiesO):
+def getIslandGenesInStrain(island,strainName,familiesO):
     '''Given an island, a strain number, and our families object, return
 all the genes in the island for that strain.'''
     genesL=[]
     for locFam in island.iterLocusFamilies(familiesO):
-        genesL.extend(locFam.iterGenesByStrain(strainNum))
+        genesL.extend(locFam.iterGenesByStrain(strainName))
     return genesL
 
 def getNeighborhoodGenes(strainName,geneOrderD,islandGenesInStrainL,genesInEitherDirec):

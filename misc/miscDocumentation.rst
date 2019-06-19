@@ -46,20 +46,16 @@ Obtaining a tree if you don't already have one
 
 If you don't have a species tree for your set of species, there is some code in misc/ to help you get alignments, which can then be used (with your phylogenetic package of choice) to get a tree.
 
-The first step is to get the genbank files for your species, and begin the process of running xenoGI, as described in README.rst. However you only run the first two steps::
+The first step is to get the genbank files for your species, and begin the process of running xenoGI, as described in README.rst. However you only run the first three steps::
 
   xenoGI params.py parseGenbank
   xenoGI params.py runBlast
-
+  xenoGI params.py calcScores
 
 Obtaining alignments
 ~~~~~~~~~~~~~~~~~~~~
 
-Next, we obtain sets of "all around best reciprocal hit" orthologs. These sets have exactly one copy in each strain::
-
-  python3 path-to-xenoGI-github-repository/misc/createAabrh.py params.py
-
-We now will take the proteins for each ortholog set, and construct alignments between them. This step assumes you have muscle (https://www.drive5.com/muscle/) in your path::
+In the process of calculating the scores, xenoGI has created sets of "all around best reciprocal hit" orthologs. These sets have exactly one copy in each strain. We now will take the proteins for each ortholog set, and construct alignments between them. This step assumes you have muscle (https://www.drive5.com/muscle/) in your path::
 
   python3 path-to-xenoGI-github-repository/misc/aabrhProtAlign.py params.py alignedProts.fa
 
@@ -103,3 +99,4 @@ Now you have output from some phylogenetic reconstruction program in the form of
     
     python3 path-to-xenoGI-github-repository/misc/stripBranchLen.py namedNode.tre final.tre
 
+Once you have a tree, you can resume with the normal xenoGI steps (makeFamilies, makeIslands, printAnalysis) as described in README.rst.
