@@ -516,17 +516,17 @@ between 0 and 1.'''
 
 #### Score I/O
 
-def writeScores(scoresO,scoresFN,genesO=None,strainNamesO=None,geneInfoFN=None):
+def writeScores(scoresO,strainNamesT,scoresFN,genesO=None,geneInfoFN=None):
     '''Write a scores object to file. If scoresFN has the .bout extension, write
 binary version, otherwise write in text output format.'''
 
     scoreTypeL = ['rawSc','synSc','coreSynSc']
     if scoresFN.split('.')[-1] == 'bout':
-        scoresO.writeScoresBinary(scoreTypeL,scoresFN)
+        scoresO.writeScoresBinary(strainNamesT,scoreTypeL,scoresFN)
     else:
-        scoresO.writeScoresText(scoreTypeL,scoresFN,genesO,strainNamesO,geneInfoFN)
+        scoresO.writeScoresText(strainNamesT,scoreTypeL,scoresFN,genesO,geneInfoFN)
 
-def readScores(scoresFN):
+def readScores(strainNamesT,scoresFN):
     '''Read scores from file creating a Score object of scores. If
 scoresFN has the .bout extension, read binary, otherwise read text
 format.
@@ -534,7 +534,7 @@ format.
 
     scoreTypeL = ['rawSc','synSc','coreSynSc']
     if scoresFN.split('.')[-1] == 'bout':
-        scoresO = Score.Score.readScoresBinary(scoreTypeL,scoresFN)
+        scoresO = Score.Score.readScoresBinary(strainNamesT,scoreTypeL,scoresFN)
     else:
-        scoresO = Score.Score.readScoresText(scoreTypeL,scoresFN)
+        scoresO = Score.Score.readScoresText(strainNamesT,scoreTypeL,scoresFN)
     return scoresO

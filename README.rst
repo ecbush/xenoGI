@@ -176,3 +176,11 @@ Additional files
 ----------------
 
 The github repository also contains an additional directory called misc/. This contains various python scripts that may be of use in conjunction with xenoGI. Installation via pip does not include this, so to use these you need to clone the github repository. There is some brief documentation included in the directory.
+
+References
+----------
+
+If you use xenoGI in a publication, please cite the following:
+
+Bush EC, Clark AE, DeRanek CA, Eng A, Forman J, Heath K, Lee AB, Stoebel DM, Wang Z, Wilber M, Wu H. xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria. BMC Bioinformatics. 19(32). 2018.
+

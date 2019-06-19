@@ -13,10 +13,10 @@ class LocusIsland:
     def __len__(self):
         return len(self.locusFamilyL)
     
-    def fileStr(self,strainNamesO):
+    def fileStr(self):
         '''Return a string which can be used for saving a island compactly in a
 file.'''
-        return str(self.id)+"\t"+strainNamesO.numToName(self.mrca)+"\t"+",".join(map(str,self.locusFamilyL))
+        return str(self.id)+"\t"+self.mrca+"\t"+",".join(map(str,self.locusFamilyL))
         
     def merge(self,other,orientation):
         '''Merge island other into self. The argument orientation tells us
@@ -45,10 +45,10 @@ score function.
             for gene in lfO.iterGenes():
                 yield gene
         
-def str2Island(islandStr,strainNamesO):
+def str2Island(islandStr):
     '''Given a island string (e.g. produced by the fileStr method) parse to produce island.'''
     L=islandStr.split('\t')
     id=int(L[0])
-    mrca=strainNamesO.nameToNum(L[1])
+    mrca=L[1]
     locusFamilyL=[int(x) for x in L[2].split(',')]
     return LocusIsland(id,mrca,locusFamilyL)

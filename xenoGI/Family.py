@@ -11,7 +11,7 @@ mrca for its family.'''
 
     def addGene(self, gene,genesO):
         '''Add a gene (in numerical form) to this LocusFamily.'''
-        strain = genesO.numToStrainNum(gene)
+        strain = genesO.numToStrainName(gene)
         if strain in self.geneD:
             self.geneD[strain].append(gene)
         else:
@@ -43,23 +43,23 @@ occurs.'''
         for strain in self.geneD.keys():
             yield strain
     
-    def getStr(self,strainNamesO,genesO,sep):
+    def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
 gene2...
         '''
-        outL=[str(self.locusFamNum),strainNamesO.numToName(self.lfMrca)]
+        outL=[str(self.locusFamNum),self.lfMrca]
         
         for geneNum in self.iterGenes():
             outL.append(genesO.numToName(geneNum))
 
         return sep.join(outL)
     
-    def fileStr(self,strainNamesO,genesO):
+    def fileStr(self,genesO):
         '''Return a string representation of a single LocusFamily. Format is
         comma separated: 
         '''
-        return self.getStr(strainNamesO,genesO,',')
+        return self.getStr(genesO,',')
 
     def __repr__(self):
         '''String representation of a LocusFamily, for display purposes.'''
@@ -107,15 +107,14 @@ connections to this family.'''
                     otherGenesS.add(otherGene)
         return otherGenesS
     
-    def fileStr(self,strainNamesO,genesO):
+    def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum <tab> 
         mrca <tab> seedG1 <tab> seedG2 <tab> locusFamNum1,locusFamGenes <tab>
         locusFamNum2,locusFamGenes...
         The LocusFamily object representations are comma separated.
         '''
         
-        outL =[str(self.famNum)]
-        outL.append(strainNamesO.numToName(self.mrca))
+        outL =[str(self.famNum),self.mrca]
 
         if self.seedPairL == None:
             outL.extend(["-","-"])
@@ -124,7 +123,7 @@ connections to this family.'''
                 outL.append(genesO.numToName(seed))
 
         for lfO in self.locusFamiliesL:
-            outL.append(lfO.fileStr(strainNamesO,genesO))
+            outL.append(lfO.fileStr(genesO))
                 
         return "\t".join(outL)
 

@@ -31,7 +31,6 @@ flipDict inverts keys and values in the dictionary.
         self.strainGeneRangeT = ()
         self.geneNumToNameD = None
         self.geneInfoD = None
-        self.strainNamesO = None
         
         self.initializeGeneRangeByStrainD(geneInfoFN)
         self.initializeStrainGeneRangeT()
@@ -125,10 +124,6 @@ other fields.'''
         f.close()
         return D
         
-    def addStrainNamesO(self,strainNamesO):
-        '''Add the strainNamesO object in for convenience. We don't do this when initializing because sometimes we may want a geneNames object before we have a tree or strainNamesO.'''
-        self.strainNamesO = strainNamesO
-        
     def numToStrainName(self,geneNum):
         '''Given a gene number, return the strain name corresponding.'''
         return self.numToStrainNameHelper(geneNum,self.strainGeneRangeT)
@@ -148,10 +143,6 @@ it and recurses.
             else:
                 return self.numToStrainNameHelper(geneNum,strainGeneRangeT[1:])
 
-    def numToStrainNum(self,geneNum):
-        '''Given a gene number, return the strain number corresponding.'''
-        return self.strainNamesO.nameToNum(self.numToStrainName(geneNum))
-            
     def numToName(self,geneNumber):
         '''Given gene number, return gene name. Assumes self.geneNumToNameD
 has been initialized.'''

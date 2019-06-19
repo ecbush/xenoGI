@@ -189,11 +189,13 @@ name, which in this case should correspond to what is in the input
 tree.
     '''
     fileNameMapD = {}
+    strainNamesL = []
     if fileNameMapFN == None:
         for fullPathFN in genbankFileList:
             fn = os.path.split(fullPathFN)[-1]
             stem = os.path.splitext(fn)[0]
             fileNameMapD[fn] = stem
+            strainNamesL.append(stem)
     else:
         f = open(fileNameMapFN,'r')
         while True:
@@ -204,4 +206,5 @@ tree.
                 continue
             genbankStem,human = s.rstrip().split()
             fileNameMapD[genbankStem] = human
-    return fileNameMapD
+            strainNamesL.append(human)
+    return fileNameMapD,tuple(strainNamesL)

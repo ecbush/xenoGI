@@ -7,7 +7,7 @@ import math
     
 ## Main function  
 
-def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,strainNamesO,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
     numThreads = paramD['numThreads']
@@ -19,13 +19,13 @@ def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,strainNamesO,outp
     maxClusterSize = paramD['maxClusterSize']
     
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange )
-    locIslByNodeL=createLocIslByNodeL(familiesO,tree)
-    numIslandsAtEachNodeAtStartL = [len(L) for L in locIslByNodeL]
-    focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,strainNamesO,rootFocalClade)
+    locIslByNodeD=createLocIslByNodeD(familiesO,tree)
+    numIslandsAtEachNodeAtStartD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
+    focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade)
 
     ##  Merge in clusters
 
-    locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeL,focalNodesL,subtreeL,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
+    locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeL,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
 
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
     argumentL = []
@@ -34,8 +34,8 @@ def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,strainNamesO,outp
     p=Pool(numThreads)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
-    # update locIslByNodeL with the merged nodes
-    locIslByNodeL = updateIslandByNodeLEntries(locIslByNodeL,focalNodesL,mergedL)
+    # update locIslByNodeD with the merged nodes
+    locIslByNodeD = updateIslandByNodeLEntries(locIslByNodeD,focalNodesL,mergedL)
 
     ## Family improvement
 
@@ -44,53 +44,53 @@ def makeLocusIslands(geneOrderD,subtreeL,tree,paramD,familiesO,strainNamesO,outp
     ##  Merge at mrca nodes
     argumentL = []
     for mrcaNode in focalNodesL:
-        argumentL.append((locIslByNodeL[mrcaNode],geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeL[mrcaNode],familiesO))
+        argumentL.append((locIslByNodeD[mrcaNode],geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeL[mrcaNode],familiesO))
     p=Pool(numThreads)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
     # add the islands that were identified as singleton clusters
     mergedL.extend(singletonClusterL)
     
-    # again update locIslByNodeL
-    locIslByNodeL = updateIslandByNodeLEntries(locIslByNodeL,focalNodesL,mergedL)
+    # again update locIslByNodeD
+    locIslByNodeD = updateIslandByNodeLEntries(locIslByNodeD,focalNodesL,mergedL)
 
-    numIslandsAtEachNodeAtEndL = [len(L) for L in locIslByNodeL]
-
+    numIslandsAtEachNodeAtEndD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
+    
     ## Summary and output
 
     # print summary of merging
-    printSummary(focalNodesL,strainNamesO,numIslandsAtEachNodeAtStartL,numIslandsAtEachNodeAtEndL,outputSummaryF)
+    printSummary(focalNodesL,numIslandsAtEachNodeAtStartD,numIslandsAtEachNodeAtEndD,outputSummaryF)
     
     # write islands
-    writeIslands(locIslByNodeL,strainNamesO,islandOutFN)
+    writeIslands(locIslByNodeD,islandOutFN)
 
-    return locIslByNodeL
+    return locIslByNodeD
 
 ## Support functions
 
-def createLocIslByNodeL(familiesO,tree):
+def createLocIslByNodeD(familiesO,tree):
     '''Create locus islands, one family each. Initially store islands
-separately by mrca in a list of lists. (The index of the outer list
-corresponds to the mrca)
-    '''
-    locIslByNodeL=[[] for i in range(trees.nodeCount(tree))]
+separately by mrca in a dict.
 
+    '''
+    locIslByNodeD = {node:[] for node in trees.nodeList(tree)}
+    
     for lfO in familiesO.iterLocusFamilies():
         liO = LocusIsland(lfO.locusFamNum, lfO.lfMrca, [lfO.locusFamNum])
-        locIslByNodeL[liO.mrca].append(liO)
+        locIslByNodeD[liO.mrca].append(liO)
 
     # sort each list by island number
-    for i in range(len(locIslByNodeL)):
-        locIslByNodeL[i].sort(key=lambda x: x.id)
+    for node in locIslByNodeD.keys():
+        locIslByNodeD[node].sort(key=lambda x: x.id)
     
-    return locIslByNodeL
+    return locIslByNodeD
 
-def getFocalNodesInOrderOfNumDescendants(tree,strainNamesO,rootFocalClade):
+def getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade):
     '''Get a list of all the nodes in the rootFocalClade. Then sort these
 according to the number of leaves descending from them, biggest
 first.'''
 
-    focalSubtree = trees.subtree(tree,strainNamesO.nameToNum(rootFocalClade))
+    focalSubtree = trees.subtree(tree,rootFocalClade)
     focalNodesL = []
     for node in trees.nodeList(focalSubtree):
         # go through every node in the focal clade
@@ -102,9 +102,9 @@ first.'''
 
 ## Cluster formation
 
-def createLocusIslandClusters(locIslByNodeL,focalNodesL,subtreeL,familiesO,geneProximityD,proximityThreshold,maxClusterSize):
+def createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeL,familiesO,geneProximityD,proximityThreshold,maxClusterSize):
     '''For every node in the focal clade, take the set of single family
-LocusIslands in locIslByNodeL. Break this up into smaller
+LocusIslands in locIslByNodeD. Break this up into smaller
 clusters based on the chromosomal distances between members of the
 familes. Each resulting cluster should contain LocusIslands that we
 are likely to merge.'''
@@ -116,7 +116,7 @@ are likely to merge.'''
     for mrcaNode in focalNodesL:
 
         subtree = subtreeL[mrcaNode]
-        islandsAtMrcaNodeL = locIslByNodeL[mrcaNode] 
+        islandsAtMrcaNodeL = locIslByNodeD[mrcaNode] 
         
         mrcaClustersL,mrcaSingletonClustersL = createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThreshold,maxClusterSize)
 
@@ -203,23 +203,23 @@ each other.
         right = proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subtree[2])
         return left or right
 
-def updateIslandByNodeLEntries(locIslByNodeL,focalNodesL,mergedL):
+def updateIslandByNodeLEntries(locIslByNodeD,focalNodesL,mergedL):
     '''Given a list mergedL containing merged clusters of LocusIslands,
-put back in locIslByNodeL. mergedL clusters all have mrca within
+put back in locIslByNodeD. mergedL clusters all have mrca within
 focalNodesL. We first blank the corresponding mrca location in
-locIslByNodeL, then add the contents of mergedL.'''
+locIslByNodeD, then add the contents of mergedL.'''
     
-    # blank out the entries in locIslByNodeL which are within the root focal clade
+    # blank out the entries in locIslByNodeD which are within the root focal clade
     for mrcaNode in focalNodesL:
-        locIslByNodeL[mrcaNode] = []
+        locIslByNodeD[mrcaNode] = []
 
     # fill them with LocusIslands from mergedL
     for clusterL in mergedL:
         if clusterL != []:
-            locIslByNodeL[clusterL[0].mrca].extend(clusterL)
+            locIslByNodeD[clusterL[0].mrca].extend(clusterL)
 
-    return locIslByNodeL
-    
+    return locIslByNodeD
+
 ## Iterative merging
 
 def mergeLocIslandsAtNode(argT):
@@ -456,7 +456,7 @@ orientation the (best) score came from.
 
 ## Output
 
-def printSummary(focalNodesL,strainNamesO,numIslandsAtEachNodeAtStartL,numIslandsAtEachNodeAtEndL,outputSummaryF):
+def printSummary(focalNodesL,numIslandsAtEachNodeAtStartD,numIslandsAtEachNodeAtEndD,outputSummaryF):
     '''Print a summary of the merging saying how many islands there were
 at each node in the focal clade, before and after merging.'''
 
@@ -466,34 +466,32 @@ at each node in the focal clade, before and after merging.'''
     rowL.append(['----','------------','-----------'])
     for mrcaNode in focalNodesL:
 
-        rowL.append([strainNamesO.numToName(mrcaNode),str(numIslandsAtEachNodeAtStartL[mrcaNode]),str(numIslandsAtEachNodeAtEndL[mrcaNode])])
+        rowL.append([mrcaNode,str(numIslandsAtEachNodeAtStartD[mrcaNode]),str(numIslandsAtEachNodeAtEndD[mrcaNode])])
     
     analysis.printTable(rowL,indent=2,fileF=outputSummaryF)
 
     return
 
-def writeIslands(locIslByNodeL,strainNamesO,islandOutFN):
+def writeIslands(locIslByNodeD,islandOutFN):
     '''Write the islands to a file'''
-    f=open(islandOutFN,"w")
-    for branch in range(len(locIslByNodeL)):
-        for island in locIslByNodeL[branch]:
-            print(island.fileStr(strainNamesO),file=f)
-    f.close()
-
-
-def readIslands(islandFN,tree,strainNamesO):
+    with open(islandOutFN,"w") as f:
+        for branch in locIslByNodeD.keys():
+            for island in locIslByNodeD[branch]:
+                print(island.fileStr(),file=f)
+    return
+                
+def readIslands(islandFN,tree):
     '''Given a file name for a islands output file, load back
-recreating locIslByNodeL.'''
+recreating locIslByNodeD.'''
 
-    locIslByNodeL=[[] for i in range(trees.nodeCount(tree))]
+    locIslByNodeD = {node:[] for node in trees.nodeList(tree)}
     
-    f=open(islandFN,'r')
-    while True:
-        s=f.readline()
-        if s == '':
-            break
-        gr=str2Island(s.rstrip(),strainNamesO)
-        locIslByNodeL[gr.mrca].append(gr)
-    f.close()
+    with open(islandFN,'r') as f:
+        while True:
+            s=f.readline()
+            if s == '':
+                break
+            gr=str2Island(s.rstrip())
+            locIslByNodeD[gr.mrca].append(gr)
 
-    return locIslByNodeL
+    return locIslByNodeD

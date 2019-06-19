@@ -136,19 +136,19 @@ have.
 
     printTable(printL,indent=8,fileF=fileF)
 
-def vPrintLocusIsland(island,subtreeL,familiesO,strainNamesO,genesO,fileF):
+def vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF):
     '''Verbose print of a locus island.'''
 
     print("  LocusIsland",island.id,file=fileF)
     
     # get species nodes subtended by this mrca
-    speciesNodesL=trees.leafList(subtreeL[island.mrca])
+    speciesNodesL=trees.leafList(subtreeD[island.mrca])
 
     # put everything in lists.
     printL=[]
     printL.append(['LocusFamily'])
     for node in speciesNodesL:
-        printL[0].append(strainNamesO.numToName(node))
+        printL[0].append(node)
         
     for locusFamO in island.iterLocusFamilies(familiesO):
         newRow=[]
@@ -171,30 +171,28 @@ def vPrintLocusIsland(island,subtreeL,familiesO,strainNamesO,genesO,fileF):
        
     printTable(printL,indent=4,fileF=fileF)
 
-def vPrintLocusIslandsAtNode(islandL,subtreeL,familiesO,strainNamesO,genesO,fileF):
+def vPrintLocusIslandsAtNode(islandL,subtreeD,familiesO,genesO,fileF):
     '''Print a list of islands at a single node.'''
     print("  Summary",file=fileF)
     printIslandLSummary(islandL,fileF)
     print("  ---",file=fileF)
     for island in islandL:
-        vPrintLocusIsland(island,subtreeL,familiesO,strainNamesO,genesO,fileF)
+        vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF)
         print('  ---',file=fileF)
 
-def vPrintAllLocusIslands(islandByNodeL,tree,rootFocalClade,subtreeL,familiesO,strainNamesO,genesO,fileF):
+def vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,genesO,fileF):
     '''Loop over all nodes in tree, printing islands at each. '''
-    rootFocalCladeNum = strainNamesO.nameToNum(rootFocalClade)
-    focalTree = trees.subtree(tree,rootFocalCladeNum)
+    focalTree = trees.subtree(tree,rootFocalClade)
     for node in trees.nodeList(focalTree):
-        nodeStr = strainNamesO.numToName(node)
-        print('########################### ',"Locus Islands at node",nodeStr,file=fileF)
+        print('########################### ',"Locus Islands at node",node,file=fileF)
         print('',file=fileF)
-        vPrintLocusIslandsAtNode(islandByNodeL[node],subtreeL,familiesO,strainNamesO,genesO,fileF)
+        vPrintLocusIslandsAtNode(islandByNodeD[node],subtreeD,familiesO,genesO,fileF)
 
-def createGene2FamIslandD(islandL,familiesO):
+def createGene2FamIslandD(islandByNodeD,familiesO):
     '''Creates a dictionary keyed by gene number which has the
 LocusIsland, Family and LocusFamily for each gene.'''
     D = {}
-    for islandsAtNodeL in islandL:
+    for islandsAtNodeL in islandByNodeD.values():
         for locusIslandO in islandsAtNodeL:
             for locusFamO in locusIslandO.iterLocusFamilies(familiesO):
                 for gene in locusFamO.iterGenes():
@@ -204,22 +202,20 @@ LocusIsland, Family and LocusFamily for each gene.'''
 
 ## Print species files with all the genes, grouped by contig
 
-def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,familiesO,strainNamesO):
+def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,familiesO,strainNamesT):
     '''This function produces a set of species specific genome
 files. These contain all the genes in a strain laid out in the order
 they occur on the contigs. Each gene entry includes LocusIsland and LocusFamily
 information, as well as a brief description of the gene's function.'''
 
-    for strainNum in strainNamesO.iterStrainNums():
-        strainName = strainNamesO.numToName(strainNum)
+    for strainName in strainNamesT:
         if strainName in geneOrderD:
             contigT = geneOrderD[strainName]
-            fileF=open(fileStemStr+'-'+strainName+fileExtensionStr,'w')
-            for contig in contigT:
-                print("########### Contig",file=fileF)
-                printGenes(contig,genesO,gene2FamIslandD,[],familiesO,strainNamesO,fileF)
-
-            fileF.close()
+            with open(fileStemStr+'-'+strainName+fileExtensionStr,'w') as fileF:
+                for contig in contigT:
+                    print("########### Contig",file=fileF)
+                    printGenes(contig,genesO,gene2FamIslandD,[],familiesO,fileF)
+    return
     
 ## Print neighborhood of an island
 
@@ -262,7 +258,7 @@ def printIslandNeighb(islandNum,synWSize,subtreeL,islandByNodeL,familiesO,geneOr
             endPos = genesO.numToGeneInfo(lastIslandGene)[6]
             
             print("(Coordinates",chrom+":"+str(startPos)+"-"+str(endPos)+")",file=fileF)
-            printGenes(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,strainNamesO,fileF)
+            printGenes(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF)
 
 
 def getIslandGenesInStrain(island,strainNum,familiesO):
@@ -295,7 +291,7 @@ def getNeighborhoodGenes(strainName,geneOrderD,islandGenesInStrainL,genesInEithe
         except ValueError:
             continue
 
-def printGenes(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,strainNamesO,fileF):
+def printGenes(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF):
     '''Given a list of contiguous genes, print them out nicely with
 information on locus family and locus island etc. Put * next to any
 that are in islandGenesInStrainL.'''
@@ -323,7 +319,7 @@ that are in islandGenesInStrainL.'''
         else:
             geneName = '  '+geneName
 
-        infoL = [geneName,"locIsl:"+str(locIslNum),"fam:"+str(famNum),"locFam:"+str(locFamNum),"locFamMRCA:"+strainNamesO.numToName(lfMrca),descrip]
+        infoL = [geneName,"locIsl:"+str(locIslNum),"fam:"+str(famNum),"locFam:"+str(locFamNum),"locFamMRCA:"+lfMrca,descrip]
 
         rowsL.append(infoL)
 

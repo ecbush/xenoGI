@@ -12,7 +12,7 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFnL,strainNamesO):
+    def initializeDataAttributes(self,blastFnL):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
@@ -20,11 +20,11 @@ edges. Also creates the array for storing raw scores, initialized to
 included here depend on what is found in the blast files in blastFnL.
 
         '''
-        self.fillEndNodesToEdgeD(blastFnL,strainNamesO)
+        self.fillEndNodesToEdgeD(blastFnL)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFnL,strainNamesO):
+    def fillEndNodesToEdgeD(self,blastFnL):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -33,7 +33,7 @@ strainPairScoreLocationD.
 
         # get blast files organized by strain pairs
         
-        blastFnByPairD = self.getBlastFnByPairD(blastFnL,strainNamesO)
+        blastFnByPairD = self.getBlastFnByPairD(blastFnL)
 
         edgeNum=0
         for strainPair in blastFnByPairD:
@@ -83,7 +83,7 @@ strainPairScoreLocationD.
             self.strainPairScoreLocationD[strainPair] = (strainPairSt,strainPairEnd)
             
 
-    def getBlastFnByPairD(self,blastFnL,strainNamesO):
+    def getBlastFnByPairD(self,blastFnL):
         '''Get the set of blast files and organize by the pair of strains
 compared. Returns a dict keyed by tuple of strain number
 (e.g. (1,2)). The value is a list with all the blast files comparing
@@ -95,10 +95,8 @@ compared against itself then we have only one file name in the list.
         blastFnByPairD ={}
         
         for fileStr in blastFnL:
-            strain1,strain2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split('_-VS-_')
-            strainNum1 = strainNamesO.nameToNum(strain1)
-            strainNum2 = strainNamesO.nameToNum(strain2)
-            key = tuple(sorted([strainNum1,strainNum2]))
+            strainName1,strainName2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split('_-VS-_')
+            key = tuple(sorted([strainName1,strainName2]))
             if key in blastFnByPairD:
                 # we've already looked at the one that had them in the other order
                 blastFnByPairD[key].append(fileStr)
@@ -205,7 +203,7 @@ form).'''
         # we made it, they're the same
         return True
         
-    def writeScoresText(self,scoreTypeL,scoresFN,genesO,strainNamesO,geneInfoFN):
+    def writeScoresText(self,strainNamesT,scoreTypeL,scoresFN,genesO,geneInfoFN):
         '''Save all edges (pairs of genes) to a tab delimited text file with a
     header line.
         '''
@@ -215,12 +213,14 @@ form).'''
         # Specify the index ranges for different strain pairs
         f.write("# Index range of scores for different strain pairs: strain1 strain2 stInd endInd.\n")
         for key in self.strainPairScoreLocationD:
-            strain1,strain2 = key
-            stInd,endInd = self.strainPairScoreLocationD[key]
-            f.write("\t".join(map(str,[strain1,strain2,stInd,endInd]))+"\n")
+            strainName1,strainName2 = key
+            strainNum1 = strainNamesT.index(strainName1)
+            strainNum2 = strainNamesT.index(strainName2)
 
-        strainS = set((strainNamesO.numToName(s) for s in self.getStrains()))
-        genesO.initializeGeneNumToNameD(geneInfoFN,strainS)
+            stInd,endInd = self.strainPairScoreLocationD[key]
+            f.write("\t".join(map(str,[strainNum1,strainNum2,stInd,endInd]))+"\n")
+
+        genesO.initializeGeneNumToNameD(geneInfoFN,strainNamesT)
             
         # write header
         f.write("# Scores: "+"\t".join(['gene1','gene2','edge']+scoreTypeL)+'\n')
@@ -238,7 +238,7 @@ form).'''
 
         f.close()
 
-    def readScoresText(scoreTypeL,scoresFN):
+    def readScoresText(strainNamesT,scoreTypeL,scoresFN):
         '''Read scores from a text file of scores and use to create Score
         object
         '''
@@ -256,15 +256,18 @@ form).'''
                 # we've hit the separator. scores begin on next line
                 break
             lineL=s.split('\t')
-            strain1 = int(lineL[0])
-            strain2 = int(lineL[1])
+            strainNum1 = int(lineL[0])
+            strainNum2 = int(lineL[1])
             stInd = int(lineL[2])
             endInd = int(lineL[3])
+            strainName1 = strainNamesT[strainNum1]
+            strainName2 = strainNamesT[strainNum2]
 
             if endInd > maxEndInd:
                 maxEndInd = endInd
-            
-            scoresO.strainPairScoreLocationD[(strain1,strain2)] = (stInd,endInd)
+
+            key = tuple(sorted([strainName1,strainName2]))
+            scoresO.strainPairScoreLocationD[key] = (stInd,endInd)
 
         # now we move to loading scores. The number of edges will be maxEndInd
 
@@ -295,7 +298,7 @@ form).'''
         f.close()
         return scoresO
 
-    def writeScoresBinary(self,scoreTypeL,scoresFN):
+    def writeScoresBinary(self,strainNamesT,scoreTypeL,scoresFN):
         '''Write scores to scoresFN as a binary file.'''
 
         f=open(scoresFN,'wb')
@@ -309,10 +312,12 @@ form).'''
 
         # write a block of bytes for each strain pair location
         for key in self.strainPairScoreLocationD:
-            strain1,strain2 = key
+            strainName1,strainName2 = key
+            strainNum1 = strainNamesT.index(strainName1)
+            strainNum2 = strainNamesT.index(strainName2)
             stInd,endInd = self.strainPairScoreLocationD[key]
-            f.write(strain1.to_bytes(8,'little'))
-            f.write(strain2.to_bytes(8,'little'))
+            f.write(strainNum1.to_bytes(8,'little'))
+            f.write(strainNum2.to_bytes(8,'little'))
             f.write(stInd.to_bytes(8,'little'))
             f.write(endInd.to_bytes(8,'little'))
             
@@ -329,7 +334,7 @@ form).'''
         
         f.close()
         
-    def readScoresBinary(scoreTypeL,scoresFN):
+    def readScoresBinary(strainNamesT,scoreTypeL,scoresFN):
         '''Read scores from a binary files.'''
 
         scoresO=Score()
@@ -346,11 +351,14 @@ form).'''
         # read in the index locations where scores from different
         # strain pairs will be found
         for i in range(numStrainPairs):
-            strain1 = int.from_bytes(f.read(8),'little')
-            strain2 = int.from_bytes(f.read(8),'little')
+            strainNum1 = int.from_bytes(f.read(8),'little')
+            strainNum2 = int.from_bytes(f.read(8),'little')
             stInd = int.from_bytes(f.read(8),'little')
             endInd = int.from_bytes(f.read(8),'little')
-            scoresO.strainPairScoreLocationD[(strain1,strain2)] = (stInd,endInd)
+            strainName1 = strainNamesT[strainNum1]
+            strainName2 = strainNamesT[strainNum2]
+            key = tuple(sorted([strainName1,strainName2]))
+            scoresO.strainPairScoreLocationD[key] = (stInd,endInd)
             
         # initialize score arrays
         for scoreType in scoreTypeL:
@@ -436,21 +444,20 @@ recalculated before it will be used.
         '''Given and edge, return the numbers for the two genes on either end.'''
         return self.edgeToEndNodeL[edge]
 
-    def createAabrhScoreSummaryD(self,strainNumsL,aabrhL,genesO):
+    def createAabrhScoreSummaryD(self,strainNamesT,aabrhL,genesO):
         '''Given raw scores and set of all around best reciprocal hits,
     calculates the mean and standard deviation of scores and stores in a
     dictionary.'''
 
-        strainNumsL.sort()
-        
         # create dictionary keyed by species pair, (representing an upper
         # triangular matrix)
         spScoreD={}
-        for i in range(len(strainNumsL)-1):
-            strain1 = strainNumsL[i]
-            for j in range(i+1,len(strainNumsL)):
-                strain2 = strainNumsL[j]
-                spScoreD[(strain1,strain2)]=[]
+        for i in range(len(strainNamesT)-1):
+            strain1 = strainNamesT[i]
+            for j in range(i+1,len(strainNamesT)):
+                strain2 = strainNamesT[j]
+                key = tuple(sorted([strain1,strain2]))
+                spScoreD[key]=[]
 
         # loop through aabrhL and populate
         for orthoT in aabrhL:
@@ -471,10 +478,10 @@ recalculated before it will be used.
 
         for i in range(len(orthoT)-1):
             gene1 = orthoT[i]
-            sp1 = genesO.numToStrainNum(gene1)
+            sp1 = genesO.numToStrainName(gene1)
             for j in range(i+1,len(orthoT)):
                 gene2 = orthoT[j]
-                sp2 = genesO.numToStrainNum(gene2)
+                sp2 = genesO.numToStrainName(gene2)
                 sc = self.getScoreByEndNodes(gene1,gene2,'rawSc')
                 key = tuple(sorted([sp1,sp2]))
                 spScoreD[key].append(sc)

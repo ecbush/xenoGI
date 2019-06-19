@@ -28,6 +28,9 @@ redundProtsFN = 'redundProts.txt'
 # gene descriptions (for use in analysis)
 geneInfoFN = 'geneInfo.txt'
 
+# strain numbers and names
+strainInfoFN = 'strainInfo.txt'
+
 # A file specifying the mapping between genbank file names and human
 # readable names. These human readable names are then used to to refer
 # to the various species in subsequent analysis. They should match
@@ -37,7 +40,6 @@ fileNameMapFN = 'ncbiHumanMap.txt'
 
 # unix style file path to fasta files
 fastaFilePath = 'fasta/*.fa'
-
 
 #### Blast ####
 

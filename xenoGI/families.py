@@ -9,7 +9,7 @@ from .analysis import printTable
 
 #### Main function
 
-def createFamiliesO(tree,strainNamesO,scoresO,genesO,aabrhL,paramD,subtreeL,outputSummaryF):
+def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhL,paramD,subtreeD,outputSummaryF):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
 
@@ -26,7 +26,7 @@ createFamiliesO
     # Do an initial check the placement of the rootFocalClade on the
     # tree. If there are no outgroups, write a warning to our output
     # file
-    if strainNamesO.numToName(tree[0]) == paramD['rootFocalClade']:
+    if tree[0] == paramD['rootFocalClade']:
         print("""Warning: the chosen rootFocalClade falls at the root of the input
 tree and thus does not have any outgroups. This is not recommended
 because it can lead to problems accurately recognizing core gene
@@ -34,9 +34,8 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     
     # initialize scoresO.nodeConnectD and scoresO.ScoreSummaryD for
     # use below
-    strainNumsL=sorted(leaf for leaf in trees.leafList(tree))
     scoresO.createNodeConnectD()
-    scoresO.createAabrhScoreSummaryD(strainNumsL,aabrhL,genesO)
+    scoresO.createAabrhScoreSummaryD(strainNamesT,aabrhL,genesO)
 
     # create an object of class Families to store this in.
     familiesO = Families(tree)
@@ -46,10 +45,9 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     # other assorted things we'll need
     # geneUsedD keeps track of which genes have been used. Restricting
     # to only those genes in the tree
-    strainNamesL = [strainNamesO.numToName(strainNum) for strainNum in strainNumsL]
-    geneUsedD = {gene: False for gene in genesO.iterGenes(strainNamesL)}
+    geneUsedD = {gene: False for gene in genesO.iterGenes(strainNamesT)}
     
-    nodeGenesL = createNodeGenesL(tree,genesO,strainNamesO) # has genes divided by node
+    nodeGenesD = createNodeGenesD(strainNamesT,genesO) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
 
     # get homology thresholds for each strain pair in family
@@ -62,7 +60,7 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
 default values for score thresholds in family formation. The pair(s)
 in question are:""",file=outputSummaryF)
         for pairT in homologousPeakMissingL:
-            print("  ",strainNamesO.numToName(pairT[0])+'-'+strainNamesO.numToName(pairT[1]),file=outputSummaryF)
+            print("  ",pairT[0]+'-'+pairT[1],file=outputSummaryF)
         
         print("""A possible explanation for this failure is that one or more species
 is too distantly related. If this is the case it will result in poor
@@ -77,10 +75,10 @@ in only one strain."""+"\n",file=outputSummaryF)
         if lchild != None:
             # not a tip
 
-            geneUsedD,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedD,familiesO,famNumCounter,locusFamNumCounter)
+            geneUsedD,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesDescendingFromInternalNode(subtreeD,familyMrca,nodeGenesD,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedD,familiesO,famNumCounter,locusFamNumCounter)
 
         else:
-            geneUsedD,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedD,tipFamilyRawThresholdD,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter)
+            geneUsedD,locusFamNumCounter,famNumCounter,familiesO = createAllFamiliesAtTip(nodeGenesD,familyMrca,geneUsedD,tipFamilyRawThresholdD,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter)
 
        
     # Write family formation summary file
@@ -113,23 +111,21 @@ in only one strain."""+"\n",file=outputSummaryF)
     
     printTable(summaryL,indent=0,fileF=outputSummaryF)
     
-    writeFamilies(familiesO,genesO,strainNamesO,paramD)
+    writeFamilies(familiesO,genesO,strainNamesT,paramD)
 
     return familiesO
 
 ## Support functions
 
-def createNodeGenesL(tree,genesO,strainNamesO):
-    '''Create a data structure to organize genes by strain. Returns a list
-where the indices correspond to strain number and the elements are
-sets. Assumes that strainNamesO has been added to genesO.
+def createNodeGenesD(strainNamesT,genesO):
+    '''Create a data structure to organize genes by strain. Returns a dict
+where key is strain name and the elements are sets.
     '''
-    nodeGenesL=[set() for i in range(trees.nodeCount(tree))]
-    for strainNum in trees.leafList(tree):
-        strainName = strainNamesO.numToName(strainNum)
-        for gene in genesO.iterGenesStrain(strainName):
-            nodeGenesL[strainNum].add(gene)
-    return nodeGenesL
+    nodeGenesD = {strainName:[] for strainName in strainNamesT}
+    for strainName in strainNamesT:
+        for geneNum in genesO.iterGenesStrain(strainName):
+            nodeGenesD[strainName].append(geneNum)
+    return nodeGenesD
 
 def createNodeProcessOrderList(tree):
     '''Given a tree, output a list specifying nodes in pre-order (ancestors
@@ -420,7 +416,7 @@ averaging the values between that strain and its nearest neighbors.'''
 
 #### Family creation functions
 
-def createAllFamiliesDescendingFromInternalNode(subtreeL,familyMrca,nodeGenesL,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedD,familiesO,famNumCounter,locusFamNumCounter):
+def createAllFamiliesDescendingFromInternalNode(subtreeD,familyMrca,nodeGenesD,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,geneUsedD,familiesO,famNumCounter,locusFamNumCounter):
     '''Creates all Families and subsidiary LocusFamilies descending from
 the node rooted familyMrca. Basic parts of the Phigs algorithm are
 here. Creating the seeds, and using them to get a family. (With very
@@ -429,12 +425,12 @@ adjustment). But then we divide the family into LocusFamilies, which
 is not Phigs.
     '''
 
-    subtree=subtreeL[familyMrca]
+    subtree=subtreeD[familyMrca]
     
     # for use in createAllLocusFamiliesDescendingFromInternalNode call below
     familySubtreeNodeOrderL = createNodeProcessOrderList(subtree)
 
-    leftS,rightS = createLRSets(subtreeL,familyMrca,nodeGenesL,None)
+    leftS,rightS = createLRSets(subtreeD,familyMrca,nodeGenesD,None)
 
     seedL = createSeedL(leftS,rightS,scoresO,genesO,absMinRawThresholdForHomologyD,paramD)
     for seed in seedL:
@@ -461,12 +457,12 @@ is not Phigs.
                 # now set up familiesO to take this family and
                 # determine the corresponding locusFamilies
                 familiesO.initializeFamily(famNumCounter,familyMrca,[seedG1,seedG2])
-                locusFamNumCounter,familiesO = createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,genesO,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL)
+                locusFamNumCounter,familiesO = createAllLocusFamiliesDescendingFromInternalNode(subtreeD,familyMrca,genesO,famS,[seedG1,seedG2],famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesD)
                 famNumCounter+=1 # important to increment this after call to createAllLocusFamiliesDescendingFromInternalNode
                 
     return geneUsedD,locusFamNumCounter,famNumCounter,familiesO
 
-def createAllFamiliesAtTip(nodeGenesL,familyMrca,geneUsedD,tipFamilyRawThresholdD,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter):
+def createAllFamiliesAtTip(nodeGenesD,familyMrca,geneUsedD,tipFamilyRawThresholdD,scoresO,genesO,absMinRawThresholdForHomologyD,synThresholdD,paramD,familiesO,famNumCounter,locusFamNumCounter):
     '''Creates all Families and subsidiary LocusFamilies at the tip
 given by familyMrca. Because we've come through the nodes in
 pre-order, we know that all unused genes at this node are in a
@@ -474,7 +470,7 @@ families with mrca here. (they can still be multi gene families).
     '''
 
     unusedGenesAtThisTipS=set()
-    for gene in nodeGenesL[familyMrca]: # familyMrca is a tip
+    for gene in nodeGenesD[familyMrca]: # familyMrca is a tip
         # gene is at this tip
         if not geneUsedD[gene]:
             # not used yet
@@ -515,21 +511,21 @@ families with mrca here. (they can still be multi gene families).
 
     return geneUsedD,locusFamNumCounter,famNumCounter,familiesO
 
-def createLRSets(subtreeL,mrca,nodeGenesL,restrictS):
+def createLRSets(subtreeD,mrca,nodeGenesD,restrictS):
     '''At given mrca, obtain all genes in species in left branch and put
 in leftS, and all genes from species in right branch to
 rightS. Restrict each of these to be only genes in restrictS. If
 restrictS is None, then use all genes.
     '''
 
-    subtree=subtreeL[mrca]
+    subtree=subtreeD[mrca]
     
     leftS=set()
     for tip in trees.leafList(subtree[1]):
-        leftS.update(nodeGenesL[tip])
+        leftS.update(nodeGenesD[tip])
     rightS=set()
     for tip in trees.leafList(subtree[2]):
-        rightS.update(nodeGenesL[tip])
+        rightS.update(nodeGenesD[tip])
 
     if restrictS != None:    
         leftS.intersection_update(restrictS)
@@ -639,9 +635,9 @@ add it. Return boolean.
     synSc = scoresO.getScoreByEndNodes(famGene,newGene,'synSc')
 
     # get minThresh from absMinRawThresholdForHomologyD
-    strain1 = genesO.numToStrainNum(famGene)
-    strain2 = genesO.numToStrainNum(newGene)
-    absoluteMinRawThresh = absMinRawThresholdForHomologyD[(strain1,strain2)]
+    strain1 = genesO.numToStrainName(famGene)
+    strain2 = genesO.numToStrainName(newGene)
+    absoluteMinRawThresh = absMinRawThresholdForHomologyD[tuple(sorted([strain1,strain2]))]
 
     if synThresholdD == None:
         synAdjustThresh = float('inf')
@@ -678,7 +674,7 @@ add it. Return boolean.
                 
     return addIt
 
-def createAllLocusFamiliesDescendingFromInternalNode(subtreeL,familyMrca,genesO,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesL):
+def createAllLocusFamiliesDescendingFromInternalNode(subtreeD,familyMrca,genesO,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesD):
     '''Given a family in famGenesToSearchS, break it up into subsidiary locus families
 based on synteny. We iterate through the subtree rooted at familyMrca
 in pre-order (ancestors first). Using seeds, we try to find groups
@@ -689,7 +685,7 @@ among famS that share high synteny.'''
 
         if lchild != None:
             # not a tip
-            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
+            lfOL,locusFamNumCounter,famGenesToSearchS = createAllLocusFamiliesAtOneInternalNode(subtreeD,lfMrca,nodeGenesD,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter)
             
             for lfO in lfOL:
                 familiesO.addLocusFamily(lfO)
@@ -698,7 +694,7 @@ among famS that share high synteny.'''
             # we're at a tip.
             
             # get only the genes at this tip
-            genesAtThisTipS = famGenesToSearchS.intersection(nodeGenesL[lfMrca])
+            genesAtThisTipS = famGenesToSearchS.intersection(nodeGenesD[lfMrca])
 
             # remove them from famGenesToSearchS
             famGenesToSearchS.difference_update(genesAtThisTipS)
@@ -712,31 +708,31 @@ among famS that share high synteny.'''
 
     return locusFamNumCounter,familiesO
 
-def createAllLocusFamiliesAtOneInternalNode(subtreeL,lfMrca,nodeGenesL,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
+def createAllLocusFamiliesAtOneInternalNode(subtreeD,lfMrca,nodeGenesD,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD,famNumCounter,locusFamNumCounter):
     '''Obtains all locus families at the internal node defined by lfMrca.'''
 
     lfOL = []
     while True:
 
-        lfSeedPairL = createLFSeed(subtreeL,lfMrca,nodeGenesL,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD)
+        lfSeedPairL = createLFSeed(subtreeD,lfMrca,nodeGenesD,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD)
         
         if lfSeedPairL == []:
             # there are no (more) seeds stradling this internal node,
             # break out
             break
 
-        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeL,genesO,scoresO,paramD,synThresholdD)
+        lfO,locusFamNumCounter,famGenesToSearchS = createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,lfSeedPairL,famGenesToSearchS,subtreeD,genesO,scoresO,paramD,synThresholdD)
         lfOL.append(lfO)
         
     return lfOL,locusFamNumCounter,famGenesToSearchS
             
-def createLFSeed(subtreeL,lfMrca,nodeGenesL,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD):
+def createLFSeed(subtreeD,lfMrca,nodeGenesD,genesO,famGenesToSearchS,scoresO,paramD,synThresholdD):
     '''Given a set of genes famGenesToSearchS from a family, try to find a
 seed based at lfMrca. A seed consists of two genes, one in the left
 subtree and one in the right, which are syntenically consistent.
     '''
     
-    leftS,rightS = createLRSets(subtreeL,lfMrca,nodeGenesL,famGenesToSearchS)
+    leftS,rightS = createLRSets(subtreeD,lfMrca,nodeGenesD,famGenesToSearchS)
     
     for lGene in leftS:
         for rGene in rightS:
@@ -744,7 +740,7 @@ subtree and one in the right, which are syntenically consistent.
                 return [lGene,rGene]
     return []
         
-def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeL,genesO,scoresO,paramD,synThresholdD):
+def createLocusFamilyFromSeed(famNumCounter,locusFamNumCounter,lfMrca,seedPairL,famGenesToSearchS,subtreeD,genesO,scoresO,paramD,synThresholdD):
     '''Returns a LocusFamily object, containing genes associated with
 those in seedPairL, in the subtree definied at lfMrca. Does single
 linkage clustering, adding in anything in famGenesToSearchS with above
@@ -757,7 +753,7 @@ threshold synteny. Note that these seeds are not the seed from family formation 
     famGenesToSearchS.difference_update(seedPairL)
     lfO.addGenes(seedPairL,genesO)
 
-    subtree=subtreeL[lfMrca]
+    subtree=subtreeD[lfMrca]
     strainL = trees.leafList(subtree)
 
     while True:
@@ -778,7 +774,7 @@ are in a child species of lfMrca. Return a list of genes to add.
     genesToAddS=set()
     for searchGene in famGenesToSearchS:
         # test if searchGene is in a child species of lfMrca
-        if genesO.numToStrainNum(searchGene) in strainL:
+        if genesO.numToStrainName(searchGene) in strainL:
             # this searchGene is in a strain that is a child of the lfMrca we're working on
             for lfGene in lfO.iterGenes():
                 # we don't use absMinRawThreshold, thisFamRawThresh, or
@@ -812,9 +808,9 @@ boolean.
     coreSynSc = scoresO.getScoreByEndNodes(gene1,gene2,'coreSynSc')
     synSc = scoresO.getScoreByEndNodes(gene1,gene2,'synSc')
 
-    strain1 = genesO.numToStrainNum(gene1)
-    strain2 = genesO.numToStrainNum(gene2)
-    minSynThresh = synThresholdD['minSynThreshold'][(strain1,strain2)]
+    strain1 = genesO.numToStrainName(gene1)
+    strain2 = genesO.numToStrainName(gene2)
+    minSynThresh = synThresholdD['minSynThreshold'][tuple(sorted([strain1,strain2]))]
 
     if coreSynSc < paramD['minCoreSynThresh'] or synSc < minSynThresh:
         # one of the two types of synteny below threshold, so this
@@ -867,15 +863,14 @@ numRepresentativeGenesPerLocFam from each.'''
 
     # get some stuff from tree
     leafL = trees.leafList(tree)
-    subtreeL=trees.createSubtreeL(tree)
-    subtreeL.sort()
+    subtreeD=trees.createSubtreeD(tree)
     numNodes = trees.nodeCount(tree)
     
     for lfO in familiesO.iterLocusFamilies():
-        for geneNum in getGeneSubsetFromOneLocusFamily(lfO,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeL):
+        for geneNum in getGeneSubsetFromOneLocusFamily(lfO,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeD):
             yield geneNum
 
-def getGeneSubsetFromOneLocusFamily(lfO,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeL):
+def getGeneSubsetFromOneLocusFamily(lfO,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeD):
     '''Sample numRepresentativeGenesPerLocFam genes from one
 LocusFamily. This function simply divides the LocusFamily genes into
 sets on the left and right branches, and attempts to take a similar
@@ -889,12 +884,15 @@ sized sample from each.'''
         return random.sample(lfGenesL,numRepresentativeGenesPerLocFam)
     else:
         # divide up the genes by node
-        nodeGenesL=[[] for i in range(numNodes)]
+        subtree = subtreeD[lfO.lfMrca]
+        
+        subtreeNodeGenesD = {strainName:[] for strainName in trees.nodeList(subtree)}
         for geneNum in lfGenesL:
-            strain = genesO.numToStrainNum(geneNum)
-            nodeGenesL[strain].append(geneNum)
+            strainName = genesO.numToStrainName(geneNum)
+            subtreeNodeGenesD[strainName].append(geneNum)
+            
         # get ones from left and right
-        leftS,rightS = createLRSets(subtreeL,lfO.lfMrca,nodeGenesL,None)
+        leftS,rightS = createLRSets(subtreeD,lfO.lfMrca,nodeGenesL,None)
 
         numLeft = min(len(leftS),numRepresentativeGenesPerLocFam // 2)
         numRight = min(len(rightS),numRepresentativeGenesPerLocFam - numLeft)
@@ -905,25 +903,24 @@ sized sample from each.'''
     
 ## Input/output
 
-def writeFamilies(familiesO,genesO,strainNamesO,paramD):
+def writeFamilies(familiesO,genesO,strainNamesT,paramD):
     '''Write all gene families to fileName, one family per line.'''
 
     familyFN = paramD['familyFN']
     geneInfoFN = paramD['geneInfoFN']
 
     # get the num to name dict, only for strains we're looking at.
-    genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesO.iterStrainNames()))
+    genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT))
     
     f=open(familyFN,'w')
     for fam in familiesO.iterFamilies():
-        f.write(fam.fileStr(strainNamesO,genesO)+'\n')
+        f.write(fam.fileStr(genesO)+'\n')
     f.close()
 
 
-def readFamilies(familyFN,tree,genesO,strainNamesO):
+def readFamilies(familyFN,tree,genesO):
     '''Read the family file named familyFN, creating a Families object.
     '''
-
     familiesO = Families(tree)
     f=open(familyFN,'r')
     while True:
@@ -932,7 +929,7 @@ def readFamilies(familyFN,tree,genesO,strainNamesO):
             break
         L=s.split('\t')
         famNum=int(L[0])
-        mrca = strainNamesO.nameToNum(L[1])
+        mrca = L[1]
         if L[2] == "-":
             seedPairL = None
         else:
@@ -945,7 +942,7 @@ def readFamilies(familyFN,tree,genesO,strainNamesO):
         for lfStr in lfL:
             lfSplitL = lfStr.rstrip().split(',')
             locusFamNum=int(lfSplitL[0])
-            lfMrca = strainNamesO.nameToNum(lfSplitL[1])
+            lfMrca = lfSplitL[1]
             geneL=[]
             for geneName in lfSplitL[2:]:
                 geneNum = int(geneName.split('_')[0])
