@@ -1,11 +1,15 @@
 ## This parameter file contains python expressions with info on files
 ## and parameters
 
-#### Input file parameters ####
+#### Input parameters ####
+
+# unix style file path to genbank gbff files
+genbankFilePath = 'ncbi/*.gbff'
 
 # Tree file in newick format. This should have named internal
 # nodes. It does not need to have branch lengths (if it has them, they
-# will be ignored).
+# will be ignored). If the tree needs to be calculated, this should be
+# None.
 treeFN='example.tre'
 
 # The node and the branch leading to it define the focal clade where
@@ -13,8 +17,9 @@ treeFN='example.tre'
 # treated as ougroups (e.g. won't merge islands there).
 rootFocalClade = 'i0'
 
-# unix style file path to genbank gbff files
-genbankFilePath = 'ncbi/*.gbff'
+# In the case where xenoGI should calculte the tree, if it should use
+# DNA based alignments, then this should be True, otherwise False
+dnaBasedSpeciesTree = False
 
 #### Parse output files ####
 
