@@ -1,4 +1,4 @@
-import parasail,glob,statistics,sys
+import parasail,statistics,sys
 from multiprocessing import set_start_method, Pool
 from . import genomes
 from . import trees
@@ -20,8 +20,7 @@ def calcRawScores(paramD,scoresO):
     matrix = paramD['matrix']
     
     # load sequences
-    protFnL=glob.glob(paramD['fastaFilePath'])
-    seqD=genomes.loadProt(protFnL)
+    seqD=genomes.loadSeq(paramD,"_prot.fa")
 
     # make list of sets of arguments to be passed to p.map. There
     # should be numThreads sets.

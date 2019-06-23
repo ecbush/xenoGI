@@ -6,18 +6,20 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     
     if genbankFileList == []:
         raise ValueError("List of genbank files to parse is empty.")
+
+    dnaBasedSpeciesTree = paramD['dnaBasedSpeciesTree']
     
     geneInfoFile = open(paramD['geneInfoFN'], 'w')
     redundFile = open(paramD['redundProtsFN'], 'w')
     geneOrderOutFile = open(paramD['geneOrderFN'], 'w')
-
+    
     problemGenbankFileL = []
     
     # iterate through list of genbank files
     geneNum =  0 # xenoGI internal gene numbering
     for fileName in genbankFileList:
 
-        geneNum,problemGenbankFileL = parseGenbankSingleFile(geneNum,fileName,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL)
+        geneNum,problemGenbankFileL = parseGenbankSingleFile(geneNum,fileName,dnaBasedSpeciesTree,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL)
         
     geneInfoFile.close()
     redundFile.close()
@@ -28,7 +30,7 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     
         raise ValueError("The following genbank files lack protein annotations:\n" + "\n".join(problemGenbankFileL))
     
-def parseGenbankSingleFile(geneNum,fileName,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
+def parseGenbankSingleFile(geneNum,fileName,dnaBasedSpeciesTree,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
     '''Parse a single genbank file. We pass through twice. Once to
 identify redundant genes, so we can avoid them. And another time to
 get the stuff we want.
@@ -53,15 +55,20 @@ get the stuff we want.
         redundFile.write(gene + "\n")
 
     inFile = open(fileName, 'rU')
-    fastaOutName = fastaOutFileDir + speciesName + ".fa"
-    fastaOutFile = open(fastaOutName, 'w')
+    protFastaOutName = fastaOutFileDir + speciesName + "_prot.fa"
+    protFastaOutFile = open(protFastaOutName, 'w')
 
+    if dnaBasedSpeciesTree:
+        dnaFastaOutName = fastaOutFileDir + speciesName + '_dna.fa'
+        dnaFastaOutFile = open(dnaFastaOutName, 'w')
+        
     # start next line in geneOrderOutFile
     geneOrderOutFile.write(speciesName)
 
     # iterate through chromosomes in the genbank file
     for record in SeqIO.parse(inFile, "genbank"):
         chrom = record.id # .id, as opposed to .name includes the version id
+        dnaSeqTotal = str(record.seq) # dna seq of chrom/contig
         # iterate through the genes on the chromosome
         genesOnChromL = []
         for feature in record.features:
@@ -81,6 +88,8 @@ get the stuff we want.
                         strand = "?"
 
                     aaSeq = feature.qualifiers['translation'][0]
+                    if dnaBasedSpeciesTree:
+                        dnaSeq = dnaSeqTotal[start:end]
 
                     # get common name
                     commonName=''
@@ -101,7 +110,12 @@ get the stuff we want.
                     # write to fastaOutFile
                     geneName = str(geneNum) + "_" + speciesProtName
                     
-                    fastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
+
+                    protFastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
+                    if dnaBasedSpeciesTree:
+                        dnaFastaOutFile.write(">" + geneName + "\n" + dnaSeq + "\n")
+
+                    
                     # write to gene information file
                     geneInfoFile.write("\t".join([str(geneNum),geneName,commonName,locusTag,descrip,chrom,str(start),str(end),strand]) + "\n")
                     genesOnChromL.append(str(geneNum))
@@ -116,7 +130,9 @@ get the stuff we want.
     geneOrderOutFile.write("\n") # add newline to geneOrder file, as we're done with this strain.
 
     inFile.close()
-    fastaOutFile.close()
+    protFastaOutFile.close()
+    if dnaBasedSpeciesTree:
+        dnaFastaOutFile.close()
 
     return geneNum,problemGenbankFileL 
 

@@ -3,37 +3,21 @@ from . import trees
 from multiprocessing import Pool
 from Bio import Phylo
 
-def getDbFileL(fastaFilePath,treeFN):
+def getDbFileL(fastaFilePath,strainNamesT):
     '''Obtains and returns a list of all fasta files that should be run
-through blast. If there is a valid tree file present, then this list
-should contain only those fastas that correspond to species in the
-tree. If there is not a valid tree file, then the list will contain
-all fasta files present in the fasta directory. The reason we don't
-want to assume there is a tree file is that sometimes users will need
-to run blast before making that.
+through blast. Only keeps those that are in stainNamesT.
     '''
     # get list of all fastas in directory
-    dbFileL=glob.glob(fastaFilePath)
-
-    # load tree if present
-    try:
-        newDbFileL=[]
-        tree,strainNamesO = trees.readTree(treeFN)
-        leavesL=[strainNamesO.numToName(strainNum) for strainNum in trees.leafList(tree)]
-
-        for dbFile in dbFileL:
-            dbStem = os.path.split(dbFile)[-1] # strain + extension
-            dbStem = os.path.splitext(dbStem)[0] # strain only
-            if dbStem in leavesL:
+    dbFileL = []
+    for dbFile in glob.glob(fastaFilePath):
+        dbStem = os.path.split(dbFile)[-1] # strain + _prot.fa or _dna.fa
+        if "_prot.fa" in dbStem:
+            dbStem = dbStem.split("_prot.fa")[0]
+            if dbStem in strainNamesT:
                 # this file name is in the tree, include it
-                newDbFileL.append(dbFile)
-
-        dbFileL = newDbFileL
-    except ( TypeError, FileNotFoundError, Phylo.NewickIO.NewickError ):
-        print("Since a properly formated tree file was not provided, we can't use that to determine which fasta files to blast. We will therefore blast all fasta files in fastaFilePath.",file=sys.stderr)
-
+                dbFileL.append(dbFile)
     return dbFileL
-
+    
 def formatDb(dbFileL,blastExecutDirPath):
     '''Format fasta files in fastaDir for blast by calling the formatdb
 executable.'''
@@ -72,10 +56,10 @@ needed to run blastp on a pair of databases.'''
         for db in dbFileL_2:
 
             qstem = os.path.split(query)[-1]
-            qstem = os.path.splitext(qstem)[0]
+            qstem = qstem.split("_prot.fa")[0]
 
             dbstem = os.path.split(db)[-1]
-            dbstem = os.path.splitext(dbstem)[0]
+            dbstem = dbstem.split("_prot.fa")[0]
 
             outFN = os.path.join( blastDir, qstem + '_-VS-_' + dbstem + blastExtension )
 
@@ -108,7 +92,7 @@ database in dbFileL_2.
         os.mkdir(blastDir)
 
     clineL =  makeBlastClineList(dbFileL_1,dbFileL_2,paramD)
-
+    
     with Pool(processes=paramD['numThreads']) as p:
         for stderr in p.imap_unordered(subprocessWrapper, clineL):
             pass # ignore stderr

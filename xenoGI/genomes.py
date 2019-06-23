@@ -1,18 +1,19 @@
 # Functions for loading genes and gene order
-import sys
+import sys,glob
 from . import fasta
 from . import trees
 
-def loadProt(protFnL):
-    '''Given a list of file names of fasta files with the gene name as
-header, load the sequences and store in a dictionary keyed by protein
-name.
+def loadSeq(paramD,fileEnding):
+    '''Given paramD and the type of sequence, load the sequences and store
+in a dictionary keyed by gene number. fileEnding is a string, either
+"_prot.fa" or "_dna.fa".
     '''
     seqD={}
-    for fn in protFnL:
-        for header,seq in fasta.load(fn):
-            gn = int(header.split("_")[0][1:])
-            seqD[gn]=seq
+    for fn in glob.glob(paramD['fastaFilePath']):
+        if fileEnding in fn:
+            for header,seq in fasta.load(fn):
+                gn = int(header.split("_")[0][1:])
+                seqD[gn]=seq
     return seqD
 
 class genes:

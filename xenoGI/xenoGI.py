@@ -102,7 +102,7 @@ def parseGenbankWrapper(paramD):
 
     fileNameMapD,strainNamesT = parameters.loadFileNameMapD(paramD['fileNameMapFN'],genbankFileList)
     writeStrainInfoFN(strainNamesT,paramD)
-        
+    
     # parse
     genbank.parseGenbank(paramD,fastaDir,genbankFileList,fileNameMapD)
 
@@ -127,7 +127,8 @@ def readStrainInfoFN(strainInfoFN):
     
 def runBlastWrapper(paramD):
     """Wrapper to blast all genome files against each other."""
-    dbFileL=blast.getDbFileL(paramD['fastaFilePath'],paramD['treeFN'])
+    strainNamesT = readStrainInfoFN(paramD['strainInfoFN'])
+    dbFileL=blast.getDbFileL(paramD['fastaFilePath'],strainNamesT)
     blast.runBlast(dbFileL,dbFileL,paramD)
     
 def loadGenomeRelatedData(paramD):
