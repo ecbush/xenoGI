@@ -223,15 +223,15 @@ def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
 
     # then, out of the possible genes, get those that are all
     # pairwise reciprocal bets hits
-    aabrhL = getAllAroundBRHL(possibleGenesD, rHitsL)
+    aabrhHardCoreL = getAllAroundBRHL(possibleGenesD, rHitsL)
 
     # write it to file
     f=open(aabrhFN,'w')
-    for orthoT in aabrhL:
+    for orthoT in aabrhHardCoreL:
         f.write("\t".join(map(str,orthoT))+"\n")
     f.close()
         
-    return aabrhL
+    return aabrhHardCoreL
 
 
 def loadOrthos(aabrhFN):
@@ -366,7 +366,7 @@ of possible hits, return a list of all around best reciprocal hits. In
 the form of a list of lists, where each sublist is one set of
 orthologs.'''
     
-    aabrhL = []
+    aabrhHardCoreL = []
 
     genesL = list(possibleGenesD.keys())
     genesL.sort() # sort so we get consistent order
@@ -397,15 +397,15 @@ orthologs.'''
         # if we get through all genes without finding that some aren't
         # reciprocal best hits, then we keep this list of genes
         if isOrth:
-            aabrhL.append((gene,)+hitsT)
-    return aabrhL
+            aabrhHardCoreL.append((gene,)+hitsT)
+    return aabrhHardCoreL
 
 
 #### Core synteny scores
 
 def calcCoreSynScores(scoresO,strainNamesL,paramD,geneOrderD):
     '''Calculate synteny scores based on core genes given in
-aabrhL. Scores are between 0 and 1, giving the percentage of syntenic
+aabrhHardCoreL. Scores are between 0 and 1, giving the percentage of syntenic
 genes shared.'''
 
     blastFilePath = paramD['blastFilePath']
@@ -413,9 +413,9 @@ genes shared.'''
     aabrhFN = paramD['aabrhFN']
     coreSynWsize = paramD['coreSynWsize']
     
-    aabrhL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
+    aabrhHardCoreL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
 
-    geneToAabrhD = createGeneToAabrhD(aabrhL)
+    geneToAabrhD = createGeneToAabrhD(aabrhHardCoreL)
     coreSyntenyD = createCoreSyntenyD(geneToAabrhD,geneOrderD,coreSynWsize)
 
     # Not parallelized. Pretty fast already.
@@ -428,14 +428,14 @@ genes shared.'''
         
     return scoresO
 
-def createGeneToAabrhD(aabrhL):
+def createGeneToAabrhD(aabrhHardCoreL):
     '''Create a dict where key corresponds to gene number and the
 value at that location is the number of the aabrh group to which the
 gene belongs. The aabrh groups are numbered, simply based on
-the index where they occur in aabrhL.'''
+the index where they occur in aabrhHardCoreL.'''
     geneToAabrhD = {}
-    for aabrhNum in range(len(aabrhL)):
-        for geneNum in aabrhL[aabrhNum]:
+    for aabrhNum in range(len(aabrhHardCoreL)):
+        for geneNum in aabrhHardCoreL[aabrhNum]:
             geneToAabrhD[geneNum] = aabrhNum
     return geneToAabrhD
 

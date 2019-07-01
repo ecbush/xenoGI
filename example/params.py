@@ -1,27 +1,12 @@
 ## This parameter file contains python expressions with info on files
 ## and parameters
 
-#### Input parameters ####
+#### Input Assembly files ####
 
 # unix style file path to genbank gbff files
 genbankFilePath = 'ncbi/*.gbff'
 
-# Tree file in newick format. This should have named internal
-# nodes. It does not need to have branch lengths (if it has them, they
-# will be ignored). If the tree needs to be calculated, this should be
-# None.
-treeFN='example.tre'
-
-# The node and the branch leading to it define the focal clade where
-# islands will be reconstructed. Everything outside of this will be
-# treated as ougroups (e.g. won't merge islands there).
-rootFocalClade = 'i0'
-
-# In the case where xenoGI should calculte the tree, if it should use
-# DNA based alignments, then this should be True, otherwise False
-dnaBasedSpeciesTree = False
-
-#### Parse output files ####
+## Parse output files
 
 # gene order
 geneOrderFN = 'geneOrder.txt'
@@ -46,6 +31,51 @@ fileNameMapFN = 'ncbiHumanMap.txt'
 # unix style file path to fasta files
 fastaFilePath = 'fasta/*.fa'
 
+#### Trees ####
+
+# Species tree file in newick format. This should have named internal
+# nodes. It does not need to have branch lengths (if it has them, they
+# will be ignored).
+# If makeSpeciesTree will be run (the tree is to be calculated) then
+# this is where the input tree will be put
+treeFN='example.tre'
+
+# The node and the branch leading to it define the focal clade where
+# islands will be reconstructed. Everything outside of this will be
+# treated as ougroups (e.g. won't merge islands there).
+rootFocalClade = 'i2'
+
+## Parameters for optionally making a species tree
+
+# The parameters below are for the case if you don't have a species
+# tree to begin with and intend to make one.
+
+# If we should use DNA based alignments to make tree, then this should
+# be True, otherwise False
+dnaBasedSpeciesTree = False
+
+# full paths to muscle, FastTree, java and ASTRAL. On Windows you may need to
+# put in a second slash as an escape,
+# e.g. 'C:\\Users\\guest\\muscle\\muscle.exe'
+musclePath = '/usr/bin/muscle'
+fastTreePath = '/usr/local/bin/FastTree'
+javaPath = '/usr/bin/java'
+astralPath = '/usr/local/Astral/astral.5.6.3.jar'
+
+makeSpeciesTreeWorkingDir = 'makeSpeciesTreeWorkDir'
+deleteSpeciesTreeWorkingDir = True # if True, we delete when done
+
+# where to put gene trees for the aabrh hard core families
+aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'
+
+# where to keep ASTRAL output. The final tree (which has been rooted,
+# stripped of branch lengths and had internal nodes named) will be put
+# in treeFN given above.
+astralTreeFN = 'astralTree.tre'
+
+# for rooting the tree
+outGroupTaxaL = ['S_bongori']
+
 #### Blast ####
 
 # absolute path to the directory containing the blastp and makeblastdb
@@ -67,8 +97,9 @@ blastFilePath = 'blast/*.out'
 # be a less compact text based format
 scoresFN = 'scores.bout'
 
-# sets of all around best reciprocal hits
-aabrhFN = 'aabrh.out'
+# Where to put all around best reciprocal hit gene families (ie the
+# "hard core").
+aabrhFN = 'aabrhHardCore.out'
 
 # family file
 familyFN='fam.out'

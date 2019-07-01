@@ -10,7 +10,7 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'version', 'debug', 'simValidation'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'version', 'debug', 'simValidation'])
     
     except:
         print(
@@ -42,6 +42,10 @@ def main():
         blastFnL=glob.glob(paramD['blastFilePath'])
         calcScoresWrapper(paramD,blastFnL)
 
+    #### makeSpeciesTreeWrapper
+    elif task == 'makeSpeciesTree':
+        makeSpeciesTreeWrapper(paramD)
+        
     #### makeFamilies
     elif task == 'makeFamilies':
         makeFamiliesWrapper(paramD)
@@ -65,7 +69,7 @@ def main():
     #### plotScoreHists
     elif task == 'plotScoreHists':
         plotScoreHistsWrapper(paramD)
-
+        
     #### runAll
     elif task == 'runAll':
         parseGenbankWrapper(paramD)
@@ -138,12 +142,6 @@ def loadGenomeRelatedData(paramD):
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],None)
     return strainNamesT,genesO,geneOrderD
 
-def loadTreeRelatedData(paramD):
-    """Load some data related to trees."""
-    tree = trees.readTree(paramD['treeFN'])
-    subtreeD=trees.createSubtreeD(tree)
-    return tree,subtreeD
-
 def calcScoresWrapper(paramD,blastFnL):
     """Wrapper running stuff to calculate scores."""
 
@@ -165,6 +163,20 @@ def calcScoresWrapper(paramD,blastFnL):
     # write scores to file
     scores.writeScores(scoresO,strainNamesT,paramD['scoresFN'])
     
+def makeSpeciesTreeWrapper(paramD):
+    '''call makeTree to create the species tree '''
+
+    # need genesO should initializeGeneInfoD
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
+    trees.makeSpeciesTree(paramD,aabrhHardCoreL,genesO)
+
+def loadTreeRelatedData(paramD):
+    """Load some data related to trees."""
+    tree = trees.readTree(paramD['treeFN'])
+    subtreeD=trees.createSubtreeD(tree)
+    return tree,subtreeD
+
 def makeFamiliesWrapper(paramD):
     """Wrapper to create gene families."""
 
@@ -173,11 +185,11 @@ def makeFamiliesWrapper(paramD):
 
     ## read scores
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
     ## make gene families
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        familiesO = families.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhL,paramD,subtreeD,familyFormationSummaryF)
+        familiesO = families.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,familyFormationSummaryF)
 
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
@@ -271,7 +283,6 @@ comparisons. Then plot hist of each.'''
     # plot histograms
     for scoreType,outFN in [('rawSc','rawSc.pdf'),('synSc','synSc.pdf'),('coreSynSc','coreSynSc.pdf'),]:
             scoreHists(outFN,scoresO,numBins,scoreType)
-
     
 def interactiveAnalysisWrapper(paramD):
     """Enter interactive mode."""
@@ -402,3 +413,4 @@ simulations. This is not really intended for the end user...'''
     moduleT=(parameters,trees,genomes,families,islands,analysis)
     
     xgiIslandGeneSetByNodeL,simIslandGeneSetByNodeL=validationSim.runValidation(moduleT,'simParams.py','params.py')
+

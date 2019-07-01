@@ -68,7 +68,6 @@ get the stuff we want.
     # iterate through chromosomes in the genbank file
     for record in SeqIO.parse(inFile, "genbank"):
         chrom = record.id # .id, as opposed to .name includes the version id
-        dnaSeqTotal = str(record.seq) # dna seq of chrom/contig
         # iterate through the genes on the chromosome
         genesOnChromL = []
         for feature in record.features:
@@ -89,7 +88,7 @@ get the stuff we want.
 
                     aaSeq = feature.qualifiers['translation'][0]
                     if dnaBasedSpeciesTree:
-                        dnaSeq = dnaSeqTotal[start:end]
+                        dnaSeq = str(feature.extract(record.seq))
 
                     # get common name
                     commonName=''
