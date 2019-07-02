@@ -1,4 +1,4 @@
-GCA_000439255.1_ASM43925v1_genomic.gbff	S_bongori
+GCA_000252995.1_ASM25299v1_genomic.gbff	S_bongori
 GCA_000026225.1_ASM2622v1_genomic.gbff	E_fergusonii
-GCA_001549955.1_ASM154995v1_genomic.gbff	E_albertii
+GCA_003697165.2_ASM369716v2_genomic.gbff	E_coli_ATCC11775
 GCA_000005845.2_ASM584v2_genomic.gbff	E_coli_K12

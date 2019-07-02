@@ -52,7 +52,7 @@ rootFocalClade = 'i2'
 
 # If we should use DNA based alignments to make tree, then this should
 # be True, otherwise False
-dnaBasedSpeciesTree = False
+dnaBasedSpeciesTree = True
 
 # full paths to muscle, FastTree, java and ASTRAL. On Windows you may need to
 # put in a second slash as an escape,
@@ -63,7 +63,7 @@ javaPath = '/usr/bin/java'
 astralPath = '/usr/local/Astral/astral.5.6.3.jar'
 
 makeSpeciesTreeWorkingDir = 'makeSpeciesTreeWorkDir'
-deleteSpeciesTreeWorkingDir = True # if True, we delete when done
+deleteSpeciesTreeWorkingDir = False # if True, we delete when done
 
 # where to put gene trees for the aabrh hard core families
 aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'

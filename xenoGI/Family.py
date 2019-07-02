@@ -142,7 +142,7 @@ class Families:
 
         ## locusFamiliesD has key locusFamNum and value a LocusFamily
         ## object. familiesD has key famNum and value
-        ## [mrca,seedG1,seedG2,[List of lf numbers]]
+        ## a Family object.
 
         
     def initializeFamily(self,famNum,mrca,seedPairL=None):
