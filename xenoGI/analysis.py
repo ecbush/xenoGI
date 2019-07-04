@@ -219,7 +219,7 @@ information, as well as a brief description of the gene's function.'''
     
 ## Print neighborhood of an island
 
-def printIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF):
+def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF):
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
     print("  LocusIsland:",islandNum,file=fileF)

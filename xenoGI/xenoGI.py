@@ -289,7 +289,7 @@ def interactiveAnalysisWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys
-    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printIslandNeighb,vPrintLocusIslandsAtNode,coreNonCoreCtAtNode,printOutsideFamilyScores
+    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printLocusIslandNeighb,vPrintLocusIslandsAtNode,coreNonCoreCtAtNode,printOutsideFamilyScores
 
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
@@ -328,7 +328,7 @@ def interactiveAnalysisWrapper(paramD):
         print(file=fileF)
         print(file=fileF)
 
-    def findIsland(searchStr,fileF=sys.stdout):
+    def findLocusIsland(searchStr,fileF=sys.stdout):
         '''Print the gene, LocusIsland family and LocusFamily associated with
     searchStr. This is a wrapper that assumes various required objects
     are present at the top level.
@@ -337,15 +337,14 @@ def interactiveAnalysisWrapper(paramD):
         for geneName,locusIslandNum, famNum, locusFamNum in L:
             print("<gene:"+str(geneName)+">","<locIsl:"+str(locusIslandNum)+">","<fam:"+str(famNum)+">","<locFam:"+str(locusFamNum)+">",file=fileF)
 
-
-    def printIsland(locusIslandNum,synWSize,fileF=sys.stdout):
+    def printLocusIsland(locusIslandNum,synWSize,fileF=sys.stdout):
         '''Print a LocusIsland and its genomic context in each species. We
         include synWSize/2 genes in either direction beyond the locus island.
         '''
-        printIslandNeighb(locusIslandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF)
+        printLocusIslandNeighb(locusIslandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF)
 
 
-    def printIslandsAtNode(node,fileF=sys.stdout):
+    def printLocusIslandsAtNode(node,fileF=sys.stdout):
         '''This is a wrapper to provide an easy way to print all the LocusIslands
     at a particular node in the tree. For ease of use, we take only a node
     number as argument, assuming all the other required stuff is available

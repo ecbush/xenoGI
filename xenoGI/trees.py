@@ -200,7 +200,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     # set up argumentL
     orthoGroupNum = 0
     for orthoT in aabrhHardCoreL:
-        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad with 0's so cat will do in right order
+        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad with 0's so ls will display in right order
         argumentL[orthoGroupNum%numThreads][0].append(orthoGroupNumStr)
         argumentL[orthoGroupNum%numThreads][1].append(orthoT)
         orthoGroupNum+=1
@@ -244,33 +244,42 @@ def makeOneGeneTree(orthoGroupNumStr,orthoT,genesO,protSeqD,dnaSeqD,workDir,gtFi
     ''' Makes one gene tree from an ortho list. If dnaSeqD is empty, uses protein only.'''
  
     # get temp align file names
-    intempAlignFN=os.path.join(workDir,"tempAlign"+orthoGroupNumStr+".fa")
-    outtempAlignFN=os.path.join(workDir,"tempAlign"+orthoGroupNumStr+".afa")
+    inTempProtFN=os.path.join(workDir,"tempProt"+orthoGroupNumStr+".fa")
+    outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
 
-    # write prots we want to align to temp file
-    with open(intempAlignFN,"w") as tempf:
-        writeSeqBlock(tempf,orthoT,genesO,protSeqD)
-
-    # align the temp file
-    subprocess.call([musclePath, '-in' ,intempAlignFN, '-out', outtempAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-
+    # align
+    alignOneOrthoT(orthoT,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
+    os.remove(inTempProtFN) # remove unaligned prot file
+    
     # make gene tree
     geneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
     if dnaSeqD == {}:
-        # we're just using protein sequence
-        subprocess.call([fastTreePath, '-out',geneTreeFN,outtempAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        # using protein
+        subprocess.call([fastTreePath, '-out',geneTreeFN,outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     else:
-        # using dna sequence
+        # using dna
+        subprocess.call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
-        # load prot aligment
+def alignOneOrthoT(orthoT,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
+    '''Given genes in a single ortholog set, align them with muscle. If
+dnaSeqD is empty, uses protein only.'''
+
+    # write prots we want to align to temp file
+    with open(inProtFN,"w") as tempf:
+        writeSeqBlock(tempf,orthoT,genesO,protSeqD)
+
+    # align proteins
+    subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+
+    if dnaSeqD != {}:
+        # back align to get dna alignment, overwriting protein alignment.
         protAlignL = []
-        for hd,alignedProtSeq in fasta.load(outtempAlignFN):
+        for hd,alignedProtSeq in fasta.load(outAlignFN):
             protAlignL.append((int(hd.rstrip().split()[1]),alignedProtSeq))
-            
-        # overwrite outtempAlignFN with dna back alignment
-        backAlign(outtempAlignFN,protAlignL,dnaSeqD,genesO)
-        subprocess.call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outtempAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        backAlign(outAlignFN,protAlignL,dnaSeqD,genesO)
 
+    return
+    
 def writeSeqBlock(f,orthoT,genesO,seqD):
     '''writes a multifasta block. seqs are specified in
 orthoT, and obtained from seqD.'''
@@ -280,10 +289,10 @@ orthoT, and obtained from seqD.'''
         f.write(seqD[geneNum] + "\n")
         f.write("\n")
 
-def backAlign(outtempAlignFN,protAlignL,dnaSeqD,genesO):
+def backAlign(outAlignFN,protAlignL,dnaSeqD,genesO):
     '''Prints the nucleotide alignments given by one block of protein
     alignments.'''
-    with open(outtempAlignFN,'w') as outf:
+    with open(outAlignFN,'w') as outf:
         printBlock=''
         for geneNum,protSeq in protAlignL:
             dnaSeq = dnaSeqD[geneNum]
@@ -335,11 +344,14 @@ any). outGroupTaxaL provides the outgroups for rooting. Return
 resulting tree in four tuple form.
 
     '''
-    
-
     if not bpTree.is_bifurcating():
         raise ValueError("This tree is not bifurcating. A trifurcation at the root is permitted (to signify it's unrooted) and is not the problem here. There cannot be other trifurcations though, and there are here.")
 
+    # strip confidence values in internal nodes (which mess up our
+    # names)
+    for n in bpTree.get_nonterminals():
+        n.confidence = None
+    
     bpTree = rootTree(bpTree,outGroupTaxaL)
     bpTree = nameInternalNodes(bpTree)
 
