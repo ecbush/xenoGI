@@ -169,9 +169,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     if glob.glob(workDir)==[]:
         os.mkdir(workDir)
 
-    numThreads = paramD['numThreads']    
-    musclePath = paramD['musclePath']
-    fastTreePath = paramD['fastTreePath']
+    numThreads = paramD['numThreads']
     javaPath = paramD['javaPath']
     astralPath = paramD['astralPath']
     astralTreeFN = paramD['astralTreeFN']
@@ -181,34 +179,18 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     outSpeciesTreeFN = paramD['treeFN'] # for main output
     deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
     outGroupTaxaL = paramD['outGroupTaxaL']
-    
+
     # if tree file already exists, throw error
     if os.path.isfile(paramD['treeFN']):
         raise IOError("The tree file " + paramD['treeFN'] + " already exists.")
+
+    ## make gene tree for each aabrh hard Core set
+    # add numbering to list
+    newAabrhHardCoreL = []
+    for orthoNum,orthoT in enumerate(aabrhHardCoreL):
+        newAabrhHardCoreL.append((orthoNum,orthoT))
     
-    # load protein and dna sequences
-    protSeqD=genomes.loadSeq(paramD, '_prot.fa')
-
-    if paramD['dnaBasedSpeciesTree'] == True:
-        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa')
-    else:
-        dnaSeqD = {}
-
-    ## make gene trees
-    argumentL = [([],[],genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numThreads)]
-
-    # set up argumentL
-    orthoGroupNum = 0
-    for orthoT in aabrhHardCoreL:
-        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad with 0's so ls will display in right order
-        argumentL[orthoGroupNum%numThreads][0].append(orthoGroupNumStr)
-        argumentL[orthoGroupNum%numThreads][1].append(orthoT)
-        orthoGroupNum+=1
-
-    # run
-    with Pool(processes=numThreads) as p:
-        for _ in p.imap_unordered(makeOneGeneTreeGroup, argumentL):
-            pass
+    makeGeneTrees(paramD,True,genesO,workDir,gtFileStem,newAabrhHardCoreL)
 
     ## run Astral on gene trees
 
@@ -229,18 +211,60 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     if deleteSpeciesTreeWorkingDir:
         shutil.rmtree(workDir)
 
+def makeGeneTrees(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
+    '''Given a list of ortho groups, orthoTL, make a gene tree for each
+and put in workDir. strainHeader is a boolean that if True means we
+put the strain in the header for alignments (so we'll end up with that
+for the names of the tips of the tree). gtFileStem gives the stem of
+the name for the gene tree files. orthoTL is a list of
+(orthoGroupNum,orthoT) where orthoT has the genes in an ortholog
+group.
+
+    '''
+    numThreads = paramD['numThreads']    
+    musclePath = paramD['musclePath']
+    fastTreePath = paramD['fastTreePath']
+    
+    # load protein and dna sequences
+    protSeqD=genomes.loadSeq(paramD, '_prot.fa')
+
+    if paramD['dnaBasedGeneTrees'] == True:
+        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa')
+    else:
+        dnaSeqD = {}
+
+    ## make gene trees
+    argumentL = [([],[],strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numThreads)]
+
+    # set up argumentL
+    counter = 0
+    for orthoGroupNum,orthoT in orthoTL:
+        # we use counter for placememnt in argumentL since at least in
+        # the case of single gene families, some will be missing
+        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
+        argumentL[counter%numThreads][0].append(orthoGroupNumStr)
+        argumentL[counter%numThreads][1].append(orthoT)
+        counter += 1
+        
+    # run
+    with Pool(processes=numThreads) as p:
+        for _ in p.imap_unordered(makeOneGeneTreeGroup, argumentL):
+            pass
+
+    return
+        
 def makeOneGeneTreeGroup(argT):
     '''Wrapper for multiprocessing. Given a group of orthoT's to work on,
 calls makeOneGeneTree on each.'''
     
-    orthoGroupNumStrL,orthoTL,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath = argT
+    orthoGroupNumStrL,orthoTL,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath = argT
 
     for i in range(len(orthoTL)):
         orthoGroupNumStr = orthoGroupNumStrL[i]
         orthoT = orthoTL[i]
-        makeOneGeneTree(orthoGroupNumStr,orthoT,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath)
+        makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath)
     
-def makeOneGeneTree(orthoGroupNumStr,orthoT,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath):
+def makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath):
     ''' Makes one gene tree from an ortho list. If dnaSeqD is empty, uses protein only.'''
  
     # get temp align file names
@@ -248,7 +272,7 @@ def makeOneGeneTree(orthoGroupNumStr,orthoT,genesO,protSeqD,dnaSeqD,workDir,gtFi
     outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
 
     # align
-    alignOneOrthoT(orthoT,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
+    alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
     os.remove(inTempProtFN) # remove unaligned prot file
     
     # make gene tree
@@ -260,13 +284,12 @@ def makeOneGeneTree(orthoGroupNumStr,orthoT,genesO,protSeqD,dnaSeqD,workDir,gtFi
         # using dna
         subprocess.call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
-def alignOneOrthoT(orthoT,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
+def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
     '''Given genes in a single ortholog set, align them with muscle. If
 dnaSeqD is empty, uses protein only.'''
 
     # write prots we want to align to temp file
-    with open(inProtFN,"w") as tempf:
-        writeSeqBlock(tempf,orthoT,genesO,protSeqD)
+    writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
 
     # align proteins
     subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -274,39 +297,48 @@ dnaSeqD is empty, uses protein only.'''
     if dnaSeqD != {}:
         # back align to get dna alignment, overwriting protein alignment.
         protAlignL = []
-        for hd,alignedProtSeq in fasta.load(outAlignFN):
-            protAlignL.append((int(hd.rstrip().split()[1]),alignedProtSeq))
+        for header,alignedProtSeq in fasta.load(outAlignFN):
+            if strainHeader:
+                protAlignL.append((int(header.rstrip().split()[1]),header,alignedProtSeq))
+            else:
+                protAlignL.append((int(header.rstrip()[1:]),header,alignedProtSeq))
         backAlign(outAlignFN,protAlignL,dnaSeqD,genesO)
 
     return
     
-def writeSeqBlock(f,orthoT,genesO,seqD):
-    '''writes a multifasta block. seqs are specified in
-orthoT, and obtained from seqD.'''
-    for geneNum in orthoT:
-        strainName = genesO.numToStrainName(geneNum)
-        f.write(">" + strainName + ' '  + str(geneNum) + "\n")
-        f.write(seqD[geneNum] + "\n")
-        f.write("\n")
+def writeFasta(inProtFN,orthoT,strainHeader,genesO,seqD):
+    '''Writes a fasta block. seqs are specified in orthoT, and obtained
+from seqD. If strainHeader is True, then we put strain whitespace gene
+number in header. (In this case, the tree will end up with strain name
+on its tips). Otherwise, only gene number.
+
+    '''
+    with open(inProtFN,"w") as f:
+        for geneNum in orthoT:
+            if strainHeader:
+                strainName = genesO.numToStrainName(geneNum)
+                f.write(">" + strainName + ' '  + str(geneNum) + "\n")
+            else:
+                f.write(">" + str(geneNum) + "\n")
+
+            f.write(seqD[geneNum] + "\n")
+            f.write("\n")
 
 def backAlign(outAlignFN,protAlignL,dnaSeqD,genesO):
     '''Prints the nucleotide alignments given by one block of protein
     alignments.'''
     with open(outAlignFN,'w') as outf:
         printBlock=''
-        for geneNum,protSeq in protAlignL:
+        for geneNum,header,protSeq in protAlignL:
             dnaSeq = dnaSeqD[geneNum]
             lenProtein = len(protSeq) - protSeq.count('-')
-            #protLength(protSeq)
-            # if the protein and sequence don't match in length, throw it out 
-            # we have to check two cases because some proteins include the stop
-            # codon and some don't
-            if lenProtein * 3 != len(dnaSeq) and (lenProtein + 1) * 3 != len(dnaSeq):
+            if (lenProtein + 1) * 3 != len(dnaSeq):
+                # dna has stop codon                          
                 raise IndexError("Lengths of dna and protein do not correspond.")
 
             strainName = genesO.numToStrainName(geneNum)
-            # header
-            printBlock += ">" + strainName + ' ' + str(geneNum) + "\n"
+            # add header
+            printBlock += header + '\n'
             # adding gaps to the nucleotide sequence corresponding to gaps in 
             # the protein sequence and printing the nucleotide sequence
             printBlock += fixSeq(dnaSeq, protSeq) + "\n"
@@ -448,3 +480,30 @@ def stripBranchLen(tree):
     for n in tree.get_nonterminals() + tree.get_terminals():
         del n.branch_length
     return tree
+
+def makeGeneFamilyTrees(paramD,genesO,familiesO):
+    '''Given a families object, create a gene tree for each family.'''
+
+    gtFileStem = 'fam'
+
+    # create work dir if it doesn't already exist
+    workDir = paramD['geneFamilyTreesDir']
+    if glob.glob(workDir)==[]:
+        os.mkdir(workDir)
+
+    # create gene tuple for each family
+    orthoTL = []
+    for familyO in familiesO.iterFamilies():
+        familyT = tuple(familyO.iterGenes())
+        if len(familyT) > 1:
+            # don't bother with single gene fams
+            orthoTL.append((familyO.famNum,familyT))
+            
+    # make gene trees
+    makeGeneTrees(paramD,False,genesO,workDir,gtFileStem,orthoTL)
+
+    # remove alignments
+    for fn in glob.glob(os.path.join(workDir,"align*.afa")):
+        os.remove(fn)
+    
+    return

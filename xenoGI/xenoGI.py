@@ -10,7 +10,7 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'version', 'debug', 'simValidation'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug', 'simValidation'])
     
     except:
         print(
@@ -81,6 +81,10 @@ def main():
         printAnalysisWrapper(paramD)
         createIslandBedWrapper(paramD)
 
+    #### makeGeneFamilyTrees
+    elif task == 'makeGeneFamilyTrees':
+        makeGeneFamilyTreesWrapper(paramD)
+        
     #### version
     elif task == 'version':
         print("xenoGI",__version__)
@@ -388,6 +392,14 @@ def interactiveAnalysisWrapper(paramD):
     
     code.interact(local=locals())
 
+def makeGeneFamilyTreesWrapper(paramD):
+    '''Create a gene tree for each family.'''
+
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD)
+    familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
+    trees.makeGeneFamilyTrees(paramD,genesO,familiesO)
+    
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
 
