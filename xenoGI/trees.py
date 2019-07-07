@@ -292,8 +292,11 @@ dnaSeqD is empty, uses protein only.'''
     writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
 
     # align proteins
-    subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    retCode = subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
+    if retCode != 0:
+        raise ValueError("Alignment failed for "+inProtFN)
+    
     if dnaSeqD != {}:
         # back align to get dna alignment, overwriting protein alignment.
         protAlignL = []
