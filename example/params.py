@@ -52,7 +52,7 @@ rootFocalClade = 'i2'
 
 # If we should use DNA based alignments to make tree, then this should
 # be True, otherwise False
-dnaBasedSpeciesTree = True
+dnaBasedGeneTrees = True
 
 # full paths to muscle, FastTree, java and ASTRAL. On Windows you may need to
 # put in a second slash as an escape,
@@ -110,6 +110,10 @@ islandOutFN = 'islands.out'
 # file with summary info about family and island formation
 familyFormationSummaryFN = 'familyFormationSummary.out'
 islandFormationSummaryFN = 'islandFormationSummary.out'
+
+# directory to store trees for gene families (if makeGeneFamilyTrees
+# is run)
+geneFamilyTreesDir = 'geneFamilyTrees'
 
 #### Algorithm parameters ####
 

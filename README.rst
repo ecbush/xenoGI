@@ -180,8 +180,8 @@ From within python, you can then run functions such as
 
   Note that this function takes a family number, not a locus family number.
 
-Obtaining a tree if you don't already have one
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Obtaining a species tree if you don't already have one
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Having an accurate species tree is a key to the xenoGI method.
 
@@ -207,15 +207,19 @@ The ``params.py`` file found in the example directory contains a number of param
 Additional flags
 ~~~~~~~~~~~~~~~~
 
-::
+Print the version number::
    
   xenoGI params.py version
 
-will print the version number, and::
+Produce a directory containing a gene tree for every family::
+
+  xenoGI params.py makeGeneFamilyTrees
+
+This uses the same methods as the makeSpeciesTree flag (but doesn't call ASTRAL).
+  
+Produce a set of pdf files showing histograms of scores between all possible strains::
 
   xenoGI params.py plotScoreHists
-
-will produce a set of pdf files showing histograms of scores between all possible strains.
   
     
 Additional files
