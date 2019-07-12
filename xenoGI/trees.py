@@ -295,7 +295,7 @@ dnaSeqD is empty, uses protein only.'''
     retCode = subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     if retCode != 0:
-        raise ValueError("Alignment failed for "+inProtFN)
+        raise OSError("Alignment failed for "+inProtFN)
     
     if dnaSeqD != {}:
         # back align to get dna alignment, overwriting protein alignment.
