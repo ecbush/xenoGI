@@ -7,7 +7,7 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     if genbankFileList == []:
         raise ValueError("List of genbank files to parse is empty.")
 
-    dnaBasedSpeciesTree = paramD['dnaBasedSpeciesTree']
+    dnaBasedGeneTrees = paramD['dnaBasedGeneTrees']
     
     geneInfoFile = open(paramD['geneInfoFN'], 'w')
     redundFile = open(paramD['redundProtsFN'], 'w')
@@ -19,7 +19,7 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     geneNum =  0 # xenoGI internal gene numbering
     for fileName in genbankFileList:
 
-        geneNum,problemGenbankFileL = parseGenbankSingleFile(geneNum,fileName,dnaBasedSpeciesTree,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL)
+        geneNum,problemGenbankFileL = parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL)
         
     geneInfoFile.close()
     redundFile.close()
@@ -30,7 +30,7 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     
         raise ValueError("The following genbank files lack protein annotations:\n" + "\n".join(problemGenbankFileL))
     
-def parseGenbankSingleFile(geneNum,fileName,dnaBasedSpeciesTree,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
+def parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
     '''Parse a single genbank file. We pass through twice. Once to
 identify redundant genes, so we can avoid them. And another time to
 get the stuff we want.
@@ -58,7 +58,7 @@ get the stuff we want.
     protFastaOutName = fastaOutFileDir + speciesName + "_prot.fa"
     protFastaOutFile = open(protFastaOutName, 'w')
 
-    if dnaBasedSpeciesTree:
+    if dnaBasedGeneTrees:
         dnaFastaOutName = fastaOutFileDir + speciesName + '_dna.fa'
         dnaFastaOutFile = open(dnaFastaOutName, 'w')
         
@@ -87,7 +87,7 @@ get the stuff we want.
                         strand = "?"
 
                     aaSeq = feature.qualifiers['translation'][0]
-                    if dnaBasedSpeciesTree:
+                    if dnaBasedGeneTrees:
                         dnaSeq = str(feature.extract(record.seq))
 
                     # get common name
@@ -111,7 +111,7 @@ get the stuff we want.
                     
 
                     protFastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
-                    if dnaBasedSpeciesTree:
+                    if dnaBasedGeneTrees:
                         dnaFastaOutFile.write(">" + geneName + "\n" + dnaSeq + "\n")
 
                     
@@ -130,7 +130,7 @@ get the stuff we want.
 
     inFile.close()
     protFastaOutFile.close()
-    if dnaBasedSpeciesTree:
+    if dnaBasedGeneTrees:
         dnaFastaOutFile.close()
 
     return geneNum,problemGenbankFileL 

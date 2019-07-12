@@ -8,12 +8,18 @@ def loadSeq(paramD,fileEnding):
 in a dictionary keyed by gene number. fileEnding is a string, either
 "_prot.fa" or "_dna.fa".
     '''
+    fileEndingFound = False
     seqD={}
     for fn in glob.glob(paramD['fastaFilePath']):
         if fileEnding in fn:
+            fileEndingFound = True # we've seen at least once
             for header,seq in fasta.load(fn):
                 gn = int(header.split("_")[0][1:])
                 seqD[gn]=seq
+
+    if not fileEndingFound:
+        # we never saw the file ending, the dict is empty.
+        raise OSError("There are no fasta files ending in "+fileEnding)    
     return seqD
 
 class genes:
