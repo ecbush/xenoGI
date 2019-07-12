@@ -200,7 +200,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
             with open(fn) as infile:
                 aabrhHardCoreGeneTreesF.write(infile.read())
     
-    subprocess.call([javaPath, '-jar',astralPath, '-i', aabrhHardCoreGeneTreesFN, '-o',astralTreeFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    subprocess.call([javaPath, '-jar',astralPath, '-i', aabrhHardCoreGeneTreesFN, '-o',astralTreeFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     ## load and root the tree.
     bpTree = Phylo.read(astralTreeFN, 'newick')
@@ -279,10 +279,10 @@ def makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD
     geneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
     if dnaSeqD == {}:
         # using protein
-        subprocess.call([fastTreePath, '-out',geneTreeFN,outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        subprocess.call([fastTreePath, '-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     else:
         # using dna
-        subprocess.call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        subprocess.call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
     '''Given genes in a single ortholog set, align them with muscle. If
@@ -292,7 +292,7 @@ dnaSeqD is empty, uses protein only.'''
     writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
 
     # align proteins
-    retCode = subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    retCode = subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     if retCode != 0:
         raise ValueError("Alignment failed for "+inProtFN)
