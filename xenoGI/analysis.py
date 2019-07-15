@@ -146,13 +146,14 @@ def vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF):
 
     # put everything in lists.
     printL=[]
-    printL.append(['LocusFamily'])
+    printL.append(['LocusFamily','Family'])
     for node in speciesNodesL:
         printL[0].append(node)
         
     for locusFamO in island.iterLocusFamilies(familiesO):
         newRow=[]
         newRow.append(str(locusFamO.locusFamNum))
+        newRow.append(str(locusFamO.famNum))
         for node in speciesNodesL:
             entryL = []
             for geneNum in locusFamO.iterGenesByStrain(node):

@@ -279,7 +279,7 @@ comparisons. Then plot hist of each.'''
             for strainPair in scoresO.getStrainPairs():
                 fig = pyplot.figure()
                 scoresL = list(scoresO.iterateScoreByStrainPair(strainPair,scoreType))
-                pyplot.hist(scoresL,bins=numBins, density = True)
+                pyplot.hist(scoresL,bins=numBins, density = True, range = [0,1])
                 pyplot.title(strainPair[0]+'-'+strainPair[1])
                 pdf.savefig()
                 pyplot.close()
@@ -408,6 +408,14 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
+
+    geneToAabrhD = scores.createGeneToAabrhD(aabrhHardCoreL)
+    coreSyntenyD = scores.createCoreSyntenyD(geneToAabrhD,geneOrderD,paramD['coreSynWsize'])
+
+    for gn in coreSyntenyD:
+        if len(coreSyntenyD[gn]) == 0:
+            print(gn)
     
     code.interact(local=locals())
 

@@ -423,7 +423,7 @@ genes shared.'''
     # loop over all edges in scoresO, adding corresponding core syn score
     scoresO.initializeScoreArray('coreSynSc') # create array
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-        coreSynSc=coreSynScore(coreSyntenyD[gn1],coreSyntenyD[gn2],coreSynWsize)
+        coreSynSc=coreSynScore(coreSyntenyD[gn1],coreSyntenyD[gn2])
         scoresO.addScoreByEndNodes(gn1,gn2,coreSynSc,'coreSynSc')
         
     return scoresO
@@ -501,16 +501,23 @@ None if it has none.'''
             aabrhNumL.append(None)
     return tuple(aabrhNumL)
 
-def coreSynScore(synT1,synT2,coreSynWsize):
-    '''Given two tuples, determine the number of shared core genes in
-each. Return this, divided by the core synteny window size, which is
-the number of genes we consider around each gene. Values will be
-between 0 and 1.'''
-    ct=0
-    for cgene in synT1:
-        if cgene in synT2:
-            ct+=1
-    return ct/coreSynWsize
+def coreSynScore(synT1,synT2):
+    '''Given two tuples representing the core genes surrounding each of
+two genes, determine the number of shared core genes in each. Return
+this, divided by the minimum of the two tuple lengths. Values will be
+between 0 and 1.
+
+    '''
+    minNumSurrounding = min(len(synT1),len(synT2))
+    if minNumSurrounding == 0:
+        # avoid div by 0
+        return 0
+    else:
+        ct=0
+        for cgene in synT1:
+            if cgene in synT2:
+                ct+=1
+        return ct/minNumSurrounding
 
 
 #### Score I/O
