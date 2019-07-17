@@ -69,7 +69,9 @@ in only one strain."""+"\n",file=outputSummaryF)
 
     # Create synThresholdD
     synThresholdD = getSynThresholdD(scoresO,tree,paramD)
-        
+    printThresholdSummaryFile(paramD,absMinRawThresholdForHomologyD,synThresholdD)
+
+    # family formation
     for familyMrca,lchild,rchild in createNodeProcessOrderList(tree):
         # this is preorder, so we get internal nodes before tips
         if lchild != None:
@@ -371,7 +373,6 @@ def getSynThresholds(binHeightL,indexToBinCenterL,paramD):
     binWidth = 1.0/paramD['scoreHistNumBins'] # since scores range from 0-1
     
     # get synteny peak
-    peakL = []
 
     # case 1 (High prominence, narrow peak. Close relatedness
     # in order to get a rightmost peak, if any, we add a dummy bin of
@@ -379,19 +380,19 @@ def getSynThresholds(binHeightL,indexToBinCenterL,paramD):
     tempBinHeightL = numpy.append(binHeightL,0)
     tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
 
-    L = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['synPeakWidthCase1'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase1'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
-    peakL.extend(L)
+    peakL = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['synPeakWidthCase1'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase1'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
     
-    # case 2 (wide width, low prominence. Distant relatedness.)
-    L = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['synPeakWidthCase2'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase2'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
-    peakL.extend(L)
+    # case 2 (wide width, low prominence. Distant relatedness.) Only
+    # look for this if there is no case 1.
+    if peakL == []:
+        peakL = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['synPeakWidthCase2'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase2'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
     
     if peakL == []:
         minSynThreshold = paramD['defaultMinSynThreshold']
         synAdjustThreshold = paramD['defaultSynAdjustThreshold']
     else:
-        # sort on position, in case more than one peak (unlikely), take leftmost.
-        peakL.sort(key=lambda x: x[1])
+        # sort on position, in case more than one peak (unlikely), take highest.
+        peakL.sort(key=lambda x: x[0])
 
         peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = peakL[0]
         minSynThreshold = leftExtremeOfPeakPos - paramD['minSynThresholdIncrement']
@@ -413,6 +414,18 @@ averaging the values between that strain and its nearest neighbors.'''
     avSynAdjust /= len(neighbL)
     return avSyn,avSynAdjust
 
+def printThresholdSummaryFile(paramD,absMinRawThresholdForHomologyD,synThresholdD):
+    '''Given threshold dictionaries, print the various family formation thresholds to a summary file.'''
+    
+    threshSummaryL = []
+    threshSummaryL.append(['Strain pair','absMinRawThresholdForHomology','synAdjustThreshold','minSynThreshold'])
+    
+    if 'familyFormationThresholdsFN' in paramD:
+        with open(paramD['familyFormationThresholdsFN'],'w') as familyFormationThresholdsF: 
+            for strainPair in absMinRawThresholdForHomologyD:
+                threshSummaryL.append([" ".join(strainPair),str(round(absMinRawThresholdForHomologyD[strainPair],4)),str(round(synThresholdD['synAdjustThreshold'][strainPair],4)),str(round(synThresholdD['minSynThreshold'][strainPair],4))])
+
+            printTable(threshSummaryL,indent=0,fileF=familyFormationThresholdsF)
 
 #### Family creation functions
 

@@ -107,8 +107,9 @@ familyFN='fam.out'
 # island file
 islandOutFN = 'islands.out'
 
-# file with summary info about family and island formation
+# files with summary info about family and island formation
 familyFormationSummaryFN = 'familyFormationSummary.out'
+familyFormationThresholdsFN = 'familyFormationThresholds.out'
 islandFormationSummaryFN = 'islandFormationSummary.out'
 
 # directory to store trees for gene families (if makeGeneFamilyTrees

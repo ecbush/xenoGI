@@ -51,23 +51,30 @@ needed to run blastp on a pair of databases.'''
     blastDir,rest = splitT
     blastExtension = rest.split("*")[-1]
 
+    # get list of blast and fasta files currently
+    fastaFiles = glob.glob(fastaFilePath)
+    blastFiles = glob.glob(blastFilePath)
+
+    # make sure fasta files are up to date
+    shouldBlast = timeChecker(fastaFiles, blastFiles)
+
     clineL=[]
     for query in dbFileL_1:
         for db in dbFileL_2:
-
+            
             qstem = os.path.split(query)[-1]
             qstem = qstem.split("_prot.fa")[0]
-
+            
             dbstem = os.path.split(db)[-1]
             dbstem = dbstem.split("_prot.fa")[0]
-
+                
             outFN = os.path.join( blastDir, qstem + '_-VS-_' + dbstem + blastExtension )
-
+                
             # only add to list if this blast file doesn't already exist
-            if not os.path.isfile(outFN):
+            if not os.path.isfile(outFN) or shouldBlast:
                 L = list(blastCLineT) + ['-query',query,'-db',db,'-out',outFN]
                 clineL.append(L)
-
+                    
     return clineL
 
 def subprocessWrapper(cline):
@@ -97,3 +104,28 @@ database in dbFileL_2.
         for stderr in p.imap_unordered(subprocessWrapper, clineL):
             pass # ignore stderr
 
+def timeChecker(firstFileL, secondFileL):
+    ''' Returns True if the last file to be modified in firstFileL was modified before the first file to be modified in secondFileL was modified
+    '''
+    # Find when the most recently edited file was modified in the first list
+    
+    latestFirst = 0
+    if firstFileL != []:
+        for file in firstFileL:
+            time  = os.path.getmtime(file)
+            if time > latestFirst:
+                latestFirst = time
+
+    # Find when the oldest file was modified in the second list
+
+    earliestSecond = float('inf')
+    if secondFileL != []:
+        for file in secondFileL:
+            time  = os.path.getmtime(file)
+            if time < earliestSecond:
+                earliestSecond = time
+
+    # if the last one to be modified happened before the first of the second list, the file is okay
+    if latestFirst < earliestSecond:
+        return False
+    return True

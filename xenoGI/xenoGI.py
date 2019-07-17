@@ -404,18 +404,24 @@ def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
 
     ## Set up the modules a bit differently for interactive mode
-    import code,sys
+    import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    scoreIterator = scoresO.iterateScoreByStrainPair(('S_bongori','S_bongori'),'synSc')
+    binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,paramD['scoreHistNumBins'])
 
-    geneToAabrhD = scores.createGeneToAabrhD(aabrhHardCoreL)
-    coreSyntenyD = scores.createCoreSyntenyD(geneToAabrhD,geneOrderD,paramD['coreSynWsize'])
+    binWidth = 1.0/paramD['scoreHistNumBins'] 
+    peakL = []
 
-    for gn in coreSyntenyD:
-        if len(coreSyntenyD[gn]) == 0:
-            print(gn)
+    # case 1 (High prominence, narrow peak. Close relatedness
+    # in order to get a rightmost peak, if any, we add a dummy bin of
+    # height 0 on right
+    tempBinHeightL = numpy.append(binHeightL,0)
+    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
+    
+    L = families.findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['synPeakWidthCase1'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase1'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
     
     code.interact(local=locals())
 

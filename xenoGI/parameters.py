@@ -82,7 +82,7 @@ synLeftPeakLimit = 0.6
 synRightPeakLimit = 1.0
 
 # case 1 (High prominence, narrow peak. Close relatedness
-synPeakWidthCase1 = 0.01
+synPeakWidthCase1 = 0.005
 synRequiredProminenceCase1 = 2.0
 
 # case 2 (wide width, low prominence. Distant relatedness.)
