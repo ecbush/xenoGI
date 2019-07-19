@@ -3,6 +3,26 @@ from . import trees
 from multiprocessing import Pool
 from Bio import Phylo
 
+def runBlast(dbFileL_1,dbFileL_2,paramD):
+    '''Run blast comparing every database in dbFileL_1 against every
+database in dbFileL_2.
+    '''
+
+    # format the databases
+    uniqueDbL=list(set(dbFileL_1+dbFileL_2))
+    formatDb(uniqueDbL,paramD['blastExecutDirPath'])
+    
+    # if directory for blast doesn't exist yet, make it
+    blastDir = os.path.split(paramD['blastFilePath'])[0]
+    if glob.glob(blastDir)==[]:
+        os.mkdir(blastDir)
+
+    clineL =  makeBlastClineList(dbFileL_1,dbFileL_2,paramD)
+    
+    with Pool(processes=paramD['numThreads']) as p:
+        for stderr in p.imap_unordered(subprocessWrapper, clineL):
+            pass # ignore stderr
+
 def getDbFileL(fastaFilePath,strainNamesT):
     '''Obtains and returns a list of all fasta files that should be run
 through blast. Only keeps those that are in stainNamesT.
@@ -55,8 +75,8 @@ needed to run blastp on a pair of databases.'''
     fastaFiles = glob.glob(fastaFilePath)
     blastFiles = glob.glob(blastFilePath)
 
-    # make sure fasta files are up to date
-    shouldBlast = timeChecker(fastaFiles, blastFiles)
+    # check if fasta files modified more recently than blast files
+    shouldBlast = determineShouldBlast(dbFileL_1[0],dbFileL_2[0],blastFilePath)
 
     clineL=[]
     for query in dbFileL_1:
@@ -77,55 +97,35 @@ needed to run blastp on a pair of databases.'''
                     
     return clineL
 
+def determineShouldBlast(dbFile1,dbFile2,blastFilePath):
+    '''Compare a blast and a fasta file. If the fasta file was edited
+    more recently, return True, otherwise False.
+    '''
+
+    dbStem1 = os.path.split(dbFile1)[-1]
+    dbStem1 = dbStem1.split("_prot.fa")[0] 
+
+    dbStem2 = os.path.split(dbFile2)[-1]
+    dbStem2 = dbStem2.split("_prot.fa")[0] 
+
+    # get dirs and extensions
+    blastDir,rest = os.path.split(blastFilePath)
+    blastExtension = rest.split("*")[-1]
+
+    fastaFN = dbFile1
+    blastFN = os.path.join(blastDir, dbStem1 + '_-VS-_' + dbStem2 + blastExtension )
+
+    # times
+    fastaModTime = os.path.getmtime(fastaFN)
+    blastModTime = os.path.getmtime(blastFN)
+
+    if fastaModTime < blastModTime:
+        return False
+    return True
+
 def subprocessWrapper(cline):
     '''A wraper within which we call subprocess. Becasue we're having
 blast write to file, we dump std_out. return std_err.'''
     pipes=subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = pipes.communicate()
     return stderr
-
-def runBlast(dbFileL_1,dbFileL_2,paramD):
-    '''Run blast comparing every database in dbFileL_1 against every
-database in dbFileL_2.
-    '''
-
-    # format the databases
-    uniqueDbL=list(set(dbFileL_1+dbFileL_2))
-    formatDb(uniqueDbL,paramD['blastExecutDirPath'])
-    
-    # if directory for blast doesn't exist yet, make it
-    blastDir = os.path.split(paramD['blastFilePath'])[0]
-    if glob.glob(blastDir)==[]:
-        os.mkdir(blastDir)
-
-    clineL =  makeBlastClineList(dbFileL_1,dbFileL_2,paramD)
-    
-    with Pool(processes=paramD['numThreads']) as p:
-        for stderr in p.imap_unordered(subprocessWrapper, clineL):
-            pass # ignore stderr
-
-def timeChecker(firstFileL, secondFileL):
-    ''' Returns True if the last file to be modified in firstFileL was modified before the first file to be modified in secondFileL was modified
-    '''
-    # Find when the most recently edited file was modified in the first list
-    
-    latestFirst = 0
-    if firstFileL != []:
-        for file in firstFileL:
-            time  = os.path.getmtime(file)
-            if time > latestFirst:
-                latestFirst = time
-
-    # Find when the oldest file was modified in the second list
-
-    earliestSecond = float('inf')
-    if secondFileL != []:
-        for file in secondFileL:
-            time  = os.path.getmtime(file)
-            if time < earliestSecond:
-                earliestSecond = time
-
-    # if the last one to be modified happened before the first of the second list, the file is okay
-    if latestFirst < earliestSecond:
-        return False
-    return True

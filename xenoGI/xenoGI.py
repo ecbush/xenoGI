@@ -264,10 +264,11 @@ def plotScoreHistsWrapper(paramD):
     from matplotlib.backends.backend_pdf import PdfPages
     
     numBins = 80 # num bins in histograms
-    strainNamesT = readStrainInfoFN(paramD['strainInfoFN'])
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
     
-    def scoreHists(outFN,scoresO,numBins,scoreType):
+    def scoreHists(outFN,scoresO,numBins,scoreType,aabrhHardCoreL=None):
         '''Read through a scores file, and separate into all pairwise
 comparisons. Then plot hist of each.'''
 
@@ -278,16 +279,46 @@ comparisons. Then plot hist of each.'''
         with PdfPages(outFN) as pdf:
             for strainPair in scoresO.getStrainPairs():
                 fig = pyplot.figure()
-                scoresL = list(scoresO.iterateScoreByStrainPair(strainPair,scoreType))
+                scoresL = getScores(scoresO,strainPair,scoreType,aabrhHardCoreL)
                 pyplot.hist(scoresL,bins=numBins, density = True, range = [0,1])
                 pyplot.title(strainPair[0]+'-'+strainPair[1])
                 pdf.savefig()
                 pyplot.close()
 
-    # plot histograms
+    def getScores(scoresO,strainPair,scoreType,aabrhHardCoreL):
+        '''Get all scores for strainPair. If aabrhHardCoreL is not None, then'''
+
+        if aabrhHardCoreL==None:
+            return list(scoresO.iterateScoreByStrainPair(strainPair,scoreType))
+        else:
+            scoreL=[]
+            for aabrhT in aabrhHardCoreL:
+                geneL = getGenesFromStrainT(aabrhT,strainPair,genesO)
+                if strainPair[0] == strainPair[1]:
+                    # if it's a self self, then we only got one gene
+                    # back. get score of it vs. self.
+                    gn1=geneL[0]
+                    gn2=geneL[0]
+                else:
+                    gn1,gn2 = geneL
+                scoreL.append(scoresO.getScoreByEndNodes(gn1,gn2,scoreType))
+            return scoreL
+                
+    def getGenesFromStrainT(geneT,strainT,genesO):
+        '''Given a tuple of genes (one from each strain) identify and return the two which are from strain pair.'''
+        genesInStrainTL=[]
+        for geneNum in geneT:
+            if genesO.numToStrainName(geneNum) in strainT:
+                genesInStrainTL.append(geneNum)
+        return genesInStrainTL
+        
+    ## plot histograms
     for scoreType,outFN in [('rawSc','rawSc.pdf'),('synSc','synSc.pdf'),('coreSynSc','coreSynSc.pdf'),]:
             scoreHists(outFN,scoresO,numBins,scoreType)
-    
+
+    for scoreType,outFN in [('rawSc','rawScHardCore.pdf'),('synSc','synScHardCore.pdf'),('coreSynSc','coreSynScHardCore.pdf'),]:
+            scoreHists(outFN,scoresO,numBins,scoreType,aabrhHardCoreL)
+            
 def interactiveAnalysisWrapper(paramD):
     """Enter interactive mode."""
 
@@ -407,22 +438,11 @@ def debugWrapper(paramD):
     import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
-    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    numBins = 80 # num bins in histograms
+    strainNamesT = readStrainInfoFN(paramD['strainInfoFN'])
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    scoreIterator = scoresO.iterateScoreByStrainPair(('S_bongori','S_bongori'),'synSc')
-    binHeightL,indexToBinCenterL = families.scoreHist(scoreIterator,paramD['scoreHistNumBins'])
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
-    binWidth = 1.0/paramD['scoreHistNumBins'] 
-    peakL = []
-
-    # case 1 (High prominence, narrow peak. Close relatedness
-    # in order to get a rightmost peak, if any, we add a dummy bin of
-    # height 0 on right
-    tempBinHeightL = numpy.append(binHeightL,0)
-    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
-    
-    L = families.findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['synPeakWidthCase1'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase1'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
-    
     code.interact(local=locals())
 
 def simValidationWrapper(paramD):
