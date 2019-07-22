@@ -115,13 +115,18 @@ def determineShouldBlast(dbFile1,dbFile2,blastFilePath):
     fastaFN = dbFile1
     blastFN = os.path.join(blastDir, dbStem1 + '_-VS-_' + dbStem2 + blastExtension )
 
-    # times
-    fastaModTime = os.path.getmtime(fastaFN)
-    blastModTime = os.path.getmtime(blastFN)
+    if not os.path.isfile(blastFN):
+        # hasn't been run, return True
+        return True
+    else:
+        # times
+        fastaModTime = os.path.getmtime(fastaFN)
+        blastModTime = os.path.getmtime(blastFN)
 
-    if fastaModTime < blastModTime:
-        return False
-    return True
+        if fastaModTime < blastModTime:
+            return False
+        else:
+            return True
 
 def subprocessWrapper(cline):
     '''A wraper within which we call subprocess. Becasue we're having
