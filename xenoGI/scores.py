@@ -1,9 +1,6 @@
 import parasail,statistics,sys
 from multiprocessing import set_start_method, Pool
-from . import genomes
-from . import trees
-from . import Score
-
+from . import genomes,trees,Score
 
 #### Global variables for use with multithreading
 
@@ -518,6 +515,74 @@ between 0 and 1.
             if cgene in synT2:
                 ct+=1
         return ct/minNumSurrounding
+
+#### Plotting scores
+
+def plotScoreHists(paramD):
+    """Wrapper to make pdf of histograms of scores."""
+
+    import matplotlib.pyplot as pyplot
+    from matplotlib.backends.backend_pdf import PdfPages
+    from . import xenoGI
+    
+    numBins = 80 # num bins in histograms
+    strainNamesT = xenoGI.readStrainInfoFN(paramD['strainInfoFN'])
+    genesO = genomes.genes(paramD['geneInfoFN'])
+    scoresO = readScores(strainNamesT,paramD['scoresFN'])
+    aabrhHardCoreL = loadOrthos(paramD['aabrhFN'])
+    
+    def scoreHists(outFN,scoresO,numBins,scoreType,genesO,aabrhHardCoreL=None):
+        '''Read through a scores file, and separate into all pairwise
+comparisons. Then plot hist of each.'''
+
+        # currently, this seems to require a display for interactive
+        # plots. would be nice to make it run without that...
+
+        pyplot.ioff() # turn off interactive mode
+        with PdfPages(outFN) as pdf:
+            for strainPair in scoresO.getStrainPairs():
+                fig = pyplot.figure()
+                scoresL = getScoresStrainPair(scoresO,strainPair,scoreType,genesO,aabrhHardCoreL)
+                pyplot.hist(scoresL,bins=numBins, density = True, range = [0,1])
+                pyplot.title(strainPair[0]+'-'+strainPair[1])
+                pdf.savefig()
+                pyplot.close()
+
+    # plot histograms
+    for scoreType,outFN in [('rawSc','rawSc.pdf'),('synSc','synSc.pdf'),('coreSynSc','coreSynSc.pdf'),]:
+        scoreHists(outFN,scoresO,numBins,scoreType,genesO)
+
+    for scoreType,outFN in [('rawSc','rawScHardCore.pdf'),('synSc','synScHardCore.pdf'),('coreSynSc','coreSynScHardCore.pdf'),]:
+        scoreHists(outFN,scoresO,numBins,scoreType,genesO,aabrhHardCoreL)
+
+def getScoresStrainPair(scoresO,strainPair,scoreType,genesO,aabrhHardCoreL):
+    '''Get all scores for strainPair. If aabrhHardCoreL is not None, then
+only get for pairs in aabrhHardCoreL.'''
+
+    if aabrhHardCoreL==None:
+        return list(scoresO.iterateScoreByStrainPair(strainPair,scoreType))
+    else:
+        scoreL=[]
+        for aabrhT in aabrhHardCoreL:
+            geneL = getGenesFromStrainT(aabrhT,strainPair,genesO)
+            if strainPair[0] == strainPair[1]:
+                # if it's a self self, then we only got one gene
+                # back. get score of it vs. self.
+                gn1=geneL[0]
+                gn2=geneL[0]
+            else:
+                gn1,gn2 = geneL
+            scoreL.append(scoresO.getScoreByEndNodes(gn1,gn2,scoreType))
+        return scoreL
+
+def getGenesFromStrainT(geneT,strainT,genesO):
+    '''Given a tuple of genes (one from each strain) identify and return the two which are from strain pair.'''
+    genesInStrainTL=[]
+    for geneNum in geneT:
+        if genesO.numToStrainName(geneNum) in strainT:
+            genesInStrainTL.append(geneNum)
+    return genesInStrainTL
+
 
 
 #### Score I/O

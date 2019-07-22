@@ -27,12 +27,7 @@ hashArrayScaleFactor = 2
 # looking at histograms of scores.
 scoreHistNumBins = 80
 
-## absMinRawThresholdForHomology
-# A gene with a raw score below absMinRawThresholdForHomology will not
-# be added to a family. If we cannot find a homologous peak in the
-# histogram, we will just go with the following default.
-defaultAbsMinRawThresholdForHomology = 0.5
-
+## Homology check
 # parameters for finding the homologous (right) peak in raw score
 # histograms. These put restrictions on the peaks we can
 # find. widthRelHeight specifies where we measure the width of a peak,
@@ -62,33 +57,19 @@ nonHomologPeakProminence = 1
 nonHomologLeftPeakLimit = 0
 nonHomologRightPeakLimit = 0.6
 
-## synteny threshold parameters
+## Thresholds
 
-# minSynThreshold is a synteny threshold below which we will not add a
-# gene to a family. synAdjustThreshold is a synteny theshold above
-# which we make a gene more likely to be added to a family (by bumping
-# up it's raw score).
+# quantile to use when getting absMinRawThresholdForHomology
+# from aabrh raw scores for a strain pair
+quantileForMinRawThreshold = 0.05
 
-defaultMinSynThreshold = 0.6
-defaultSynAdjustThreshold = 0.8
+# floor for absMinRawThresholdForHomology
+defaultAbsMinRawThresholdForHomology = 0.5
 
-# These increments indicate how much to modify the left extreme of the
-# synteny peak to get minSynThreshold or synAdjustThreshold
-minSynThresholdIncrement = 0.15
-synAdjustThresholdIncrement = 0.02
-
-# finding the homologous (right) synteny peak
-synLeftPeakLimit = 0.6
-synRightPeakLimit = 1.0
-
-# case 1 (High prominence, narrow peak. Close relatedness
-synPeakWidthCase1 = 0.005
-synRequiredProminenceCase1 = 2.0
-
-# case 2 (wide width, low prominence. Distant relatedness.)
-synPeakWidthCase2 = 0.10
-synRequiredProminenceCase2 = 0.1
-
+# quantiles for synteny threshold calculation
+quantileForObtainingSynThresholds = 0.1
+multiplierForObtainingSynThresholds = 0.75
+quantileForObtainingSynAdjustThreshold = 0.1
 
 # We use syntenty scores to adjust similarity scores in family
 # finding. In particular, if synteny is very good, we give the raw

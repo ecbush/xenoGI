@@ -8,21 +8,25 @@ def runBlast(dbFileL_1,dbFileL_2,paramD):
 database in dbFileL_2.
     '''
 
-    # format the databases
-    uniqueDbL=list(set(dbFileL_1+dbFileL_2))
-    formatDb(uniqueDbL,paramD['blastExecutDirPath'])
-    
     # if directory for blast doesn't exist yet, make it
     blastDir = os.path.split(paramD['blastFilePath'])[0]
     if glob.glob(blastDir)==[]:
         os.mkdir(blastDir)
 
     clineL =  makeBlastClineList(dbFileL_1,dbFileL_2,paramD)
-    
-    with Pool(processes=paramD['numThreads']) as p:
-        for stderr in p.imap_unordered(subprocessWrapper, clineL):
-            pass # ignore stderr
 
+    if clineL != []:
+        # we need to run some
+        
+        # format the databases
+        uniqueDbL=list(set(dbFileL_1+dbFileL_2))
+        formatDb(uniqueDbL,paramD['blastExecutDirPath'])
+
+        with Pool(processes=paramD['numThreads']) as p:
+            for stderr in p.imap_unordered(subprocessWrapper, clineL):
+                pass # ignore stderr
+
+            
 def getDbFileL(fastaFilePath,strainNamesT):
     '''Obtains and returns a list of all fasta files that should be run
 through blast. Only keeps those that are in stainNamesT.

@@ -331,9 +331,8 @@ families in lFamNumL.'''
     return cdD
 
 def costDiff(lfam1,lfam2,geneProximityD,proximityThreshold,subtree):
-    '''Given two families calculate the difference in rcost depending on
-whether we assume the root is not proximate or proximate. lfam1 and
-lfam2 are family tuples specifying the genes present in a family.
+    '''Given two LocusFamilies calculate the difference in rcost depending on
+whether we assume the root is not proximate or proximate.
     '''
     memoD = {}
     t=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,True,memoD)

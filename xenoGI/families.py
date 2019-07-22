@@ -9,33 +9,28 @@ from .analysis import printTable
 
 #### Main function
 
-def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhL,paramD,subtreeD,outputSummaryF):
+def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,outputSummaryF):
     '''Given a graph of genes and their similarity scores find families
 using a PhiGs-like algorithm, with synteny also considered.
 
-Here's a hierarchy of (major) function calls below this:
-createFamiliesO
-  createAllFamiliesDescendingFromInternalNode
-    createFamilyFromSeed
-  createAllFamiliesAtTip
-  createAllLocusFamiliesDescendingFromInternalNode
-     createAllLocusFamiliesAtOneInternalNode
-        createLocusFamilyFromSeed
-     createAllLocusFamiliesAtTip
+    Here's a hierarchy of (major) function calls below this:
+    createFamiliesO
+      createAllFamiliesDescendingFromInternalNode
+        createFamilyFromSeed
+      createAllFamiliesAtTip
+      createAllLocusFamiliesDescendingFromInternalNode
+         createAllLocusFamiliesAtOneInternalNode
+            createLocusFamilyFromSeed
+         createAllLocusFamiliesAtTip
     '''
-    # Do an initial check the placement of the rootFocalClade on the
-    # tree. If there are no outgroups, write a warning to our output
-    # file
-    if tree[0] == paramD['rootFocalClade']:
-        print("""Warning: the chosen rootFocalClade falls at the root of the input
-tree and thus does not have any outgroups. This is not recommended
-because it can lead to problems accurately recognizing core gene
-families in the presence of gene deletion."""+"\n",file=outputSummaryF)
-    
-    # initialize scoresO.nodeConnectD and scoresO.ScoreSummaryD for
-    # use below
+
+    # checks
+    rootFocalCladeCheck(tree,paramD,outputSummaryF)
+    homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
+
+    # initialize scoresO.nodeConnectD and scoresO.ScoreSummaryD
     scoresO.createNodeConnectD()
-    scoresO.createAabrhScoreSummaryD(strainNamesT,aabrhL,genesO)
+    scoresO.createAabrhScoreSummaryD(strainNamesT,aabrhHardCoreL,genesO)
 
     # create an object of class Families to store this in.
     familiesO = Families(tree)
@@ -46,31 +41,14 @@ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
     # geneUsedD keeps track of which genes have been used. Restricting
     # to only those genes in the tree
     geneUsedD = {gene: False for gene in genesO.iterGenes(strainNamesT)}
-    
     nodeGenesD = createNodeGenesD(strainNamesT,genesO) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
 
-    # get homology thresholds for each strain pair in family
-    # formation. Below this threshold we won't add a gene to
-    homologousPeakMissingL,absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO)
-
-    if homologousPeakMissingL != []:
-        print("""Warning: for one or more strain pairs, we failed to find a homologous
-(right) peak in the raw score histogram. For these cases we will use
-default values for score thresholds in family formation. The pair(s)
-in question are:""",file=outputSummaryF)
-        for pairT in homologousPeakMissingL:
-            print("  ",pairT[0]+'-'+pairT[1],file=outputSummaryF)
-        
-        print("""A possible explanation for this failure is that one or more species
-is too distantly related. If this is the case it will result in poor
-family formation, and most families (e.g. 80% or more) will have genes
-in only one strain."""+"\n",file=outputSummaryF)
-
-    # Create synThresholdD
-    synThresholdD = getSynThresholdD(scoresO,tree,paramD)
+    # get thresholds for family formation
+    absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO,genesO,aabrhHardCoreL)
+    synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
     printThresholdSummaryFile(paramD,absMinRawThresholdForHomologyD,synThresholdD)
-
+    
     # family formation
     for familyMrca,lchild,rchild in createNodeProcessOrderList(tree):
         # this is preorder, so we get internal nodes before tips
@@ -118,6 +96,66 @@ in only one strain."""+"\n",file=outputSummaryF)
     return familiesO
 
 ## Support functions
+
+def rootFocalCladeCheck(tree,paramD,outputSummaryF):
+    '''Check that there is a correct rootFocalClade given.'''
+    
+    rootFocalClade = paramD['rootFocalClade']
+    
+    if rootFocalClade not in trees.iNodeList(tree):
+        raise ValueError("Given rootFocalClade is not present in tree.")
+    elif tree[0] == rootFocalClade:
+        print("""Warning: the chosen rootFocalClade falls at the root of the input
+ tree and thus does not have any outgroups. This is not recommended
+ because it can lead to problems accurately recognizing core gene
+ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
+
+    
+def homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD):
+    '''Check if the number of genes in the hard core is low. Print warning if so. Also check for homology peak in raw scores histogram.'''
+
+
+    ## Check number of hard core genes
+    # figure out average number of genes per genome
+    numGenes=0
+    for rangeStart,rangeEnd in genesO.geneRangeByStrainD.values():
+        if rangeEnd > numGenes:
+            numGenes = rangeEnd
+    avNumGenesPerGenome = (numGenes+1) / len(genesO.geneRangeByStrainD)
+
+    propHC = round(len(aabrhHardCoreL) / avNumGenesPerGenome,3)
+    
+    if propHC < 0.2:
+        print("Warning: the hard core gene set has only",len(aabrhHardCoreL),"genes. This is",propHC,file=outputSummaryF)
+        print(""" of the average number of genes in the input genomes. A low number
+ of core genes might result from one or more species being too
+ distantly related, and could be associated with problems in family and
+ island formation.""",file=outputSummaryF)
+
+    ## Check for homology (right) peak in raw scores histogram
+    scoreHistNumBins = paramD['scoreHistNumBins']
+    binWidth = 1.0/scoreHistNumBins # since scores range from 0-1
+    homologousPeakMissingL = []
+    for strainPair in scoresO.getStrainPairs():
+
+        scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
+        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,scoreHistNumBins)
+        homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
+
+        if homologPeakLeftExtremePos == float('inf'):
+            homologousPeakMissingL.append(strainPair)
+  
+    if homologousPeakMissingL != []:
+        print("""Warning: for one or more strain pairs, we failed to find a
+ homologous (right) peak in the raw score histogram. The pair(s) in
+ question are:""",file=outputSummaryF)
+        for pairT in homologousPeakMissingL:
+            print("  ",pairT[0]+'-'+pairT[1],file=outputSummaryF)
+        
+        print(""" A possible explanation for this failure is that one or more species
+ is too distantly related. If this is the case it will result in poor
+ family formation, and most families (e.g. 80% or more) will have genes
+ in only one strain."""+"\n",file=outputSummaryF)
 
 def createNodeGenesD(strainNamesT,genesO):
     '''Create a data structure to organize genes by strain. Returns a dict
@@ -181,45 +219,38 @@ scoresO.
 
 ## Histograms and thresholds
 
-def getAbsMinRawThresholdForHomologyD(paramD,scoresO):
+def getAbsMinRawThresholdForHomologyD(paramD,scoresO,genesO,aabrhHardCoreL):
     '''For each pair of strains (including vs. self) determine a minimum
 raw score below which we take scores to indicate non-homology. Return
-in a dictionary keyed by strain pair. It also returns a boolean flag,
-homologousPeakMissing. This will be true if any of the strain pairs
-failed to yield a peak on the right side of the histogram
-corresponding to homologous scores. This function works as
-follows. For a given strain pair, it expects the histogram of scores
-to have two peaks. A left non homologous peak, and a right homologous
-peak. It attempts to find the right peak, and then finds the left
-peak. It takes the right base of the left non-homologous peak to be
-the threshold. Unless the left base of the right peak is actually
-smaller, in which case it takes that.
-
+in a dictionary keyed by strain pair. This function works as
+follows. It calls quantile on the aabrh scores for each pair, and gets
+a homologDistLeftExtremePos for that. It also calculates the position
+of the left (nonhomologous) peak in the histogram of all scores
+between the strainPair. It takes the min of the right extreme of this,
+the left extreme from aabrh scores, and
+defaultAbsMinRawThresholdForHomology.
     '''
 
+    quantileForMinRawThreshold = paramD['quantileForMinRawThreshold']
+    
     scoreHistNumBins = paramD['scoreHistNumBins']
     binWidth = 1.0/scoreHistNumBins # since scores range from 0-1
 
-    homologousPeakMissingL = []
     homologyRawThresholdD = {}
     for strainPair in scoresO.getStrainPairs():
 
+        # get all scores
         scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
         binHeightL,indexToBinCenterL = scoreHist(scoreIterator,scoreHistNumBins)
-        homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
 
-        if homologPeakLeftExtremePos == float('inf'):
-            homologousPeakMissingL.append(strainPair)
-            # if we can't find the homologous peak, there's really no
-            # point in examining the non-homologous peak. Just use
-            # default threshold.
-            threshold = paramD['defaultAbsMinRawThresholdForHomology']
-        else:
-            threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos,paramD)
+        # get only scores from aabrhHardCore pairs
+        aabrhScL = scores.getScoresStrainPair(scoresO,strainPair,'rawSc',genesO,aabrhHardCoreL)
+        homologDistLeftExtremePos = numpy.quantile(aabrhScL,quantileForMinRawThreshold)
+        
+        threshold = getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologDistLeftExtremePos,paramD)
         homologyRawThresholdD[strainPair] = threshold
-        homologyRawThresholdD[(strainPair[1],strainPair[0])] = threshold # flip order
 
-    return homologousPeakMissingL,homologyRawThresholdD
+    return homologyRawThresholdD
     
 def scoreHist(scoreIterator,scoreHistNumBins):
     '''Get a histogram with numpy, and return the bin height, and also a
@@ -299,7 +330,7 @@ score.
             peakPosInScoreUnitsL.append((peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos))
     return peakPosInScoreUnitsL
 
-def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologPeakLeftExtremePos,paramD):
+def getMinRawThreshold(binHeightL,indexToBinCenterL,binWidth,homologDistLeftExtremePos,paramD):
     '''Given a list of bin heights and another list giving the score
 values at the middle of each bin, determine a threshold below which a
 score should be taken to indicate non-homology. We do this by looking
@@ -312,7 +343,7 @@ the left extreme of this peak as input.
 
     if L == []:
         # no peak found, use default threshold
-        threshold = paramD['defaultAbsMinRawThresholdForHomology']
+        threshold = min(paramD['defaultAbsMinRawThresholdForHomology'],homologDistLeftExtremePos)
     else:
         L.sort(reverse=True) # in the unlikely case there's more than one
         peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = L[0]
@@ -320,34 +351,43 @@ the left extreme of this peak as input.
         # we now find the minimum of these two. We're after a threshold
         # where we're confident that things below it are definitely not
         # homologous.
-        threshold = min(rightExtremeOfPeakPos,homologPeakLeftExtremePos)
+        threshold = min(rightExtremeOfPeakPos,homologDistLeftExtremePos)
 
     return threshold
 
-def getSynThresholdD(scoresO,tree,paramD):
+def getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree):
     '''Creates a dictionary to store synteny thresholds. This dictionary
-itself contains two dictionaries one each for the minSynThresh
-(minimum synteny score allowed for family formation) and the
+itself contains three dictionaries one each for minCoreSyntThresh
+(minimum core synteny score allowed for family formation),
+minSynThresh (minimum synteny score allowed for family formation) the
 synAdjustThreshold (the synteny score above which we adjust up the raw
 score to make family formation more likely.) These dictionaries in
-turn are keyed by strain pair.'''
+turn are keyed by strain pair.
 
+    '''
+    quantileForObtainingSynThresholds = paramD['quantileForObtainingSynThresholds']
+    multiplierForObtainingSynThresholds = paramD['multiplierForObtainingSynThresholds']
+    quantileForObtainingSynAdjustThreshold = paramD['quantileForObtainingSynAdjustThreshold']
+    
     synThresholdD = {}
     synThresholdD['minSynThreshold'] = {}
+    synThresholdD['minCoreSynThreshold'] = {}
     synThresholdD['synAdjustThreshold'] = {}
-    
+
+    # coreSynSc
     for strainPair in scoresO.getStrainPairs():
-        scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'synSc')
-        binHeightL,indexToBinCenterL = scoreHist(scoreIterator,paramD['scoreHistNumBins'])
+        aabrhScL = scores.getScoresStrainPair(scoresO,strainPair,'coreSynSc',genesO,aabrhHardCoreL)
+        thresh = multiplierForObtainingSynThresholds * numpy.quantile(aabrhScL,quantileForObtainingSynThresholds)
+        synThresholdD['minCoreSynThreshold'][strainPair] = thresh
 
-        minSynThreshold,synAdjustThreshold = getSynThresholds(binHeightL,indexToBinCenterL,paramD)
-
-        synThresholdD['minSynThreshold'][strainPair] = minSynThreshold
-        synThresholdD['minSynThreshold'][(strainPair[1],strainPair[0])] = minSynThreshold
+    # synSc and synAdjust
+    for strainPair in scoresO.getStrainPairs():
+        aabrhScL = scores.getScoresStrainPair(scoresO,strainPair,'synSc',genesO,aabrhHardCoreL)
+        thresh = multiplierForObtainingSynThresholds * numpy.quantile(aabrhScL,quantileForObtainingSynThresholds)
+        synThresholdD['minSynThreshold'][strainPair] = thresh
+        adjustThresh = numpy.quantile(aabrhScL,quantileForObtainingSynAdjustThreshold)
+        synThresholdD['synAdjustThreshold'][strainPair] = adjustThresh
         
-        synThresholdD['synAdjustThreshold'][strainPair] = synAdjustThreshold
-        synThresholdD['synAdjustThreshold'][(strainPair[1],strainPair[0])] = synAdjustThreshold
-
     # In the case of family formation at a tip, we're interested in
     # genes that duplicated after the last species split off. So the
     # thresholds at a tip really shouldn't be based on the given
@@ -360,70 +400,34 @@ turn are keyed by strain pair.'''
         if strainPair[0] == strainPair[1]:
             # Tip
             leafStrain = strainPair[0]
-            
-            minSynThreshold,synAdjustThreshold = getTipSynThresholds(synThresholdD,leafStrain,tree)
-            # since strainPair[0] and strainPair[1] same, no need to reverse
-            synThresholdD['minSynThreshold'][strainPair] = minSynThreshold
-            synThresholdD['synAdjustThreshold'][strainPair] = synAdjustThreshold
+            synThresholdD['minCoreSynThreshold'][strainPair] = getTipThreshold(tree,leafStrain,synThresholdD,'minCoreSynThreshold')
+            synThresholdD['minSynThreshold'][strainPair] = getTipThreshold(tree,leafStrain,synThresholdD,'minSynThreshold')
+            synThresholdD['synAdjustThreshold'][strainPair] = getTipThreshold(tree,leafStrain,synThresholdD,'synAdjustThreshold')
+
     return synThresholdD
-            
-def getSynThresholds(binHeightL,indexToBinCenterL,paramD):
-    '''Calculate and return minSynThresh and synAdjustThreshold.'''
 
-    binWidth = 1.0/paramD['scoreHistNumBins'] # since scores range from 0-1
-    
-    # get synteny peak
-
-    # case 1 (High prominence, narrow peak. Close relatedness
-    # in order to get a rightmost peak, if any, we add a dummy bin of
-    # height 0 on right
-    tempBinHeightL = numpy.append(binHeightL,0)
-    tempIndexToBinCenterL = numpy.append(indexToBinCenterL,1)
-
-    peakL = findPeaksOneCase(tempBinHeightL,tempIndexToBinCenterL,binWidth,paramD['synPeakWidthCase1'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase1'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
-    
-    # case 2 (wide width, low prominence. Distant relatedness.) Only
-    # look for this if there is no case 1.
-    if peakL == []:
-        peakL = findPeaksOneCase(binHeightL,indexToBinCenterL,binWidth,paramD['synPeakWidthCase2'],paramD['widthRelHeight'],paramD['synRequiredProminenceCase2'],paramD['synLeftPeakLimit'],paramD['synRightPeakLimit'])
-    
-    if peakL == []:
-        minSynThreshold = paramD['defaultMinSynThreshold']
-        synAdjustThreshold = paramD['defaultSynAdjustThreshold']
-    else:
-        # sort on position, in case more than one peak (unlikely), take highest.
-        peakL.sort(key=lambda x: x[0])
-
-        peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos = peakL[0]
-        minSynThreshold = leftExtremeOfPeakPos - paramD['minSynThresholdIncrement']
-        synAdjustThreshold = leftExtremeOfPeakPos - paramD['synAdjustThresholdIncrement']
-
-    return minSynThreshold,synAdjustThreshold
-
-def getTipSynThresholds(synThresholdD,leafStrain,tree):
+def getTipThreshold(tree,leafStrain,synThresholdD,thresholdType):
     '''Get the synteny threshold values at a tip called leafStrain by
 averaging the values between that strain and its nearest neighbors.'''
     
     neighbL = trees.getNearestNeighborL(leafStrain,tree)
-    avSyn = 0
-    avSynAdjust = 0
+    avThresh = 0
     for neighb in neighbL:
-        avSyn += synThresholdD['minSynThreshold'][neighb,leafStrain]
-        avSynAdjust += synThresholdD['synAdjustThreshold'][neighb,leafStrain]
-    avSyn /= len(neighbL)
-    avSynAdjust /= len(neighbL)
-    return avSyn,avSynAdjust
+        strainPair = tuple(sorted((neighb,leafStrain)))
+        avThresh += synThresholdD[thresholdType][strainPair]
+    avThresh /= len(neighbL)
+    return avThresh
 
 def printThresholdSummaryFile(paramD,absMinRawThresholdForHomologyD,synThresholdD):
     '''Given threshold dictionaries, print the various family formation thresholds to a summary file.'''
     
     threshSummaryL = []
-    threshSummaryL.append(['Strain pair','absMinRawThresholdForHomology','synAdjustThreshold','minSynThreshold'])
+    threshSummaryL.append(['Strain pair','absMinRawThresholdForHomology','minCoreSynThreshold','minSynThreshold','synAdjustThreshold'])
     
     if 'familyFormationThresholdsFN' in paramD:
         with open(paramD['familyFormationThresholdsFN'],'w') as familyFormationThresholdsF: 
             for strainPair in absMinRawThresholdForHomologyD:
-                threshSummaryL.append([" ".join(strainPair),str(round(absMinRawThresholdForHomologyD[strainPair],4)),str(round(synThresholdD['synAdjustThreshold'][strainPair],4)),str(round(synThresholdD['minSynThreshold'][strainPair],4))])
+                threshSummaryL.append([" ".join(strainPair),str(round(absMinRawThresholdForHomologyD[strainPair],4)),str(round(synThresholdD['minCoreSynThreshold'][strainPair],4)),str(round(synThresholdD['minSynThreshold'][strainPair],4)),str(round(synThresholdD['synAdjustThreshold'][strainPair],4))])
 
             printTable(threshSummaryL,indent=0,fileF=familyFormationThresholdsF)
 
@@ -433,9 +437,9 @@ def createAllFamiliesDescendingFromInternalNode(subtreeD,familyMrca,nodeGenesD,s
     '''Creates all Families and subsidiary LocusFamilies descending from
 the node rooted familyMrca. Basic parts of the Phigs algorithm are
 here. Creating the seeds, and using them to get a family. (With very
-minor changes in the use of the norm score and synteny
-adjustment). But then we divide the family into LocusFamilies, which
-is not Phigs.
+minor changes in the use of the synteny adjustment). But then we
+divide the family into LocusFamilies, which is not Phigs.
+
     '''
 
     subtree=subtreeD[familyMrca]
@@ -584,7 +588,7 @@ and return.
 def createFamilyFromSeed(g1,g2,geneUsedD,scoresO,leftS,rightS,genesO,thisFamRawThresh,absMinRawThresholdForHomologyD,synThresholdD,paramD):
     '''Based on a seed (seedScore, g1, g2) search for a family. Using the
 PhiGs approach, we collect all genes which are closer to members of
-the family than the two seeds are from each other. We have a normScore
+the family than the two seeds are from each other. We have a raw score
 threshold below which we will not add genes. We also have a synteny
 adjustment of the raw score where we make the raw score between a pair
 a bit better if their synteny is above the species pair specific
@@ -650,13 +654,14 @@ add it. Return boolean.
     # get minThresh from absMinRawThresholdForHomologyD
     strain1 = genesO.numToStrainName(famGene)
     strain2 = genesO.numToStrainName(newGene)
-    absoluteMinRawThresh = absMinRawThresholdForHomologyD[tuple(sorted([strain1,strain2]))]
+    strainPair = tuple(sorted([strain1,strain2]))
+    absoluteMinRawThresh = absMinRawThresholdForHomologyD[strainPair]
 
     if synThresholdD == None:
         synAdjustThresh = float('inf')
     else:
         # change later
-        synAdjustThresh = synThresholdD['synAdjustThreshold'][(strain1,strain2)]
+        synAdjustThresh = synThresholdD['synAdjustThreshold'][strainPair]
 
         
     addIt = False
@@ -670,7 +675,7 @@ add it. Return boolean.
         # (basic PhiGs approach). we have the =
         # there in case thisFamRawThresh is 1.
         addIt = True
-    elif synSc > synAdjustThresh:
+    elif synSc >= synAdjustThresh:
         # its above the syn score adjustment
         # threshold, so increase rawSc a bit. This
         # addresses a problem with closely related
@@ -684,7 +689,7 @@ add it. Return boolean.
         if adjSc > 1: adjSc = 1 # truncate back to 1
         if adjSc >= thisFamRawThresh:
             addIt = True
-                
+
     return addIt
 
 def createAllLocusFamiliesDescendingFromInternalNode(subtreeD,familyMrca,genesO,famGenesToSearchS,seedPairL,famNumCounter,locusFamNumCounter,scoresO,paramD,synThresholdD,familiesO,familySubtreeNodeOrderL,nodeGenesD):
@@ -823,9 +828,11 @@ boolean.
 
     strain1 = genesO.numToStrainName(gene1)
     strain2 = genesO.numToStrainName(gene2)
-    minSynThresh = synThresholdD['minSynThreshold'][tuple(sorted([strain1,strain2]))]
-
-    if coreSynSc < paramD['minCoreSynThresh'] or synSc < minSynThresh:
+    strainPair = tuple(sorted([strain1,strain2]))
+    minSynThreshold = synThresholdD['minSynThreshold'][strainPair]
+    minCoreSynThreshold = synThresholdD['minCoreSynThreshold'][strainPair]
+    
+    if coreSynSc < minCoreSynThreshold or synSc < minSynThreshold:
         # one of the two types of synteny below threshold, so this
         # pair doesn't meet the requirements for being in the same
         # LocusFamily
