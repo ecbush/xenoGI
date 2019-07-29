@@ -211,7 +211,7 @@ You can then run ``makeSpeciesTree``::
 
   xenoGI params.py makeSpeciesTree
 
-The ``params.py`` file found in the example directory contains a number of parameters related to ``makeSpeciesTree``. Among these is ``dnaBasedSpeciesTree``. If this is True, the method will use DNA based alignments, otherwise it will use protein alignments. Once ``makeSpeciesTree`` has completed, you can proceed with the rest of xenoGI::
+The ``params.py`` file found in the example directory contains a number of parameters related to ``makeSpeciesTree``. Among these is ``dnaBasedGeneTrees``. If this is True, the method will use DNA based alignments, otherwise it will use protein alignments. Once ``makeSpeciesTree`` has completed, you can proceed with the rest of xenoGI::
 
   xenoGI params.py makeFamilies
   xenoGI params.py makeIslands
