@@ -3,6 +3,19 @@ Change Log
 ==========
 
 -------------------
+2.2.0_ - 2019-07-29
+-------------------
+
+- runBlast now checks to see if a particular comparison has already been run, and if so doesn't repeat. This is mostly needed for a development version working with large numbers of species.
+- Replaced the geneNames object with a genes object more suitable to large numbers of strains (thousands).
+- The string form of gene names now also contains the number.
+- Now use string based names for nodes only, rather than numerical and string. As a part of these changes, we've created a strainInfo file, and a corresponding parameter strainInfoFN in the example params.py.
+- parseGenbank can now optionlly create dna files (depending on the new parameter dnaBasedGeneTrees).
+- added makeSpeciesTree option. This makes gene trees for the hard core set of gene families (using FastTree with GTR+CAT) and then combines them into a species tree using ASTRAL.
+- Updated example assemblies so they mostly are from type strains.
+- Changed the parameter numThreads to be called numProcesses (since that's a more acurate description of what's being done under the hood).
+
+-------------------
 2.1.0_ - 2019-05-29
 -------------------
 
@@ -50,6 +63,7 @@ Hereafter, tagged releases correspond to pypi releases. The master branch will h
 
 Initial release, corresponding to our article: "xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria".
 
+.. _2.2.0:  https://github.com/ecbush/xenoGI/compare/v2.1.0...v2.2.0
 .. _2.1.0:  https://github.com/ecbush/xenoGI/compare/v2.0.0...v2.1.0
 .. _2.0.0:  https://github.com/ecbush/xenoGI/compare/v1.1.2...v2.0.0
 .. _1.1.2:  https://github.com/ecbush/xenoGI/compare/v1.1.1...v1.1.2
