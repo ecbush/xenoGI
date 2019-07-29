@@ -169,7 +169,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     if glob.glob(workDir)==[]:
         os.mkdir(workDir)
 
-    numThreads = paramD['numThreads']
+    numProcesses = paramD['numProcesses']
     javaPath = paramD['javaPath']
     astralPath = paramD['astralPath']
     astralTreeFN = paramD['astralTreeFN']
@@ -221,7 +221,7 @@ the name for the gene tree files. orthoTL is a list of
 group.
 
     '''
-    numThreads = paramD['numThreads']    
+    numProcesses = paramD['numProcesses']    
     musclePath = paramD['musclePath']
     fastTreePath = paramD['fastTreePath']
     
@@ -234,7 +234,7 @@ group.
         dnaSeqD = {}
 
     ## make gene trees
-    argumentL = [([],[],strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numThreads)]
+    argumentL = [([],[],strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numProcesses)]
 
     # set up argumentL
     counter = 0
@@ -242,12 +242,12 @@ group.
         # we use counter for placememnt in argumentL since at least in
         # the case of single gene families, some will be missing
         orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
-        argumentL[counter%numThreads][0].append(orthoGroupNumStr)
-        argumentL[counter%numThreads][1].append(orthoT)
+        argumentL[counter%numProcesses][0].append(orthoGroupNumStr)
+        argumentL[counter%numProcesses][1].append(orthoT)
         counter += 1
         
     # run
-    with Pool(processes=numThreads) as p:
+    with Pool(processes=numProcesses) as p:
         for _ in p.imap_unordered(makeOneGeneTreeGroup, argumentL):
             pass
 

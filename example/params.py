@@ -119,7 +119,7 @@ geneFamilyTreesDir = 'geneFamilyTrees'
 #### Algorithm parameters ####
 
 # in parallel code, how many threads to use
-numThreads = 50
+numProcesses = 16
 
 # alignment parameters for making scores
 # note, since parasail doesn't charge extend on the first base its

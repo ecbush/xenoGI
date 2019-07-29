@@ -22,7 +22,7 @@ database in dbFileL_2.
         uniqueDbL=list(set(dbFileL_1+dbFileL_2))
         formatDb(uniqueDbL,paramD['blastExecutDirPath'])
 
-        with Pool(processes=paramD['numThreads']) as p:
+        with Pool(processes=paramD['numProcesses']) as p:
             for stderr in p.imap_unordered(subprocessWrapper, clineL):
                 pass # ignore stderr
 

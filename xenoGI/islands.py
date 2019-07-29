@@ -10,7 +10,7 @@ import math
 def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
-    numThreads = paramD['numThreads']
+    numProcesses = paramD['numProcesses']
     rootFocalClade = paramD['rootFocalClade']
     islandOutFN = paramD['islandOutFN']
     geneProximityRange = paramD['geneProximityRange']
@@ -31,7 +31,7 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     argumentL = []
     for clusterL in locusIslandClusterL:
         argumentL.append((clusterL,geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeD[clusterL[0].mrca],familiesO))
-    p=Pool(numThreads)
+    p=Pool(numProcesses)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
     # update locIslByNodeD with the merged nodes
@@ -45,7 +45,7 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     argumentL = []
     for mrcaNode in focalNodesL:
         argumentL.append((locIslByNodeD[mrcaNode],geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeD[mrcaNode],familiesO))
-    p=Pool(numThreads)
+    p=Pool(numProcesses)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
     # add the islands that were identified as singleton clusters

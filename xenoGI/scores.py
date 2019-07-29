@@ -11,7 +11,7 @@ sharedScoresO = Score.sharedScore()
 def calcRawScores(paramD,scoresO):
     '''Get a global alignment based raw score for every edge in scoresO.'''
 
-    numThreads = paramD['numThreads']
+    numProcesses = paramD['numProcesses']
     gapOpen = paramD['gapOpen']
     gapExtend = paramD['gapExtend']
     matrix = paramD['matrix']
@@ -20,18 +20,18 @@ def calcRawScores(paramD,scoresO):
     seqD=genomes.loadSeq(paramD,"_prot.fa")
 
     # make list of sets of arguments to be passed to p.map. There
-    # should be numThreads sets.
-    argumentL = [([],seqD,gapOpen, gapExtend, matrix) for i in range(numThreads)]
+    # should be numProcesses sets.
+    argumentL = [([],seqD,gapOpen, gapExtend, matrix) for i in range(numProcesses)]
 
     i=0
     for g1,g2 in scoresO.iterateEdgesByEndNodes():
         edgeNum = scoresO.endNodesToEdge(g1,g2)
         edgeT = edgeNum,g1,g2
-        argumentL[i%numThreads][0].append(edgeT)
+        argumentL[i%numProcesses][0].append(edgeT)
         i+=1
 
     # run in multiple processes
-    with Pool(processes=numThreads) as p:
+    with Pool(processes=numProcesses) as p:
         # store the results to scoresO as they come in
         for scoresL in p.imap_unordered(rawScoreGroup, argumentL):
             for edgeNum,sc in scoresL:
@@ -91,7 +91,7 @@ genes that have an edge in scoresO.
 
     synWSize = paramD['synWSize']
     numSynToTake = paramD['numSynToTake']
-    numThreads = paramD['numThreads']
+    numProcesses = paramD['numProcesses']
     
     neighborTD = createNeighborD(geneOrderD,synWSize)
     scoresO.initializeScoreArray('synSc') # array to store final synSc result in
@@ -99,12 +99,12 @@ genes that have an edge in scoresO.
     ## Prepare argument list
     
     # make list of groups of arguments to be passed to p.imap. There
-    # should be numThreads groups.
-    argumentL = [[[],neighborTD,numSynToTake] for i in range(numThreads)]
+    # should be numProcesses groups.
+    argumentL = [[[],neighborTD,numSynToTake] for i in range(numProcesses)]
 
     i=0
     for gn1,gn2 in scoresO.iterateEdgesByEndNodes():
-        argumentL[i%numThreads][0].append((gn1,gn2))
+        argumentL[i%numProcesses][0].append((gn1,gn2))
         i+=1
 
     ## prepare raw arrays to share
@@ -113,7 +113,7 @@ genes that have an edge in scoresO.
     rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen = sharedScoresO.returnArrays()
     
     ## Run
-    with Pool(processes=numThreads,initializer=synScoreGroupInit,initargs=(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen)) as p:
+    with Pool(processes=numProcesses,initializer=synScoreGroupInit,initargs=(rawScoreAr,hasEdgeAr,hashAr,lenOfRegionAr,colGn1Ar,colGn2Ar,colEdgeAr,hashArrayLen)) as p:
         for synScoresL in p.imap_unordered(synScoreGroup, argumentL):
             for gn1,gn2,sc in synScoresL:
                 scoresO.addScoreByEndNodes(gn1,gn2,sc,'synSc')

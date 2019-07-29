@@ -46,6 +46,12 @@ The easiest way to install is using pip::
 
   pip3 install xenoGI
 
+Citation
+--------
+
+If you use xenoGI in a publication, please cite the following:
+
+Bush EC, Clark AE, DeRanek CA, Eng A, Forman J, Heath K, Lee AB, Stoebel DM, Wang Z, Wilber M, Wu H. xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria. BMC Bioinformatics. 19(32). 2018.
 
 How to use
 ----------
@@ -116,6 +122,14 @@ What the steps do
 
 * ``createIslandBed`` produces bed files for each genome.
   
+Notes on several parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``rootFocalClade`` defines the focal clade where we will do the reconstruction. It is specified by giving the name of an internal node. It should be chosen such that there are one or more outgroups outside the focal clade. These outgroups help us to better recognize core genes given the possibility of deletion in some lineages. 
+
+* ``numProcesses`` determines how many separate processes to run in parts of the code that are parallel. If you have a machine with 32 processors, you would typically set this to 32 or less.
+
+
 A note on the output
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -226,11 +240,3 @@ Additional files
 ----------------
 
 The github repository also contains an additional directory called misc/. This contains various python scripts that may be of use in conjunction with xenoGI. Installation via pip does not include this, so to use these you need to clone the github repository. There is some brief documentation included in the directory.
-
-References
-----------
-
-If you use xenoGI in a publication, please cite the following:
-
-Bush EC, Clark AE, DeRanek CA, Eng A, Forman J, Heath K, Lee AB, Stoebel DM, Wang Z, Wilber M, Wu H. xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria. BMC Bioinformatics. 19(32). 2018.
-
