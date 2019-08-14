@@ -23,6 +23,10 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     numIslandsAtEachNodeAtStartD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
     focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade)
 
+
+    ## Checks
+    rootFocalCladeCheck(tree,paramD,outputSummaryF)
+    
     ##  Merge in clusters
 
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
@@ -67,6 +71,19 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     return locIslByNodeD
 
 ## Support functions
+
+def rootFocalCladeCheck(tree,paramD,outputSummaryF):
+    '''Check that there is a correct rootFocalClade given.'''
+    
+    rootFocalClade = paramD['rootFocalClade']
+    
+    if rootFocalClade not in trees.iNodeList(tree):
+        raise ValueError("Given rootFocalClade is not present in tree.")
+    elif tree[0] == rootFocalClade:
+        print("""Warning: the chosen rootFocalClade falls at the root of the input
+ tree and thus does not have any outgroups. This is not recommended
+ because it can lead to problems accurately recognizing core gene
+ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
 
 def createLocIslByNodeD(familiesO,tree):
     '''Create locus islands, one family each. Initially store islands
