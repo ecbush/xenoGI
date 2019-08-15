@@ -3,10 +3,11 @@ import sys,glob
 from . import fasta
 from . import trees
 
-def loadSeq(paramD,fileEnding):
+def loadSeq(paramD,fileEnding,genesS=None):
     '''Given paramD and the type of sequence, load the sequences and store
 in a dictionary keyed by gene number. fileEnding is a string, either
-"_prot.fa" or "_dna.fa".
+"_prot.fa" or "_dna.fa". genesS is a set specifying a subset of genes
+we want to keep. If missing, we keep all.
     '''
     fileEndingFound = False
     seqD={}
@@ -15,7 +16,10 @@ in a dictionary keyed by gene number. fileEnding is a string, either
             fileEndingFound = True # we've seen at least once
             for header,seq in fasta.load(fn):
                 gn = int(header.split("_")[0][1:])
-                seqD[gn]=seq
+                if genesS == None:
+                    seqD[gn]=seq
+                elif gn in genesS:
+                    seqD[gn]=seq
 
     if not fileEndingFound:
         # we never saw the file ending, the dict is empty.

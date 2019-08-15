@@ -188,5 +188,11 @@ to this instance of the Families class. Return as a set.
             allGenesS.update(set(lfO.iterGenes()))
         return allGenesS
 
+    def getNumFamilies(self):
+        return len(self.familiesD)
+    
+    def getNumLocusFamilies(self):
+        return len(self.locusFamiliesD)
+    
     def __repr__(self):
         return "<Families object--"+str(len(self.familiesD))+" Families, "+str(len(self.locusFamiliesD))+" LocusFamilies>"

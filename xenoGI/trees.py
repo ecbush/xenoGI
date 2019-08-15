@@ -70,6 +70,28 @@ def subtree(tree,node):
         else:
             return l
     
+def prune(tree,strainsToKeep):
+    '''Given a tree and a group of strains strainsToKeep (which we assume
+are a subset of the strains in tree), prune to yield the tree with
+only those strains. We will assume tree has no branch lengths, and
+will thus always put None in the 4 position of the pruned tree.
+    '''
+    if tree[1]==():
+        if tree[0] in strainsToKeep:
+            return (tree[0],(),(),None)
+        else:
+            return None
+    else:
+        l = prune(tree[1],strainsToKeep)
+        r = prune(tree[2],strainsToKeep)
+
+        if l != None and r != None:
+            return (tree[0],l,r,None)
+        elif l == None:
+            return r
+        else:
+            return l
+        
 def isRootNode(tree,mrcaNum):
     '''Is mrcaNum the root node?'''
     # root node is tree[0] in our tuple trees

@@ -85,12 +85,19 @@ needed to run blastp on a pair of databases.'''
     clineL=[]
     for query in dbFileL_1:
         for db in dbFileL_2:
-            
+
+            # split of paths and extensions
             qstem = os.path.split(query)[-1]
-            qstem = qstem.split("_prot.fa")[0]
-            
+            if "_prot.fa" in qstem:
+                qstem = qstem.split("_prot.fa")[0]
+            elif ".fa" in qstem:
+                qstem = qstem.split(".fa")[0]
+                
             dbstem = os.path.split(db)[-1]
-            dbstem = dbstem.split("_prot.fa")[0]
+            if "_prot.fa" in dbstem:
+                dbstem = dbstem.split("_prot.fa")[0]
+            elif ".fa" in dbstem:
+                dbstem = dbstem.split(".fa")[0]
                 
             outFN = os.path.join( blastDir, qstem + '_-VS-_' + dbstem + blastExtension )
                 
@@ -138,3 +145,20 @@ blast write to file, we dump std_out. return std_err.'''
     pipes=subprocess.Popen(cline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = pipes.communicate()
     return stderr
+
+def parseBlastFile(blastFN,evalueThresh):
+    '''Parse a single blast output file, returning all hits as a list of
+tuples.
+    '''
+    L=[]
+    with open(blastFN,'r') as f:
+        s = f.readline()
+        while s:
+            blastLine = s.split()
+            queryGene = int(blastLine[0].split('_')[0])
+            targetGene = int(blastLine[1].split('_')[0])
+            evalue = float(blastLine[10])
+            if evalue < evalueThresh:
+                L.append((queryGene,targetGene,evalue))
+            s = f.readline()
+    return L
