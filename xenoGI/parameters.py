@@ -8,6 +8,10 @@ import os
 
 baseParamStr = """
 
+#### Genbank ####
+
+problemGenbankFN = 'problemGenbankFiles.txt'
+
 #### Blast ####
 
 # blast command line (except for value for evalue as well as db,query

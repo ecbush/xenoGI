@@ -74,7 +74,7 @@ aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'
 astralTreeFN = 'astralTree.tre'
 
 # for rooting the tree
-outGroupTaxaL = ['S_bongori']
+outGroup = 'S_bongori'
 
 #### Blast ####
 

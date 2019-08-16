@@ -269,12 +269,17 @@ group.
     numProcesses = paramD['numProcesses']    
     musclePath = paramD['musclePath']
     fastTreePath = paramD['fastTreePath']
+
+    # get set of all genes in orthoTL to restrict size of seqD's
+    orthoGenesS=set()
+    for orthoGroupNum,orthoT in orthoTL:
+        orthoGenesS.update(orthoT)
     
     # load protein and dna sequences
-    protSeqD=genomes.loadSeq(paramD, '_prot.fa')
+    protSeqD=genomes.loadSeq(paramD, '_prot.fa',genesS=orthoGenesS)
 
     if paramD['dnaBasedGeneTrees'] == True:
-        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa')
+        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa',genesS=orthoGenesS)
     else:
         dnaSeqD = {}
 
