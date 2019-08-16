@@ -269,22 +269,9 @@ group.
     numProcesses = paramD['numProcesses']    
     musclePath = paramD['musclePath']
     fastTreePath = paramD['fastTreePath']
-
-    # get set of all genes in orthoTL to restrict size of seqD's
-    orthoGenesS=set()
-    for orthoGroupNum,orthoT in orthoTL:
-        orthoGenesS.update(orthoT)
     
-    # load protein and dna sequences
-    protSeqD=genomes.loadSeq(paramD, '_prot.fa',genesS=orthoGenesS)
-
-    if paramD['dnaBasedGeneTrees'] == True:
-        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa',genesS=orthoGenesS)
-    else:
-        dnaSeqD = {}
-
     ## make gene trees
-    argumentL = [([],[],strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numProcesses)]
+    argumentL = [([],[],paramD,strainHeader,genesO,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numProcesses)]
 
     # set up argumentL
     counter = 0
@@ -307,8 +294,22 @@ def makeOneGeneTreeGroup(argT):
     '''Wrapper for multiprocessing. Given a group of orthoT's to work on,
 calls makeOneGeneTree on each.'''
     
-    orthoGroupNumStrL,orthoTL,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath = argT
+    orthoGroupNumStrL,orthoTL,paramD,strainHeader,genesO,workDir,gtFileStem,musclePath,fastTreePath = argT
 
+    # get set of all genes in orthoTL to restrict size of seqD's
+    orthoGenesS=set()
+    for orthoT in orthoTL:
+        orthoGenesS.update(orthoT)
+    
+    # load protein and dna sequences
+    protSeqD=genomes.loadSeq(paramD, '_prot.fa',genesS=orthoGenesS)
+
+    if paramD['dnaBasedGeneTrees'] == True:
+        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa',genesS=orthoGenesS)
+    else:
+        dnaSeqD = {}
+
+    # make trees
     for i in range(len(orthoTL)):
         orthoGroupNumStr = orthoGroupNumStrL[i]
         orthoT = orthoTL[i]
