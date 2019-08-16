@@ -56,7 +56,7 @@ def main():
 
     #### printAnalysis
     elif task == 'printAnalysis':
-        printAnalysisWrapper(paramD)
+        printAnalysisWrapper(paramD,paramD['treeFN'],paramD['rootFocalClade'])
 
     #### createIslandBed
     elif task == 'createIslandBed':
@@ -175,9 +175,9 @@ def makeSpeciesTreeWrapper(paramD):
     aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
     trees.makeSpeciesTree(paramD,aabrhHardCoreL,genesO)
 
-def loadTreeRelatedData(paramD):
+def loadTreeRelatedData(treeFN):
     """Load some data related to trees."""
-    tree = trees.readTree(paramD['treeFN'])
+    tree = trees.readTree(treeFN)
     subtreeD=trees.createSubtreeD(tree)
     return tree,subtreeD
 
@@ -208,9 +208,11 @@ def makeIslandsWrapper(paramD):
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
         locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,paramD['rootFocalClade'],islandFormationSummaryF)
 
-def printAnalysisWrapper(paramD):
-    """Wrapper to run analysis."""
-
+def printAnalysisWrapper(paramD,treeFN,rootFocalClade):
+    """Wrapper to run analysis. We take treeFN and rootFocalClade as
+arguments so we can pass in different things in different contexts
+(e.g. in xlMode).
+    """
     ## setup output directory and file names
     # if directory for analysis doesn't exist yet, make it
     analDir = paramD['analysisFilePath'].split("*")[0]
@@ -221,21 +223,22 @@ def printAnalysisWrapper(paramD):
     analExtension = paramD['analysisFilePath'].split("*")[1]
     islandsSummaryFN = os.path.join(analDir,islandSummaryStem+analExtension)
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
-    
+
     ## load stuff
-    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)
-    
-    islandByNodeD=islands.readIslands(paramD['islandOutFN'],tree)
+    tree,subtreeD = loadTreeRelatedData(treeFN)
+    strainNamesT=tuple(trees.leafList(tree))
+    geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],strainNamesT)
+    genesO = genomes.genes(paramD['geneInfoFN'])
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
     familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
-
+    islandByNodeD=islands.readIslands(paramD['islandOutFN'],tree)
+    
     ## analysis
 
     # Print out all islands
     islandsOutF = open(islandsSummaryFN,'w')
-    analysis.vPrintAllLocusIslands(islandByNodeD,tree,paramD['rootFocalClade'],subtreeD,familiesO,genesO,islandsOutF)
+    analysis.vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,genesO,islandsOutF)
     islandsOutF.close()
 
     # Print species files with all the genes, grouped by contig
