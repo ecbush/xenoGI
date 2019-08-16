@@ -12,7 +12,7 @@ baseParamStr = """
 
 # blast command line (except for value for evalue as well as db,query
 # and outfiles)
-blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -seg yes -outfmt 6 -evalue '
+blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -seg yes -outfmt "6 qseqid sseqid evalue qlen qstart qend slen sstart send" -evalue '
 
 #### Scores calculation ####
 

@@ -7,11 +7,14 @@ import math
     
 ## Main function  
 
-def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,rootFocalClade,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
+    ## Checks
+    rootFocalCladeCheck(tree,rootFocalClade,outputSummaryF)
+    
+    ## Parameters
     numProcesses = paramD['numProcesses']
-    rootFocalClade = paramD['rootFocalClade']
     islandOutFN = paramD['islandOutFN']
     geneProximityRange = paramD['geneProximityRange']
     proximityThresholdMerge1 = paramD['proximityThresholdMerge1']
@@ -23,12 +26,7 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     numIslandsAtEachNodeAtStartD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
     focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade)
 
-
-    ## Checks
-    rootFocalCladeCheck(tree,paramD,outputSummaryF)
-    
     ##  Merge in clusters
-
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
 
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
@@ -72,10 +70,8 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
 
 ## Support functions
 
-def rootFocalCladeCheck(tree,paramD,outputSummaryF):
+def rootFocalCladeCheck(tree,rootFocalClade,outputSummaryF):
     '''Check that there is a correct rootFocalClade given.'''
-    
-    rootFocalClade = paramD['rootFocalClade']
     
     if rootFocalClade not in trees.iNodeList(tree):
         raise ValueError("Given rootFocalClade is not present in tree.")

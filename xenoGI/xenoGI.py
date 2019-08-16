@@ -153,7 +153,7 @@ def calcScoresWrapper(paramD,blastFnL):
     
     # object for storing scores
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(blastFnL)
+    scoresO.initializeDataAttributes(blastFnL,paramD)
 
     ## similarity scores
     scoresO = scores.calcRawScores(paramD,scoresO)
@@ -206,7 +206,7 @@ def makeIslandsWrapper(paramD):
 
     ## group gene families into islands
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
-        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,islandFormationSummaryF)
+        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,paramD['rootFocalClade'],islandFormationSummaryF)
 
 def printAnalysisWrapper(paramD):
     """Wrapper to run analysis."""

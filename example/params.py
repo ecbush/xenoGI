@@ -86,9 +86,12 @@ blastExecutDirPath = '/usr/bin/'
 # Blast e-value threshold
 evalueThresh = 1e-8
 
+# alignCoverThresh is a threshold for the length of the blast alignment
+# relative to query and subject length (ranges between 0 and 1)
+alignCoverThresh = 0.5
+
 # unix style file path to blast output files
 blastFilePath = 'blast/*.out'
-
 
 #### Algorithm output files ####
 

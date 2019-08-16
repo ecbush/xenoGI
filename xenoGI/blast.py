@@ -64,9 +64,9 @@ needed to run blastp on a pair of databases.'''
         blastCLine = paramD['blastCLine'] + ' ' + str(paramD['evalueThresh'])
     else:
         blastCLine = paramD['blastCLine'] + str(paramD['evalueThresh'])
-    
+
     # get a tuple of the blastp command line args for use below
-    blastCLineL = blastCLine.split()
+    blastCLineL = processCline(blastCLine)
     blastCLineL[0] = os.path.join(blastExecutDirPath,blastCLineL[0])
     blastCLineT = tuple(blastCLineL)
 
@@ -108,6 +108,14 @@ needed to run blastp on a pair of databases.'''
                     
     return clineL
 
+def processCline(cline):
+    '''Process the command line parameter so that the output format
+section can be passed in to subprocess as a unit.
+    '''
+    # split out the part between quotes
+    L = cline.split('"') # " make emacs happy.
+    return L[0].split() + [L[1]] + L[2].split()
+    
 def determineShouldBlast(dbFile1,dbFile2,blastFilePath):
     '''Compare a blast and a fasta file. If the fasta file was edited
     more recently, return True, otherwise False.
@@ -146,9 +154,12 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
-def parseBlastFile(blastFN,evalueThresh):
+def parseBlastFile(blastFN,evalueThresh,alignCoverThresh):
     '''Parse a single blast output file, returning all hits as a list of
-tuples.
+tuples. alignCoverThresh is a threshold for the length of the
+alignment relative to query and subject length. The files have the
+following fields (our custom output) qseqid sseqid evalue qlen qstart
+qend slen sstart send.
     '''
     L=[]
     with open(blastFN,'r') as f:
@@ -156,9 +167,18 @@ tuples.
         while s:
             blastLine = s.split()
             queryGene = int(blastLine[0].split('_')[0])
-            targetGene = int(blastLine[1].split('_')[0])
-            evalue = float(blastLine[10])
+            subjectGene = int(blastLine[1].split('_')[0])
+            evalue = float(blastLine[2])
             if evalue < evalueThresh:
-                L.append((queryGene,targetGene,evalue))
+                qlen = int(blastLine[3])
+                qstart = int(blastLine[4])
+                qend = int(blastLine[5])
+                slen = int(blastLine[6])
+                sstart = int(blastLine[7])
+                send =  int(blastLine[8])
+
+                alCov = ((qend-qstart) + (send-sstart)) / (qlen+slen)
+                if alCov > alignCoverThresh:
+                    L.append((queryGene,subjectGene,evalue,alCov))
             s = f.readline()
     return L
