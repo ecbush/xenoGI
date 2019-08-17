@@ -185,7 +185,7 @@ def makeFamiliesWrapper(paramD):
     """Wrapper to create gene families."""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
 
     ## read scores
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
@@ -199,7 +199,7 @@ def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     
     ## read gene families
     familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
@@ -225,7 +225,7 @@ arguments so we can pass in different things in different contexts
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
 
     ## load stuff
-    tree,subtreeD = loadTreeRelatedData(treeFN)
+    tree,subtreeD = loadTreeRelatedData(treeFN['treeFN'])
     strainNamesT=tuple(trees.leafList(tree))
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],strainNamesT)
     genesO = genomes.genes(paramD['geneInfoFN'])
@@ -249,7 +249,7 @@ def createIslandBedWrapper(paramD):
     """Wrapper to make output bed files."""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
     islandByNodeD = islands.readIslands(paramD['islandOutFN'],tree)
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
@@ -353,7 +353,7 @@ def interactiveAnalysisWrapper(paramD):
     ## Load data
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)    
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])    
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
     familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
@@ -368,7 +368,7 @@ def makeGeneFamilyTreesWrapper(paramD):
     '''Create a gene tree for each family.'''
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
     trees.makeGeneFamilyTrees(paramD,genesO,familiesO)
     
@@ -380,7 +380,7 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     
     code.interact(local=locals())
 
