@@ -225,7 +225,7 @@ arguments so we can pass in different things in different contexts
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
 
     ## load stuff
-    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
+    tree,subtreeD = loadTreeRelatedData(treeFN)
     strainNamesT=tuple(trees.leafList(tree))
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],strainNamesT)
     genesO = genomes.genes(paramD['geneInfoFN'])
@@ -383,16 +383,6 @@ def debugWrapper(paramD):
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
 
-    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
-    absMinRawThresholdForHomologyD = families.getAbsMinRawThresholdForHomologyD(paramD,scoresO,genesO,aabrhL)
-    
-    """
-    for gn in range(97464):
-        old = genesO.numToStrainNameOLD(gn)
-        new = genesO.numToStrainName(gn)
-        if old != new:
-            print(gn,old,new)
-    """
     
     code.interact(local=locals())
 

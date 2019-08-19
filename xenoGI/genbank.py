@@ -31,7 +31,7 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
         with open(paramD['problemGenbankFN'],'w') as problemGenbankF:
             problemGenbankF.write("\n".join(problemGenbankFileL)+"\n")
     
-        raise ValueError('Some genbank files lack protein annotations. They are listed in ' + paramD['problemGenbankFN'] + '\n')
+        raise ValueError('Some genbank files lack protein annotations. They are listed in ' + paramD['problemGenbankFN'] + '. Please remove and run again.\n')
     
 def parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
     '''Parse a single genbank file. We pass through twice. Once to
