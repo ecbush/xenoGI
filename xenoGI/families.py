@@ -30,7 +30,7 @@ using a PhiGs-like algorithm, with synteny also considered.
     # initialize scoresO.nodeConnectD and scoresO.ScoreSummaryD
     scoresO.createNodeConnectD()
     scoresO.createAabrhScoreSummaryD(strainNamesT,aabrhHardCoreL,genesO)
-
+    
     # create an object of class Families to store this in.
     familiesO = Families(tree)
     famNumCounter = 0
@@ -42,7 +42,7 @@ using a PhiGs-like algorithm, with synteny also considered.
     geneUsedD = {gene: False for gene in genesO.iterGenes(strainNamesT)}
     nodeGenesD = createNodeGenesD(strainNamesT,genesO) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
-
+    
     # get thresholds for family formation
     absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO,genesO,aabrhHardCoreL)
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)

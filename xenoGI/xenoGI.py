@@ -78,7 +78,7 @@ def main():
         calcScoresWrapper(paramD,blastFnL)
         makeFamiliesWrapper(paramD)
         makeIslandsWrapper(paramD)
-        printAnalysisWrapper(paramD)
+        printAnalysisWrapper(paramD,paramD['treeFN'],paramD['rootFocalClade'])
         createIslandBedWrapper(paramD)
 
     #### makeGeneFamilyTrees
@@ -225,7 +225,7 @@ arguments so we can pass in different things in different contexts
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
 
     ## load stuff
-    tree,subtreeD = loadTreeRelatedData(treeFN['treeFN'])
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     strainNamesT=tuple(trees.leafList(tree))
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],strainNamesT)
     genesO = genomes.genes(paramD['geneInfoFN'])
@@ -381,9 +381,22 @@ def debugWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+
+    aabrhL = scores.loadOrthos(paramD['aabrhFN'])
+    absMinRawThresholdForHomologyD = families.getAbsMinRawThresholdForHomologyD(paramD,scoresO,genesO,aabrhL)
+    
+    """
+    for gn in range(97464):
+        old = genesO.numToStrainNameOLD(gn)
+        new = genesO.numToStrainName(gn)
+        if old != new:
+            print(gn,old,new)
+    """
     
     code.interact(local=locals())
 
+    
 def simValidationWrapper(paramD):
     '''Take us into interactive mode for running validation with
 simulations. This is not really intended for the end user...'''

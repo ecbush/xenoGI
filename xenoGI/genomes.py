@@ -134,25 +134,28 @@ other fields.'''
                         
         f.close()
         return D
-        
-    def numToStrainName(self,geneNum):
-        '''Given a gene number, return the strain name corresponding.'''
-        return self.numToStrainNameHelper(geneNum,self.strainGeneRangeT)
 
-    def numToStrainNameHelper(self,geneNum,strainGeneRangeT):
-        '''Recursive helper function to return the strain name corresponding
-to geneNum. Checks if geneNum falls in the first range, if not chops
-it and recurses.
-        '''
-        if strainGeneRangeT == ():
-            raise IndexError("geneNum falls outside the range of gene numbers for these strains.")
-        else:
-            strainName,endOfRange = strainGeneRangeT[0]
-            if geneNum < endOfRange:
-                # its this one
-                return strainName
+    def numToStrainName(self,geneNum):
+        '''Given a gene number, return the strain name corresponding. Uses
+binary search to find the where geneNum falls in strainGeneRangeT.'''
+
+        st = 0
+        end = len(self.strainGeneRangeT)
+        
+        while True:
+            mid = (st + end) // 2
+            if self.strainGeneRangeT[mid][1] <= geneNum:
+                st = mid + 1
             else:
-                return self.numToStrainNameHelper(geneNum,strainGeneRangeT[1:])
+                # self.strainGeneRangeT[mid][1] > geneNum, so two
+                # possibilities, we're in the range, or we're too high
+                if self.strainGeneRangeT[mid-1][1] < geneNum:
+                    # we're in the range
+                    return self.strainGeneRangeT[mid][0]
+                else:
+                    end = mid
+                    if end<=st:
+                        return self.strainGeneRangeT[end][0]
 
     def numToName(self,geneNumber):
         '''Given gene number, return gene name. Assumes self.geneNumToNameD
