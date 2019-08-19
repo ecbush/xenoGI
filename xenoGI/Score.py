@@ -1,6 +1,6 @@
 import numpy,glob,os,struct,statistics,ctypes
 from multiprocessing import RawArray
-
+from . import blast
 
 class Score:
 
@@ -12,7 +12,7 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFnL):
+    def initializeDataAttributes(self,blastFnL,paramD):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
@@ -20,11 +20,11 @@ edges. Also creates the array for storing raw scores, initialized to
 included here depend on what is found in the blast files in blastFnL.
 
         '''
-        self.fillEndNodesToEdgeD(blastFnL)
+        self.fillEndNodesToEdgeD(blastFnL,paramD)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFnL):
+    def fillEndNodesToEdgeD(self,blastFnL,paramD):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -32,6 +32,8 @@ strainPairScoreLocationD.
         '''
 
         # get blast files organized by strain pairs
+        evalueThresh = paramD['evalueThresh']
+        alignCoverThresh = paramD['alignCoverThresh']
         
         blastFnByPairD = self.getBlastFnByPairD(blastFnL)
 
@@ -46,18 +48,7 @@ strainPairScoreLocationD.
             # and also for 2 vs 1), or may only have one (e.g. for
             # strain 1 vs strain 1).
             for fn in pairT:
-            
-                f = open(fn,'r')
-                while True:
-                    s = f.readline()
-                    if s=='':
-                        break
-                    L = s.split('\t')
-                    if len(L) != 12: # we only want lines with 12 columns
-                        continue
-
-                    g1 = int(L[0].split("_")[0])
-                    g2 = int(L[1].split("_")[0])
+                for g1,g2,evalue,alCov in blast.parseBlastFile(fn,evalueThresh,alignCoverThresh):
                     
                     # because we have blast files going both ways
                     # (e.g. strain 1 vs strain 2 and also strain 2 vs
@@ -73,7 +64,7 @@ strainPairScoreLocationD.
                         # we haven't got it yet, add it
                         self.endNodesToEdgeD[(g1,g2)] = edgeNum
                         edgeNum += 1
-                f.close()
+                    
                 
             strainPairEnd = edgeNum
 

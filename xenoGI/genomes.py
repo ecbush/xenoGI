@@ -3,10 +3,11 @@ import sys,glob
 from . import fasta
 from . import trees
 
-def loadSeq(paramD,fileEnding):
+def loadSeq(paramD,fileEnding,genesS=None):
     '''Given paramD and the type of sequence, load the sequences and store
 in a dictionary keyed by gene number. fileEnding is a string, either
-"_prot.fa" or "_dna.fa".
+"_prot.fa" or "_dna.fa". genesS is a set specifying a subset of genes
+we want to keep. If missing, we keep all.
     '''
     fileEndingFound = False
     seqD={}
@@ -15,7 +16,10 @@ in a dictionary keyed by gene number. fileEnding is a string, either
             fileEndingFound = True # we've seen at least once
             for header,seq in fasta.load(fn):
                 gn = int(header.split("_")[0][1:])
-                seqD[gn]=seq
+                if genesS == None:
+                    seqD[gn]=seq
+                elif gn in genesS:
+                    seqD[gn]=seq
 
     if not fileEndingFound:
         # we never saw the file ending, the dict is empty.
@@ -130,25 +134,28 @@ other fields.'''
                         
         f.close()
         return D
-        
-    def numToStrainName(self,geneNum):
-        '''Given a gene number, return the strain name corresponding.'''
-        return self.numToStrainNameHelper(geneNum,self.strainGeneRangeT)
 
-    def numToStrainNameHelper(self,geneNum,strainGeneRangeT):
-        '''Recursive helper function to return the strain name corresponding
-to geneNum. Checks if geneNum falls in the first range, if not chops
-it and recurses.
-        '''
-        if strainGeneRangeT == ():
-            raise IndexError("geneNum falls outside the range of gene numbers for these strains.")
-        else:
-            strainName,endOfRange = strainGeneRangeT[0]
-            if geneNum < endOfRange:
-                # its this one
-                return strainName
+    def numToStrainName(self,geneNum):
+        '''Given a gene number, return the strain name corresponding. Uses
+binary search to find the where geneNum falls in strainGeneRangeT.'''
+
+        st = 0
+        end = len(self.strainGeneRangeT)
+        
+        while True:
+            mid = (st + end) // 2
+            if self.strainGeneRangeT[mid][1] <= geneNum:
+                st = mid + 1
             else:
-                return self.numToStrainNameHelper(geneNum,strainGeneRangeT[1:])
+                # self.strainGeneRangeT[mid][1] > geneNum, so two
+                # possibilities, we're in the range, or we're too high
+                if self.strainGeneRangeT[mid-1][1] < geneNum:
+                    # we're in the range
+                    return self.strainGeneRangeT[mid][0]
+                else:
+                    end = mid
+                    if end<=st:
+                        return self.strainGeneRangeT[end][0]
 
     def numToName(self,geneNumber):
         '''Given gene number, return gene name. Assumes self.geneNumToNameD

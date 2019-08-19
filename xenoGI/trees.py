@@ -70,6 +70,28 @@ def subtree(tree,node):
         else:
             return l
     
+def prune(tree,strainsToKeep):
+    '''Given a tree and a group of strains strainsToKeep (which we assume
+are a subset of the strains in tree), prune to yield the tree with
+only those strains. We will assume tree has no branch lengths, and
+will thus always put None in the 4 position of the pruned tree.
+    '''
+    if tree[1]==():
+        if tree[0] in strainsToKeep:
+            return (tree[0],(),(),None)
+        else:
+            return None
+    else:
+        l = prune(tree[1],strainsToKeep)
+        r = prune(tree[2],strainsToKeep)
+
+        if l != None and r != None:
+            return (tree[0],l,r,None)
+        elif l == None:
+            return r
+        else:
+            return l
+        
 def isRootNode(tree,mrcaNum):
     '''Is mrcaNum the root node?'''
     # root node is tree[0] in our tuple trees
@@ -140,6 +162,29 @@ def getParent(leaf,tree):
         if left != None:
             return left
         else: return right
+
+def getRootFocalCladeFromOutgroup(tree,outGroup):
+    '''Given a rooted tree and an outgroup, find the
+    rootFocalClade. Assumes the outgroup is present in tree.
+    '''
+    left = tree[1]
+    right = tree[2]
+    if isSpeciesPresent(right,outGroup):
+        return left[0]    
+    elif isSpeciesPresent(left,outGroup):
+        return right[0]
+    else:
+        raise ValueError("Error trying to find rootFocalClade, outGroup not present in provided tree.")
+    
+def isSpeciesPresent(tree,species):
+    '''Return True is species in tree, False otherwise.'''
+    if tree[1]==():
+        if tree[0]==species: return True
+        else: return False
+    else:
+        l=isSpeciesPresent(tree[1],species)
+        r=isSpeciesPresent(tree[2],species)
+        return l or r
         
 def tupleTree2Newick(tree):
     '''Convert a four tuple based tree (root,left,right,branchLen) into a
@@ -178,7 +223,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     aabrhHardCoreGeneTreesFN = paramD['aabrhHardCoreGeneTreesFN']
     outSpeciesTreeFN = paramD['treeFN'] # for main output
     deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
-    outGroupTaxaL = paramD['outGroupTaxaL']
+    outGroupTaxaL = [paramD['outGroup']]
 
     # if tree file already exists, throw error
     if os.path.isfile(paramD['treeFN']):
@@ -225,16 +270,8 @@ group.
     musclePath = paramD['musclePath']
     fastTreePath = paramD['fastTreePath']
     
-    # load protein and dna sequences
-    protSeqD=genomes.loadSeq(paramD, '_prot.fa')
-
-    if paramD['dnaBasedGeneTrees'] == True:
-        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa')
-    else:
-        dnaSeqD = {}
-
     ## make gene trees
-    argumentL = [([],[],strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numProcesses)]
+    argumentL = [([],[],paramD,strainHeader,genesO,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numProcesses)]
 
     # set up argumentL
     counter = 0
@@ -257,8 +294,22 @@ def makeOneGeneTreeGroup(argT):
     '''Wrapper for multiprocessing. Given a group of orthoT's to work on,
 calls makeOneGeneTree on each.'''
     
-    orthoGroupNumStrL,orthoTL,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath = argT
+    orthoGroupNumStrL,orthoTL,paramD,strainHeader,genesO,workDir,gtFileStem,musclePath,fastTreePath = argT
 
+    # get set of all genes in orthoTL to restrict size of seqD's
+    orthoGenesS=set()
+    for orthoT in orthoTL:
+        orthoGenesS.update(orthoT)
+    
+    # load protein and dna sequences
+    protSeqD=genomes.loadSeq(paramD, '_prot.fa',genesS=orthoGenesS)
+
+    if paramD['dnaBasedGeneTrees'] == True:
+        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa',genesS=orthoGenesS)
+    else:
+        dnaSeqD = {}
+
+    # make trees
     for i in range(len(orthoTL)):
         orthoGroupNumStr = orthoGroupNumStrL[i]
         orthoT = orthoTL[i]

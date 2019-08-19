@@ -1,6 +1,6 @@
 import parasail,statistics,sys
 from multiprocessing import set_start_method, Pool
-from . import genomes,trees,Score
+from . import genomes,blast,trees,Score
 
 #### Global variables for use with multithreading
 
@@ -208,11 +208,11 @@ each and the score.'''
 #### Calculating the set of all around best reciprocal hit homologs
 #    (used in core synteny scores below)
 
-def createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN):
+def createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,aabrhFN):
     '''Get the sets of all around best reciprocal hits.'''
 
     blastDir = blastFilePath.split("*")[0]
-    rHitsL=getAllReciprocalHits(blastDir,strainNamesL,evalueThresh)
+    rHitsL=getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh)
     
     # get sets of genes in first species that have a reciprocal best
     # hit in each other species. this is to save time in next step.
@@ -247,7 +247,7 @@ per line.'''
     f.close()
     return orthoL
 
-def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh):
+def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh):
     '''return an upper-diagonal (N-1)xN matrix where each entry
     [i][j] (j > i) contains a dictionary of best reciprocal hits
     between species i and species j, as indexed in list strainNamesL;
@@ -261,21 +261,21 @@ def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh):
         # reciprocal hits between species i and j (keyed by species i)
         for j in range(len(strainNamesL)):
             if j > i:
-                rHitsL[i].append(getReciprocalHits(strainNamesL[i], strainNamesL[j], blastDir, evalueThresh))
+                rHitsL[i].append(getReciprocalHits(strainNamesL[i],strainNamesL[j],blastDir,evalueThresh,alignCoverThresh))
             else:
                 rHitsL[i].append(None)
     return rHitsL
 
 
-def getReciprocalHits(strainName1, strainName2, blastDir, evalueThresh):
+def getReciprocalHits(strainName1,strainName2,blastDir,evalueThresh,alignCoverThresh):
     '''Given strain names and blast file directory name, load hits between
 two strains in each direction, then go through and keep only the
 reciprocal hits. Returns dictionary where keys are genes in strain 1
 and values are corresponding genes in strain 2.'''
     # get best hits of 1 blasted against 2...
-    hits1D = getHits(blastDir+strainName1+'_-VS-_'+strainName2+'.out', evalueThresh)
+    hits1D = getHits(blastDir+strainName1+'_-VS-_'+strainName2+'.out',evalueThresh,alignCoverThresh)
     # ...and 2 blasted against 1
-    hits2D = getHits(blastDir+strainName2+'_-VS-_'+strainName1+'.out', evalueThresh)
+    hits2D = getHits(blastDir+strainName2+'_-VS-_'+strainName1+'.out',evalueThresh,alignCoverThresh)
 
     # then store only the reciprocal best hits
     recipHitsD = {}
@@ -287,7 +287,7 @@ and values are corresponding genes in strain 2.'''
 
     return recipHitsD
 
-def getHits(fileName, evalueThresh):
+def getHits(fileName, evalueThresh,alignCoverThresh):
     """Given a BLAST output file, returns a dictionary keyed by the genes
     in the query species, with the values being the top hit (if any)
     for those genes. Assumes the blast hits for each query are given
@@ -295,40 +295,17 @@ def getHits(fileName, evalueThresh):
     case. Thresholds for minimum similarity and maximum length
     difference are globally defined.
     """
-
-    f = open(fileName, 'r')
     hitsD = {}
+    tempEvalueD = {} # just to help us get the hit with the best evalue
+    for queryGene,subjectGene,evalue,alCov in blast.parseBlastFile(fileName,evalueThresh,alignCoverThresh):
 
-    queryGene = ""
+        if not queryGene in hitsD or evalue < tempEvalueD[queryGene]:
+            # if it isn't there, or if new hit has a better evalue, record
+            tempEvalueD[queryGene] = evalue
+            hitsD[queryGene] = subjectGene
 
-    # read through entire file
-    line = f.readline()
 
-    while line != '':
-        # break the line up into its components
-        L = line.split('\t')
-
-        if len(L)<12:
-            # its not an info line (likely header)
-            line = f.readline()
-            continue
-
-        # gene names come first, we'll take only the xenoGI gene number from it
-        queryGene = L[0].split("_")[0]
-        hit = L[1].split("_")[0]
-        evalue = float(L[10])
-
-        if evalue < evalueThresh:
-            # store the query and hit if they meet thresholds
-            hitsD[int(queryGene)] = int(hit)
-
-        # we only want the first hit for any query gene. Change this
-        # later to check to get best score even if doesn't come first.
-        while line.split('_')[0] == queryGene:
-            line = f.readline()
-
-    f.close()
-    return hitsD
+    return hitsD           
 
 def getPossibleGenesD(rHitsL):
     '''return dict containing an entry for each gene in species 0 that has
@@ -407,10 +384,11 @@ genes shared.'''
 
     blastFilePath = paramD['blastFilePath']
     evalueThresh = paramD['evalueThresh']
+    alignCoverThresh = paramD['alignCoverThresh']
     aabrhFN = paramD['aabrhFN']
     coreSynWsize = paramD['coreSynWsize']
     
-    aabrhHardCoreL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,aabrhFN)
+    aabrhHardCoreL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,aabrhFN)
 
     geneToAabrhD = createGeneToAabrhD(aabrhHardCoreL)
     coreSyntenyD = createCoreSyntenyD(geneToAabrhD,geneOrderD,coreSynWsize)

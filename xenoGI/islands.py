@@ -7,11 +7,14 @@ import math
     
 ## Main function  
 
-def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,rootFocalClade,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
+    ## Checks
+    rootFocalCladeCheck(tree,rootFocalClade,outputSummaryF)
+    
+    ## Parameters
     numProcesses = paramD['numProcesses']
-    rootFocalClade = paramD['rootFocalClade']
     islandOutFN = paramD['islandOutFN']
     geneProximityRange = paramD['geneProximityRange']
     proximityThresholdMerge1 = paramD['proximityThresholdMerge1']
@@ -24,7 +27,6 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade)
 
     ##  Merge in clusters
-
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
 
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
@@ -67,6 +69,17 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,outputSummaryF):
     return locIslByNodeD
 
 ## Support functions
+
+def rootFocalCladeCheck(tree,rootFocalClade,outputSummaryF):
+    '''Check that there is a correct rootFocalClade given.'''
+    
+    if rootFocalClade not in trees.iNodeList(tree):
+        raise ValueError("Given rootFocalClade is not present in tree.")
+    elif tree[0] == rootFocalClade:
+        print("""Warning: the chosen rootFocalClade falls at the root of the input
+ tree and thus does not have any outgroups. This is not recommended
+ because it can lead to problems accurately recognizing core gene
+ families in the presence of gene deletion."""+"\n",file=outputSummaryF)
 
 def createLocIslByNodeD(familiesO,tree):
     '''Create locus islands, one family each. Initially store islands

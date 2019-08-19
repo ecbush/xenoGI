@@ -25,13 +25,12 @@ using a PhiGs-like algorithm, with synteny also considered.
     '''
 
     # checks
-    rootFocalCladeCheck(tree,paramD,outputSummaryF)
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # initialize scoresO.nodeConnectD and scoresO.ScoreSummaryD
     scoresO.createNodeConnectD()
     scoresO.createAabrhScoreSummaryD(strainNamesT,aabrhHardCoreL,genesO)
-
+    
     # create an object of class Families to store this in.
     familiesO = Families(tree)
     famNumCounter = 0
@@ -43,7 +42,7 @@ using a PhiGs-like algorithm, with synteny also considered.
     geneUsedD = {gene: False for gene in genesO.iterGenes(strainNamesT)}
     nodeGenesD = createNodeGenesD(strainNamesT,genesO) # has genes divided by node
     tipFamilyRawThresholdD = getTipFamilyRawThresholdD(tree,scoresO,paramD)
-
+    
     # get thresholds for family formation
     absMinRawThresholdForHomologyD = getAbsMinRawThresholdForHomologyD(paramD,scoresO,genesO,aabrhHardCoreL)
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
@@ -96,20 +95,6 @@ using a PhiGs-like algorithm, with synteny also considered.
     return familiesO
 
 ## Support functions
-
-def rootFocalCladeCheck(tree,paramD,outputSummaryF):
-    '''Check that there is a correct rootFocalClade given.'''
-    
-    rootFocalClade = paramD['rootFocalClade']
-    
-    if rootFocalClade not in trees.iNodeList(tree):
-        raise ValueError("Given rootFocalClade is not present in tree.")
-    elif tree[0] == rootFocalClade:
-        print("""Warning: the chosen rootFocalClade falls at the root of the input
- tree and thus does not have any outgroups. This is not recommended
- because it can lead to problems accurately recognizing core gene
- families in the presence of gene deletion."""+"\n",file=outputSummaryF)
-
     
 def homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD):
     '''Check if the number of genes in the hard core is low. Print warning if so. Also check for homology peak in raw scores histogram.'''
