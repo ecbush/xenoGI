@@ -206,9 +206,10 @@ LocusIsland, Family and LocusFamily for each gene.'''
 def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,familiesO,strainNamesT):
     '''This function produces a set of species specific genome
 files. These contain all the genes in a strain laid out in the order
-they occur on the contigs. Each gene entry includes LocusIsland and LocusFamily
-information, as well as a brief description of the gene's function.'''
-
+they occur on the contigs. Each gene entry includes LocusIsland and
+LocusFamily information, as well as a brief description of the gene's
+function.
+    '''
     for strainName in strainNamesT:
         if strainName in geneOrderD:
             contigT = geneOrderD[strainName]
