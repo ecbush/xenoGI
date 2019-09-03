@@ -1,8 +1,5 @@
-# Functions for a modified version of the PhiGs algorithm
-# http://www.ncbi.nlm.nih.gov/pmc/articles/PMC1523372/
-# (We've added the use of synteny)
-import sys,numpy,random
-from scipy.signal import find_peaks
+#import sys,numpy,random
+#from scipy.signal import find_peaks
 from . import trees,scores
 from .Family import *
 from .analysis import printTable
