@@ -10,14 +10,14 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug', 'simValidation'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeFamiliesDTLOR', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug', 'simValidation'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll, makeGeneFamilyTrees or version.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeFamiliesDTLOR, makeIslands, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll, makeGeneFamilyTrees or version.
 
    For example: 
       xenoGI params.py parseGenbank
@@ -49,6 +49,10 @@ def main():
     #### makeFamilies
     elif task == 'makeFamilies':
         makeFamiliesWrapper(paramD)
+        
+    #### makeFamiliesDTLOR
+    elif task == 'makeFamilies':
+        makeFamiliesDTLORWrapper(paramD)
         
     #### makeIslands
     elif task == 'makeIslands':
@@ -195,6 +199,21 @@ def makeFamiliesWrapper(paramD):
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
         familiesO = families.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,familyFormationSummaryF)
 
+def makeFamiliesDTLORWrapper(paramD):
+    """Wrapper to create gene families."""
+
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
+
+    ## read scores
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
+
+    ## make gene families
+    with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
+        familiesO = familiesDTLOR.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,familyFormationSummaryF)
+
+        
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
 
