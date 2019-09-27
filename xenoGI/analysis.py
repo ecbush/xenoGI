@@ -36,7 +36,9 @@ associated with searchStr in genesO.geneInfoD. Searches for a match in all
 fields of geneInfoD.'''
     # find matching gene names
     geneMatchL=[]
-    for geneNum in genesO.geneInfoD:
+    for geneNum in gene2FamIslandD:
+        # use keys of gene2FamIslandD rather than genesO.geneInfoD
+        # because they are from scaffold only.
         valueT=genesO.numToGeneInfo(geneNum)
         for value in valueT:
             if type(value)==str:
