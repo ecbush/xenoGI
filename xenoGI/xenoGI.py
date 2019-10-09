@@ -1,7 +1,7 @@
 """Provides the entry point to xenoGI's functionality."""
 __version__ = "2.2.0"
 import sys, glob, os
-from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
+from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,familiesDTLOR,islands,analysis,islandBed
 
 def main():
     
@@ -51,7 +51,7 @@ def main():
         makeFamiliesWrapper(paramD)
         
     #### makeFamiliesDTLOR
-    elif task == 'makeFamilies':
+    elif task == 'makeFamiliesDTLOR':
         makeFamiliesDTLORWrapper(paramD)
         
     #### makeIslands
@@ -212,6 +212,7 @@ def makeFamiliesDTLORWrapper(paramD):
     ## make gene families
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
         familiesO = familiesDTLOR.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,familyFormationSummaryF)
+    # rawFam=familiesDTLOR.createInitialFamily(scoresO)
 
         
 def makeIslandsWrapper(paramD):
