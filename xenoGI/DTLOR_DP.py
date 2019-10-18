@@ -13,7 +13,7 @@
 # the DTL reconciliation graph that uses frequency scoring, as well as the
 # number of reconciliations of the host and parasite trees
 
-import newickFormatReader
+# import newickFormatReader
 import Greedy
 import copy
 from treeParser import parseTreeForDP
@@ -206,7 +206,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, O, R):
                     else:
                         DUPepeh = Infinity
                         dupList = [Infinity]
-                    #TODO
+                   
                     #   Next, Compute T and create event list to add 
                     #   to eventsDict using bestSwitchLocations
                     if not vpIsATip and l_bottom!="*":
@@ -363,7 +363,8 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, O, R):
     for key in eventsDict:
         eventsDict[key].append(Minimums[key])
 
-    # Use findPath and findBestRoots to construct the DTL graph dictionary
+    # Use findPath and findBestRoots to construct the DTLOR graph dictionary
+    #this finds the optimal solutions (mappings)
     treeMin = findBestRoots(parasiteTree, Minimums)
     DTLOR = findPath(treeMin, eventsDict, {})
     for key in Score.keys():
@@ -374,14 +375,14 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, O, R):
 
     return DTLOR, numRecon
 
-#TODO
-def preorderDTLsort(DTL, ParasiteRoot):
+
+def preorderDTLORsort(DTLOR, ParasiteRoot):
     """This takes in a DTL reconciliation graph and parasite root and returns 
     a sorted list, orderedKeysL, that is ordered by level from largest to 
     smallest, where level 0 is the root and the highest level has tips."""
 
-    keysL = Greedy.orderDTL(DTL, ParasiteRoot)
-    uniqueKeysL = Greedy.sortHelper(DTL, keysL)
+    keysL = Greedy.orderDTL(DTLOR, ParasiteRoot)
+    uniqueKeysL = Greedy.sortHelper(DTLOR, keysL)
     orderedKeysL = []
     levelCounter = 0
     while len(orderedKeysL) < len(keysL):
@@ -390,67 +391,73 @@ def preorderDTLsort(DTL, ParasiteRoot):
                 orderedKeysL = orderedKeysL + [mapping]
         levelCounter += 1
     
-    lastLevel = orderedKeysL[-1][1]
+    # lastLevel = orderedKeysL[-1][1]
     return orderedKeysL
 
-def addScores(treeMin, DTLDict, ScoreDict):
-    """Takes the list of reconciliation roots, the DTL reconciliation graph, 
+def addScores(treeMin, DTLORDict, ScoreDict):
+    """Takes the list of reconciliation roots, the DTLOR reconciliation graph, 
     a dictionary of parent nodes, and a dictionary of score values, and 
-    returns the DTL with the normalized frequency scores calculated."""
-    newDTL = copy.deepcopy(DTLDict)
+    returns the DTLOR with the normalized frequency scores calculated."""
+    newDTLOR = copy.deepcopy(DTLORDict)
     parentsDict = {}
-    preOrder = preorderDTLsort(DTLDict, treeMin[0][0])
+    ParasiteRoot=treeMin[0][0]
+    preOrder = preorderDTLORsort(DTLORDict, ParasiteRoot)
     for root in preOrder:
-        if root != (None, None):
-            vertices = root[0]
+        if root != (None, None): #format (key, level)
+            #TODO
+            vertices = root[0] #format (vp, vh, l, l)
             if root[1] == 0:
                 parentsDict[vertices] = ScoreDict[vertices]
-            for n in range(len(DTLDict[vertices])-1):
+            for n in range(len(DTLDict[vertices])-1): #the last item is always the cost
                 _,child1,child2,oldScore = DTLDict[vertices][n]
-                newDTL[vertices][n][3] = parentsDict[vertices] * \
+                newDTLOR[vertices][n][3] = parentsDict[vertices] * \
                 (1.0 * oldScore / ScoreDict[vertices])
-                if child1!= (None, None):
+                if child1!= (None, None, None, None):
                     if child1 in parentsDict:
-                        parentsDict[DTLDict[vertices][n][1]] += \
-                        newDTL[vertices][n][3]
+                        parentsDict[child1] += newDTLOR[vertices][n][3]
                     else: 
-                        parentsDict[child1] = newDTL[vertices][n][3] 
-                if child2!=(None, None):
+                        parentsDict[child1] = newDTLOR[vertices][n][3] 
+                if child2!=(None, None, None, None):
                     if child2 in parentsDict:
-                        parentsDict[child2] += newDTL[vertices][n][3]
+                        parentsDict[child2] += newDTLOR[vertices][n][3]
                     else: 
-                        parentsDict[child2] = newDTL[vertices][n][3]
-    normalize = newDTL[preOrder[-1][0]][0][-1]
-    for key in newDTL:
-        for event in newDTL[key][:-1]:
+                        parentsDict[child2] = newDTLOR[vertices][n][3]
+    normalize = newDTLOR[preOrder[-1][0]][0][-1]  #score of the top most event
+    for key in newDTLOR:
+        for event in newDTLOR[key][:-1]:
             event[-1] = event[-1]/normalize
     
-    return newDTL, normalize
+    return newDTLOR, normalize
 
 def findBestRoots(Parasite, MinimumDict):
     """Takes Parasite Tree and a dictionary of minimum reconciliation costs
     and returns a list of the minimum cost reconciliation tree roots"""
     treeTops = []
     for key in MinimumDict:
+        #pick out the set of keys in C (MinimumDict) that correspond to mapping 
+        #the root of parasite to any place in host tree
+        #and any locus combinations
         if key[0] == Parasite['pTop'][1]:
             treeTops.append(key)
     treeMin = []
     for pair in treeTops:
+        #pick out the set of keys that gives the minimum of C (cost of optimal solution)
+        #note there might be multiple equally optimal mappings
         if MinimumDict[pair] == min([MinimumDict[root] for root in treeTops]):
             treeMin.append(pair)
     return treeMin
 
 def findPath(tupleList, eventDict, uniqueDict):
-    """Takes as input tupleList, a list of minimum reconciliation cost roots,
-     eventDict, the dictionary of events and children for each node, and 
-     uniqueDict, the dictionary of unique vertex mappings. This returns the 
-     completed DTL graph as a Dictionary"""
-    for vertexPair in tupleList:
-        if not vertexPair in uniqueDict:
-            uniqueDict[vertexPair] = eventDict[vertexPair]
-        for event in eventDict[vertexPair][:-1]:
+    """Takes as input tupleList, a list of minimum reconciliation cost mappings 
+     of the form (vp, vh, l_top, l_bottom), eventDict, the dictionary of events and 
+     children for each node, and uniqueDict, the dictionary of unique vertex mappings. 
+     This returns the completed DTL graph as a Dictionary"""
+    for mapping in tupleList:
+        if not mapping in uniqueDict:
+            uniqueDict[mapping] = eventDict[mapping]
+        for event in eventDict[mapping][:-1]:
             for location in event:
-                if type(location) is tuple and location != (None, None):
+                if type(location) is tuple and location != (None, None, None, None):
                     findPath([location], eventDict, uniqueDict)
     return uniqueDict
 
