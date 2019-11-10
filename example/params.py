@@ -162,6 +162,6 @@ minCoreSynThresh = 0.5
 bedFilePath = 'bed/*-island.bed' # unix style file path to bed output files
 
 # analysis output
-analysisFilePath = 'analysis/*.out'
-islandsSummaryStem = 'islandsSummary'
+analysisDir = 'analysis'
+islandsFNStem = 'islands'
 genesFNstem = 'genes'
