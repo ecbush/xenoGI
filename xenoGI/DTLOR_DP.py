@@ -87,7 +87,11 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
         Cospeciation is assumed to cost 0. """
     #preprocess the trees into the correct format
     hostTree=parseTreeForDP(hostTree,parasite=False)
+    print("The input species tree is: ")
+    print(hostTree)
     parasiteTree=parseTreeForDP(parasiteTree,parasite=True)
+    print("The input gene tree is: ")
+    print(parasiteTree)
 
     A = {}  # A, C, O, and bestSwitch are all defined in tech report
     C = {}
@@ -152,7 +156,11 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                             lowest_cost_spec=[]
                             for l1 in valid(l_bottom, allsynteny):
                                 for l2 in valid(l_bottom, allsynteny):
+                                    
                                     synteny_cost=delta(l_bottom,l1, Origin, R)+delta(l_bottom,l2, Origin, R)
+                                    #add in the delta for handle branch 
+                                    if ep=='pTop':
+                                        synteny_cost+=delta(l_top,l_bottom,Origin, R)
                                     CO_cost=min(C[(ep1, eh1,l_bottom, l1)] + C[(ep2, eh2, l_bottom, l2)], \
                                         C[(ep1, eh2, l_bottom, l1)] + C[(ep2, eh1, l_bottom, l2)])
                                     CO_total=synteny_cost+CO_cost
@@ -166,10 +174,8 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                             lowest_cost_spec=["S", (pChild1, hChild2,l_bottom,l1), \
                                             (pChild2, hChild1, l_bottom, l2),(Score[(pChild1, hChild2, l_bottom, l1)]\
                                              * Score[(pChild2, hChild1, l_bottom, l2)])]
-                           
-
                             if COepeh<Infinity:
-                              
+                                
                                 coMin.append(lowest_cost_spec)
                             else:
                                 coMin = [Infinity]
@@ -200,6 +206,8 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                         else:
                             #lossMin, coMin are  list of lists
                             Amin = lossMin+coMin
+                        
+
                     # Compute C(ep, eh,l_top, l_bottom)
                     #   First, compute D
                     if not vpIsATip:
@@ -302,8 +310,6 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                     if Minimums[(vp, vh, l_top, l_bottom)] == Infinity or (ep=="pTop" and l_top!="*"):
                         del Minimums[(vp, vh, l_top, l_bottom)]
                         del eventsDict[(vp, vh, l_top, l_bottom)]
-                    # if (vp_top=="pTop" and l_top!="*"):
-                    #     print("maybe delete")
                     # Compute O(ep, eh, l_top, l_bottom)
                     # Compute oBest[(vp, vh, l_top, l_bottom)], the source of O(ep, eh, l_top, l_bottom)
                     if vhIsATip: 
@@ -394,7 +400,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
 
     # Use findPath and findBestRoots to construct the DTLOR graph dictionary
     #this finds the optimal solutions (mappings)
-    treeMin = findBestRoots(parasiteTree, Minimums)
+    treeMin, min_cost = findBestRoots(parasiteTree, Minimums)
     DTLOR = findPath(treeMin, eventsDict, {})
     for key in Score.keys():
         if not key in DTLOR:
@@ -402,10 +408,10 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
 
     DTLOR, numRecon = addScores(treeMin, DTLOR, Score)
     scores, rec=Greedy.Greedy(DTLOR, parasiteTree)
-    print("The scores: ")
-    print(scores)
     print("The rec: ")
     print(rec)
+    print("The minimum cost is: ")
+    print(min_cost)
     return DTLOR, numRecon
 
 
@@ -463,7 +469,7 @@ def addScores(treeMin, DTLORDict, ScoreDict):
 
 def findBestRoots(Parasite, MinimumDict):
     """Takes Parasite Tree and a dictionary of minimum reconciliation costs
-    and returns a list of the minimum cost reconciliation tree roots"""
+    and returns a list of the minimum cost reconciliation tree roots and the associated minimum cost"""
     treeTops = []
     for key in MinimumDict:
         #pick out the set of keys in C (MinimumDict) that correspond to mapping 
@@ -472,12 +478,13 @@ def findBestRoots(Parasite, MinimumDict):
         if key[0] == Parasite['pTop'][1]:
             treeTops.append(key)
     treeMin = []
+    min_cost=min([MinimumDict[root] for root in treeTops])
     for pair in treeTops:
         #pick out the set of keys that gives the minimum of C (cost of optimal solution)
         #note there might be multiple equally optimal mappings
-        if MinimumDict[pair] == min([MinimumDict[root] for root in treeTops]):
+        if MinimumDict[pair] == min_cost:
             treeMin.append(pair)
-    return treeMin
+    return treeMin,min_cost
 
 def findPath(tupleList, eventDict, uniqueDict):
     """Takes as input tupleList, a list of minimum reconciliation cost mappings 
@@ -519,7 +526,7 @@ def reconcile():
     #T>D
     D=0.5
     T=0.4
-    L=0.5
+    L=0.2
     O=0.2
     R=0.3
 
