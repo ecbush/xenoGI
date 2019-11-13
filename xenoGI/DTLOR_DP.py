@@ -402,7 +402,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
     #this finds the optimal solutions (mappings)
     treeMin, min_cost = findBestRoots(parasiteTree, Minimums)
     DTLOR = findPath(treeMin, eventsDict, {})
-    for key in Score.keys():
+    for key in list(Score.keys()):
         if not key in DTLOR:
             del Score[key]
 
