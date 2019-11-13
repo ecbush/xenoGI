@@ -1,8 +1,8 @@
 #import sys,numpy,random
 #from scipy.signal import find_peaks
-from . import trees,scores
-from .Family import *
-from .analysis import printTable
+import scores
+from Family import *
+from analysis import printTable
 import random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,10 +18,11 @@ sys.setrecursionlimit(10000)
 
 #### Main function
 
-def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,outputSummaryF, method="affinity"):
+def createFamiliesO(tree,scoresO,genesO, method="affinity"):
     '''Given a scoresO object, create gene families using the DTLOR approach.
     '''
     initial_families=createInitialFamily(scoresO)
+    locusMap={}
     #construct Family object for the entire problem
     familiesO = Families(tree)
     distribution=[]
@@ -36,14 +37,10 @@ def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtr
 
         clustered_fam=clusterLocusFamily(family, scoresO, method)
         for locusFamily in clustered_fam:
-            if not isinstance(locusFamily,list):
-                print(clustered_fam)
-            species=list([genesO.numToStrainName(gene) for gene in locusFamily])
-            if len(species)==0:
-                print("whyyyyyyyyyyyyyyyy")
-                print(family)
-                print(clustered_fam)
-       
+            species=[]
+            for gene in locusFamily:
+                locusMap[gene]=locusFamId
+                species.append(genesO.numToStrainName(gene))
             lfMrca=findMRCA(species, tree)
             lf=LocusFamily(index,locusFamId,lfMrca)
             familiesO.addLocusFamily(lf)
@@ -54,7 +51,7 @@ def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtr
        
     distribution=Counter(distribution)
     print(distribution)
-    return familiesO
+    return familiesO, locusMap
 
 
     

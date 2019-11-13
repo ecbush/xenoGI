@@ -9,7 +9,7 @@
 
 
 # tree=("root",("left",("HI",(),(),2),("HA",(),(),1),1),('right',(),(),2),3)
-def parseTreeForDP(tree, parasite=True):
+def parseTreeForDP(tree, parasite):
     """
     Input: four tuple tree as defined by the trees.py (xenoGI)
     Output: tree format represented by a dictionary as required by the 
@@ -56,14 +56,16 @@ def parseTreeForDP(tree, parasite=True):
         return None
     parsedTree={}
     
-    key=tree[0]
+    
     lt=tree[1]
     rt=tree[2]
     if parasite:
     # (start vertex, end vertex, left child edge name, right child edge name)
-        value=("pTop",tree[0], lt[0], rt[0])
+        value=("p_root",tree[0], lt[0], rt[0])
+        key="pTop"
     else:
-        value=("hTop",tree[0], lt[0], rt[0])
+        value=("h_root",tree[0], lt[0], rt[0])
+        key="hTop"
     parsedTree[key]=value
     
     return parseHelper(tree, parsedTree)
