@@ -1,7 +1,7 @@
 """Provides the entry point to xenoGI's functionality."""
 __version__ = "2.2.0"
 import sys, glob, os
-from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,familiesDTLOR,islands,analysis,islandBed
+from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,familiesDTLOR,families,islands,analysis,islandBed
 
 def main():
     
@@ -210,8 +210,9 @@ def makeFamiliesDTLORWrapper(paramD):
     aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
     ## make gene families
-    with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        familiesO = familiesDTLOR.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,familyFormationSummaryF)
+    # with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
+    # familiesO, _ = familiesDTLOR.createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL, paramD, method="threshold")
+    familiesDTLOR.reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="threshold")
     # rawFam=familiesDTLOR.createInitialFamily(scoresO)
 
         

@@ -1,6 +1,6 @@
 # DTLOR_DP.py
-# Nuo Liu
-# Modified from Ran Libeskind-Hadas, June 2015
+# Nuo Liu, HMC 2019-2020 Thesis project
+# Modified from Ran Libeskind-Hadas(June 2015)
 
 # The basic DP algorithm for reconciling pairs of trees
 # Altered and expanded by Carter Slocum and Annalise Schweickart
@@ -14,19 +14,25 @@
 # number of reconciliations of the host and parasite trees
 
 # import newickFormatReader
-import Greedy
+from .Greedy import *
 import copy
 import sys, glob, os
-from treeParser import parseTreeForDP
-# from  familiesDTLOR import *
-# from Family import *
-# from xenoGI import loadGenomeRelatedData
-# import scorers, parameters
+from .treeParser import parseTreeForDP
+import time
 
 
-def allSynteny(familiesO):
-    #synteny numbering start from 0
-    return list(range(familiesO.getNumLocusFamilies()))
+def getSynteny(locus_map, phi):
+    """
+    Because the locus_map contains all the genes in the big gene family
+    we cannot get all the syntenic location from it directly. Filter out
+    only those in our tip mapping (those in the gene tree)
+    O(n) where n is the number os genes
+    """
+    gene_leaves=phi.keys()  #string of the gene numbers
+    allsynteny=set()
+    for gene in gene_leaves:
+        allsynteny.add(locus_map[gene])
+    return list(allsynteny)
 
 def valid(synteny, allsynteny):
     """
@@ -78,20 +84,17 @@ def postorder(tree, rootEdgeName):
                postorder(tree, rightChildEdgeName) + \
                [rootEdgeName]
 
-def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
-    """ Takes a hostTree, parasiteTree, tip mapping function phi, a locus_map, all unique
-        syntenic locations, and duplication cost (D), transfer cost (T), loss cost (L), 
+def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
+    """ Takes a hostTree, parasiteTree, tip mapping function phi, a locus_map, 
+        and duplication cost (D), transfer cost (T), loss cost (L), 
         origin cost (O) and rearrange cost(R) and returns the DTLOR graph in the form of a dictionary, 
         as well as a the number of maximum parsimony reconciliations. The notation and 
         dynamic programming algorithm are explained in the tech report.
         Cospeciation is assumed to cost 0. """
     #preprocess the trees into the correct format
     hostTree=parseTreeForDP(hostTree,parasite=False)
-    print("The input species tree is: ")
-    print(hostTree)
     parasiteTree=parseTreeForDP(parasiteTree,parasite=True)
-    print("The input gene tree is: ")
-    print(parasiteTree)
+   
 
     A = {}  # A, C, O, and bestSwitch are all defined in tech report
     C = {}
@@ -102,12 +105,23 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
     oBest = {} # Dictionary to keep track of the lowest costing events in O
     bestSwitchLocations = {} # Dictionary to keep track of switch locations
     Score = {} # Dictionary to calculate the frequency scoring of each event
+    allsynteny=getSynteny(locus_map,phi)
     Allsynteny=copy.deepcopy(allsynteny)
     Allsynteny.append("*")
-    for ep in postorder(parasiteTree, "pTop"):
+    start=time.time()
+    post_P=postorder(parasiteTree, "pTop")
+    post_H=postorder(hostTree, "hTop")
+    # print("The dimension of the DP table is about %d * %d * %d"%(len(post_P),len(post_H),len(Allsynteny)))
+
+    DP_start=time.time()
+    total_t=0.0
+    total=0.0
+    # for ep in postorder(parasiteTree, "pTop"):
+    for ep in post_P:
         for l_top in Allsynteny:    #loop over all the possible locus 
             for l_bottom in valid(l_top,allsynteny):  #for start and end vertex of gene edge
-                for eh in postorder(hostTree, "hTop"):
+                # for eh in postorder(hostTree, "hTop"):
+                for eh in post_H:
             
                     _,vp,ep1,ep2 = parasiteTree[ep]
                     _,vh,eh1,eh2 = hostTree[eh]
@@ -154,6 +168,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                             COepeh=Infinity
                             coMin = []
                             lowest_cost_spec=[]
+                            start=time.time()
                             for l1 in valid(l_bottom, allsynteny):
                                 for l2 in valid(l_bottom, allsynteny):
                                     
@@ -170,10 +185,14 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                             lowest_cost_spec=["S", (pChild1, hChild1,l_bottom, l1), \
                                             (pChild2, hChild2, l_bottom, l2), (Score[(pChild1, hChild1, l_bottom, l1)] * \
                                             Score[(pChild2, hChild2, l_bottom, l2)])]
+                                            # lowest_cost_spec=["S", (pChild1, hChild1, l_bottom, l1), (pChild2, hChild2, l_bottom, l2)]
                                         if CO_cost == C[(ep1, eh2, l_bottom, l1)] + C[(ep2, eh1, l_bottom, l2)]:
                                             lowest_cost_spec=["S", (pChild1, hChild2,l_bottom,l1), \
                                             (pChild2, hChild1, l_bottom, l2),(Score[(pChild1, hChild2, l_bottom, l1)]\
                                              * Score[(pChild2, hChild1, l_bottom, l2)])]
+                                            # lowest_cost_spec=["S", (pChild1, hChild2, l_bottom, l1), (pChild2, hChild1, l_bottom, l2)]
+                            end=time.time()
+                            total_t+=end-start
                             if COepeh<Infinity:
                                 
                                 coMin.append(lowest_cost_spec)
@@ -188,11 +207,14 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                         lossMin = [] # List to keep track of lowest cost loss
                         LOSSepeh = min(C[(ep, eh1, l_top, l_bottom)], C[(ep, eh2, l_top, l_bottom)])
                         #NOTE loss events record the mapping of parasite edge onto surviving host child
-                        if LOSSepeh == C[(ep, eh1, l_top, l_bottom)]: lossMin.append(\
-                            ["L", (vp, hChild1, l_top, l_bottom), (None, None, None, None), \
+                        if LOSSepeh == C[(ep, eh1, l_top, l_bottom)]: 
+                            lossMin.append(["L", (vp, hChild1, l_top, l_bottom), (None, None, None, None), \
                             Score[(vp, hChild1, l_top, l_bottom)]])
-                        if LOSSepeh == C[(ep, eh2, l_top, l_bottom)]: lossMin.append(\
-                            ["L", (vp, hChild2,l_top, l_bottom), (None, None, None, None), Score[(vp, hChild2,l_top, l_bottom)]])
+                            # lossMin.append(["L", (vp, hChild1, l_top, l_bottom), (None, None, None, None)])
+                        if LOSSepeh == C[(ep, eh2, l_top, l_bottom)]: 
+                            lossMin.append(["L", (vp, hChild2,l_top, l_bottom), (None, None, None, None), \
+                            Score[(vp, hChild2,l_top, l_bottom)]])
+                            # lossMin.append(["L", (vp, hChild2,l_top, l_bottom), (None, None, None, None)])
                         if ep!="pTop" and l_top!="*":
                             LOSSepeh += L 
                         # Determine which event occurs for A[(ep, eh)]
@@ -224,6 +246,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                     DUPepeh=dup_cost
                                     dupList=["D", (pChild1, vh, l_bottom, l1), (pChild2, vh, l_bottom, l2), \
                                             (Score[(pChild1, vh, l_bottom, l1)] * Score[(pChild2, vh,l_bottom, l2)])]
+                                    # dupList=["D", (pChild1, vh, l_bottom, l1), (pChild2, vh, l_bottom, l2)]
                     else:
                         DUPepeh = Infinity
                         dupList = [Infinity]
@@ -234,6 +257,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                         switchList = [] # List to keep track of lowest cost switch
                         SWITCHepeh=Infinity
                         #need to find all possible children syntenies
+                        start=time.time()
                         for l1 in valid(l_bottom, allsynteny):
                             for l2 in valid(l_bottom, allsynteny):
                                 switch_cost = T+delta(l_bottom,l1, Origin, R)+delta(l_bottom,l2, Origin, R)+ \
@@ -251,6 +275,8 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                             switchList.append(["T", (pChild1, vh, l_bottom, l1), (pChild2, \
                                                 currentLoc, l_bottom, l2), (Score[(pChild1, vh, l_bottom, l1)] * \
                                                 Score[(pChild2, currentLoc, l_bottom, l2)])])
+                                            # switchList.append(["T", (pChild1, vh, l_bottom, l1), (pChild2, \
+                                            #     currentLoc, l_bottom, l2)])
                                     # if ep1 switching has the lowest cost
                                     elif (C[(ep2, eh, l_bottom, l2)] + bestSwitch[(ep1, eh, l_bottom, l1)]) < \
                                         (C[(ep1, eh, l_bottom, l1)] + bestSwitch[(ep2, eh, l_bottom, l2)]): 
@@ -262,6 +288,8 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                             switchList.append(["T", (pChild2, vh, l_bottom, l2), \
                                                 (pChild1, currentLoc, l_bottom, l1), (Score[(pChild2, vh, l_bottom, l2)] * \
                                                     Score[(pChild1, currentLoc, l_bottom, l1)])])
+                                            # switchList.append(["T", (pChild2, vh, l_bottom, l2), \
+                                            #     (pChild1, currentLoc, l_bottom, l1)])
                                     # if ep1 switching has the same cost as ep2 switching
                                     else: 
                                         for location in bestSwitchLocations[(pChild2,vh,l_bottom,l2)]:
@@ -270,9 +298,13 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                                 switchList.append(["T", (pChild1, vh, l_bottom, l1), (pChild2, \
                                                 currentLoc, l_bottom, l2), (Score[(pChild1, vh, l_bottom, l1)] * \
                                                 Score[(pChild2, currentLoc, l_bottom, l2)])])
+                                                # switchList.append(["T", (pChild1, vh, l_bottom, l1), (pChild2, \
+                                                # currentLoc, l_bottom, l2)])
                                             else:
                                                 switchList.append(["T", (pChild1, vh, l_bottom, l1), \
                                                     (pChild2, currentLoc, l_bottom, l2), Infinity])
+                                                # switchList.append(["T", (pChild1, vh, l_bottom, l1), \
+                                                #     (pChild2, currentLoc, l_bottom, l2)])
                                    
                                         for location in bestSwitchLocations[(pChild1,vh, l_bottom,l1)]:
                                             currentLoc = location[1]
@@ -280,16 +312,24 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                                                 switchList.append(["T", (pChild2, vh, l_bottom, l2), \
                                                 (pChild1, currentLoc, l_bottom, l1), (Score[(pChild2, vh, l_bottom, l2)] * \
                                                     Score[(pChild1, currentLoc, l_bottom, l1)])])
+                                                # switchList.append(["T", (pChild2, vh, l_bottom, l2), \
+                                                # (pChild1, currentLoc, l_bottom, l1)])
                                             else:
                                                 switchList.append(["T", (pChild1, vh, l_bottom, l1), \
                                                     (pChild2, currentLoc, l_bottom, l2), Infinity])
+                                                # switchList.append(["T", (pChild1, vh, l_bottom, l1), \
+                                                #     (pChild2, currentLoc, l_bottom, l2)])
+                        end=time.time()
+                        total_t+=end-start
                         if switchList==[]:
                             #TODO: I think this need to be a list of lists, same in the else case
                             switchList=[[Infinity]]
+                            # switchList=[[]]
 
                     else:
                         SWITCHepeh = Infinity
                         switchList = [[Infinity]]
+                        # switchList = [[]]
                     # Compute C[(ep, eh, l_top, l_bottom)] and add the event or events with that cost
                     # to the dictionary eventsDict
                     C[(ep, eh, l_top, l_bottom)] = min(A[(ep, eh, l_top, l_bottom)], DUPepeh, SWITCHepeh)
@@ -300,12 +340,20 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
                         eventsDict[(vp, vh, l_top, l_bottom)].extend(switchList)     #switchList should be a list of lists
                     if C[(ep, eh, l_top, l_bottom)] == A[(ep, eh, l_top, l_bottom)]:
                         eventsDict[(vp, vh, l_top, l_bottom)].extend(Amin)
-                    for key in eventsDict:
-                        mapScore = 0 # initialize frequency scoring for each event
-                        for event in eventsDict[key]:
-                            if type(event) is list:
-                                mapScore += event[-1]
-                        Score[key] = mapScore
+                    #NOTE The following is commented out because it significantly slows down the running time
+                    # for key in eventsDict:
+                    #     mapScore = 0 # initialize frequency scoring for each event
+                    #     for event in eventsDict[key]:
+                    #         if type(event) is list:
+                    #             mapScore += event[-1]
+                    #     Score[key] = mapScore
+                    #TODO: is this a valid alternative???
+                    mapScore = 0 # initialize frequency scoring for each event
+                    for event in eventsDict[(vp, vh, l_top, l_bottom)]:
+                        if type(event) is list:
+                            mapScore += event[-1]
+                    Score[(vp, vh, l_top, l_bottom)] = mapScore
+                
                     #do not allow top of gene tree handle to be an actual synteny
                     if Minimums[(vp, vh, l_top, l_bottom)] == Infinity or (ep=="pTop" and l_top!="*"):
                         del Minimums[(vp, vh, l_top, l_bottom)]
@@ -390,7 +438,11 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
 
 
 
-
+    DP_end=time.time()
+    print("The time took to reconcile all the rerootings is: %.5f" %(DP_end - DP_start))
+    print("The time spent in the loops is: %.5f, which is %.2f of total "%(total_t,total_t/(DP_end - DP_start)))
+    print("The time spent in the loops is: %.5f, which is %.2f of total "%(total,total/(DP_end - DP_start)))
+    
     for key in bestSwitchLocations:
         if bestSwitchLocations[key][0] == (None, None, None, None):
             bestSwitchLocations[key] = bestSwitchLocations[key][1:]
@@ -401,18 +453,16 @@ def DP(hostTree, parasiteTree, phi, locus_map, allsynteny, D, T, L, Origin, R):
     # Use findPath and findBestRoots to construct the DTLOR graph dictionary
     #this finds the optimal solutions (mappings)
     treeMin, min_cost = findBestRoots(parasiteTree, Minimums)
-    DTLOR = findPath(treeMin, eventsDict, {})
+    DTLOR = findPath(treeMin, eventsDict, {})  #this is the DTLOR graph not the reconciliations
+ 
     for key in list(Score.keys()):
         if not key in DTLOR:
             del Score[key]
 
-    DTLOR, numRecon = addScores(treeMin, DTLOR, Score)
-    scores, rec=Greedy.Greedy(DTLOR, parasiteTree)
-    print("The rec: ")
-    print(rec)
-    print("The minimum cost is: ")
-    print(min_cost)
-    return DTLOR, numRecon
+    DTLOR, numRecon = addScores(treeMin, DTLOR, Score)  #normalizes frequency score
+    scores, rec=Greedy(DTLOR, parasiteTree)
+
+    return rec, min_cost
 
 
 def preorderDTLORsort(DTLOR, ParasiteRoot):
@@ -420,8 +470,8 @@ def preorderDTLORsort(DTLOR, ParasiteRoot):
     a sorted list, orderedKeysL, that is ordered by level from largest to 
     smallest, where level 0 is the root and the highest level has tips."""
 
-    keysL = Greedy.orderDTLOR(DTLOR, ParasiteRoot)
-    uniqueKeysL = Greedy.sortHelper(DTLOR, keysL)
+    keysL = orderDTLOR(DTLOR, ParasiteRoot)
+    uniqueKeysL = sortHelper(DTLOR, keysL)
     orderedKeysL = []
     levelCounter = 0
     while len(orderedKeysL) < len(keysL):
@@ -501,37 +551,3 @@ def findPath(tupleList, eventDict, uniqueDict):
                     findPath([location], eventDict, uniqueDict)
     return uniqueDict
 
-def reconcile():
-    """Takes as input a newick file, FileName, a dupliction cost, a transfer 
-    cost, and a loss cost. This uses newickFormatReader to extract the host 
-    tree, parasite tree and tip mapping from the file and then calls DP to 
-    return the DTL reconciliation graph of the provided newick file"""
-    # host, paras, phi = newickFormatReader.getInput(fileName)
-
-    #### load parameters and some other data we'll use below
-    # paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
-    # strainNamesT,genesO,_ = loadGenomeRelatedData(paramD)
-    # speciesTree,_ = loadTreeRelatedData(paramD['treeFN'])
-    # #TODO read in gene tree
-    # ## read scores
-    # scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-
-    # familiesO, locusMap= createFamiliesO(speciesTree,scoresO,genesO)
-    speciesTree=("masterS",("toCD",("C",(),(),1),("D",(),(),1),1),("toAB",("A",(),(),1),("B",(),(),1),1),1)
-    geneTree=("masterG",("d",(),(),1),("to_abc",("to_bc",("b",(),(),1),("c",(),(),1),1),("a",(),(),1),1),1)
-    phi={"a":"A", "b":"B","c":"C","d":"D"}
-    locus_map={"a":"0", "b":"0","c":"0","d":"0"}
-    allsynteny=list(set(locus_map.values()))
-    allsynteny=[str(x) for x in allsynteny]
-    #T>D
-    D=0.5
-    T=0.4
-    L=0.2
-    O=0.2
-    R=0.3
-
-
-    return DP(speciesTree, geneTree, phi, locus_map, allsynteny, D, T, L, O, R)
-
-if __name__ == "__main__":
-    reconcile()

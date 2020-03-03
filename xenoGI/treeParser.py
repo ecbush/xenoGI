@@ -8,7 +8,133 @@
 #"hTop"
 
 
-# tree=("root",("left",("HI",(),(),2),("HA",(),(),1),1),('right',(),(),2),3)
+tree=("root",("left",("HI",(),(),2),("HA",(),(),1),1),('right',(),(),2),3)
+
+def tabulate_names(tree):
+    """
+    Rename internal nodes from the newick tree 
+    """
+    for idx, clade in enumerate(tree.find_clades()):
+        if clade.name!=None:
+            pass
+        else:
+            clade.name = "Node_"+str(idx)
+ 
+
+def getTreeDictionary(geneTree,tree_dict):
+    """
+    get the 4-tup tree format from the dictionary format 
+    and a dictionary with key as parent node and value as the children tuple
+    """
+    root=geneTree[0]
+    left=geneTree[1]
+    right=geneTree[2]
+    if left==():
+        return tree_dict  #meaningless length
+    else:
+        tree_dict[root]=(left[0], right[0])
+        tree_dict=getTreeDictionary(left, tree_dict)
+        tree_dict=getTreeDictionary(right, tree_dict)
+        return tree_dict
+
+def left_subtree(tree):
+    return tree[1]
+def right_subtree(tree):
+    return tree[2]
+def is_leaf(tree):
+    return tree[1]==()
+def get_name(tree):
+    return tree[0]
+
+def get_all_rerootings(tree):
+    """
+    Compute all rerootings of a tree
+
+    Parameters
+    --------------------
+        tree        -- a four tuple tree
+
+    Return
+    --------------------
+        rerootings  -- a list of RLR trees 
+    """
+    #global memorization variables
+    #records all distinctive trees by their left and right subtree roots (branch where rooting happens)
+    alltrees=set()
+    #keeps track of the actuall rerootings
+    rerootings=[]
+
+    #keeps the original tree
+    rerootings+=[tree]
+    originaltree=frozenset([get_name(left_subtree(tree)),get_name(right_subtree(tree))])
+    alltrees.add(originaltree)
+
+    #call the helper function where actually rerooting happens
+    helperRerooting(tree, alltrees, rerootings)
+    return rerootings  
+
+def helperRerooting(tree, alltrees, rerootings):
+    """
+    The actual function for rerooting
+    Reroot on the path to grandchildren of root if possible
+    calls addTree to record rerootings and trees generated so far
+
+    Parameters
+    --------------------
+        tree        -- a 4-tuple tree
+
+    """
+    
+    if not is_leaf(left_subtree(tree)):
+        #if the left tree has two children
+        #first we can root on the path to its left children
+        newleft=left_subtree(left_subtree(tree))
+        newright=(get_name(left_subtree(tree)),right_subtree(left_subtree(tree)),right_subtree(tree))
+
+        #if this tree has not been encountered, add it
+        addTree(tree,newleft,newright, alltrees, rerootings)
+    
+        #second we can root on the path to its left
+        newleft=(get_name(left_subtree(tree)),left_subtree(left_subtree(tree)),right_subtree(tree))
+        newright=right_subtree(left_subtree(tree))
+
+        addTree(tree,newleft,newright, alltrees, rerootings)
+        
+
+    if not is_leaf(right_subtree(tree)):
+        #if the right tree has two children
+        #first we can root on the path to its right children
+        newright=right_subtree(right_subtree(tree))
+        newleft=(get_name(right_subtree(tree)),left_subtree(right_subtree(tree)),left_subtree(tree))
+
+        addTree(tree,newleft,newright, alltrees, rerootings)
+    
+        #second we can root on the path to its left
+        newright=(get_name(right_subtree(tree)),right_subtree(right_subtree(tree)),left_subtree(tree))
+        newleft=left_subtree(right_subtree(tree))
+
+        addTree(tree,newleft,newright, alltrees, rerootings)
+
+def addTree(tree, newleft, newright, alltrees, rerootings):
+    """
+    helper function for the helperRerooting function
+    This function add a new rerooting to the rerootings and alltrees if not already found
+    and calls the helperRerooting on the new rerooting
+
+    Parameters
+    --------------------
+        tree        -- a 4-tuple tree that is the orginal tree
+        newleft     -- a new left tree generated in helperRerooting
+        newright    -- a new right tree generated in helperRerooting
+
+    """
+    newtree=frozenset([get_name(newright),get_name(newleft)])
+    if newtree not in alltrees:
+        newrooting=(get_name(tree),newleft,newright)
+        rerootings+=[newrooting]
+        alltrees.add(newtree)
+        helperRerooting(newrooting, alltrees, rerootings)
+
 def parseTreeForDP(tree, parasite):
     """
     Input: four tuple tree as defined by the trees.py (xenoGI)
