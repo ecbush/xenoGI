@@ -1,3 +1,4 @@
+from copy import deepcopy
 #file for parsing the tree into a format tha works for the DTLOR algorithm
 # A tree is represented as a dictionary of key-value pairs where a key is an
 # edge name (will use end vertex to represent) and the value is a tuple of the form
@@ -20,6 +21,32 @@ def tabulate_names(tree):
         else:
             clade.name = "Node_"+str(idx)
  
+def rerootingPruning(bpTree, locusMap):
+    """
+    Try assigning syntenic locations to internal nodes 
+    in the input (arbitrarily rooted) tree. If a loc can be assigned, we are not
+    going to root on branches where both terminals are assigned loc
+    """
+    locus_map=deepcopy(locusMap)
+    postorder=list(bpTree.find_clades(order='postorder'))
+
+    count=0
+    for node in postorder:
+
+        if node.name in locus_map: pass
+
+        else:
+            child1, child2=[child.name for child in node]
+            if locus_map[child1]==locus_map[child2]:
+                locus_map[node.name]=locus_map[child1]
+               
+            else:
+                locus_map[node.name]="X"  #undetermined
+                count+=1
+
+    print("Percentage of nodes not determined: %.2f"%(count/float(len(postorder))))
+    return locus_map
+
 
 def getTreeDictionary(geneTree,tree_dict):
     """
@@ -46,13 +73,21 @@ def is_leaf(tree):
 def get_name(tree):
     return tree[0]
 
-def get_all_rerootings(tree):
+def validRooting(tree, locus_map):
+    if locus_map[get_name(tree[1])]==locus_map[get_name(tree[2])] and locus_map[get_name(tree[1])]!="X":  
+        #don't root at a branch when both terminals are imputed the same loc
+       return False
+    else: return True
+
+def get_all_rerootings(tree, locus_map):
     """
     Compute all rerootings of a tree
 
     Parameters
     --------------------
         tree        -- a four tuple tree
+        locus_map   -- a dictionary mapping the gene node name
+                        to a syntenic location or "X" if cannot be imputed by parsimony
 
     Return
     --------------------
@@ -65,15 +100,16 @@ def get_all_rerootings(tree):
     rerootings=[]
 
     #keeps the original tree
-    rerootings+=[tree]
+    if validRooting(tree, locus_map):
+        rerootings+=[tree]
     originaltree=frozenset([get_name(left_subtree(tree)),get_name(right_subtree(tree))])
     alltrees.add(originaltree)
 
     #call the helper function where actually rerooting happens
-    helperRerooting(tree, alltrees, rerootings)
+    helperRerooting(tree, alltrees, rerootings, locus_map)
     return rerootings  
 
-def helperRerooting(tree, alltrees, rerootings):
+def helperRerooting(tree, alltrees, rerootings, locus_map):
     """
     The actual function for rerooting
     Reroot on the path to grandchildren of root if possible
@@ -92,13 +128,13 @@ def helperRerooting(tree, alltrees, rerootings):
         newright=(get_name(left_subtree(tree)),right_subtree(left_subtree(tree)),right_subtree(tree))
 
         #if this tree has not been encountered, add it
-        addTree(tree,newleft,newright, alltrees, rerootings)
+        addTree(tree,newleft,newright, alltrees, rerootings, locus_map)
     
         #second we can root on the path to its left
         newleft=(get_name(left_subtree(tree)),left_subtree(left_subtree(tree)),right_subtree(tree))
         newright=right_subtree(left_subtree(tree))
 
-        addTree(tree,newleft,newright, alltrees, rerootings)
+        addTree(tree,newleft,newright, alltrees, rerootings, locus_map)
         
 
     if not is_leaf(right_subtree(tree)):
@@ -107,15 +143,15 @@ def helperRerooting(tree, alltrees, rerootings):
         newright=right_subtree(right_subtree(tree))
         newleft=(get_name(right_subtree(tree)),left_subtree(right_subtree(tree)),left_subtree(tree))
 
-        addTree(tree,newleft,newright, alltrees, rerootings)
+        addTree(tree,newleft,newright, alltrees, rerootings, locus_map)
     
         #second we can root on the path to its left
         newright=(get_name(right_subtree(tree)),right_subtree(right_subtree(tree)),left_subtree(tree))
         newleft=left_subtree(right_subtree(tree))
 
-        addTree(tree,newleft,newright, alltrees, rerootings)
+        addTree(tree,newleft,newright, alltrees, rerootings, locus_map)
 
-def addTree(tree, newleft, newright, alltrees, rerootings):
+def addTree(tree, newleft, newright, alltrees, rerootings, locus_map):
     """
     helper function for the helperRerooting function
     This function add a new rerooting to the rerootings and alltrees if not already found
@@ -131,9 +167,10 @@ def addTree(tree, newleft, newright, alltrees, rerootings):
     newtree=frozenset([get_name(newright),get_name(newleft)])
     if newtree not in alltrees:
         newrooting=(get_name(tree),newleft,newright)
-        rerootings+=[newrooting]
+        if validRooting(newrooting, locus_map):
+            rerootings+=[newrooting]
         alltrees.add(newtree)
-        helperRerooting(newrooting, alltrees, rerootings)
+        helperRerooting(newrooting, alltrees, rerootings, locus_map)
 
 def parseTreeForDP(tree, parasite):
     """

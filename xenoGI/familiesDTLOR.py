@@ -442,7 +442,7 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     gtFileStem = 'fam'
     workDir = paramD['geneFamilyTreesDir']
 
-    # trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family
+    # trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
     
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     D=float(paramD["duplicationCost"])
@@ -454,28 +454,31 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     #new families object to record all the origin families
     originFamiliesO = Families(tree)
     origin_num=0
-    # for treeFN in list(sorted(glob.glob(allGtFilePath)))[9,14,15]: 
-    treeFN= "geneFamilyTrees/fam000004.tre"
+    # for treeFN in list(sorted(glob.glob(allGtFilePath))): #over all the gene trees in the directory
+    treeFN= "geneFamilyTrees/fam000002.tre"  #fam000013.tre is not passing
     if 1==1:
         #read in unrooted tree
         bpTree = Phylo.read(treeFN, 'newick', rooted=False)
         bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
-        Phylo.draw_ascii(bpTree)
         tabulate_names(bpTree)   #name internal nodes
-
-        #TODO: In the future: Do we need to use tuple format?
+        locus_map=rerootingPruning(bpTree, locusMap)
+        # for term in bpTree.get_terminals(): term.name=term.name+"_"+str(locus_map[term.name])  #rename the tips adding the syntenic loc
+        # Phylo.draw_ascii(bpTree)
         tuple_geneTree=bioPhyloToTupleTree(bpTree)
         phi=getTipMapping(tuple_geneTree,genesO)  #gene to species mapping for these specific gene tree
-        all_rootings=get_all_rerootings(tuple_geneTree)
+        
+        all_rootings=get_all_rerootings(tuple_geneTree, locus_map)
+        if all_rootings==[]:  #all rerooting not valid (all nodes have the same loc)
+            all_rootings=[tuple_geneTree]
         best_score=float('inf')
         bestMPRs=[]
         start1 = time.time()
         #try all the different rerootings and record the ones and their solutions with the best scores
-        print(len(all_rootings))
+        print("The number of rerootings is %d" %len(all_rootings))
         for rooting in all_rootings:
             geneTree=rooting
             start2 = time.time()
-            MPRs,cost=DP(speciesTree, geneTree, phi, locusMap, D, T, L, O, R)
+            MPR,cost=DP(speciesTree, geneTree, phi, locusMap, D, T, L, O, R)
             end2 = time.time()
             print("The time took to do one reconciliation is: %.4f" %(end2 - start2))
             if cost<best_score: 
@@ -483,14 +486,13 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
                 #update best score, clear record and add new record
                 best_score=cost
                 bestMPRs=[]
-                bestMPRs.append((geneTree,MPRs))
+                bestMPRs.append((geneTree,MPR))
             elif cost==best_score:
-                bestMPRs.append((geneTree,MPRs))
+                bestMPRs.append((geneTree,MPR))
         #sample one MPR from the MPRs for this specific unrooted tree
         end1 = time.time()
         print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
-        optGeneRooting,optMPRs=random.choice(bestMPRs)
-        optMPR=random.choice(optMPRs)
+        optGeneRooting,optMPR=random.choice(bestMPRs)
     
         #update originFamiliesO object
         start = time.time()
@@ -503,10 +505,7 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     for fam in originFamiliesO.iterFamilies():
         f.write(fam.fileStr(genesO)+'\n')
     f.close()
-    print("Origin families written out to %s"%originFamilyFN)
-    
-
-    
+    print("Origin families written out to %s"%(originFamilyFN))
 
     # return familiesO, originFamiliesO
     return 
