@@ -442,7 +442,7 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     gtFileStem = 'fam'
     workDir = paramD['geneFamilyTreesDir']
 
-    # trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
+    trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
     
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     D=float(paramD["duplicationCost"])
