@@ -104,8 +104,10 @@ scoresFN = 'scores.bout'
 # "hard core").
 aabrhFN = 'aabrhHardCore.out'
 
-# family file
-familyFN='fam.out'
+# family files
+#familyFN='fam.out'
+rawFamilyFN = 'rawFam.out'
+originFamilyFN = 'originFam.out'
 
 # island file
 islandOutFN = 'islands.out'
@@ -155,6 +157,14 @@ coreSynWsize = 20
 # contig won't get added to families because they lack a common core
 # gene on that side.
 minCoreSynThresh = 0.5
+
+#DTLOR event costs
+
+duplicationCost = 0.3
+transferCost = 0.4
+lossCost = 0.4
+originCost = 0.1
+rearrangeCost = 0.2
 
 #### Visualization and analysis output files ####
 
