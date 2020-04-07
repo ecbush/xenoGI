@@ -154,7 +154,7 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
-def parseBlastFile(blastFN,evalueThresh,alignCoverThresh):
+def parseBlastFile(blastFN,evalueThresh,alignCoverThresh,percIdentThresh):
     '''Parse a single blast output file, returning all hits as a list of
 tuples. alignCoverThresh is a threshold for the length of the
 alignment relative to query and subject length. The files have the
@@ -175,10 +175,12 @@ qend slen sstart send.
                 qend = int(blastLine[5])
                 slen = int(blastLine[6])
                 sstart = int(blastLine[7])
-                send =  int(blastLine[8])
+                send = int(blastLine[8])
+                pident = float(blastLine[9])
+                score = int(blastLine[10])
 
                 alCov = ((qend-qstart) + (send-sstart)) / (qlen+slen)
-                if alCov > alignCoverThresh:
-                    L.append((queryGene,subjectGene,evalue,alCov))
+                if alCov > alignCoverThresh and pident > percIdentThresh:
+                    L.append((queryGene,subjectGene,evalue,alCov,pident,score))
             s = f.readline()
     return L
