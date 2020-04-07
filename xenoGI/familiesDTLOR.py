@@ -38,8 +38,8 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     familiesO = Families(tree)
     distribution=[]
     init_dist=[]
-    #these locusFamId need to be unique across all
-    locusFamId=0
+    #these locusFamId need to be unique across all, start counting from 1
+    locusFamId=1
     for index,family in enumerate(initial_families):
         #add each initial family as a Family object (still empty)
         species=list([genesO.numToStrainName(gene) for gene in family])
@@ -410,8 +410,8 @@ def addOriginFamily(reconciliation, geneTree, originFamiliesO, origin_num, genes
     #construct an origin family for each Origin event, a locus family for each R event
     for gene in geneToLocus.keys():
         locus_t,locus_b=geneToLocus[gene]
-        if locus_t=="*":
-            if  locus_b!="*":
+        if locus_t==0:
+            if  locus_b!=0:
                 startNode=gene  
                 #one gene only visited once for checking O event
                 originFamiliesO.initializeFamily(origin_num,startNode,seedPairL=None) 
@@ -443,7 +443,7 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     workDir = paramD['geneFamilyTreesDir']
 
     trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
-    
+    print("Finished making gene trees")
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     D=float(paramD["duplicationCost"])
     T=float(paramD["transferCost"])
@@ -454,14 +454,20 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     #new families object to record all the origin families
     originFamiliesO = Families(tree)
     origin_num=0
-    # for treeFN in list(sorted(glob.glob(allGtFilePath))): #over all the gene trees in the directory
-    treeFN= "geneFamilyTrees/fam000002.tre"  #fam000013.tre is not passing
-    if 1==1:
+    for treeFN in list(sorted(glob.glob(allGtFilePath))): #over all the gene trees in the directory
+    # treeFN= "geneFamilyTrees/fam000124.tre"  #fam000013.tre is not passing
+    # if 1==1:
         #read in unrooted tree
         bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-        bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
+        try:
+            bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
+        except:
+            bpTree.root_with_outgroup(bpTree.get_terminals()[0])
         tabulate_names(bpTree)   #name internal nodes
         locus_map=rerootingPruning(bpTree, locusMap)
+        # print("gene to locus map")
+        # print([(term.name, locus_map[term.name]) for term in bpTree.get_terminals()])
+
         # for term in bpTree.get_terminals(): term.name=term.name+"_"+str(locus_map[term.name])  #rename the tips adding the syntenic loc
         # Phylo.draw_ascii(bpTree)
         tuple_geneTree=bioPhyloToTupleTree(bpTree)
@@ -507,7 +513,6 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     f.close()
     print("Origin families written out to %s"%(originFamilyFN))
 
-    # return familiesO, originFamiliesO
     return 
 
 
