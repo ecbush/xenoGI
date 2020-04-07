@@ -16,7 +16,7 @@ problemGenbankFN = 'problemGenbankFiles.txt'
 
 # blast command line (except for value for evalue as well as db,query
 # and outfiles)
-blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -seg yes -outfmt "6 qseqid sseqid evalue qlen qstart qend slen sstart send" -evalue '
+blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -seg yes -outfmt "6 qseqid sseqid evalue qlen qstart qend slen sstart send pident score" -evalue '
 
 #### Scores calculation ####
 

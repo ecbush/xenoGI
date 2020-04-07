@@ -208,11 +208,11 @@ each and the score.'''
 #### Calculating the set of all around best reciprocal hit homologs
 #    (used in core synteny scores below)
 
-def createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,aabrhFN):
+def createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh,aabrhFN):
     '''Get the sets of all around best reciprocal hits.'''
 
     blastDir = blastFilePath.split("*")[0]
-    rHitsL=getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh)
+    rHitsL=getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh)
     
     # get sets of genes in first species that have a reciprocal best
     # hit in each other species. this is to save time in next step.
@@ -247,7 +247,7 @@ per line.'''
     f.close()
     return orthoL
 
-def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh):
+def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh):
     '''return an upper-diagonal (N-1)xN matrix where each entry
     [i][j] (j > i) contains a dictionary of best reciprocal hits
     between species i and species j, as indexed in list strainNamesL;
@@ -261,21 +261,21 @@ def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh):
         # reciprocal hits between species i and j (keyed by species i)
         for j in range(len(strainNamesL)):
             if j > i:
-                rHitsL[i].append(getReciprocalHits(strainNamesL[i],strainNamesL[j],blastDir,evalueThresh,alignCoverThresh))
+                rHitsL[i].append(getReciprocalHits(strainNamesL[i],strainNamesL[j],blastDir,evalueThresh,alignCoverThresh,percIdentThresh))
             else:
                 rHitsL[i].append(None)
     return rHitsL
 
 
-def getReciprocalHits(strainName1,strainName2,blastDir,evalueThresh,alignCoverThresh):
+def getReciprocalHits(strainName1,strainName2,blastDir,evalueThresh,alignCoverThresh,percIdentThresh):
     '''Given strain names and blast file directory name, load hits between
 two strains in each direction, then go through and keep only the
 reciprocal hits. Returns dictionary where keys are genes in strain 1
 and values are corresponding genes in strain 2.'''
     # get best hits of 1 blasted against 2...
-    hits1D = getHits(blastDir+strainName1+'_-VS-_'+strainName2+'.out',evalueThresh,alignCoverThresh)
+    hits1D = getHits(blastDir+strainName1+'_-VS-_'+strainName2+'.out',evalueThresh,alignCoverThresh,percIdentThresh)
     # ...and 2 blasted against 1
-    hits2D = getHits(blastDir+strainName2+'_-VS-_'+strainName1+'.out',evalueThresh,alignCoverThresh)
+    hits2D = getHits(blastDir+strainName2+'_-VS-_'+strainName1+'.out',evalueThresh,alignCoverThresh,percIdentThresh)
 
     # then store only the reciprocal best hits
     recipHitsD = {}
@@ -287,7 +287,7 @@ and values are corresponding genes in strain 2.'''
 
     return recipHitsD
 
-def getHits(fileName, evalueThresh,alignCoverThresh):
+def getHits(fileName, evalueThresh,alignCoverThresh,percIdentThresh):
     """Given a BLAST output file, returns a dictionary keyed by the genes
     in the query species, with the values being the top hit (if any)
     for those genes. Assumes the blast hits for each query are given
@@ -297,13 +297,12 @@ def getHits(fileName, evalueThresh,alignCoverThresh):
     """
     hitsD = {}
     tempEvalueD = {} # just to help us get the hit with the best evalue
-    for queryGene,subjectGene,evalue,alCov in blast.parseBlastFile(fileName,evalueThresh,alignCoverThresh):
+    for queryGene,subjectGene,evalue,alCov,pident,score in blast.parseBlastFile(fileName,evalueThresh,alignCoverThresh,percIdentThresh):
 
         if not queryGene in hitsD or evalue < tempEvalueD[queryGene]:
             # if it isn't there, or if new hit has a better evalue, record
             tempEvalueD[queryGene] = evalue
             hitsD[queryGene] = subjectGene
-
 
     return hitsD           
 
@@ -385,10 +384,11 @@ genes shared.'''
     blastFilePath = paramD['blastFilePath']
     evalueThresh = paramD['evalueThresh']
     alignCoverThresh = paramD['alignCoverThresh']
+    percIdentThresh = paramD['percIdentThresh']
     aabrhFN = paramD['aabrhFN']
     coreSynWsize = paramD['coreSynWsize']
     
-    aabrhHardCoreL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,aabrhFN)
+    aabrhHardCoreL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh,aabrhFN)
 
     geneToAabrhD = createGeneToAabrhD(aabrhHardCoreL)
     coreSyntenyD = createCoreSyntenyD(geneToAabrhD,geneOrderD,coreSynWsize)
