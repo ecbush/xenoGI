@@ -172,6 +172,21 @@ def addTree(tree, newleft, newright, alltrees, rerootings, locus_map):
         alltrees.add(newtree)
         helperRerooting(newrooting, alltrees, rerootings, locus_map)
 
+def convertIndexTree(tree,node_to_int):
+    int_tree={}
+    for edge, value in tree.items():
+        start_vertex,end_vertex,leftChildEdgeName,rightChildEdgeName = value
+        if edge=="hTop" or edge=="pTop":
+            key=0
+        else: key=node_to_int[edge]
+        if leftChildEdgeName==None:
+            int_tree[key]=(node_to_int[start_vertex], node_to_int[end_vertex],None, None)
+        else:
+            int_tree[key]=tuple([node_to_int[x] for x in value])
+    return int_tree
+
+
+
 def parseTreeForDP(tree, parasite):
     """
     Input: four tuple tree as defined by the trees.py (xenoGI)
@@ -219,7 +234,6 @@ def parseTreeForDP(tree, parasite):
         return None
     parsedTree={}
     
-    
     lt=tree[1]
     rt=tree[2]
     if parasite:
@@ -230,6 +244,7 @@ def parseTreeForDP(tree, parasite):
         value=("h_root",tree[0], lt[0], rt[0])
         key="hTop"
     parsedTree[key]=value
+    
     
     return parseHelper(tree, parsedTree)
     
