@@ -15,12 +15,12 @@ import scipy.linalg as LA
 import math 
 from copy import deepcopy
 from scipy.sparse import csgraph
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.cluster import AffinityPropagation as affinity
 from collections import Counter
 from .treeParser import *
 from .DTLOR_DP import *
-
+from collections import deque
 import sys
 import time
 
@@ -29,8 +29,12 @@ import time
 def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="threshold"):
     '''Given a scoresO object, create gene families for the DTLOR approach.
     '''
+    #NOTE: temporary threshold for maximum size of gene tree, if above, split with kmeans
+    #should note how many intial families were above the threshold initially 
+    maxFamilySize=70
+    
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
-    initial_families=createInitialFamily(scoresO)
+    initial_families, degree=createInitialFamily(scoresO)
     print("The number of initial families is: ")
     print(len(initial_families))
     locusMap={}
@@ -40,7 +44,38 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     init_dist=[]
     #these locusFamId need to be unique across all, start counting from 1
     locusFamId=1
-    for index,family in enumerate(initial_families):
+    initial_families.sort(reverse=True,key=len)  #sort by number of genes in descending order
+    oversized=[family for family in initial_families if len(family)>maxFamilySize]
+    print("Number of initial families with more than %d genes: %d"%(maxFamilySize,\
+                                len(oversized)))
+    for index, family in enumerate(oversized): 
+        #generate a histogram for the distribution of the degrees of vertices in graph(family)
+        visualize_connectivity(family,"oversized_family_%d"%index,scoresO,degree)
+
+    #parse through the initial families and split big ones
+    size_controlled_families=[]
+    queue=deque(initial_families)
+    while len(queue)>0:
+        family=queue.popleft()
+        if len(family)>maxFamilySize:
+            splitted_families=split_init_family(family, scoresO, maxFamilySize)
+            #leave the new families still too big in the queue
+            queue.extend([family for family in splitted_families if len(family)>maxFamilySize])
+            #append the new families with desirable sizes 
+            size_controlled_families.extend([family for family in splitted_families if len(family)<=maxFamilySize and len(family)!=0])
+        else:
+            size_controlled_families.append(family)
+
+    size_controlled_families.sort(reverse=True,key=len) 
+    # family_sizes=[len(family) for family in size_controlled_families if len(family)>10]
+    # plt.hist(family_sizes,bins=20, color='b', edgecolor='k', alpha=0.65)
+    # plt.gca().set(title='Sizes of families >10', ylabel='frequency')
+    # plt.savefig("initialFamily_histogram/family_sizes")
+    # plt.close()
+
+    for index,family in enumerate(size_controlled_families):
+        if index<5:
+            visualize_connectivity(family,"Top_%d_tree_postsplit"%(index+1),scoresO)
         #add each initial family as a Family object (still empty)
         species=list([genesO.numToStrainName(gene) for gene in family])
 
@@ -70,9 +105,57 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     # print("Distribution of the number of genes in each initial family:")
     # print(init_dist)
     return familiesO, locusMap
+def split_init_family(family,scoresO,maxFamilySize):
+    #use spectral clustering to break a big family further
+    num_clusters=math.ceil(len(family)/float(maxFamilySize))
+    num_gene=len(family)
+    genes=list(family)
+    graph=np.identity(num_gene)
+    #loop over all pairs of genes
+    for i in range(len(genes)):
+        for j in range(i+1, len(genes)):
+            gene1=genes[i]
+            gene2=genes[j]
+            if scoresO.isEdgePresentByEndNodes(gene1,gene2):
+                graph[i][j]=scoresO.getScoreByEndNodes(gene1, gene2, "rawSc")
+                graph[j][i]=graph[i][j]
+    sc=SpectralClustering(n_clusters=2,eigen_solver=None,random_state=0,affinity='precomputed',)
+    #cluster the n row vectors into k clusters
+    sc.fit(graph)
+    cluster_labels = sc.labels_
+    clustered_fam=[]
+    for i in range(num_clusters):
+        #get the index of gene in that cluster
+        indices=np.argwhere(cluster_labels==i)
+        #get the actual index associated with each gene
+        fam=set([genes[index[0]] for index in indices])
+        clustered_fam.append(fam)
+    return clustered_fam
+
+def visualize_connectivity(initial_family,fn,scoresO,degree=None):
+    if degree==None: #not the same as the whole gene set 
+        degree={}
+        genes=list(initial_family)
+        for gene in genes:
+            all_neighbors=set(scoresO.getConnectionsGene(gene))
+            neighbors_in_family=[neighbor for neighbor in genes if neighbor in all_neighbors]
+            degree[gene]=len(neighbors_in_family)
+    degrees=[degree[gene] for gene in initial_family]
+    plt.hist(degrees,bins=20, color='b', edgecolor='k', alpha=0.65)
+    plt.axvline(sum(degrees)/float(len(degrees)), color='k', linestyle='dashed', linewidth=1, label='Mean: {:.2f}'.format(sum(degrees)/float(len(degrees))))
+    plt.axvline(len(degrees)/float(2), color='c', linestyle='dotted', linewidth=1, label='N/2: {:.2f}'.format(len(degrees)/float(2)))
+    plt.legend(loc='upper right', shadow=True, fontsize='x-large')
+    # min_ylim, max_ylim = plt.ylim()
+    # plt.text(sum(degrees)/float(len(degrees))*1.01, max_ylim*0.7, 'Mean: {:.2f}'.format(sum(degrees)/float(len(degrees))))   
+    # plt.text(len(degrees)/float(2)*1.01, max_ylim*0.9, 'Half of nodes: {:.2f}'.format(len(degrees)/float(2))) 
+    plt.gca().set(title='%s Histogram'%fn, ylabel='frequency', xlabel="Number of neighbors by BLAST")
+    if not os.path.exists("initialFamily_histogram"):
+        os.mkdir("initialFamily_histogram")
+
+    plt.savefig("initialFamily_histogram/%s"%fn)
+    plt.close()
 
 
-    
 #THIS CURRENTLY RUNS VERY SLOW DUE TO THE STRUCTURE OF THE TREE
 def findMRCA(species, tree):
     
@@ -114,7 +197,7 @@ def findLCA(specie1, specie2, tree):
             return right
         else: return left
 
-## Supporting functions
+
 
 
 def createInitialFamily(scoresO):
@@ -131,6 +214,7 @@ def createInitialFamily(scoresO):
                     indicated by significant BLAST score 
                     (that appear in scoresO)
     '''
+    degree={}
    
     def stronglyConnected(temp, gene, visited): 
   
@@ -141,6 +225,7 @@ def createInitialFamily(scoresO):
         # Repeat for all vertices adjacent 
         # to this gene
         neighbors=scoresO.getConnectionsGene(gene)
+        degree[gene]=len(neighbors)
         if neighbors:
             for i in neighbors: 
                 if i not in visited:     
@@ -161,7 +246,7 @@ def createInitialFamily(scoresO):
             
             initFamily.append(newFam) 
     
-    return initFamily
+    return initFamily, degree
 
 
 def check_symmetric(a, rtol=1e-05, atol=1e-08):
@@ -302,10 +387,10 @@ def clusterLocusFamily(family, genesO, scoresO, paramD,synThresholdD,method,min_
         smallest_k=np.argsort(vals)[:num_clusters]
         V=vecs[:,smallest_k]
 
-        kmeans=KMeans(n_clusters=num_clusters)
+        spectral=KMeans(n_clusters=num_clusters)
         #cluster the n row vectors into k clusters
-        kmeans.fit(V)
-        cluster_labels = kmeans.labels_
+        spectral.fit(V)
+        cluster_labels = spectral.labels_
     if method=="affinity":
         affinity_prop=affinity(convergence_iter=30, affinity="precomputed")
         f = affinity_prop.fit(graph)
@@ -425,6 +510,7 @@ def addOriginFamily(reconciliation, geneTree, originFamiliesO, origin_num, genes
 
 def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="threshold"):
     #probably read the costs from 
+    
     familiesO, locusMap=createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="threshold")
     rawFamilyFN = paramD['rawFamilyFN']
     originFamilyFN=paramD['originFamilyFN']
@@ -486,7 +572,7 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
             start2 = time.time()
             MPR,cost=DP(speciesTree, geneTree, phi, locusMap, D, T, L, O, R)
             end2 = time.time()
-            print("The time took to do one reconciliation is: %.4f" %(end2 - start2))
+            # print("The time took to do one reconciliation is: %.4f" %(end2 - start2))
             if cost<best_score: 
                 #if the score is better than current best
                 #update best score, clear record and add new record
@@ -498,11 +584,12 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
         #sample one MPR from the MPRs for this specific unrooted tree
         end1 = time.time()
         print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
-        optGeneRooting,optMPR=random.choice(bestMPRs)
+        optGeneRooting,optMPR=random.choice(bestMPRs)  #need to save these to some output  #writeTree(tree,fileName)  #pickle to dump dicts
     
         #update originFamiliesO object
+        #NOTE: this can be after all reconciliation is done in parallel
         start = time.time()
-        originFamiliesO, origin_num= addOriginFamily(optMPR, geneTree, originFamiliesO, origin_num, genesO)
+        originFamiliesO, origin_num= addOriginFamily(optMPR, optGeneRooting, originFamiliesO, origin_num, genesO)
         end = time.time()
         print("The time took to construct the origins family is: %.2f" %(end - start))
         print("Constructed origin families for %s" %treeFN)
