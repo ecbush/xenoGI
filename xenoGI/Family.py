@@ -67,15 +67,15 @@ gene2...
         
         
 class Family:
-    def __init__(self,famNum,mrca,seedPairL=None):
+    def __init__(self,famNum,mrca,geneTree=None,recon=None):
         '''Initialize an object of class Family.'''
 
         self.famNum = famNum
         self.mrca = mrca
-        self.seedPairL = seedPairL # original seeds from PHiGS. This will be
-                                   # None if single gene family
-        self.locusFamiliesL = []   # will contain locusFamily objects for this family
-
+        self.locusFamiliesL = []  # will contain locusFamily objects for this family
+        self.geneTree = geneTree  # rooted gene tree object
+        self.recon = recon        # dict giving mapping of gene tree onto species tree
+        
     def addLocusFamily(self,lfO):
         self.locusFamiliesL.append(lfO)
 
@@ -106,25 +106,45 @@ connections to this family.'''
                 if not otherGene in allGenesInFamS:
                     otherGenesS.add(otherGene)
         return otherGenesS
-    
+
+    def addGeneTree(self,geneTree):
+        '''Given tree object geneTree, store as attribute. Currently this
+object is assumed to be a tuple tree.'''
+        self.geneTree = geneTree
+
+    def addReconciliation(self,rD):
+        '''Given a dictionary rD storing reconciliation values, store as attribute.'''
+        self.recon = rD
+        
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum <tab> 
-        mrca <tab> seedG1 <tab> seedG2 <tab> locusFamNum1,locusFamGenes <tab>
-        locusFamNum2,locusFamGenes...
+        mrca <tab> locusFamNum1,locusFamGenes <tab>
+        locusFamNum2,locusFamGenes... <tab> geneTree <tab> reconciliation
         The LocusFamily object representations are comma separated.
+        The geneTree is string version of a tuple.
+        reconciliation is a string of the dict.
+        In future improve this...
         '''
-        
+
+        # family number and mrca
         outL =[str(self.famNum),self.mrca]
 
-        if self.seedPairL == None:
-            outL.extend(["-","-"])
+        # geneTree
+        if self.geneTree != None:
+            outL.append(str(self.geneTree))
         else:
-            for seed in self.seedPairL:
-                outL.append(genesO.numToName(seed))
+            outL.append("None")
 
+        # reconciliation
+        if self.recon != None:
+            outL.append(str(self.recon))
+        else:
+            outL.append("None")
+
+        # locus families
         for lfO in self.locusFamiliesL:
             outL.append(lfO.fileStr(genesO))
-                
+
         return "\t".join(outL)
 
     def __repr__(self):
@@ -145,11 +165,11 @@ class Families:
         ## a Family object.
 
         
-    def initializeFamily(self,famNum,mrca,seedPairL=None):
+    def initializeFamily(self,famNum,mrca,geneTree=None,recon=None):
         '''Set up an entry for family famNum.'''
         # the seed genes are the original PHiGs seed.
 
-        self.familiesD[famNum] = Family(famNum,mrca,seedPairL=seedPairL)
+        self.familiesD[famNum] = Family(famNum,mrca,geneTree,recon)
 
     def addLocusFamily(self, lfO):
         '''Add a LocusFamily. Assumes initializeFamily has already been called

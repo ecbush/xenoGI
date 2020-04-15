@@ -908,10 +908,9 @@ sized sample from each.'''
     
 ## Input/output
 
-def writeFamilies(familiesO,genesO,strainNamesT,paramD):
+def writeFamilies(familiesO,familyFN,genesO,strainNamesT,paramD):
     '''Write all gene families to fileName, one family per line.'''
 
-    familyFN = paramD['familyFN']
     geneInfoFN = paramD['geneInfoFN']
 
     # get the num to name dict, only for strains we're looking at.
@@ -935,14 +934,14 @@ def readFamilies(familyFN,tree,genesO):
         L=s.split('\t')
         famNum=int(L[0])
         mrca = L[1]
-        if L[2] == "-":
-            seedPairL = None
-        else:
-            seedPairL = [L[2],L[3]]
 
+        geneTree = eval(L[2])
+        recon = eval(L[3].replace('inf', "float('inf')")) # a hack!
+        # eval didn't like the string inf.
+                     
         lfL = L[4:]
 
-        familiesO.initializeFamily(famNum,mrca,seedPairL)
+        familiesO.initializeFamily(famNum,mrca,geneTree,recon)
 
         for lfStr in lfL:
             lfSplitL = lfStr.rstrip().split(',')
