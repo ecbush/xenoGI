@@ -100,29 +100,22 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
     A = {}  # A, C, O, and bestSwitch are all defined in tech report
     C = {}
     O = {}
-    eventsDict = {} # Dictionary to keep track of events, children, and scores
+    eventsDict = {} # Dictionary to keep track of events that correspond to the min cost reconciliation 
     bestSwitch = {} 
     Minimums = {} # Dictionary to keep track of minimum reconciliation costs
     oBest = {} # Dictionary to keep track of the lowest costing events in O
     bestSwitchLocations = {} # Dictionary to keep track of switch locations
-    Score = {} # Dictionary to calculate the frequency scoring of each event
     allsynteny=getSynteny(locus_map,phi)
     Allsynteny=copy.deepcopy(allsynteny)
     Allsynteny.append("*")
-    print("The dimensions is %d by %d by %d by %d"%(len(postorder(parasiteTree, "pTop")),len(Allsynteny), len(Allsynteny),len(postorder(hostTree, "hTop"))))
+    #print("The dimensions is %d by %d by %d by %d"%(len(postorder(parasiteTree, "pTop")),len(Allsynteny), len(Allsynteny),len(postorder(hostTree, "hTop"))))
     for ep in postorder(parasiteTree, "pTop"):
         _,vp,ep1,ep2 = parasiteTree[ep]
         # is vp a tip?
         if ep1 == None: # then ep2 == None too and vp is a tip!
-                    vpIsATip = True
-                    pChild1 = None
-                    pChild2 = None
+            vpIsATip = True
         else:
             vpIsATip = False
-            #TODO figure out why there is another indexing
-            pChild1 = parasiteTree[ep][2]
-            pChild2 = parasiteTree[ep][3]
-
         for l_top in Allsynteny:    #loop over all the possible locus 
             for l_bottom in valid(l_top,allsynteny):  #for start and end vertex of gene edge
                 for eh in postorder(hostTree, "hTop"):
@@ -132,22 +125,15 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                     # is vh a tip?
                     if eh1 == None: # then eh2 == None too and vh is a tip!
                         vhIsATip = True
-                        hChild1 = None
-                        hChild2 = None
                     else:
                         vhIsATip = False
-                        hChild1 = hostTree[eh][2]
-                        hChild2 = hostTree[eh][3]
-                        
                     # Compute A(ep, eh)
                     if vhIsATip:
                         if vpIsATip and phi[vp] == vh and locus_map[vp]==l_bottom:
                             A[(ep, eh, l_top, l_bottom)] = 0
                             # Contemporary event to be added to eventsDict
-                            Amin = [["C", (None, None, None, None), (None, None, None, None), 1]] 
-                            Score[(vp, vh, l_top, l_bottom)] = 1.0
+                            Amin = [["C", (None, None, None, None), (None, None, None, None)]] 
                         else: 
-                            Score[(vp, vh,l_top, l_bottom)] = Infinity
                             A[(ep, eh, l_top, l_bottom)] = Infinity
                             Amin = [Infinity]
                     else: #vh is not a tip
@@ -172,13 +158,11 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                                     if CO_total<COepeh:
                                         COepeh=CO_total
                                         if CO_cost==co1:
-                                            lowest_cost_spec=["S", (pChild1, hChild1,l_bottom, l1), \
-                                            (pChild2, hChild2, l_bottom, l2), (Score[(pChild1, hChild1, l_bottom, l1)] * \
-                                            Score[(pChild2, hChild2, l_bottom, l2)])]
+                                            lowest_cost_spec=["S", (ep1, eh1,l_bottom, l1), \
+                                            (ep2, eh2, l_bottom, l2)]
                                         else:
-                                            lowest_cost_spec=["S", (pChild1, hChild2,l_bottom,l1), \
-                                            (pChild2, hChild1, l_bottom, l2),(Score[(pChild1, hChild2, l_bottom, l1)]\
-                                             * Score[(pChild2, hChild1, l_bottom, l2)])]
+                                            lowest_cost_spec=["S", (ep1, eh2,l_bottom,l1), \
+                                            (ep2, eh1, l_bottom, l2)]
                             if COepeh<Infinity:
                                 
                                 coMin.append(lowest_cost_spec)
@@ -188,7 +172,6 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                         else:
                             COepeh = Infinity
                             coMin = [Infinity]
-                            Score[(vp, vh, l_top, l_bottom)] = Infinity
                         # Compute L and create event list to add to eventsDict
                         lossMin = [] # List to keep track of lowest cost loss
                         loss_eh2=C[(ep, eh1, l_top, l_bottom)] #eh2 no longer has ep
@@ -196,13 +179,9 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                         LOSSepeh = min(loss_eh2, loss_eh1)
                         #NOTE loss events record the mapping of parasite edge onto surviving host child
                         if LOSSepeh == loss_eh2: 
-                            lossMin.append(["L", (vp, hChild1, l_top, l_bottom), (None, None, None, None), \
-                            Score[(vp, hChild1, l_top, l_bottom)]])
-                            # lossMin.append(["L", (vp, hChild1, l_top, l_bottom), (None, None, None, None)])
+                            lossMin.append(["L", (vp, eh1, l_top, l_bottom), (None, None, None, None)])
                         if LOSSepeh == loss_eh1: 
-                            lossMin.append(["L", (vp, hChild2,l_top, l_bottom), (None, None, None, None), \
-                            Score[(vp, hChild2,l_top, l_bottom)]])
-                            # lossMin.append(["L", (vp, hChild2,l_top, l_bottom), (None, None, None, None)])
+                            lossMin.append(["L", (vp, eh2,l_top, l_bottom), (None, None, None, None)])
                         if ep!="pTop" and l_top!="*":
                             LOSSepeh += L 
                         # Determine which event occurs for A[(ep, eh)]
@@ -233,8 +212,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                                     dup_cost+=D
                                 if dup_cost<DUPepeh:
                                     DUPepeh=dup_cost
-                                    dupList=["D", (pChild1, vh, l_bottom, l1), (pChild2, vh, l_bottom, l2), \
-                                            (Score[(pChild1, vh, l_bottom, l1)] * Score[(pChild2, vh,l_bottom, l2)])]
+                                    dupList=["D", (ep1, vh, l_bottom, l1), (ep2, vh, l_bottom, l2)]
                     else:
                         DUPepeh = Infinity
                         dupList = [Infinity]
@@ -255,45 +233,35 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                                     SWITCHepeh=switch_cost
                                     # if ep2 switching has the lowest cost
                                     if ep2_switch < ep1_switch:
-                                        for location in bestSwitchLocations[(pChild2,vh,l_bottom,l2)]:
+                                        for location in bestSwitchLocations[(ep2,vh,l_bottom,l2)]:
                                             currentLoc = location[1] # Switch landing site
-                                            if currentLoc == None: # Switches to a leaf
-                                                Score[(pChild1, currentLoc, l_bottom, l1)] = Infinity
-                                                Score[(pChild2, currentLoc, l_bottom, l2)] = Infinity
-                                            switchList.append(["T", (pChild1, vh, l_bottom, l1), (pChild2, \
-                                                currentLoc, l_bottom, l2), (Score[(pChild1, vh, l_bottom, l1)] * \
-                                                Score[(pChild2, currentLoc, l_bottom, l2)])])
+                                            switchList.append(["T", (ep1, vh, l_bottom, l1), (ep2, \
+                                                currentLoc, l_bottom, l2)])
                                     # if ep1 switching has the lowest cost
                                     elif ep1_switch<ep2_switch: 
-                                        for location in bestSwitchLocations[(pChild1,vh, l_bottom,l1)]:
+                                        for location in bestSwitchLocations[(ep1,vh, l_bottom,l1)]:
                                             currentLoc = location[1]
-                                            if currentLoc == None:
-                                                Score[(pChild1, currentLoc, l_bottom, l1)] = Infinity
-                                                Score[(pChild2, currentLoc, l_bottom, l2)] = Infinity
-                                            switchList.append(["T", (pChild2, vh, l_bottom, l2), \
-                                                (pChild1, currentLoc, l_bottom, l1), (Score[(pChild2, vh, l_bottom, l2)] * \
-                                                    Score[(pChild1, currentLoc, l_bottom, l1)])])
+                                            switchList.append(["T", (ep2, vh, l_bottom, l2), \
+                                                (ep1, currentLoc, l_bottom, l1)])
                                     # if ep1 switching has the same cost as ep2 switching
                                     else: 
-                                        for location in bestSwitchLocations[(pChild2,vh,l_bottom,l2)]:
+                                        for location in bestSwitchLocations[(ep2,vh,l_bottom,l2)]:
                                             currentLoc = location[1]
                                             if currentLoc != None:
-                                                switchList.append(["T", (pChild1, vh, l_bottom, l1), (pChild2, \
-                                                currentLoc, l_bottom, l2), (Score[(pChild1, vh, l_bottom, l1)] * \
-                                                Score[(pChild2, currentLoc, l_bottom, l2)])])
+                                                switchList.append(["T", (ep1, vh, l_bottom, l1), (ep2, \
+                                                currentLoc, l_bottom, l2)])
                                             else:
-                                                switchList.append(["T", (pChild1, vh, l_bottom, l1), \
-                                                    (pChild2, currentLoc, l_bottom, l2), Infinity])
+                                                switchList.append(["T", (ep1, vh, l_bottom, l1), \
+                                                    (ep2, currentLoc, l_bottom, l2)])
                                    
-                                        for location in bestSwitchLocations[(pChild1,vh, l_bottom,l1)]:
+                                        for location in bestSwitchLocations[(ep1,vh, l_bottom,l1)]:
                                             currentLoc = location[1]
                                             if currentLoc != None:
-                                                switchList.append(["T", (pChild2, vh, l_bottom, l2), \
-                                                (pChild1, currentLoc, l_bottom, l1), (Score[(pChild2, vh, l_bottom, l2)] * \
-                                                    Score[(pChild1, currentLoc, l_bottom, l1)])])
+                                                switchList.append(["T", (ep2, vh, l_bottom, l2), \
+                                                (ep1, currentLoc, l_bottom, l1)])
                                             else:
-                                                switchList.append(["T", (pChild1, vh, l_bottom, l1), \
-                                                    (pChild2, currentLoc, l_bottom, l2), Infinity])           
+                                                switchList.append(["T", (ep1, vh, l_bottom, l1), \
+                                                    (ep2, currentLoc, l_bottom, l2)])           
                         if switchList==[]:
                             switchList=[[Infinity]]
 
@@ -304,25 +272,14 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                     # to the dictionary eventsDict
                     co_min=min(A[(ep, eh, l_top, l_bottom)], DUPepeh, SWITCHepeh)  
                     C[(ep, eh, l_top, l_bottom)] = co_min
-                    Minimums[(vp, vh, l_top, l_bottom)] =co_min
+                    Minimums[(vp, vh, l_top, l_bottom)] =co_min #min cost of reconciliation with this mapping and below
                     if co_min == DUPepeh:
                         eventsDict[(vp, vh, l_top, l_bottom)].append(dupList)  #duplist should just be a 1d list
                     if co_min == SWITCHepeh:
                         eventsDict[(vp, vh, l_top, l_bottom)].extend(switchList)     #switchList should be a list of lists
                     if co_min == A[(ep, eh, l_top, l_bottom)]:
                         eventsDict[(vp, vh, l_top, l_bottom)].extend(Amin)
-                    #NOTE The following is commented out because it significantly slows down the running time
-                    # for key in eventsDict:
-                    #     mapScore = 0 # initialize frequency scoring for each event
-                    #     for event in eventsDict[key]:
-                    #         if type(event) is list:
-                    #             mapScore += event[-1]
-                    #     Score[key] = mapScore
-                    #NOTE:This is a dumb piece of code that puts in wrong value for 
-                    # score but keep the code running if we don't need frequency
-                    if (vp, vh, l_top, l_bottom) not in Score:
-                        Score[(vp, vh, l_top, l_bottom)]=1.0
-                
+                   
                     #do not allow top of gene tree handle to be an actual synteny
                     if Minimums[(vp, vh, l_top, l_bottom)] == Infinity or (ep=="pTop" and l_top!="*"):
                         del Minimums[(vp, vh, l_top, l_bottom)]
@@ -343,9 +300,9 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                         if oMin == 0:
                             oBest[(vp,vh, l_top, l_bottom)].append((vp, vh, l_top, l_bottom))
                         if oMin == 1:
-                            oBest[(vp,vh, l_top, l_bottom)].extend(oBest[(vp, hChild1, l_top, l_bottom)])
+                            oBest[(vp,vh, l_top, l_bottom)].extend(oBest[(vp, eh1, l_top, l_bottom)])
                         if oMin == 2:
-                            oBest[(vp,vh, l_top, l_bottom)].extend(oBest[(vp, hChild2, l_top, l_bottom)])
+                            oBest[(vp,vh, l_top, l_bottom)].extend(oBest[(vp, eh2, l_top, l_bottom)])
                 # Compute bestSwitch values
                 bestSwitch[(ep, "hTop", l_top, l_bottom)] = Infinity
                 bestSwitchLocations[(vp, hostTree["hTop"][1], l_top, l_bottom)] = [(None,None, None, None)]
@@ -355,17 +312,13 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                     # is vh a tip?
                     if eh1 == None: # then eh2 == None too and vh is a tip!
                         vhIsATip = True
-                        hChild1 = None
-                        hChild2 = None
                     else:
                         vhIsATip = False
-                        hChild1 = hostTree[eh][2]
-                        hChild2 = hostTree[eh][3]
                     # find best place for a switch to occur (bestSwitch)
                     # and the location to which the edge switches (bestSwitchLocations)   
                     if eh1 != None and eh2 != None: # not a tip
-                        bestSwitchLocations[(vp, hChild1, l_top, l_bottom)] = []
-                        bestSwitchLocations[(vp, hChild2, l_top, l_bottom)] = []
+                        bestSwitchLocations[(vp, eh1, l_top, l_bottom)] = []
+                        bestSwitchLocations[(vp, eh2, l_top, l_bottom)] = []
                         #do not allow tranfer into different syntenic location, remain inf if not the same
                         if l_top==l_bottom:
                             ep_bestSwitch=bestSwitch[(ep, eh, l_top, l_bottom)]
@@ -376,32 +329,29 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
                         
                             if bestSwitch[(ep, eh1, l_top, l_bottom)] == ep_bestSwitch and \
                             bestSwitchLocations[(vp, vh, l_top, l_bottom)] != [(None, None, None, None)]:
-                                bestSwitchLocations[(vp, hChild1, l_top, l_bottom)].extend\
+                                bestSwitchLocations[(vp, eh1, l_top, l_bottom)].extend\
                                 (bestSwitchLocations[(vp, vh, l_top, l_bottom)])
                             if bestSwitch[(ep, eh1, l_top, l_bottom)] == O_eh2 and \
-                            oBest[(vp, hChild2, l_top, l_bottom)]!= [(None, None, None, None)]:
-                                bestSwitchLocations[(vp, hChild1, l_top, l_bottom)].extend\
-                                (oBest[(vp, hChild2, l_top, l_bottom)])
+                            oBest[(vp, eh2, l_top, l_bottom)]!= [(None, None, None, None)]:
+                                bestSwitchLocations[(vp, eh1, l_top, l_bottom)].extend\
+                                (oBest[(vp, eh2, l_top, l_bottom)])
                             if bestSwitch[(ep, eh2, l_top, l_bottom)] == ep_bestSwitch and \
                             bestSwitchLocations[(vp, vh, l_top, l_bottom)] != [(None, None, None, None)]:
-                                bestSwitchLocations[(vp, hChild2, l_top, l_bottom)].extend\
+                                bestSwitchLocations[(vp, eh2, l_top, l_bottom)].extend\
                                 (bestSwitchLocations[(vp, vh, l_top, l_bottom)])
                             if bestSwitch[(ep, eh2, l_top, l_bottom)] == O_eh1 and \
-                            oBest[(vp, hChild1, l_top, l_bottom)]!=[(None, None, None, None)]:
-                                bestSwitchLocations[(vp, hChild2, l_top, l_bottom)].extend\
-                                (oBest[(vp, hChild1, l_top, l_bottom)])
+                            oBest[(vp, eh1, l_top, l_bottom)]!=[(None, None, None, None)]:
+                                bestSwitchLocations[(vp, eh2, l_top, l_bottom)].extend\
+                                (oBest[(vp, eh1, l_top, l_bottom)])
                         else:  #l_top!=l_bottom
                             bestSwitch[(ep, eh1, l_top, l_bottom)]=Infinity
                             bestSwitch[(ep, eh2, l_top, l_bottom)]=Infinity
-                            bestSwitchLocations[(vp, hChild1, l_top, l_bottom)]=[(None,None, None, None)]
-                            bestSwitchLocations[(vp, hChild2, l_top, l_bottom)]=[(None,None, None, None)]
+                            bestSwitchLocations[(vp, eh1, l_top, l_bottom)]=[(None,None, None, None)]
+                            bestSwitchLocations[(vp, eh2, l_top, l_bottom)]=[(None,None, None, None)]
     
     for key in bestSwitchLocations:
         if bestSwitchLocations[key][0] == (None, None, None, None):
             bestSwitchLocations[key] = bestSwitchLocations[key][1:]
-    # Add the costs of each event to the corresponding eventsDict entry
-    for key in eventsDict:
-        eventsDict[key].append(Minimums[key])
 
     # Use findPath and findBestRoots to construct the DTLOR graph dictionary
     #this finds the optimal solutions (mappings)
@@ -409,16 +359,6 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
     #This picks a random MPR from the optimal ones
     MPR = findOneMPR(treeMin, eventsDict, {})  
 
-    #NOTE: following was legacy from the DTL-rnb
-    # DTL = findPath(treeMin, eventsDict, {}) #this is the DTLOR graph not the reconciliations
-    #The following requires keeping track of the Score dictionary correctly
-    # for key in list(Score.keys()):
-    #     if not key in DTLOR:
-    #         del Score[key]
-
-    # DTLOR, numRecon = addScores(treeMin, DTLOR, Score)  #normalizes frequency score
-    # scores, rec=Greedy(DTLOR, parasiteTree)
-    
     return MPR, min_cost
 
 
@@ -515,9 +455,9 @@ def findOneMPR(tupleList, eventDict, MPR):
      children for each node, and a dictionary to record one MPR, which is returned. 
     """
     mapping=choice(tupleList)
-    event=choice(eventDict[mapping][:-1])  #randomly pick an event
-    MPR[mapping]=event[:-1]  #get rid of frequency score...   
-    for location in event: #there should be two child mappings
+    event=choice(eventDict[mapping])  #randomly pick an event
+    MPR[mapping]=event  
+    for location in event: #there should be eventType,and two child mapping nodes
         if type(location) is tuple and location != (None, None, None, None):
-            findPath([location], eventDict, MPR)
+            findOneMPR([location], eventDict, MPR)
     return MPR
