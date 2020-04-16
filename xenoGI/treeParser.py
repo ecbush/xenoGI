@@ -44,14 +44,14 @@ def rerootingPruning(bpTree, locusMap):
                 locus_map[node.name]="X"  #undetermined
                 count+=1
 
-    print("Percentage of nodes not determined: %.2f"%(count/float(len(postorder))))
+    # print("Percentage of nodes not determined: %.2f"%(count/float(len(postorder))))
     return locus_map
 
 
 def getTreeDictionary(geneTree,tree_dict):
     """
-    get the 4-tup tree format from the dictionary format 
-    and a dictionary with key as parent node and value as the children tuple
+    Input: tuple tree format 
+    Output: dictionary with key as parent node and value as the children tuple
     """
     root=geneTree[0]
     left=geneTree[1]
@@ -63,6 +63,18 @@ def getTreeDictionary(geneTree,tree_dict):
         tree_dict=getTreeDictionary(left, tree_dict)
         tree_dict=getTreeDictionary(right, tree_dict)
         return tree_dict
+        
+def getLeavesInSubtree(startNode, tree_dict):
+    """
+    returns the list of leaves in the subtree rooted at startNode
+    """
+    if startNode not in tree_dict: #it is a tip
+        return [int(startNode)]    #prepare for addGene which needs integer
+    else:
+        left, right=tree_dict[startNode]
+        leaves=getLeavesInSubtree(left, tree_dict)
+        leaves.extend(getLeavesInSubtree(right, tree_dict))
+        return leaves
 
 def left_subtree(tree):
     return tree[1]

@@ -35,78 +35,145 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
     initial_families, degree=createInitialFamily(scoresO)
-    print("The number of initial families is: ")
-    print(len(initial_families))
     locusMap={}
     #construct Family object for the entire problem
     familiesO = Families(tree)
-    distribution=[]
-    init_dist=[]
     #these locusFamId need to be unique across all, start counting from 1
-    locusFamId=1
+    
     initial_families.sort(reverse=True,key=len)  #sort by number of genes in descending order
-    oversized=[family for family in initial_families if len(family)>maxFamilySize]
+    oversizedFamilies=[family for family in initial_families if len(family)>maxFamilySize]
     print("Number of initial families with more than %d genes: %d"%(maxFamilySize,\
-                                len(oversized)))
-    for index, family in enumerate(oversized): 
-        #generate a histogram for the distribution of the degrees of vertices in graph(family)
-        visualize_connectivity(family,"oversized_family_%d"%index,scoresO,degree)
-
-    #parse through the initial families and split big ones
-    size_controlled_families=[]
-    queue=deque(initial_families)
-    while len(queue)>0:
-        family=queue.popleft()
-        if len(family)>maxFamilySize:
-            splitted_families=split_init_family(family, scoresO, maxFamilySize)
-            #leave the new families still too big in the queue
-            queue.extend([family for family in splitted_families if len(family)>maxFamilySize])
-            #append the new families with desirable sizes 
-            size_controlled_families.extend([family for family in splitted_families if len(family)<=maxFamilySize and len(family)!=0])
-        else:
-            size_controlled_families.append(family)
-
-    size_controlled_families.sort(reverse=True,key=len) 
-    # family_sizes=[len(family) for family in size_controlled_families if len(family)>10]
-    # plt.hist(family_sizes,bins=20, color='b', edgecolor='k', alpha=0.65)
-    # plt.gca().set(title='Sizes of families >10', ylabel='frequency')
-    # plt.savefig("initialFamily_histogram/family_sizes")
-    # plt.close()
-
-    for index,family in enumerate(size_controlled_families):
-        if index<5:
-            visualize_connectivity(family,"Top_%d_tree_postsplit"%(index+1),scoresO)
-        #add each initial family as a Family object (still empty)
-        species=list([genesO.numToStrainName(gene) for gene in family])
-
+                                len(oversizedFamilies)))
+    # for index, family in enumerate(oversized): 
+    #     visualize_connectivity(family,"oversized_family_%d"%index,scoresO,degree)
+    def addFamilyHelper(initial_family,locus_families,familyIndex, locusFamId, genesO, tree):
+        species=list([genesO.numToStrainName(gene) for gene in initial_family])
         mrca=findMRCA(species, tree)
-        familiesO.initializeFamily(index,mrca,seedPairL=None) 
-        clustered_fam=clusterLocusFamily(family, genesO,scoresO,paramD,synThresholdD,method)
-        for locusFamily in clustered_fam: #locusFamily contains all the genes in that lf
+        #add each initial family as a Family object (still empty)
+        familiesO.initializeFamily(familyIndex,mrca) 
+        for locusFamily in locus_families: #locusFamily contains all the genes in that lf
             species=[]
             for gene in locusFamily:
                 locusMap[str(gene)]=locusFamId
                 species.append(genesO.numToStrainName(gene))
             lfMrca=findMRCA(species, tree)
-            lf=LocusFamily(index,locusFamId,lfMrca)
+            lf=LocusFamily(familyIndex,locusFamId,lfMrca)
             lf.addGenes(locusFamily, genesO)
             familiesO.addLocusFamily(lf)
             locusFamId+=1
-        #how many locus families are there in this initial family
-        distribution.append(len(clustered_fam))
-        init_dist.append(len(family))
+        familyIndex+=1
+        return locusFamId, familyIndex
+
+    
+    initFam_locusFams=[]
+    for i,family in enumerate(oversizedFamilies):
+        # visualize_connectivity(family,"oversizedFam_%d"%i,scoresO, degree)
+        locus_families=clusterLocusFamily(family, genesO,scoresO,paramD,synThresholdD,method)  #list of lists
+        splittings=splitFamByLocus(family, scoresO,maxFamilySize, locus_families)
+        for j, (family, locus_families) in enumerate(splittings):
+            # visualize_connectivity(family,"%i_postSplit_%d"%(i,j),scoresO)
+            initFam_locusFams.append((len(family),family,locus_families))
+            # locusFamId, familyIndex=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree)
+            
+    for family in initial_families[len(oversizedFamilies):]:
+        locus_families=clusterLocusFamily(family, genesO,scoresO,paramD,synThresholdD,method)
+        initFam_locusFams.append((len(family),family,locus_families))
+        # locusFamId, familyIndex=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree)
+      
+    #resort the whole list of initial families by descending size
+    #this way we make sure the treeFNs in the directory are also ordered
+    initFam_locusFams.sort(reverse=True,key=lambda x: x[0])
+    familyIndex=1
+    locusFamId=1
+    fam_sizes=[]
+    for size, family, locus_families in initFam_locusFams:
+        fam_sizes.append(size)
+        locusFamId, familyIndex=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree)
+    ##plot the distribution of family sizes
+    # plt.hist(fam_sizes,bins=20, color='b', edgecolor='k', alpha=0.65)
+    # plt.gca().set(title='Family size distribution', ylabel='frequency', xlabel="Number of genes")
+    # plt.savefig("initialFamily_histogram/all_fam_sizes")
+    # plt.close()
+    # plt.hist([x for x in fam_sizes if x>20],bins=20, color='b', edgecolor='k', alpha=0.65)
+    # plt.gca().set(title='Family size distribution with more than 20 genes', ylabel='frequency', xlabel="Number of genes")
+    # plt.savefig("initialFamily_histogram/fam_sizes>20")
+    # plt.close()
+    print("The number of intial families is: ")
+    print(familyIndex)
     print("The number of locus families is: ")
     print(locusFamId)
        
-    distribution=Counter(distribution)
-    init_dist=Counter(init_dist)
-    # print("Here is the distribution of the number of locus families each initial family has:")
-    # print(distribution)
-    # print("Distribution of the number of genes in each initial family:")
-    # print(init_dist)
     return familiesO, locusMap
-def split_init_family(family,scoresO,maxFamilySize):
-    #use spectral clustering to break a big family further
+def splitFamByLocus(family, scoresO,maxFamilySize, locus_families):
+    """
+    Returns a list of new smaller families with their locus families
+    in (family, [locus families]) pair
+    """
+    origin_size=len(family)
+    locus_families.sort(reverse=True,key=len)
+    #calculate pairwise RawSc between locus families
+    similarity={}
+    for i in range(len(locus_families)):
+        loc1=locus_families[i]
+        if loc1[0] not in similarity:
+            similarity[loc1[0]]={}
+        for j in range(i+1,len(locus_families)):
+            loc2=locus_families[j]
+            if loc2[0] not in similarity:
+                similarity[loc2[0]]={}
+            maxSc=0
+            for gene1 in loc1:
+                for gene2 in loc2:
+                    if scoresO.isEdgePresentByEndNodes(gene1, gene2):
+                        rawSc=scoresO.getScoreByEndNodes(gene1, gene2, "rawSc")
+                    else: rawSc=0
+                    if rawSc>maxSc: maxSc=rawSc
+            similarity[loc1[0]][loc2[0]]=maxSc  #use the first gene in the loc as identifier
+            similarity[loc2[0]][loc1[0]]=maxSc
+    #fill the buckets greedily
+    allBuckets=[]
+    current_bucket=[]
+    currentSize=0
+    current_loc=None
+    while locus_families!=[]: #while there are still more locus to add
+        if current_loc==None:
+            current_loc=locus_families[0]  #start with the biggest loc fam in queue
+        
+        else: #find the loc with the highest similarity score and not in any bucket yet
+            #current_loc should already be deleted form the list
+            max_ind=np.argmax([similarity[current_loc[0]][other_loc[0]] for other_loc in locus_families])
+            current_loc=locus_families[max_ind]
+        if len(current_loc)>maxFamilySize:
+            print("There is a locus family with size over threshold, putting that as one initial family")
+        #try putting into the current bucket
+        if (currentSize==0) or (currentSize+len(current_loc)<=maxFamilySize):
+            #always allow putting into empty bucket, or if adding to bucket doesn't overflow
+            current_bucket.append(current_loc)
+            currentSize+=len(current_loc)
+            locus_families.remove(current_loc)
+        else:#start a new bucket
+            allBuckets.append(current_bucket) #archive the current one
+            current_bucket=[]
+            currentSize=0
+            current_loc=None
+    allBuckets.append(current_bucket) #archive the current one
+
+    output=[]
+    newSize=0
+    for bucket in allBuckets: #bucket is a list of locus families (also list)
+        newInitialFamily=[gene for locus_family in bucket for gene in locus_family]
+        newSize+=len(newInitialFamily)
+        output.append((newInitialFamily,bucket))
+
+    return output
+def spectral_clustering_family(family,scoresO,maxFamilySize):
+    """
+    use spectral clustering on the raw BLAST score
+     to break a big family further 
+     Warning: some cluster might still be above threshold level, need 
+     to do this iteratively
+    """
+    
     num_clusters=math.ceil(len(family)/float(maxFamilySize))
     num_gene=len(family)
     genes=list(family)
@@ -449,25 +516,30 @@ def getTipMapping(geneTree, genesO):
 
 def parseReconForLocus(reconciliation):
     """
-    return a dictionary mapping each gene node to its locus given by the DTLOR recon
+    Input
+    ---------
+    reconciliation:  DTLOR reconciliation dictionary for the whole gene tree
+    Return
+    ---------
+    gl_map:  a dictionary mapping each gene node to its (top, bottom) loci
+    given by the DTLOR recon
+
+    mappingNodesWithGene:  a list of keys in the reconciliation that contains the gene mapping
     """
     gl_map=dict()
+    mappingNodesWithGene=dict()
     for key in reconciliation.keys():
         gene=key[0]
         locus_t=key[2]
         locus_b=key[3]
         if gene not in gl_map:
             gl_map[gene]=(locus_t,locus_b)
-    return gl_map
+        if gene not in mappingNodesWithGene:
+            mappingNodesWithGene[gene]=[key]
+        else:
+            mappingNodesWithGene[gene].append(key)
+    return gl_map, mappingNodesWithGene
 
-def getLeavesInSubtree(startNode, tree_dict):
-    if startNode not in tree_dict: #it is a tip
-        return [int(startNode)]    #prepare for addGene which needs integer
-    else:
-        left, right=tree_dict[startNode]
-        leaves=getLeavesInSubtree(left, tree_dict)
-        leaves.extend(getLeavesInSubtree(right, tree_dict))
-        return leaves
 
 def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, familiesO, genesO):
     #make sure each node only gets added to the dictionary once
@@ -487,26 +559,101 @@ def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, fami
         
 
     
-    
+def getPartialRecon(reconciliation, startNode, mappingNodes):
+    """
+    Returns a partial dictionary with only key,values pairs
+    corresponding to the sub(gene)tree rooted at startNode
+    """
+    recon={}
+    queue=deque(mappingNodes)
+    while len(queue)>0:
+        currentMapping=queue.popleft()
+        if currentMapping in recon: #already key in there, don't repeat
+            pass 
+        else:  #key, value pair doesn't exist yet
+            value=reconciliation[currentMapping]
+            recon[currentMapping]=value
+            eventType, child1Mapping, child2Mapping=value
+            for child in [child1Mapping,child2Mapping]:
+                if child!=(None, None, None, None):
+                    queue.append(child)
+    return recon
 
-def addOriginFamily(reconciliation, geneTree, originFamiliesO, origin_num, genesO):
-    geneToLocus=parseReconForLocus(reconciliation)
+def addOriginFamily(reconciliation, geneTree, originFamiliesO,genesO):
+    
+    geneToLocus, geneToMappingNodes=parseReconForLocus(reconciliation)
     tree_dict=getTreeDictionary(geneTree,{})
     #construct an origin family for each Origin event, a locus family for each R event
     for gene in geneToLocus.keys():
         locus_t,locus_b=geneToLocus[gene]
-        if locus_t==0:
-            if  locus_b!=0:
+        if locus_t=='*':
+            if  locus_b!='*':  #if you use integer conversion, '*' need to be changed
                 startNode=gene  
                 #one gene only visited once for checking O event
-                originFamiliesO.initializeFamily(origin_num,startNode,seedPairL=None) 
+                #NOTE: geneTree is in tuple tree format
+                #parse the reconciliation to only include the part responsible for origin family
+                recon=getPartialRecon(reconciliation, startNode, geneToMappingNodes[startNode])
+                origin_num=len(originFamiliesO.familiesD)
+                originFamiliesO.initializeFamily(origin_num,startNode,geneTree,recon)
                 #one gene would only be visited once for checking R event as well 
                 #since only one ancester can have O event and we are going down from there
                 getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, originFamiliesO, genesO)
-                origin_num+=1
-    return originFamiliesO, origin_num
-    
+    # return originFamiliesO
+def runDTLORGroup(argT):
+    """
+    Run reconciliation a group of tree files
+    """
+    treeFN_list,speciesTree,locusMap,genesO, D, T, L, O, R= argT
+    outputL = []
+    for treeFN in treeFN_list:
+        optGeneRooting,optMPR = runDTLOR(treeFN,speciesTree,locusMap,genesO, D, T, L, O, R )
+        outputL.append((optGeneRooting,optMPR, treeFN))
+    return outputL
 
+def runDTLOR(treeFN,speciesTree, locusMap,genesO, D, T, L, O, R ):
+    bpTree = Phylo.read(treeFN, 'newick', rooted=False)
+    try:
+        bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
+    except:
+        bpTree.root_with_outgroup(bpTree.get_terminals()[0])
+    tabulate_names(bpTree)   #name internal nodes
+    locus_map=rerootingPruning(bpTree, locusMap)
+    # print("gene to locus map")
+    # print([(term.name, locus_map[term.name]) for term in bpTree.get_terminals()])
+
+    # for term in bpTree.get_terminals(): term.name=term.name+"_"+str(locus_map[term.name])  #rename the tips adding the syntenic loc
+    # Phylo.draw_ascii(bpTree)
+    tuple_geneTree=bioPhyloToTupleTree(bpTree)
+    phi=getTipMapping(tuple_geneTree,genesO)  #gene to species mapping for these specific gene tree
+    
+    all_rootings=get_all_rerootings(tuple_geneTree, locus_map)
+    if all_rootings==[]:  #all rerooting not valid (all nodes have the same loc)
+        all_rootings=[tuple_geneTree]
+    best_score=float('inf')
+    bestMPRs=[]
+    start1 = time.time()
+    #try all the different rerootings and record the ones and their solutions with the best scores
+    # print("The number of rerootings is %d" %len(all_rootings))
+    for rooting in all_rootings:
+        geneTree=rooting
+        # start2 = time.time()
+        MPR,cost=DP(speciesTree, geneTree, phi, locusMap, D, T, L, O, R)
+        # end2 = time.time()
+        # print("The time took to do one reconciliation is: %.4f" %(end2 - start2))
+        if cost<best_score: 
+            #if the score is better than current best
+            #update best score, clear record and add new record
+            best_score=cost
+            bestMPRs=[]
+            bestMPRs.append((geneTree,MPR))
+        elif cost==best_score:
+            bestMPRs.append((geneTree,MPR))
+    #sample one MPR from the MPRs for this specific unrooted tree
+    end1 = time.time()
+    # print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
+    optGeneRooting,optMPR=random.choice(bestMPRs) 
+    return optGeneRooting,optMPR
+    
 
 def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="threshold"):
     #probably read the costs from 
@@ -515,21 +662,19 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     rawFamilyFN = paramD['rawFamilyFN']
     originFamilyFN=paramD['originFamilyFN']
     geneInfoFN = paramD['geneInfoFN']
+    numProcesses = paramD['numProcesses']
 
     # get the num to name dict, only for strains we're looking at.
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT))
     #writing out the initial families to rawFam.out
-    f=open(rawFamilyFN,'w')
-    for fam in familiesO.iterFamilies():
-        f.write(fam.fileStr(genesO)+'\n')
-    f.close()
+    writeFamilies(familiesO,rawFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families written out to %s"%rawFamilyFN)
     speciesTree=deepcopy(tree)
     gtFileStem = 'fam'
     workDir = paramD['geneFamilyTreesDir']
 
-    trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
-    print("Finished making gene trees")
+    # trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
+    # print("Finished making gene trees")
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     D=float(paramD["duplicationCost"])
     T=float(paramD["transferCost"])
@@ -539,65 +684,23 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     print("The parameters used for reconciliation are: D= %.2f, T=%.2f, L=%.2f, O=%.2f, R=%.2f"%(D,T,L,O,R))
     #new families object to record all the origin families
     originFamiliesO = Families(tree)
-    origin_num=0
-    for treeFN in list(sorted(glob.glob(allGtFilePath))): #over all the gene trees in the directory
-    # treeFN= "geneFamilyTrees/fam000124.tre"  #fam000013.tre is not passing
-    # if 1==1:
-        #read in unrooted tree
-        bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-        try:
-            bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
-        except:
-            bpTree.root_with_outgroup(bpTree.get_terminals()[0])
-        tabulate_names(bpTree)   #name internal nodes
-        locus_map=rerootingPruning(bpTree, locusMap)
-        # print("gene to locus map")
-        # print([(term.name, locus_map[term.name]) for term in bpTree.get_terminals()])
+    allTreeFN=list(sorted(glob.glob(allGtFilePath)))
+    # make list of sets of arguments to be passed to p.map. There
+    # should be numProcesses sets.
+    argumentL = [([],speciesTree,locusMap,genesO, D, T, L, O, R) for i in range(numProcesses)]
 
-        # for term in bpTree.get_terminals(): term.name=term.name+"_"+str(locus_map[term.name])  #rename the tips adding the syntenic loc
-        # Phylo.draw_ascii(bpTree)
-        tuple_geneTree=bioPhyloToTupleTree(bpTree)
-        phi=getTipMapping(tuple_geneTree,genesO)  #gene to species mapping for these specific gene tree
+    #distribute all gene tree files into numProcesses separate processes
+    for i,treeFN in enumerate(allTreeFN):
+        argumentL[i%numProcesses][0].append(treeFN)
         
-        all_rootings=get_all_rerootings(tuple_geneTree, locus_map)
-        if all_rootings==[]:  #all rerooting not valid (all nodes have the same loc)
-            all_rootings=[tuple_geneTree]
-        best_score=float('inf')
-        bestMPRs=[]
-        start1 = time.time()
-        #try all the different rerootings and record the ones and their solutions with the best scores
-        print("The number of rerootings is %d" %len(all_rootings))
-        for rooting in all_rootings:
-            geneTree=rooting
-            start2 = time.time()
-            MPR,cost=DP(speciesTree, geneTree, phi, locusMap, D, T, L, O, R)
-            end2 = time.time()
-            # print("The time took to do one reconciliation is: %.4f" %(end2 - start2))
-            if cost<best_score: 
-                #if the score is better than current best
-                #update best score, clear record and add new record
-                best_score=cost
-                bestMPRs=[]
-                bestMPRs.append((geneTree,MPR))
-            elif cost==best_score:
-                bestMPRs.append((geneTree,MPR))
-        #sample one MPR from the MPRs for this specific unrooted tree
-        end1 = time.time()
-        print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
-        optGeneRooting,optMPR=random.choice(bestMPRs)  #need to save these to some output  #writeTree(tree,fileName)  #pickle to dump dicts
-    
-        #update originFamiliesO object
-        #NOTE: this can be after all reconciliation is done in parallel
-        start = time.time()
-        originFamiliesO, origin_num= addOriginFamily(optMPR, optGeneRooting, originFamiliesO, origin_num, genesO)
-        end = time.time()
-        print("The time took to construct the origins family is: %.2f" %(end - start))
-        print("Constructed origin families for %s" %treeFN)
-
-    f=open(originFamilyFN,'w')
-    for fam in originFamiliesO.iterFamilies():
-        f.write(fam.fileStr(genesO)+'\n')
-    f.close()
+    with Pool(processes=numProcesses) as p:
+        # store the results to scoresO as they come in
+        for outputL in p.imap_unordered(runDTLORGroup, argumentL):  #each process generates a output list for a group of trees
+            for optGeneRooting, optMPR, treeFN in outputL:
+            #update originFamiliesO object
+                addOriginFamily(optMPR, optGeneRooting, originFamiliesO, genesO) #we know this is called
+     
+    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
     print("Origin families written out to %s"%(originFamilyFN))
 
     return 
