@@ -223,7 +223,7 @@ def makeIslandsWrapper(paramD):
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     
     ## read gene families
-    familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
+    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
     ## group gene families into islands
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
@@ -402,7 +402,13 @@ def debugWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
-    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    
+    ## read gene families
+    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+
+    L=[]
+    for lf in familiesO.iterLocusFamilies():
+        L.append(lf.lfMrca)
     
     code.interact(local=locals())
 
