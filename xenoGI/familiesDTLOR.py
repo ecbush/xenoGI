@@ -31,7 +31,7 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     '''
     #NOTE: temporary threshold for maximum size of gene tree, if above, split with kmeans
     #should note how many intial families were above the threshold initially 
-    maxFamilySize=70
+    maxFamilySize=60
     
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
     initial_families, degree=createInitialFamily(scoresO)
@@ -559,27 +559,28 @@ def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, fami
         
 
     
-def getPartialRecon(reconciliation, startNode, mappingNodes):
+def getPartialRecon(reconciliation,mappingNodes):
     """
     Returns a partial dictionary with only key,values pairs
-    corresponding to the sub(gene)tree rooted at startNode
+    corresponding to the sub(gene)tree rooted at startNode. 
+    Key is a gene node, value is (species branch, locus)
     """
-    recon={}
+  
+    nodeMap={}
     queue=deque(mappingNodes)
     while len(queue)>0:
         currentMapping=queue.popleft()
-        if currentMapping in recon: #already key in there, don't repeat
-            pass 
-        else:  #key, value pair doesn't exist yet
-            value=reconciliation[currentMapping]
-            recon[currentMapping]=value
-            eventType, child1Mapping, child2Mapping=value
-            for child in [child1Mapping,child2Mapping]:
-                if child!=(None, None, None, None):
-                    queue.append(child)
-    return recon
+        value=reconciliation[currentMapping]
+        eventType, child1Mapping, child2Mapping=value
+        geneBr, speciesBr, tl, bl=currentMapping
+        if eventType!='L':  #if it is a loss event the gene node has not been mapped to the bottom 
+            nodeMap[geneBr]=(speciesBr,bl)
+        for child in [child1Mapping,child2Mapping]:
+            if child!=(None, None, None, None):
+                queue.append(child)
+    return nodeMap
 
-def addOriginFamily(reconciliation, geneTree, originFamiliesO,genesO):
+def addOriginFamily(reconciliation, geneTree,originFamiliesO,genesO):
     
     geneToLocus, geneToMappingNodes=parseReconForLocus(reconciliation)
     tree_dict=getTreeDictionary(geneTree,{})
@@ -592,13 +593,15 @@ def addOriginFamily(reconciliation, geneTree, originFamiliesO,genesO):
                 #one gene only visited once for checking O event
                 #NOTE: geneTree is in tuple tree format
                 #parse the reconciliation to only include the part responsible for origin family
-                recon=getPartialRecon(reconciliation, startNode, geneToMappingNodes[startNode])
+                recon=getPartialRecon(reconciliation, geneToMappingNodes[startNode])
+                print("the partial reconciliation is:")
+                print(recon)
                 origin_num=len(originFamiliesO.familiesD)
                 originFamiliesO.initializeFamily(origin_num,startNode,geneTree,recon)
                 #one gene would only be visited once for checking R event as well 
                 #since only one ancester can have O event and we are going down from there
                 getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, originFamiliesO, genesO)
-    # return originFamiliesO
+ 
 def runDTLORGroup(argT):
     """
     Run reconciliation a group of tree files
@@ -617,7 +620,11 @@ def runDTLOR(treeFN,speciesTree, locusMap,genesO, D, T, L, O, R ):
     except:
         bpTree.root_with_outgroup(bpTree.get_terminals()[0])
     tabulate_names(bpTree)   #name internal nodes
-    locus_map=rerootingPruning(bpTree, locusMap)
+    if is_binary(bpTree):
+        pass
+    else: print(treeFN)
+    assert is_binary(bpTree)
+    locus_map=rerootingPruning(bpTree, locusMap, treeFN)
     # print("gene to locus map")
     # print([(term.name, locus_map[term.name]) for term in bpTree.get_terminals()])
 
@@ -652,6 +659,7 @@ def runDTLOR(treeFN,speciesTree, locusMap,genesO, D, T, L, O, R ):
     end1 = time.time()
     # print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
     optGeneRooting,optMPR=random.choice(bestMPRs) 
+
     return optGeneRooting,optMPR
     
 
@@ -685,12 +693,47 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     #new families object to record all the origin families
     originFamiliesO = Families(tree)
     allTreeFN=list(sorted(glob.glob(allGtFilePath)))
+    allTreeFN=allTreeFN[-1200:-1100]
+
+    binaryTreeFN=[]
+    no=0
+    yes=0
+    for treeFN in allTreeFN:
+        bpTree = Phylo.read(treeFN, 'newick', rooted=False)
+        try:
+            bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
+        except:
+            bpTree.root_with_outgroup(bpTree.get_terminals()[0])
+        tabulate_names(bpTree)   #name internal nodes
+        if not is_binary(bpTree): 
+            #get fam num
+            prefix=workDir+"/"+gtFileStem
+            suffix=".tre"
+            famNum=treeFN.replace(prefix,'')
+            famNum=famNum.replace(suffix,'')
+            famNum=int(famNum.lstrip('0'))
+            init_fam=familiesO.getFamily(famNum)
+            newFamNum=len(originFamiliesO.familiesD)
+            tuple_geneTree=bioPhyloToTupleTree(bpTree)
+            originFamiliesO.initializeFamily(newFamNum,init_fam.mrca,tuple_geneTree)
+            for locusFamily in init_fam.getLocusFamilies():
+                locusFamily.famNum=newFamNum
+                originFamiliesO.addLocusFamily(locusFamily)
+            no+=1
+        else:
+            yes+=1
+            binaryTreeFN.append(treeFN)
+    print(no)
+    print(yes)
+    print("Number of binary trees")
+    print(len(binaryTreeFN))
+    print("Done adding origin families from nonbinary trees")
     # make list of sets of arguments to be passed to p.map. There
     # should be numProcesses sets.
     argumentL = [([],speciesTree,locusMap,genesO, D, T, L, O, R) for i in range(numProcesses)]
 
     #distribute all gene tree files into numProcesses separate processes
-    for i,treeFN in enumerate(allTreeFN):
+    for i,treeFN in enumerate(binaryTreeFN):
         argumentL[i%numProcesses][0].append(treeFN)
         
     with Pool(processes=numProcesses) as p:

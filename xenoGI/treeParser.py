@@ -10,6 +10,19 @@ from copy import deepcopy
 
 
 tree=("root",("left",("HI",(),(),2),("HA",(),(),1),1),('right',(),(),2),3)
+def is_binary(bpTree):
+    """
+    checks if a rooted tree is binary in newick form
+    """
+    preorder=list(bpTree.find_clades(order='preorder'))
+    for node in preorder:
+        children=[child.name for child in node]
+        if len(children)==0 or len(children)==2:
+            continue
+        else:
+            return False
+    return True
+
 
 def tabulate_names(tree):
     """
@@ -21,7 +34,7 @@ def tabulate_names(tree):
         else:
             clade.name = "Node_"+str(idx)
  
-def rerootingPruning(bpTree, locusMap):
+def rerootingPruning(bpTree, locusMap, treeFN):
     """
     Try assigning syntenic locations to internal nodes 
     in the input (arbitrarily rooted) tree. If a loc can be assigned, we are not
@@ -36,6 +49,11 @@ def rerootingPruning(bpTree, locusMap):
         if node.name in locus_map: pass
 
         else:
+            children=[child.name for child in node]
+            if len(children)!=2:
+                print("Debug pruning")
+                print(treeFN)
+                return locus_map
             child1, child2=[child.name for child in node]
             if locus_map[child1]==locus_map[child2]:
                 locus_map[node.name]=locus_map[child1]
