@@ -252,7 +252,7 @@ arguments so we can pass in different things in different contexts
     genesO = genomes.genes(paramD['geneInfoFN'])
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
+    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],tree)
     
     ## analysis
@@ -377,7 +377,7 @@ def interactiveAnalysisWrapper(paramD):
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])    
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
-    familiesO = families.readFamilies(paramD['familyFN'],tree,genesO)
+    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],tree)
     gene2FamIslandD = createGene2FamIslandD(islandByNodeD,familiesO)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
@@ -406,10 +406,23 @@ def debugWrapper(paramD):
     ## read gene families
     familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
-    L=[]
-    for lf in familiesO.iterLocusFamilies():
-        L.append(lf.lfMrca)
+    ## load stuff
+    genesO = genomes.genes(paramD['geneInfoFN'])
+    genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+
+    allGenesS = set(genesO.iterGenes())
+    famGenesS = familiesO.getAllGenes()
+    missingGenesS = allGenesS - famGenesS
     
+    initFamO = families.readFamilies(paramD['rawFamilyFN'],tree,genesO)
+
+    def findFam(gene,famO):
+        for lfO in famO.iterLocusFamilies():
+            if gene in set(lfO.iterGenes()):
+                print(gene,lfO.famNum,lfO.locusFamNum)
+        
     code.interact(local=locals())
 
     
@@ -426,4 +439,3 @@ simulations. This is not really intended for the end user...'''
     moduleT=(parameters,trees,genomes,families,islands,analysis)
     
     xgiIslandGeneSetByNodeL,simIslandGeneSetByNodeL=validationSim.runValidation(moduleT,'simParams.py','params.py')
-
