@@ -1,12 +1,13 @@
 
 class LocusFamily:
-    def __init__(self, famNum, locusFamNum, lfMrca):
+    def __init__(self, famNum, locusFamNum, lfMrca,locusNum=None):
         '''Initialize a LocusFamily object with a family number, a LocusFamily
 number, and the mrca for this locus family (which may differ from the
 mrca for its family.'''
         self.famNum = famNum
-        self.locusFamNum = locusFamNum
+        self.locusFamNum = locusFamNum # a unique number for each lf
         self.lfMrca = lfMrca
+        self.locusNum = locusNum # indicates location, several lf may share
         self.geneD = {}
 
     def addGene(self, gene,genesO):
@@ -48,7 +49,7 @@ occurs.'''
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
 gene2...
         '''
-        outL=[str(self.locusFamNum),self.lfMrca]
+        outL=[str(self.locusFamNum),self.lfMrca,str(self.locusNum)]
         
         for geneNum in self.iterGenes():
             outL.append(genesO.numToName(geneNum))
@@ -163,7 +164,6 @@ class Families:
         ## locusFamiliesD has key locusFamNum and value a LocusFamily
         ## object. familiesD has key famNum and value
         ## a Family object.
-
         
     def initializeFamily(self,famNum,mrca,geneTree=None,recon=None):
         '''Set up an entry for family famNum.'''

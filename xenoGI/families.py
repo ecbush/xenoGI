@@ -947,11 +947,12 @@ def readFamilies(familyFN,tree,genesO):
             lfSplitL = lfStr.rstrip().split(',')
             locusFamNum=int(lfSplitL[0])
             lfMrca = lfSplitL[1]
+            locusNum = eval(lfSplitL[2])
             geneL=[]
-            for geneName in lfSplitL[2:]:
+            for geneName in lfSplitL[3:]:
                 geneNum = int(geneName.split('_')[0])
                 geneL.append(geneNum)
-            lfO = LocusFamily(famNum,locusFamNum,lfMrca)
+            lfO = LocusFamily(famNum,locusFamNum,lfMrca,locusNum)
             lfO.addGenes(geneL,genesO)
             familiesO.addLocusFamily(lfO)
 
