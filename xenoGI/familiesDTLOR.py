@@ -32,9 +32,8 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     #NOTE: temporary threshold for maximum size of gene tree, if above, split with kmeans
     #should note how many intial families were above the threshold initially 
     maxFamilySize=60
-    
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
-    initial_families, degree=createInitialFamily(scoresO)
+    initial_families, degree=createInitialFamily(scoresO, genesO)
     locusMap={}
     #construct Family object for the entire problem
     familiesO = Families(tree)
@@ -46,7 +45,8 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
                                 len(oversizedFamilies)))
     # for index, family in enumerate(oversized): 
     #     visualize_connectivity(family,"oversized_family_%d"%index,scoresO,degree)
-    def addFamilyHelper(initial_family,locus_families,familyIndex, locusFamId, genesO, tree):
+ 
+    def addFamilyHelper(initial_family,locus_families,familyIndex, locusFamId, genesO, tree,totalAddedTolocusFamilies):
         species=list([genesO.numToStrainName(gene) for gene in initial_family])
         mrca=findMRCA(species, tree)
         #add each initial family as a Family object (still empty)
@@ -59,10 +59,11 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
             lfMrca=findMRCA(species, tree)
             lf=LocusFamily(familyIndex,locusFamId,lfMrca)
             lf.addGenes(locusFamily, genesO)
+            totalAddedTolocusFamilies+=len(locusFamily)
             familiesO.addLocusFamily(lf)
             locusFamId+=1
         familyIndex+=1
-        return locusFamId, familyIndex
+        return locusFamId, familyIndex,totalAddedTolocusFamilies
 
     
     initFam_locusFams=[]
@@ -86,18 +87,12 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     familyIndex=1
     locusFamId=1
     fam_sizes=[]
+    totalAddedTolocusFamilies=0
     for size, family, locus_families in initFam_locusFams:
         fam_sizes.append(size)
-        locusFamId, familyIndex=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree)
-    ##plot the distribution of family sizes
-    # plt.hist(fam_sizes,bins=20, color='b', edgecolor='k', alpha=0.65)
-    # plt.gca().set(title='Family size distribution', ylabel='frequency', xlabel="Number of genes")
-    # plt.savefig("initialFamily_histogram/all_fam_sizes")
-    # plt.close()
-    # plt.hist([x for x in fam_sizes if x>20],bins=20, color='b', edgecolor='k', alpha=0.65)
-    # plt.gca().set(title='Family size distribution with more than 20 genes', ylabel='frequency', xlabel="Number of genes")
-    # plt.savefig("initialFamily_histogram/fam_sizes>20")
-    # plt.close()
+        locusFamId, familyIndex,totalAddedTolocusFamilies=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree,totalAddedTolocusFamilies)
+    print("Number of families with 1 gene")
+    print(len([x for x in fam_sizes if x==1]))
     print("The number of intial families is: ")
     print(familyIndex)
     print("The number of locus families is: ")
@@ -267,7 +262,7 @@ def findLCA(specie1, specie2, tree):
 
 
 
-def createInitialFamily(scoresO):
+def createInitialFamily(scoresO, genesO):
     '''
     Input
     ------------------------------------------------
@@ -300,19 +295,23 @@ def createInitialFamily(scoresO):
                     temp = stronglyConnected(temp, i, visited) 
         
         return temp 
-
+    allGenes=list(genesO.iterGenes())
     scoresO.createNodeConnectD() 
     connectedGenes=list(scoresO.nodeConnectD.keys())
-    
     initFamily=[]
     visited=set()
-    for gene in connectedGenes: 
-        if gene not in visited: 
-            temp =set()
-            newFam=stronglyConnected(temp, gene, visited)
-            
-            initFamily.append(newFam) 
-    
+    for gene in allGenes: 
+        if gene in scoresO.nodeConnectD:
+            if gene not in visited: 
+                temp =set()
+                newFam=stronglyConnected(temp, gene, visited)
+                
+                initFamily.append(newFam) 
+        else:
+            fam=set()
+            fam.add(gene)
+            initFamily.append(fam)
+  
     return initFamily, degree
 
 
@@ -540,25 +539,44 @@ def parseReconForLocus(reconciliation):
             mappingNodesWithGene[gene].append(key)
     return gl_map, mappingNodesWithGene
 
-
-def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, familiesO, genesO):
-    #make sure each node only gets added to the dictionary once
-    #get the top and bottom locus of the current gene node branch
+def getMRCAforOR(startNode, tree_dict, geneToLocus,MRCA):
+    """
+    populates the MRCA map from gene leaf to the gene node of the last O or R event
+    from it to the root
+    """
     locus_t,locus_b=geneToLocus[startNode]
     if locus_b!=locus_t:
-        #new locus family with the current gene node as the MRCA
-        lf=LocusFamily(origin_num,int(locus_b),startNode)
         leaves= getLeavesInSubtree(startNode, tree_dict)
-        lf.addGenes(leaves, genesO)
-        familiesO.addLocusFamily(lf)
-    
+        for leaf in leaves:
+            MRCA[leaf]=startNode
     if startNode in tree_dict:
         left, right=tree_dict[startNode]
-        getLocusFamiliesInOrigin(left, tree_dict, geneToLocus, origin_num, familiesO, genesO)
-        getLocusFamiliesInOrigin(right, tree_dict, geneToLocus, origin_num, familiesO, genesO)
-        
+        getMRCAforOR(left, tree_dict, geneToLocus, MRCA)
+        getMRCAforOR(right, tree_dict, geneToLocus, MRCA)
 
     
+
+def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, familiesO, genesO, recon):
+    LeaftoMRCA={}
+    getMRCAforOR(startNode,tree_dict,geneToLocus,LeaftoMRCA)
+    MRCAtoLeaves={}
+    for gene, MRCA in LeaftoMRCA.items():
+        if MRCA in MRCAtoLeaves:
+            MRCAtoLeaves[MRCA].append(gene)
+        else:
+            MRCAtoLeaves[MRCA]=[gene]
+
+    for startNode in MRCAtoLeaves:
+        _,locus_b=geneToLocus[startNode]
+        _,speciesBr,_=recon[startNode]
+        #new locus family with the current gene node's recon mapping species node/branch as the MRCA
+        newLocusNum=familiesO.getNumLocusFamilies()
+        # lf=LocusFamily(origin_num,int(locus_b),speciesBr)
+        lf=LocusFamily(origin_num,newLocusNum,speciesBr)
+        leaves= MRCAtoLeaves[startNode]
+        lf.addGenes(leaves, genesO)
+        familiesO.addLocusFamily(lf)
+
 def getPartialRecon(reconciliation,mappingNodes):
     """
     Returns a partial dictionary with only key,values pairs
@@ -574,7 +592,7 @@ def getPartialRecon(reconciliation,mappingNodes):
         eventType, child1Mapping, child2Mapping=value
         geneBr, speciesBr, tl, bl=currentMapping
         if eventType!='L':  #if it is a loss event the gene node has not been mapped to the bottom 
-            nodeMap[geneBr]=(speciesBr,bl)
+            nodeMap[geneBr]=(eventType,speciesBr,bl)
         for child in [child1Mapping,child2Mapping]:
             if child!=(None, None, None, None):
                 queue.append(child)
@@ -584,24 +602,24 @@ def addOriginFamily(reconciliation, geneTree,originFamiliesO,genesO):
     
     geneToLocus, geneToMappingNodes=parseReconForLocus(reconciliation)
     tree_dict=getTreeDictionary(geneTree,{})
+    print(len(getLeavesInSubtree(geneTree[0], tree_dict)))
+    before=len(originFamiliesO.getAllGenes())
     #construct an origin family for each Origin event, a locus family for each R event
     for gene in geneToLocus.keys():
         locus_t,locus_b=geneToLocus[gene]
         if locus_t=='*':
             if  locus_b!='*':  #if you use integer conversion, '*' need to be changed
                 startNode=gene  
-                #one gene only visited once for checking O event
-                #NOTE: geneTree is in tuple tree format
                 #parse the reconciliation to only include the part responsible for origin family
                 recon=getPartialRecon(reconciliation, geneToMappingNodes[startNode])
-                print("the partial reconciliation is:")
-                print(recon)
-                origin_num=len(originFamiliesO.familiesD)
+                origin_num=originFamiliesO.getNumFamilies()
                 originFamiliesO.initializeFamily(origin_num,startNode,geneTree,recon)
-                #one gene would only be visited once for checking R event as well 
-                #since only one ancester can have O event and we are going down from there
-                getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, originFamiliesO, genesO)
- 
+                getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, originFamiliesO, genesO, recon)
+
+    after=len(originFamiliesO.getAllGenes())
+    print(after)
+    if after==before:
+        print("did not update origin families")
 def runDTLORGroup(argT):
     """
     Run reconciliation a group of tree files
@@ -624,7 +642,7 @@ def runDTLOR(treeFN,speciesTree, locusMap,genesO, D, T, L, O, R ):
         pass
     else: print(treeFN)
     assert is_binary(bpTree)
-    locus_map=rerootingPruning(bpTree, locusMap, treeFN)
+    locus_map=rerootingPruning(bpTree, locusMap)
     # print("gene to locus map")
     # print([(term.name, locus_map[term.name]) for term in bpTree.get_terminals()])
 
@@ -693,7 +711,6 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     #new families object to record all the origin families
     originFamiliesO = Families(tree)
     allTreeFN=list(sorted(glob.glob(allGtFilePath)))
-    allTreeFN=allTreeFN[-1200:-1100]
 
     binaryTreeFN=[]
     no=0
@@ -723,28 +740,31 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
         else:
             yes+=1
             binaryTreeFN.append(treeFN)
-    print(no)
-    print(yes)
     print("Number of binary trees")
     print(len(binaryTreeFN))
     print("Done adding origin families from nonbinary trees")
+
     # make list of sets of arguments to be passed to p.map. There
     # should be numProcesses sets.
+    binaryTreeFN=binaryTreeFN[-100:]
+    print(binaryTreeFN[-5:])
+    # binaryTreeFN=['geneFamilyTrees/fam003137.tre']
+    print(len(originFamiliesO.getAllGenes()))
     argumentL = [([],speciesTree,locusMap,genesO, D, T, L, O, R) for i in range(numProcesses)]
-
     #distribute all gene tree files into numProcesses separate processes
     for i,treeFN in enumerate(binaryTreeFN):
         argumentL[i%numProcesses][0].append(treeFN)
-        
+    
     with Pool(processes=numProcesses) as p:
         # store the results to scoresO as they come in
         for outputL in p.imap_unordered(runDTLORGroup, argumentL):  #each process generates a output list for a group of trees
             for optGeneRooting, optMPR, treeFN in outputL:
-            #update originFamiliesO object
+                #update originFamiliesO object
+                print(treeFN)
                 addOriginFamily(optMPR, optGeneRooting, originFamiliesO, genesO) #we know this is called
-     
-    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
-    print("Origin families written out to %s"%(originFamilyFN))
+    print(len(originFamiliesO.getAllGenes()))
+    # writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
+    # print("Origin families written out to %s"%(originFamilyFN))
 
     return 
 
