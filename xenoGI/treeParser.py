@@ -34,7 +34,7 @@ def tabulate_names(tree):
         else:
             clade.name = "Node_"+str(idx)
  
-def rerootingPruning(bpTree, locusMap, treeFN):
+def rerootingPruning(bpTree, locusMap):
     """
     Try assigning syntenic locations to internal nodes 
     in the input (arbitrarily rooted) tree. If a loc can be assigned, we are not
@@ -49,11 +49,6 @@ def rerootingPruning(bpTree, locusMap, treeFN):
         if node.name in locus_map: pass
 
         else:
-            children=[child.name for child in node]
-            if len(children)!=2:
-                print("Debug pruning")
-                print(treeFN)
-                return locus_map
             child1, child2=[child.name for child in node]
             if locus_map[child1]==locus_map[child2]:
                 locus_map[node.name]=locus_map[child1]

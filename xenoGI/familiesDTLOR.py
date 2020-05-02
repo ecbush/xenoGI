@@ -34,6 +34,8 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     maxFamilySize=60
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
     initial_families, degree=createInitialFamily(scoresO, genesO)
+    print("Number of initial families before size control")
+    print(len(initial_families))
     locusMap={}
     #construct Family object for the entire problem
     familiesO = Families(tree)
@@ -74,12 +76,12 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
         for j, (family, locus_families) in enumerate(splittings):
             # visualize_connectivity(family,"%i_postSplit_%d"%(i,j),scoresO)
             initFam_locusFams.append((len(family),family,locus_families))
-            # locusFamId, familyIndex=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree)
+          
             
     for family in initial_families[len(oversizedFamilies):]:
         locus_families=clusterLocusFamily(family, genesO,scoresO,paramD,synThresholdD,method)
         initFam_locusFams.append((len(family),family,locus_families))
-        # locusFamId, familyIndex=addFamilyHelper(family,locus_families,familyIndex, locusFamId, genesO, tree)
+
       
     #resort the whole list of initial families by descending size
     #this way we make sure the treeFNs in the directory are also ordered
@@ -97,7 +99,8 @@ def createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL,paramD,method="thres
     print(familyIndex)
     print("The number of locus families is: ")
     print(locusFamId)
-       
+    print("genes in genesO: %d"%len(set(genesO.iterGenes())))
+    print("genes in initial familiesO: %d"%len(familiesO.getAllGenes()))
     return familiesO, locusMap
 def splitFamByLocus(family, scoresO,maxFamilySize, locus_families):
     """
@@ -557,6 +560,10 @@ def getMRCAforOR(startNode, tree_dict, geneToLocus,MRCA):
     
 
 def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, familiesO, genesO, recon):
+    """
+    Helper function that adds the locus families to originFamiliesO (familiesO). These locus families
+    belong in the origin family object that starts with startNode
+    """
     LeaftoMRCA={}
     getMRCAforOR(startNode,tree_dict,geneToLocus,LeaftoMRCA)
     MRCAtoLeaves={}
@@ -565,14 +572,13 @@ def getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, fami
             MRCAtoLeaves[MRCA].append(gene)
         else:
             MRCAtoLeaves[MRCA]=[gene]
-
     for startNode in MRCAtoLeaves:
         _,locus_b=geneToLocus[startNode]
         _,speciesBr,_=recon[startNode]
         #new locus family with the current gene node's recon mapping species node/branch as the MRCA
         newLocusNum=familiesO.getNumLocusFamilies()
         # lf=LocusFamily(origin_num,int(locus_b),speciesBr)
-        lf=LocusFamily(origin_num,newLocusNum,speciesBr)
+        lf=LocusFamily(origin_num,newLocusNum,speciesBr, int(locus_b))
         leaves= MRCAtoLeaves[startNode]
         lf.addGenes(leaves, genesO)
         familiesO.addLocusFamily(lf)
@@ -598,12 +604,11 @@ def getPartialRecon(reconciliation,mappingNodes):
                 queue.append(child)
     return nodeMap
 
-def addOriginFamily(reconciliation, geneTree,originFamiliesO,genesO):
+def addOriginFamily(reconciliation, geneTree,originFamiliesO,genesO, treeFN):
     
     geneToLocus, geneToMappingNodes=parseReconForLocus(reconciliation)
     tree_dict=getTreeDictionary(geneTree,{})
-    print(len(getLeavesInSubtree(geneTree[0], tree_dict)))
-    before=len(originFamiliesO.getAllGenes())
+   
     #construct an origin family for each Origin event, a locus family for each R event
     for gene in geneToLocus.keys():
         locus_t,locus_b=geneToLocus[gene]
@@ -613,13 +618,11 @@ def addOriginFamily(reconciliation, geneTree,originFamiliesO,genesO):
                 #parse the reconciliation to only include the part responsible for origin family
                 recon=getPartialRecon(reconciliation, geneToMappingNodes[startNode])
                 origin_num=originFamiliesO.getNumFamilies()
-                originFamiliesO.initializeFamily(origin_num,startNode,geneTree,recon)
+                _,speciesBr,_=recon[startNode]
+                originFamiliesO.initializeFamily(origin_num,speciesBr,geneTree,recon) #use the species for MRCA
                 getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, originFamiliesO, genesO, recon)
-
-    after=len(originFamiliesO.getAllGenes())
-    print(after)
-    if after==before:
-        print("did not update origin families")
+   
+ 
 def runDTLORGroup(argT):
     """
     Run reconciliation a group of tree files
@@ -699,8 +702,9 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     gtFileStem = 'fam'
     workDir = paramD['geneFamilyTreesDir']
 
-    # trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
-    # print("Finished making gene trees")
+    trees.makeGeneFamilyTrees(paramD,genesO,familiesO) #create a directory and a gene tree for each initial family 
+    
+    print("Finished making gene trees")
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     D=float(paramD["duplicationCost"])
     T=float(paramD["transferCost"])
@@ -710,8 +714,18 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
     print("The parameters used for reconciliation are: D= %.2f, T=%.2f, L=%.2f, O=%.2f, R=%.2f"%(D,T,L,O,R))
     #new families object to record all the origin families
     originFamiliesO = Families(tree)
+    #add single-gene initial family as their own origin family
+    for init_family in familiesO.iterFamilies():
+        familyT = tuple(init_family.iterGenes())  
+        if len(familyT) == 1:
+            newFamNum=originFamiliesO.getNumFamilies()
+            originFamiliesO.initializeFamily(newFamNum,init_family.mrca)
+            for locusFamily in init_family.getLocusFamilies():
+                locusFamily.famNum=newFamNum
+                locusFamily.locusFamNum=originFamiliesO.getNumLocusFamilies()
+                originFamiliesO.addLocusFamily(locusFamily)
+         
     allTreeFN=list(sorted(glob.glob(allGtFilePath)))
-
     binaryTreeFN=[]
     no=0
     yes=0
@@ -735,6 +749,7 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
             originFamiliesO.initializeFamily(newFamNum,init_fam.mrca,tuple_geneTree)
             for locusFamily in init_fam.getLocusFamilies():
                 locusFamily.famNum=newFamNum
+                locusFamily.locusFamNum=originFamiliesO.getNumLocusFamilies()
                 originFamiliesO.addLocusFamily(locusFamily)
             no+=1
         else:
@@ -746,25 +761,27 @@ def reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="thr
 
     # make list of sets of arguments to be passed to p.map. There
     # should be numProcesses sets.
-    binaryTreeFN=binaryTreeFN[-100:]
-    print(binaryTreeFN[-5:])
-    # binaryTreeFN=['geneFamilyTrees/fam003137.tre']
-    print(len(originFamiliesO.getAllGenes()))
     argumentL = [([],speciesTree,locusMap,genesO, D, T, L, O, R) for i in range(numProcesses)]
     #distribute all gene tree files into numProcesses separate processes
     for i,treeFN in enumerate(binaryTreeFN):
         argumentL[i%numProcesses][0].append(treeFN)
     
+    recon_out=[]
     with Pool(processes=numProcesses) as p:
         # store the results to scoresO as they come in
         for outputL in p.imap_unordered(runDTLORGroup, argumentL):  #each process generates a output list for a group of trees
-            for optGeneRooting, optMPR, treeFN in outputL:
-                #update originFamiliesO object
-                print(treeFN)
-                addOriginFamily(optMPR, optGeneRooting, originFamiliesO, genesO) #we know this is called
-    print(len(originFamiliesO.getAllGenes()))
-    # writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
-    # print("Origin families written out to %s"%(originFamilyFN))
+            recon_out.append(outputL)
+
+    print("finished multiprocessing")
+    recon_out=recon_out[::-1]  #reversing the order changes which trees are not adding, which means multiprocess is not where things are wrong
+    for outputL in recon_out:
+        for optGeneRooting, optMPR, treeFN in outputL:
+            #update originFamiliesO object
+            addOriginFamily(optMPR, optGeneRooting, originFamiliesO, genesO, treeFN) #we know this is called
+
+    print("Number of genes in origin familiesO: %d"%len(originFamiliesO.getAllGenes()))
+    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
+    print("Origin families written out to %s"%(originFamilyFN))
 
     return 
 
