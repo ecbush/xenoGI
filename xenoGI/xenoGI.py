@@ -210,11 +210,8 @@ def makeFamiliesDTLORWrapper(paramD):
     aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
     ## make gene families
-    # with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-    # familiesO, _ = familiesDTLOR.createDTLORFamiliesO(tree,scoresO,genesO,aabrhHardCoreL, paramD, method="threshold")
-    familiesDTLOR.reconcile(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,method="threshold")
-    # rawFam=familiesDTLOR.createInitialFamily(scoresO)
-
+    with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
+        originFamiliesO = familiesDTLOR.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
         
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
@@ -291,11 +288,12 @@ def interactiveAnalysisWrapper(paramD):
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
     
-    def printFam(familyNum,fileF=sys.stdout):
+    def printFam(familyNum,familiesO,fileF=sys.stdout):
         '''This is a wrapper to provide an easy way to print relevant info on
-    a family. For ease of use, we take only one argument, assuming all the
-    other required stuff is available at the top level. familyNum is the
-    numerical identifier of a family.
+    a family. For ease of use, we take only two arguments, assuming
+    all the other required stuff is available at the top
+    level. familyNum is the numerical identifier of a family, and
+    familiesO is a family object.
         '''
                     
         print("Family",familyNum,file=fileF)
@@ -412,9 +410,9 @@ def debugWrapper(paramD):
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
     familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
-    allGenesS = set(genesO.iterGenes())
-    famGenesS = familiesO.getAllGenes()
-    missingGenesS = allGenesS - famGenesS
+    #allGenesS = set(genesO.iterGenes())
+    #famGenesS = familiesO.getAllGenes()
+    #missingGenesS = allGenesS - famGenesS
     
     initFamO = families.readFamilies(paramD['rawFamilyFN'],tree,genesO)
 
@@ -422,6 +420,16 @@ def debugWrapper(paramD):
         for lfO in famO.iterLocusFamilies():
             if gene in set(lfO.iterGenes()):
                 print(gene,lfO.famNum,lfO.locusFamNum)
+
+    # find match in blast
+    #evalueThresh = paramD['evalueThresh']
+    #alignCoverThresh = paramD['alignCoverThresh']
+    #percIdentThresh =  paramD['percIdentThresh']
+
+    #fn="blast/E_coli_K12_-VS-_E_coli_ATCC11775.out"
+    #for g1,g2,evalue,alCov,pident,score in blast.parseBlastFile(fn,evalueThresh,alignCoverThresh,percIdentThresh):
+    #    if g1==16279:
+    #        print(g1,g2)
         
     code.interact(local=locals())
 

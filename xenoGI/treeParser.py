@@ -1,5 +1,5 @@
 from copy import deepcopy
-#file for parsing the tree into a format tha works for the DTLOR algorithm
+#file for parsing the tree into a format that works for the DTLOR algorithm
 # A tree is represented as a dictionary of key-value pairs where a key is an
 # edge name (will use end vertex to represent) and the value is a tuple of the form
 # (start vertex, end vertex, left child edge name, right child edge name)
@@ -22,7 +22,6 @@ def is_binary(bpTree):
         else:
             return False
     return True
-
 
 def tabulate_names(tree):
     """

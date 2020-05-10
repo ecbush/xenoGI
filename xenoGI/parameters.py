@@ -73,7 +73,6 @@ defaultAbsMinRawThresholdForHomology = 0.5
 # quantiles for synteny threshold calculation
 quantileForObtainingSynThresholds = 0.1
 multiplierForObtainingSynThresholds = 0.75
-quantileForObtainingSynAdjustThreshold = 0.1
 
 # We use syntenty scores to adjust similarity scores in family
 # finding. In particular, if synteny is very good, we give the raw
