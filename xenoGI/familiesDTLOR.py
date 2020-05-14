@@ -1,4 +1,4 @@
-import sys,numpy,os,random,glob,time
+import sys,numpy,os,random,glob,copy
 from scipy.signal import find_peaks
 from Bio import Phylo
 from multiprocessing import Pool
@@ -10,7 +10,7 @@ from collections import deque
 
 #### Main function
 
-def createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,outputSummaryF):
+def createFamiliesO(speciesTree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,outputSummaryF):
     '''Main function to create families. First creates an initial families
 object, then reconciles those against the species tree to make an
 originFamilies object.
@@ -23,12 +23,13 @@ originFamilies object.
     initFamilyFN = paramD['initFamilyFN']
     originFamilyFN =  paramD['originFamilyFN']
     geneInfoFN = paramD['geneInfoFN']
+    iFamGeneTreeFileStem = 'initFam'
 
     # checks
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
     
     # create initial families
-    initialFamiliesO, locusMapD=createInitialFamiliesO(maxFamilySize,tree,scoresO,genesO,aabrhHardCoreL,paramD)
+    initialFamiliesO, locusMapD=createInitialFamiliesO(maxFamilySize,speciesTree,scoresO,genesO,aabrhHardCoreL,paramD)
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
@@ -37,13 +38,19 @@ originFamilies object.
     print("Initial families written out to %s"%initFamilyFN,file=sys.stderr)
 
     # make gene family trees
-    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO) #create gene tree for each initial family 
+    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
 
-    #initialFamiliesO = readFamilies(paramD['initFamilyFN'],tree,genesO) # TEMP
+    # load gene trees
+    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
+
+    # reconcile bifucating trees
+    #initialFamiliesO = readFamilies(paramD['initFamilyFN'],speciesTree,genesO) # TEMP
 
     # create origin families
-    originFamiliesO = reconcile(tree,initialFamiliesO,locusMapD,genesO,paramD,strainNamesT)
+    originFamiliesO = reconcile(speciesTree,initialFamiliesO,locusMapD,genesO,paramD,strainNamesT)
+
+    # write origin familes to file
     writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
     print("Origin families:",file=outputSummaryF)
     writeFamilyFormationSummary(originFamiliesO,outputSummaryF)
@@ -180,13 +187,13 @@ score.
 
 #### Create initial families object
 
-def createInitialFamiliesO(maxFamilySize,tree,scoresO,genesO,aabrhHardCoreL,paramD):
+def createInitialFamiliesO(maxFamilySize,speciesTree,scoresO,genesO,aabrhHardCoreL,paramD):
     '''Given a scoresO object, create initial genes families based on
     blast connectivity and return as a familiesO object.
     '''
     
     # get synteny thesholds for locus family formation
-    synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree)
+    synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,speciesTree)
 
     # get initial families as list of sets
     initFamilySetL, degreeD = createInitialFamilySetL(scoresO, genesO)
@@ -218,7 +225,7 @@ def createInitialFamiliesO(maxFamilySize,tree,scoresO,genesO,aabrhHardCoreL,para
     # create output objects
     locusMapD={}
     # construct Family object for initial families
-    initFamiliesO = Families(tree)
+    initFamiliesO = Families(speciesTree)
 
     # store in familiesO object
     # these locusFam Ids need to be unique across all, start counting from 1. EB: WHY not 0?
@@ -226,10 +233,10 @@ def createInitialFamiliesO(maxFamilySize,tree,scoresO,genesO,aabrhHardCoreL,para
     locusFamNumCounter=1
     totalAddedTolocusFamilies=0
     for size, familyS, locusFamLL in initFamilyDivIntoLocFamsL:
-        locusFamNumCounter, famNumCounter,totalAddedTolocusFamilies=addFamilyToInitialFamiliesO(familyS,initFamiliesO,famNumCounter,locusFamLL,locusMapD,locusFamNumCounter,genesO,tree,totalAddedTolocusFamilies)
+        locusFamNumCounter, famNumCounter,totalAddedTolocusFamilies=addFamilyToInitialFamiliesO(familyS,initFamiliesO,famNumCounter,locusFamLL,locusMapD,locusFamNumCounter,genesO,speciesTree,totalAddedTolocusFamilies)
     return initFamiliesO, locusMapD
 
-def getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,tree):
+def getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,speciesTree):
     '''Creates a dictionary to store synteny thresholds. This dictionary
 itself contains two dictionaries one each for minCoreSyntThresh
 (minimum core synteny score allowed for family formation), and
@@ -267,16 +274,16 @@ formation). These dictionaries in turn are keyed by strain pair.
         if strainPair[0] == strainPair[1]:
             # Tip
             leafStrain = strainPair[0]
-            synThresholdD['minCoreSynThreshold'][strainPair] = getTipThreshold(tree,leafStrain,synThresholdD,'minCoreSynThreshold')
-            synThresholdD['minSynThreshold'][strainPair] = getTipThreshold(tree,leafStrain,synThresholdD,'minSynThreshold')
+            synThresholdD['minCoreSynThreshold'][strainPair] = getTipThreshold(speciesTree,leafStrain,synThresholdD,'minCoreSynThreshold')
+            synThresholdD['minSynThreshold'][strainPair] = getTipThreshold(speciesTree,leafStrain,synThresholdD,'minSynThreshold')
 
     return synThresholdD
 
-def getTipThreshold(tree,leafStrain,synThresholdD,thresholdType):
+def getTipThreshold(speciesTree,leafStrain,synThresholdD,thresholdType):
     '''Get the synteny threshold values at a tip called leafStrain by
 averaging the values between that strain and its nearest neighbors.'''
     
-    neighbL = trees.getNearestNeighborL(leafStrain,tree)
+    neighbL = trees.getNearestNeighborL(leafStrain,speciesTree)
     avThresh = 0
     for neighb in neighbL:
         strainPair = tuple(sorted((neighb,leafStrain)))
@@ -336,12 +343,12 @@ def createInitialFamilySetL(scoresO, genesO):
   
     return initFamilySetL, degreeD
 
-def addFamilyToInitialFamiliesO(familyS,initFamiliesO,famNumCounter,locusFamLL,locusMapD,locusFamNumCounter,genesO,tree,totalAddedTolocusFamilies):
+def addFamilyToInitialFamiliesO(familyS,initFamiliesO,famNumCounter,locusFamLL,locusMapD,locusFamNumCounter,genesO,speciesTree,totalAddedTolocusFamilies):
     '''Given a families object, a family set and a list of locus families
 in that family, add the family to the object.
     '''
     speciesL=list(set([genesO.numToStrainName(gene) for gene in familyS]))
-    mrca=findMrca(speciesL, tree)
+    mrca=findMrca(speciesL, speciesTree)
     #add each initial family as a Family object (still empty)
     initFamiliesO.initializeFamily(famNumCounter,mrca) 
     for locusFamilyL in locusFamLL: #locusFamilyL contains all the genes in that lf
@@ -349,7 +356,7 @@ in that family, add the family to the object.
         for gene in locusFamilyL:
             locusMapD[str(gene)]=locusFamNumCounter
             speciesL.append(genesO.numToStrainName(gene))
-        lfMrca=findMrca(speciesL, tree)
+        lfMrca=findMrca(speciesL, speciesTree)
         lf=LocusFamily(famNumCounter,locusFamNumCounter,lfMrca)
         lf.addGenes(locusFamilyL, genesO)
         totalAddedTolocusFamilies+=len(locusFamilyL)
@@ -446,7 +453,7 @@ def visualize_connectivity(initial_family,fn,scoresO,degreeD=None):
 
 
 #THIS CURRENTLY RUNS VERY SLOW DUE TO THE STRUCTURE OF THE TREE
-def findMrca(speciesL, tree):
+def findMrca(speciesL, speciesTree):
     '''Given a list of species and a tree, return the node of the most recent common ancestor.'''
     
     #find the LCA recursively 
@@ -459,29 +466,29 @@ def findMrca(speciesL, tree):
     species2=speciesL[1]
 
     if len(speciesL)==2:
-        return findMrcaPair(species1,species2,tree)
+        return findMrcaPair(species1,species2,speciesTree)
     
     else:
-        LCA=findMrcaPair(species1, species2, tree)
+        LCA=findMrcaPair(species1, species2, speciesTree)
 
         newSpecies=[LCA]
         newSpecies.extend(speciesL[2:])
 
-        return findMrca(newSpecies, tree)
+        return findMrca(newSpecies, speciesTree)
 
-def findMrcaPair(species1, species2, tree):
+def findMrcaPair(species1, species2, speciesTree):
     '''Return node of most recent common ancestor of two species.'''
-    if len(tree)==0:
+    if len(speciesTree)==0:
         return None
-    elif tree[0]==species1 or tree[0]==species2:
+    elif speciesTree[0]==species1 or speciesTree[0]==species2:
         #if root is equal to either, return root as the lCA
-        return tree[0]
+        return speciesTree[0]
     else:
-        left=findMrcaPair(species1,species2, tree[1])
-        right=findMrcaPair(species1, species2, tree[2])
+        left=findMrcaPair(species1,species2, speciesTree[1])
+        right=findMrcaPair(species1, species2, speciesTree[2])
         if (left is not None) and (right is not None):
             #they are in different subtrees, return the root
-            return tree[0]
+            return speciesTree[0]
         if left is None:
             return right
         else: return left
@@ -632,108 +639,102 @@ outputSummaryF.
 
 #### Reconciliation
 
-def reconcile(speciesTree,initialFamiliesO,locusMapD,genesO,paramD,strainNamesT):
+def loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem):
+    '''Load gene trees, returning 3 things: A list of initial family
+numbers from single gene families, a list of initial family numbers
+from families with multifurcations, and a list of trees from purely
+binary families with more than 1 genes.
+    '''
+
+    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+
+    # dir of gene trees lacks single gene families. Get their numbers.
+    singleGeneInitFamNumL=[]
+    for initFam in initialFamiliesO.iterFamilies():
+        if len(tuple(initFam.iterGenes())) == 1:
+            singleGeneInitFamNumL.append(initFam.famNum)
+
+    # load gene trees, divide into bifurcating vs. multifurcating
+    allGtFilePath = os.path.join(geneFamilyTreesDir,iFamGeneTreeFileStem+'*.tre')
+    allTreeFN_L=list(sorted(glob.glob(allGtFilePath)))
+
+    multifurcatingL = []
+    bifurcatingL = []
+    for treeFN in allTreeFN_L:
+        tree = trees.loadOneGeneTree(treeFN)
+        if tree == None:
+            ifamNum = int(treeFN.split(iFamGeneTreeFileStem)[1].split('.tre')[0].lstrip('0'))
+            multifurcatingL.append(ifamNum)
+        else:
+            bifurcatingL.append(tree)
+        
+    return singleGeneInitFamNumL,multifurcatingL,bifurcatingL
+
+def reconcileAllGeneTrees(speciesTree,geneTreeL,initialFamiliesO,locusMapD,genesO,paramD,strainNamesT):
     '''Reconcile gene family trees to the species tree using the DTLOR algorithm.'''
 
-    originFamilyFN=paramD['originFamilyFN']
-    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
-    numProcesses = paramD['numProcesses']
-    D=float(paramD["duplicationCost"])
-    T=float(paramD["transferCost"])
-    L=float(paramD["lossCost"])
-    O=float(paramD["originCost"])
-    R=float(paramD["rearrangeCost"])
-    print("The parameters used for reconciliation are: D= %.2f, T=%.2f, L=%.2f, O=%.2f, R=%.2f"%(D,T,L,O,R))
-    
-    gtFileStem = 'fam'
+    for geneTree in geneTreeL:
 
-    allGtFilePath = os.path.join(geneFamilyTreesDir,gtFileStem+'*.tre')
+        # in loop
+        tipMapD=getTipMapping(geneTree,genesO)
 
-    # new families object to record all the origin families
-    originFamiliesO = Families(speciesTree)
-    # add single-gene initial family as their own origin family
-    for init_family in initialFamiliesO.iterFamilies():
-        if len(tuple(init_family.iterGenes())) == 1:
-            newFamNum=originFamiliesO.getNumFamilies()
-            originFamiliesO.initializeFamily(newFamNum,init_family.mrca)
-            for locusFamily in init_family.getLocusFamilies():
-                locusFamily.famNum=newFamNum
-                locusFamily.locusFamNum=originFamiliesO.getNumLocusFamilies()
-                originFamiliesO.addLocusFamily(locusFamily)
-         
-    allTreeFN_L=list(sorted(glob.glob(allGtFilePath)))
-    binaryTreeFN_L=[]
-    no=0
-    yes=0
-    for treeFN in allTreeFN_L:
-        bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-        try:
-            bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
-        except:
-            bpTree.root_with_outgroup(bpTree.get_terminals()[0])
-        treeParser.tabulate_names(bpTree)   #name internal nodes
-        if not treeParser.is_binary(bpTree): 
-            #get fam num
-            prefix=geneFamilyTreesDir+"/"+gtFileStem
-            suffix=".tre"
-            famNum=treeFN.replace(prefix,'')
-            famNum=famNum.replace(suffix,'')
-            famNum=int(famNum.lstrip('0'))
-            init_fam=initialFamiliesO.getFamily(famNum)
-            newFamNum=len(originFamiliesO.familiesD)
-            tuple_geneTree=trees.bioPhyloToTupleTree(bpTree)
-            originFamiliesO.initializeFamily(newFamNum,init_fam.mrca,tuple_geneTree)
-            for locusFamily in init_fam.getLocusFamilies():
-                locusFamily.famNum=newFamNum
-                locusFamily.locusFamNum=originFamiliesO.getNumLocusFamilies()
-                originFamiliesO.addLocusFamily(locusFamily)
-            no+=1
-        else:
-            yes+=1
-            binaryTreeFN_L.append(treeFN)
-    print("Number of binary trees")
-    print(len(binaryTreeFN_L))
-    print("Done adding origin families from nonbinary trees")
+        # Make new gtLocusMapD with only those genes in geneTree
+        gtLocusMapD = reduceLocusMap(geneTree,locusMapD)
+        
+        # get spots where we should try putting root.
+        locusMapForRootingD = trees.rerootingPruning(geneTree, copy.deepcopy(gtLocusMapD))
 
-    # make list of sets of arguments to be passed to p.map. There
-    # should be numProcesses sets.
-    argumentL = [([],speciesTree,locusMapD,genesO, D, T, L, O, R) for i in range(numProcesses)]
-    #distribute all gene tree files into numProcesses separate processes
-    for i,treeFN in enumerate(binaryTreeFN_L):
-        argumentL[i%numProcesses][0].append(treeFN)
-    
-    reconLL=[]
-    with Pool(processes=numProcesses) as p:
-        # store the results to list as they come in
-        for reconL in p.imap_unordered(runDTLORGroup, argumentL):  #each process generates a output list for a group of trees
-            reconLL.append(reconL)
-
-    print("finished multiprocessing")
-    reconLL=reconLL[::-1]  #reversing the order changes which trees are not adding, which means multiprocess is not where things are wrong
-    for reconL in reconLL:
-        for optGeneRooting, optMPR, treeFN in reconL:
-            #update originFamiliesO object
-            addOriginFamily(optMPR, optGeneRooting, originFamiliesO, genesO, treeFN) #we know this is called
-
-    print("Number of genes in origin familiesO: %d"%len(originFamiliesO.getAllGenes()))
-    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
-    print("Origin families written out to %s"%(originFamilyFN))
-
-    return originFamiliesO
-
+        # --p next make argumentL
+        
 def getTipMapping(geneTree, genesO):
     """
-    Fill out the tip mapping (from gene to species) using the binary search function from genomes
+    Fill out the tip mapping (from gene to species) using the function from genomes.
     """
-    leaves=trees.leafList(geneTree)
-    phi={}
-    for leaf in leaves:
-        geneNum=leaf
-        if isinstance(leaf, str):
-            geneNum=int(leaf)
-        phi[leaf]=genesO.numToStrainName(geneNum)
-    return phi
+    tipMapD={}
+    for leaf in trees.leafList(geneTree):
+        # the leaf is a gene number
+        tipMapD[leaf]=genesO.numToStrainName(leaf)
+    return tipMapD
 
+def reduceLocusMap(geneTree,locusMapD):
+    '''Create a new locus map D with only entries for genes in geneTree.'''
+    gtLocusMapD={}
+    for leaf in trees.leafList(geneTree):
+        # the leaf is a gene number
+        gtLocusMapD[leaf] = locusMapD[leaf]
+    return gtLocusMapD
+        
+def reconcile(argT):
+    '''Reconcile a single gene tree.'''
+
+    speciesTree,geneTree,locusMapForRootingD,tipMapD,gtLocusMapD,D,T,L,O,R = argT
+    speciesTree=parseTreeForDP(speciesTree,parasite=False) # species tree to right format
+    
+    allRootingsL=trees.get_all_rerootings(geneTree, locusMapForRootingD)
+    if allRootingsL==[]:  #all rerooting not valid (all nodes have the same loc)
+        allRootingsL=[tuple_geneTree]
+
+    # try all rootings and record the ones and their
+    # solutions with the best scores
+    best_score=float('inf')
+    bestMPRs=[]
+    for geneTree in allRootingsL:
+        geneTree=parseTreeForDP(geneTree,parasite=True) # gene tree to right format
+        MPR,cost=DTLOR_DP.DP(speciesTree, geneTree, tipMapD, gtLocusMapD, D, T, L, O, R)
+        if cost<best_score: 
+            #if the score is better than current best
+            #update best score, clear record and add new record
+            best_score=cost
+            bestMPRs=[]
+            bestMPRs.append((geneTree,MPR))
+        elif cost==best_score:
+            bestMPRs.append((geneTree,MPR))
+    #sample one MPR from the MPRs for this specific unrooted tree
+
+    # print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
+    optGeneRooting,optMPR=random.choice(bestMPRs) 
+
+    return optGeneRooting,optMPR    
 
 def parseReconForLocus(reconciliation):
     """
@@ -838,67 +839,6 @@ def addOriginFamily(reconciliation, geneTree,originFamiliesO,genesO, treeFN):
                 _,speciesBr,_=recon[startNode]
                 originFamiliesO.initializeFamily(origin_num,speciesBr,geneTree,recon) #use the species for MRCA
                 getLocusFamiliesInOrigin(startNode, tree_dict, geneToLocus, origin_num, originFamiliesO, genesO, recon)
-   
- 
-def runDTLORGroup(argT):
-    """
-    Run reconciliation a group of tree files
-    """
-    treeFN_list,speciesTree,locusMapD,genesO, D, T, L, O, R= argT
-    outputL = []
-    for treeFN in treeFN_list:
-        optGeneRooting,optMPR = runDTLOR(treeFN,speciesTree,locusMapD,genesO, D, T, L, O, R )
-        outputL.append((optGeneRooting,optMPR, treeFN))
-    return outputL
-
-def runDTLOR(treeFN,speciesTree, locusMapD,genesO, D, T, L, O, R ):
-    bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-    try:
-        bpTree.root_at_midpoint()  #root arbitrarily for further rerooting 
-    except:
-        bpTree.root_with_outgroup(bpTree.get_terminals()[0])
-    treeParser.tabulate_names(bpTree)   #name internal nodes
-    if treeParser.is_binary(bpTree):
-        pass
-    else: print(treeFN)
-    assert treeParser.is_binary(bpTree)
-    locus_map = treeParser.rerootingPruning(bpTree, locusMapD)
-    # print("gene to locus map")
-    # print([(term.name, locus_map[term.name]) for term in bpTree.get_terminals()])
-
-    # for term in bpTree.get_terminals(): term.name=term.name+"_"+str(locus_map[term.name])  #rename the tips adding the syntenic loc
-    # Phylo.draw_ascii(bpTree)
-    tuple_geneTree=trees.bioPhyloToTupleTree(bpTree)
-    phi=getTipMapping(tuple_geneTree,genesO)  #gene to species mapping for these specific gene tree
-    
-    all_rootings=treeParser.get_all_rerootings(tuple_geneTree, locus_map)
-    if all_rootings==[]:  #all rerooting not valid (all nodes have the same loc)
-        all_rootings=[tuple_geneTree]
-    best_score=float('inf')
-    bestMPRs=[]
-    start1 = time.time()
-    #try all the different rerootings and record the ones and their solutions with the best scores
-    # print("The number of rerootings is %d" %len(all_rootings))
-    for rooting in all_rootings:
-        geneTree=rooting
-        # start2 = time.time()
-        MPR,cost=DTLOR_DP.DP(speciesTree, geneTree, phi, locusMapD, D, T, L, O, R)
-        # end2 = time.time()
-        # print("The time took to do one reconciliation is: %.4f" %(end2 - start2))
-        if cost<best_score: 
-            #if the score is better than current best
-            #update best score, clear record and add new record
-            best_score=cost
-            bestMPRs=[]
-            bestMPRs.append((geneTree,MPR))
-        elif cost==best_score:
-            bestMPRs.append((geneTree,MPR))
-    #sample one MPR from the MPRs for this specific unrooted tree
-    end1 = time.time()
-    # print("The time took to reconcile all the rerootings is: %.4f" %(end1 - start1))
-    optGeneRooting,optMPR=random.choice(bestMPRs) 
-
-    return optGeneRooting,optMPR    
 
 #### Input/output
 
@@ -915,11 +855,10 @@ def writeFamilies(familiesO,familyFN,genesO,strainNamesT,paramD):
         f.write(fam.fileStr(genesO)+'\n')
     f.close()
 
-
-def readFamilies(familyFN,tree,genesO):
+def readFamilies(familyFN,speciesTree,genesO):
     '''Read the family file named familyFN, creating a Families object.
     '''
-    familiesO = Families(tree)
+    familiesO = Families(speciesTree)
     f=open(familyFN,'r')
     while True:
         s=f.readline()

@@ -414,7 +414,7 @@ def debugWrapper(paramD):
     #famGenesS = familiesO.getAllGenes()
     #missingGenesS = allGenesS - famGenesS
     
-    initFamO = families.readFamilies(paramD['rawFamilyFN'],tree,genesO)
+    initFamO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
 
     def findFam(gene,famO):
         for lfO in famO.iterLocusFamilies():

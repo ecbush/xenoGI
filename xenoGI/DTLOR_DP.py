@@ -17,7 +17,6 @@
 from .Greedy import *
 import copy
 import sys, glob, os
-from .treeParser import parseTreeForDP
 import time
 from random import choice
 
@@ -92,10 +91,6 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
         as well as a the number of maximum parsimony reconciliations. The notation and 
         dynamic programming algorithm are explained in the tech report.
         Cospeciation is assumed to cost 0. """
-    #preprocess the trees into the correct format
-    hostTree=parseTreeForDP(hostTree,parasite=False)
-    parasiteTree=parseTreeForDP(parasiteTree,parasite=True)
-   
 
     A = {}  # A, C, O, and bestSwitch are all defined in tech report
     C = {}

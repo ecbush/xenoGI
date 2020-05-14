@@ -202,7 +202,6 @@ def writeTree(tree,fileName):
     f.write("("+tupleTree2Newick(tree)+");")
     f.close()
 
-
 #### Functions for creating gene and species trees
 
 def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
@@ -535,10 +534,8 @@ def stripBranchLen(tree):
         del n.branch_length
     return tree
 
-def makeGeneFamilyTrees(paramD,genesO,familiesO):
+def makeGeneFamilyTrees(paramD,genesO,familiesO,gtFileStem = 'fam'):
     '''Given a families object, create a gene tree for each family.'''
-
-    gtFileStem = 'fam'
 
     # create work dir if it doesn't already exist
     workDir = paramD['geneFamilyTreesDir']
@@ -561,3 +558,242 @@ def makeGeneFamilyTrees(paramD,genesO,familiesO):
         os.remove(fn)
     
     return
+
+#### Gene tree related functions
+
+def loadOneGeneTree(treeFN):
+    '''Load an unrooded gene tree. If it is bifurcating arbitrarily root,
+convert to tuple tree format and return. If it is multifurcating
+return None.
+    '''
+
+    bpTree = Phylo.read(treeFN, 'newick', rooted=False)
+    bpTree = nameInternalNodes(bpTree)
+
+    # root arbitrarily
+    try:
+        bpTree.root_at_midpoint()
+    except:
+        bpTree.root_with_outgroup(bpTree.get_terminals()[0])
+        
+    # name the root
+    bpTree.root.name = "root"
+
+    # if tips have numbers for names, convert to int
+    for clade in bpTree.get_terminals():
+        if clade.name.isdigit():
+            clade.name = int(clade.name)
+    
+    # if multifurcating return None
+    if not bioPhyloIsBinary(bpTree):
+        return None
+    else:
+        # otherwise convert to tupleTree
+        tree = bioPhyloToTupleTree(bpTree)
+        return tree
+
+def bioPhyloIsBinary(bpTree):
+    """
+    Checks if a rooted biopython tree is binary.
+    """
+    # Had some problems with bpTree.is_bifurcating, so wrote this
+    preorder=list(bpTree.find_clades(order='preorder'))
+    for node in preorder:
+        children=[child.name for child in node]
+        if len(children)==0 or len(children)==2:
+            continue
+        else:
+            return False
+    return True
+
+#### Getting all rootings
+
+def createLocusMapForRootingD(geneTree,locusMapForRootingD):
+    """
+    Try assigning syntenic locations to internal nodes 
+    in the input (arbitrarily rooted) tree. If a loc can be assigned, we are not
+    going to root on branches where both terminals are assigned loc
+    """
+    if geneTree[0] in locusMapForRootingD:
+        return locusMapForRootingD
+    else:
+        # always an internal node since locusMapForRootingD starts w/tips
+        # recurse on left and right
+        locusMapForRootingD = createLocusMapForRootingD(geneTree[1],locusMapForRootingD)
+        locusMapForRootingD = createLocusMapForRootingD(geneTree[2],locusMapForRootingD)
+        # handle current node
+        if locusMapForRootingD[geneTree[1][0]] == locusMapForRootingD[geneTree[2][0]]:
+            locusMapForRootingD[geneTree[0]] = locusMapForRootingD[geneTree[1][0]]
+        else:
+            locusMapForRootingD[geneTree[0]] = "*"
+
+        return locusMapForRootingD
+
+def left_subtree(tree):
+    return tree[1]
+def right_subtree(tree):
+    return tree[2]
+def is_leaf(tree):
+    return tree[1]==()
+def get_name(tree):
+    return tree[0]
+
+def validRooting(tree, locusMapForRootingD):
+    if locusMapForRootingD[get_name(tree[1])]==locusMapForRootingD[get_name(tree[2])] and locusMapForRootingD[get_name(tree[1])]!="*":  
+        #don't root at a branch when both terminals are imputed the same loc
+       return False
+    else: return True
+
+def get_all_rerootings(tree, locusMapForRootingD):
+    """
+    Compute all rerootings of a tree
+
+    Parameters
+    --------------------
+        tree                   -- a four tuple tree
+        locusMapForRootingD   -- a dictionary mapping the gene node name
+                                 to a syntenic location or "*" if cannot be imputed by parsimony
+
+    Return
+    --------------------
+        rerootings  -- a list of RLR trees 
+    """
+    #global memorization variables
+    #records all distinctive trees by their left and right subtree roots (branch where rooting happens)
+    alltrees=set()
+    #keeps track of the actuall rerootings
+    rerootings=[]
+
+    #keeps the original tree
+    if validRooting(tree, locusMapForRootingD):
+        rerootings+=[tree]
+    originaltree=frozenset([get_name(left_subtree(tree)),get_name(right_subtree(tree))])
+    alltrees.add(originaltree)
+
+    #call the helper function where actually rerooting happens
+    helperRerooting(tree, alltrees, rerootings, locusMapForRootingD)
+    return rerootings  
+
+def helperRerooting(tree, alltrees, rerootings, locusMapForRootingD):
+    """
+    The actual function for rerooting
+    Reroot on the path to grandchildren of root if possible
+    calls addTree to record rerootings and trees generated so far
+
+    Parameters
+    --------------------
+        tree        -- a 4-tuple tree
+
+    """
+    
+    if not is_leaf(left_subtree(tree)):
+        #if the left tree has two children
+        #first we can root on the path to its left children
+        newleft=left_subtree(left_subtree(tree))
+        newright=(get_name(left_subtree(tree)),right_subtree(left_subtree(tree)),right_subtree(tree))
+
+        #if this tree has not been encountered, add it
+        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
+    
+        #second we can root on the path to its left
+        newleft=(get_name(left_subtree(tree)),left_subtree(left_subtree(tree)),right_subtree(tree))
+        newright=right_subtree(left_subtree(tree))
+
+        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
+        
+
+    if not is_leaf(right_subtree(tree)):
+        #if the right tree has two children
+        #first we can root on the path to its right children
+        newright=right_subtree(right_subtree(tree))
+        newleft=(get_name(right_subtree(tree)),left_subtree(right_subtree(tree)),left_subtree(tree))
+
+        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
+    
+        #second we can root on the path to its left
+        newright=(get_name(right_subtree(tree)),right_subtree(right_subtree(tree)),left_subtree(tree))
+        newleft=left_subtree(right_subtree(tree))
+
+        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
+
+def addTree(tree, newleft, newright, alltrees, rerootings, locusMapForRootingD):
+    """
+    helper function for the helperRerooting function
+    This function add a new rerooting to the rerootings and alltrees if not already found
+    and calls the helperRerooting on the new rerooting
+
+    Parameters
+    --------------------
+        tree        -- a 4-tuple tree that is the orginal tree
+        newleft     -- a new left tree generated in helperRerooting
+        newright    -- a new right tree generated in helperRerooting
+
+    """
+    newtree=frozenset([get_name(newright),get_name(newleft)])
+    if newtree not in alltrees:
+        newrooting=(get_name(tree),newleft,newright)
+        if validRooting(newrooting, locusMapForRootingD):
+            rerootings+=[newrooting]
+        alltrees.add(newtree)
+        helperRerooting(newrooting, alltrees, rerootings, locusMapForRootingD)
+
+#### Convert to tree format for DTLOR
+
+def parseTreeForDP(tree, parasite):
+    """
+    Input: four tuple tree as defined by the trees.py (xenoGI)
+    Output: tree format represented by a dictionary as required by the 
+            DTLOR_DP.py. Note, if an edge directs to a tip, than the children 
+            edges will be None
+    """
+    def parseHelper(tree,treeDict):
+        """
+        recursive helper. Note the edge to the root of 
+        the tree is already in treeDict
+        """
+        if tree[1]==(): pass  #can't be at a leaf
+        lt=tree[1]
+        rt=tree[2]
+        if lt[1]==(): #if left child is a leaf, add the edge to left child and stop
+            key=lt[0]
+            value=(tree[0],lt[0],None,None)
+            treeDict[key]=value
+        else: #if left child is not a leaf, add the edge to left child and recur on lt
+            key=lt[0]
+            #the left child of left tree
+            lt_lt=lt[1]
+            rt_lt=lt[2]
+            value=(tree[0],lt[0],lt_lt[0],rt_lt[0])
+            treeDict[key]=value
+            treeDict=parseHelper(lt,treeDict)
+        if rt[1]==(): #if right child is a leaf, add the edge to right child and stop
+            key=rt[0]
+            value=(tree[0],rt[0],None,None)
+            treeDict[key]=value
+        else: #if right child is not a leaf, add the edge to right child and recur on lt
+            key=rt[0]
+            lt_rt=rt[1]
+            rt_rt=rt[2]
+            value=(tree[0],rt[0],lt_rt[0],rt_rt[0])
+            treeDict[key]=value
+            treeDict=parseHelper(rt,treeDict)
+
+        return treeDict
+
+
+    if tree[1]==(): #this tree cannot be only a root
+        return None
+    parsedTree={}
+    
+    lt=tree[1]
+    rt=tree[2]
+    if parasite:
+    # (start vertex, end vertex, left child edge name, right child edge name)
+        value=("p_root",tree[0], lt[0], rt[0])
+        key="pTop"
+    else:
+        value=("h_root",tree[0], lt[0], rt[0])
+        key="hTop"
+    parsedTree[key]=value
+    
+    return parseHelper(tree, parsedTree)
