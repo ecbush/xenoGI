@@ -154,10 +154,10 @@ object is assumed to be a tuple tree.'''
 
 class Families:
 
-    def __init__(self,tree):
+    def __init__(self,speciesTree):
         '''Initialize an object of class Families.'''
 
-        self.tree = tree
+        self.speciesTree = speciesTree
         self.locusFamiliesD = {}
         self.familiesD = {} 
 

@@ -88,7 +88,7 @@ evalueThresh = 1e-8
 
 # alignCoverThresh is a threshold for the length of the blast alignment
 # relative to query and subject length (ranges between 0 and 1)
-alignCoverThresh = 0.8
+alignCoverThresh = 0.65
 
 # threshold for the percent identity in a hit
 percIdentThresh = 0.35
@@ -109,7 +109,7 @@ aabrhFN = 'aabrhHardCore.out'
 
 # family files
 #familyFN='fam.out'
-rawFamilyFN = 'rawFam.out'
+initFamilyFN = 'initFam.out'
 originFamilyFN = 'originFam.out'
 
 # island file
@@ -127,7 +127,7 @@ geneFamilyTreesDir = 'geneFamilyTrees'
 #### Algorithm parameters ####
 
 # in parallel code, how many threads to use
-numProcesses = 16
+numProcesses = 50
 
 # alignment parameters for making scores
 # note, since parasail doesn't charge extend on the first base its
