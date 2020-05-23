@@ -2,7 +2,7 @@ import sys,numpy,os,random,glob,copy
 from scipy.signal import find_peaks
 from Bio import Phylo
 from multiprocessing import Pool
-from . import trees,scores,DTLOR_DP,treeParser # consolidate treeParser with trees later
+from . import trees,scores,DTLOR_DP
 from .Family import *
 from .analysis import printTable
 #import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ originFamilies object.
     '''
 
     # threshold for maximum size of gene tree, if above, split
-    maxFamilySize=40
+    maxFamilySize=30
 
     # define some variables
     initFamilyFN = paramD['initFamilyFN']
@@ -36,8 +36,6 @@ originFamilies object.
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
     print("Initial families written out to %s"%initFamilyFN,file=sys.stderr)
 
-    initialFamiliesO = readFamilies(paramD['initFamilyFN'],speciesTree,genesO) # TEMP
-        
     # make gene family trees
     trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
@@ -45,7 +43,7 @@ originFamilies object.
     # load gene trees
     singleGeneInitFamNumL,multifurcatingL,bifurcatingL = loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
 
-
+    # reconcile
     reconciliationL = reconcileAllGeneTrees(speciesTree,bifurcatingL,initialFamiliesO,locusMapD,genesO,paramD)
     
     # create origin families
@@ -674,6 +672,12 @@ binary families with more than 1 genes.
 def reconcileAllGeneTrees(speciesTree,geneTreeL,initialFamiliesO,locusMapD,genesO,paramD):
     '''Reconcile gene family trees to the species tree using the DTLOR algorithm.'''
 
+    D=float(paramD["duplicationCost"])
+    T=float(paramD["transferCost"])
+    L=float(paramD["lossCost"])
+    O=float(paramD["originCost"])
+    R=float(paramD["rearrangeCost"])
+    
     argumentL = []
     for geneTree in geneTreeL:
 
@@ -687,7 +691,7 @@ def reconcileAllGeneTrees(speciesTree,geneTreeL,initialFamiliesO,locusMapD,genes
         locusMapForRootingD = trees.createLocusMapForRootingD(geneTree,copy.deepcopy(gtLocusMapD))
         
         # add to argumentL
-        argT = (speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,paramD)
+        argT = (speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R)
         argumentL.append(argT)
 
     # run on multiple processors
@@ -719,13 +723,7 @@ def reduceLocusMap(geneTree,locusMapD):
 def reconcile(argT):
     '''Reconcile a single gene tree.'''
 
-    speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,paramD = argT
-
-    D=float(paramD["duplicationCost"])
-    T=float(paramD["transferCost"])
-    L=float(paramD["lossCost"])
-    O=float(paramD["originCost"])
-    R=float(paramD["rearrangeCost"])
+    speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R = argT
 
     # species tree to right format
     speciesTree=trees.parseTreeForDP(speciesTree,parasite=False)
@@ -889,7 +887,7 @@ def getMRCAforOR(startNode, rootedGeneTreeD, nodeLocusMapD,MRCA):
     """
     locus_t,locus_b=nodeLocusMapD[startNode]
     if locus_b!=locus_t:
-        leaves= treeParser.getLeavesInSubtree(startNode, rootedGeneTreeD)
+        leaves= trees.getLeavesInSubtree(startNode, rootedGeneTreeD)
         for leaf in leaves:
             MRCA[leaf]=startNode
     if startNode in rootedGeneTreeD:

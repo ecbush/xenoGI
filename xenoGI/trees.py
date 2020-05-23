@@ -815,3 +815,15 @@ def getTreeDictionary(geneTree,tree_dict):
         tree_dict=getTreeDictionary(left, tree_dict)
         tree_dict=getTreeDictionary(right, tree_dict)
         return tree_dict
+
+def getLeavesInSubtree(startNode, tree_dict):
+    """
+    returns the list of leaves in the subtree rooted at startNode
+    """
+    if startNode not in tree_dict: #it is a tip
+        return [int(startNode)]    #prepare for addGene which needs integer
+    else:
+        left, right=tree_dict[startNode]
+        leaves=getLeavesInSubtree(left, tree_dict)
+        leaves.extend(getLeavesInSubtree(right, tree_dict))
+        return leaves

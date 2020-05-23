@@ -402,19 +402,24 @@ def debugWrapper(paramD):
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
     
     ## read gene families
-    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+    #familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
     ## load stuff
     genesO = genomes.genes(paramD['geneInfoFN'])
-    genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
-    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+    #genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
+    #scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    #familiesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
+    with open("tipMap.tsv","w") as tempf:
+        for gene in genesO.iterGenes():
+            strain = genesO.numToStrainName(gene)
+            tempf.write(str(gene)+"\t"+str(strain)+"\n")
+            
     #allGenesS = set(genesO.iterGenes())
     #famGenesS = familiesO.getAllGenes()
     #missingGenesS = allGenesS - famGenesS
     
-    initFamO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
+    #initFamO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
 
     def findFam(gene,famO):
         for lfO in famO.iterLocusFamilies():

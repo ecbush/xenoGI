@@ -20,20 +20,6 @@ import sys, glob, os
 import time
 from random import choice
 
-
-def getSynteny(locus_map, phi):
-    """
-    Because the locus_map contains all the genes in the big gene family
-    we cannot get all the syntenic location from it directly. Filter out
-    only those in our tip mapping (those in the gene tree)
-    O(n) where n is the number os genes
-    """
-    gene_leaves=phi.keys()  #string of the gene numbers
-    allsynteny=set()
-    for gene in gene_leaves:
-        allsynteny.add(locus_map[gene])
-    return list(allsynteny)
-
 def valid(synteny, allsynteny):
     """
     returns the set of valid syntenies for the descendents
@@ -100,7 +86,7 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
     Minimums = {} # Dictionary to keep track of minimum reconciliation costs
     oBest = {} # Dictionary to keep track of the lowest costing events in O
     bestSwitchLocations = {} # Dictionary to keep track of switch locations
-    allsynteny=getSynteny(locus_map,phi)
+    allsynteny=list(locus_map.values())
     Allsynteny=copy.deepcopy(allsynteny)
     Allsynteny.append("*")
     #print("The dimensions is %d by %d by %d by %d"%(len(postorder(parasiteTree, "pTop")),len(Allsynteny), len(Allsynteny),len(postorder(hostTree, "hTop"))))
