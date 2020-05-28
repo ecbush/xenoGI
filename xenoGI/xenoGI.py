@@ -233,15 +233,15 @@ arguments so we can pass in different things in different contexts
     """
     ## setup output directory and file names
     # if directory for analysis doesn't exist yet, make it
-    analDir = paramD['analysisFilePath'].split("*")[0]
+    analDir = paramD['analysisDir']
     if glob.glob(analDir)==[]:
         os.mkdir(analDir)
 
-    islandSummaryStem = paramD['islandsSummaryStem']
-    analExtension = paramD['analysisFilePath'].split("*")[1]
-    islandsSummaryFN = os.path.join(analDir,islandSummaryStem+analExtension)
+    islandFNStem = paramD['islandsFNStem']
+    islandsSummaryFN = os.path.join(analDir,islandFNStem+"Summary.txt")
+    islandsTsvFN = os.path.join(analDir,islandFNStem+".tsv")
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
-
+    
     ## load stuff
     tree,subtreeD = loadTreeRelatedData(treeFN)
     strainNamesT=tuple(trees.leafList(tree))
@@ -254,14 +254,17 @@ arguments so we can pass in different things in different contexts
     
     ## analysis
 
-    # Print out all islands
-    islandsOutF = open(islandsSummaryFN,'w')
-    analysis.vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,genesO,islandsOutF)
-    islandsOutF.close()
+    # Print islands summary file
+    with open(islandsSummaryFN,'w') as islandsOutF:
+        analysis.vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,genesO,islandsOutF)
 
+    # print islands tsv file
+    with open(islandsTsvFN,'w') as islandsTsvF:
+        analysis.printAllLocusIslandsTsv(islandByNodeD,tree,rootFocalClade,familiesO,genesO,islandsTsvF)
+    
     # Print species files with all the genes, grouped by contig
     gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeD,familiesO)
-    analysis.printSpeciesContigs(geneOrderD,genesFNstem,analExtension,genesO,gene2FamIslandD,familiesO,strainNamesT)
+    analysis.printSpeciesContigs(geneOrderD,genesFNstem,".tsv",genesO,gene2FamIslandD,familiesO,strainNamesT)
 
 def createIslandBedWrapper(paramD):
     """Wrapper to make output bed files."""

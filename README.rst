@@ -150,9 +150,11 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
 
 * ``printAnalysis``
 
-  ``islandsSummary.out`` contains a summary of islands, organized by node.
+  ``islands.tsv`` tab delimited listing of locus islands. Each line corresponds to one locus island. The first field is the locus island number, the second field is its mrca (most recent common ancestor), and subsequent fields represent locus families in this locus island. Each locus family is listed with its number, and then the genes it contains, separated by commas.
+  
+  ``islandsSummary.txt`` A more human readable summary of locus islands, organized by node. This includes a tabular printout of the island, as well as a listing of each gene and its description if any.
 
-  This script also produces a set of species specific genome files. These contain all the genes in a strain laid out in the order they occur on the contigs. Each gene entry includes locus island and family information, as well as a brief description of the gene's function. These files all have the name genes in their stem, followed by the strain name, and the extension .out.
+  This script also produces a set of species specific genome files. These contain all the genes in a strain laid out in the order they occur on the contigs. Each gene entry includes locus island and family information, as well as a brief description of the gene's function. These files all have the name genes in their stem, followed by the strain name, and the extension .tsv.
 
 * ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the locus islands in different colors. (Color is specified in the RGB field of the bed).
 
