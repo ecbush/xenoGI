@@ -108,7 +108,6 @@ scoresFN = 'scores.bout'
 aabrhFN = 'aabrhHardCore.out'
 
 # family files
-#familyFN='fam.out'
 initFamilyFN = 'initFam.out'
 originFamilyFN = 'originFam.out'
 

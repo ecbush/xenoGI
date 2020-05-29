@@ -430,7 +430,7 @@ resulting tree in four tuple form.
 
     '''
     if not bpTree.is_bifurcating():
-        raise ValueError("This tree is not bifurcating. A trifurcation at the root is permitted (to signify it's unrooted) and is not the problem here. There cannot be other trifurcations though, and there are here.")
+        raise ValueError("This tree is not bifurcating. A trifurcation at the root is permitted (to signify it's unrooted) and is not the problem here. Some other multifurcation(s) are present.")
 
     # strip confidence values in internal nodes (which mess up our
     # names)
@@ -438,7 +438,7 @@ resulting tree in four tuple form.
         n.confidence = None
     
     bpTree = rootTree(bpTree,outGroupTaxaL)
-    bpTree = nameInternalNodes(bpTree)
+    bpTree = nameInternalNodes(bpTree,"s")
 
     checkTree(bpTree)
 
@@ -504,12 +504,12 @@ def cladeTipNames(clade):
         L.append(tipC.name)
     return L
 
-def nameInternalNodes(tree):
+def nameInternalNodes(tree,nameStem):
     '''Given a bio python tree without named internal nodes, name
-them. This obliterates anything names that might have been inside
+them. This obliterates any names that might have been inside
 already (e.g. if confidence values have been put in the name field).'''
     for j,n in enumerate(tree.get_nonterminals()):
-        n.name="i"+str(j)
+        n.name=nameStem+str(j)
     return tree 
 
 def tupleTree2NoBrLenNewick(tree):
@@ -568,7 +568,7 @@ return None.
     '''
 
     bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-    bpTree = nameInternalNodes(bpTree)
+    bpTree = nameInternalNodes(bpTree,"g")
 
     # root arbitrarily
     try:

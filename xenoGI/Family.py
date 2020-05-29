@@ -43,7 +43,14 @@ mrca for its family.'''
 occurs.'''
         for strain in self.geneD.keys():
             yield strain
-    
+
+    def origin(self,familiesO):
+        '''Determine the event or events at the origin of this locus
+family.
+        '''
+        fam = familiesO.getFamily(self.famNum)
+        return fam.reconD[self.lfMrca]
+        
     def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
@@ -68,14 +75,15 @@ gene2...
         
         
 class Family:
-    def __init__(self,famNum,mrca,geneTree=None,recon=None):
+    def __init__(self,famNum,mrca,geneTree=None,reconD=None,sourceFam=None):
         '''Initialize an object of class Family.'''
 
         self.famNum = famNum
         self.mrca = mrca
-        self.locusFamiliesL = []  # will contain locusFamily objects for this family
-        self.geneTree = geneTree  # rooted gene tree object
-        self.recon = recon        # dict giving mapping of gene tree onto species tree
+        self.locusFamiliesL = []   # will contain locusFamily objects for this family
+        self.geneTree = geneTree   # rooted gene tree object
+        self.reconD = reconD       # dict giving mapping of gene tree onto species tree
+        self.sourceFam = sourceFam # only for originFams. gives ifam num that originFam came from
         
     def addLocusFamily(self,lfO):
         self.locusFamiliesL.append(lfO)
@@ -115,7 +123,7 @@ object is assumed to be a tuple tree.'''
 
     def addReconciliation(self,rD):
         '''Given a dictionary rD storing reconciliation values, store as attribute.'''
-        self.recon = rD
+        self.reconD = rD
         
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum <tab> 
@@ -137,11 +145,17 @@ object is assumed to be a tuple tree.'''
             outL.append("None")
 
         # reconciliation
-        if self.recon != None:
-            outL.append(str(self.recon))
+        if self.reconD != None:
+            outL.append(str(self.reconD))
         else:
             outL.append("None")
 
+        # source family
+        if self.sourceFam != None:
+            outL.append(str(self.sourceFam))
+        else:
+            outL.append("None")
+            
         # locus families
         for lfO in self.locusFamiliesL:
             outL.append(lfO.fileStr(genesO))
@@ -165,11 +179,11 @@ class Families:
         ## object. familiesD has key famNum and value
         ## a Family object.
         
-    def initializeFamily(self,famNum,mrca,geneTree=None,recon=None):
+    def initializeFamily(self,famNum,mrca,geneTree=None,reconD=None,sourceFam=None):
         '''Set up an entry for family famNum.'''
         # the seed genes are the original PHiGs seed.
 
-        self.familiesD[famNum] = Family(famNum,mrca,geneTree,recon)
+        self.familiesD[famNum] = Family(famNum,mrca,geneTree,reconD,sourceFam)
 
     def addLocusFamily(self, lfO):
         '''Add a LocusFamily. Assumes initializeFamily has already been called
