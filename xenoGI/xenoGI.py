@@ -1,7 +1,7 @@
 """Provides the entry point to xenoGI's functionality."""
 __version__ = "2.2.0"
 import sys, glob, os
-from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,familiesDTLOR,families,islands,analysis,islandBed
+from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
 
 def main():
     
@@ -49,10 +49,6 @@ def main():
     #### makeFamilies
     elif task == 'makeFamilies':
         makeFamiliesWrapper(paramD)
-        
-    #### makeFamiliesDTLOR
-    elif task == 'makeFamiliesDTLOR':
-        makeFamiliesDTLORWrapper(paramD)
         
     #### makeIslands
     elif task == 'makeIslands':
@@ -197,21 +193,7 @@ def makeFamiliesWrapper(paramD):
 
     ## make gene families
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        familiesO = families.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,subtreeD,familyFormationSummaryF)
-
-def makeFamiliesDTLORWrapper(paramD):
-    """Wrapper to create gene families."""
-
-    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
-
-    ## read scores
-    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
-
-    ## make gene families
-    with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        originFamiliesO = familiesDTLOR.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
+        originFamiliesO = families.createFamiliesO(tree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
         
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
@@ -406,7 +388,7 @@ def debugWrapper(paramD):
 
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
     
-    #originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
     #lfO=originFamiliesO.getLocusFamily(7144)
 
