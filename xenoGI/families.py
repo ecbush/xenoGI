@@ -17,7 +17,7 @@ originFamilies object.
     '''
 
     # threshold for maximum size of gene tree, if above, split
-    maxFamilySize=30
+    maxFamilySize=25
 
     # define some variables
     initFamilyFN = paramD['initFamilyFN']

@@ -43,7 +43,7 @@ treeFN='example.tre'
 # The node and the branch leading to it define the focal clade where
 # islands will be reconstructed. Everything outside of this will be
 # treated as ougroups (e.g. won't merge islands there).
-rootFocalClade = 'i2'
+rootFocalClade = 's2'
 
 ## Parameters for optionally making a species tree
 
