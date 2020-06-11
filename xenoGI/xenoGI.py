@@ -382,7 +382,8 @@ def debugWrapper(paramD):
     ## Set up the modules a bit differently for interactive mode
     import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
-
+    from .xenoGI import Family
+    
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
 
@@ -390,12 +391,21 @@ def debugWrapper(paramD):
     
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
-    #lfO=originFamiliesO.getLocusFamily(7144)
+    #lfO=originFamiliesO.getLocusFamily(1935)
 
     #fam=originFamiliesO.getFamily(lfO.famNum)
 
-    #fam.reconD
-    
+    fam = initialFamiliesO.getFamily(14)
+
+    rootkey = ''
+    for key in fam.reconD:
+        if key[0] == 'root':
+            rootkey = key
+    #L = Family.getEventsL(fam.reconD,rootkey) 
+
+    D = Family.convertReconBranchToNode(fam.reconD)
+
+
     code.interact(local=locals())
 
     

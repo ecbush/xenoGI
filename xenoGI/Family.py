@@ -230,3 +230,117 @@ to this instance of the Families class. Return as a set.
     
     def __repr__(self):
         return "<Families object--"+str(len(self.familiesD))+" Families, "+str(len(self.locusFamiliesD))+" LocusFamilies>"
+
+
+# temp
+
+def convertReconBranchToNode(brReconD):
+    '''Take a reconciliation dictionary in the branch based format. (The
+format produced by the dtlor dp function, which represents the
+placement of gene tree branches on the species tree). Return a
+dictionary where reconciliation events are explicitly characterized as
+falling at nodes or branches in the gene and species trees. This output dictionary contains two subdictionaries. One is event based (outD['event']), where keys are of the form
+
+(geneNB,'n/b',speciesNB,'n/b',eventType)
+
+The values include locus numbers on either side of the event and keys for the child events.
+
+Output also contains a second dictionary (outD['species']) where keys are 2-tuples of speciesNB and 'n/b'. And values are (eventKey,locusAtTop,locusAtBottom,cm1Key,cm2Key).
+    '''
+    rootKeyInputFormat = ''
+    for key in brReconD:
+        if key[0] == 'root':
+            rootKeyInputFormat = key
+    
+    eventsL = getEventsL(brReconD,rootKeyInputFormat)
+
+    # make two dicts
+    rootKey = eventsL[0][0]
+    eventD = {}
+    speciesD = {}
+    for eventKey,locusAtTop,locusAtBottom,cm1Key,cm2Key in eventsL:
+        eventD[eventKey] = locusAtTop,locusAtBottom,cm1Key,cm2Key
+
+        speciesNBkey = eventKey[2:4]
+        if speciesNBkey in speciesD:
+            speciesD[speciesNBkey].append((eventKey,locusAtTop,locusAtBottom,cm1Key,cm2Key))
+        else:
+            speciesD[speciesNBkey] = [(eventKey,locusAtTop,locusAtBottom,cm1Key,cm2Key)]
+
+    outD = {}
+    outD['event'] = eventD
+    outD['species'] = speciesD
+
+    return outD
+            
+
+def getEventsL(brReconD,key):
+    '''Traverse the reconciliation dict in preorder starting at key.'''
+
+    if key[0] == None:
+        return [] # reached tip of gene tree
+    else:
+        _, child1Mapping, child2Mapping = brReconD[key]
+        eventT = getOneEvent(brReconD,key)
+        lL = getEventsL(brReconD,child1Mapping) # left
+        rL = getEventsL(brReconD,child2Mapping) # right
+        return [eventT] + lL + rL
+        
+def getOneEvent(brReconD,key):
+    '''Given a key to the branch based reconciliation dictionary, return
+all the info in key and value as separate items.'''
+
+    geneNB,speciesNB,locusAtTop,locusAtBottom = key
+    eventType, child1Mapping, child2Mapping = brReconD[key]
+
+    outKey = determineNodeOrBranch(geneNB,speciesNB,eventType)
+    
+    # get event types of children
+    cm1GeneNB,cm1spNB,cm1LocAtTop,cm1LocAtBot = child1Mapping # cm1 is childMapping1
+    if cm1GeneNB == None:
+        cm1Event = None
+    else:
+        cm1Event = brReconD[child1Mapping][0]
+
+    cm1Key = determineNodeOrBranch(cm1GeneNB,cm1spNB,cm1Event)
+        
+    cm2GeneNB,cm2spNB,cm2LocAtTop,cm2LocAtBot = child2Mapping # cm2 is childMapping2
+    if cm2GeneNB == None:
+        cm2Event = None
+    else:
+        cm2Event = brReconD[child2Mapping][0]
+
+    cm2Key = determineNodeOrBranch(cm2GeneNB,cm2spNB,cm2Event)
+
+    eventT = (outKey,locusAtTop,locusAtBottom,cm1Key,cm2Key)
+    
+    return eventT
+
+def determineNodeOrBranch(geneNB,speciesNB,eventType):
+    '''Determine whether the gene and species locations are on nodes or
+branches based on the event type.'''
+    
+    if eventType == 'D':
+        # implies geneNB is a node, speciesNB is a branch
+        return (geneNB,'n',speciesNB,'b',eventType)
+    elif eventType == 'T':
+        # implies geneNB is a node, speciesNB is a branch
+        return (geneNB,'n',speciesNB,'b',eventType)
+    elif eventType == 'L':
+        # implies geneNB is a branch, speciesNB is a node
+        return (geneNB,'b',speciesNB,'n',eventType)
+    elif eventType == 'O':
+        # implies geneNB is a branch, speciesNB is a branch
+        return (geneNB,'b',speciesNB,'b',eventType)
+    elif eventType == 'R':
+        # implies geneNB is a branch, speciesNB is a branch
+        return (geneNB,'b',speciesNB,'b',eventType)
+    elif eventType == 'C':
+        # implies geneNB is a node, speciesNB is a node
+        return (geneNB,'n',speciesNB,'n',eventType)
+    elif eventType == 'S':
+        # implies geneNB is a node, speciesNB is a node
+        return (geneNB,'n',speciesNB,'n',eventType)
+        # what is S?
+    else:
+        return # should never get here
