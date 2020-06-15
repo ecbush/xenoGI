@@ -389,22 +389,17 @@ def debugWrapper(paramD):
 
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
     
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+    #originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
-    #lfO=originFamiliesO.getLocusFamily(1935)
+    #lfO=originFamiliesO.getLocusFamily(1935) # ifam 14 went with this
 
     #fam=originFamiliesO.getFamily(lfO.famNum)
 
-    fam = initialFamiliesO.getFamily(14)
+    fam = initialFamiliesO.getFamily(261)
 
-    rootkey = ''
-    for key in fam.reconD:
-        if key[0] == 'root':
-            rootkey = key
-    #L = Family.getEventsL(fam.reconD,rootkey) 
+    D = fam.convertReconBranchToNode()
 
-    D = Family.convertReconBranchToNode(fam.reconD)
-
+    Family.Family.printReconByGeneTree(fam,D)
 
     code.interact(local=locals())
 

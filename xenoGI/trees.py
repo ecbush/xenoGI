@@ -205,7 +205,7 @@ def writeTree(tree,fileName):
 #### Functions for creating gene and species trees
 
 def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
-    '''Create a species tree based on the orhtolog sets in aabrhHardCoreL.'''
+    '''Create a species tree based on the ortholog sets in aabrhHardCoreL.'''
 
     ## set up
     # create work dir if it doesn't already exist
@@ -528,12 +528,21 @@ def writeTreeNoBrLen(tree,fileName):
     f.write(tupleTree2NoBrLenNewick(tree)+";")
     f.close()
     
-def stripBranchLen(tree):
-    '''Remove branch lengths from tree. Modifies in place.'''
-    for n in tree.get_nonterminals() + tree.get_terminals():
+def stripBranchLen(bpTree):
+    '''Remove branch lengths from bpTree. Modifies in place.'''
+    for n in bpTree.get_nonterminals() + bpTree.get_terminals():
         del n.branch_length
-    return tree
+    return bpTree
 
+def stripBranchLenTupleTree(tree):
+    '''Remove branch lengths from tree.'''
+    if tree[1] == ():
+        return(tree[0],tree[1],tree[2],None)
+    else:
+        ltree = stripBranchLenTupleTree(tree[1])
+        rtree = stripBranchLenTupleTree(tree[2])
+        return(tree[0],ltree,rtree,None)
+        
 def makeGeneFamilyTrees(paramD,genesO,familiesO,gtFileStem = 'fam'):
     '''Given a families object, create a gene tree for each family.'''
 
@@ -583,13 +592,14 @@ return None.
     for clade in bpTree.get_terminals():
         if clade.name.isdigit():
             clade.name = int(clade.name)
-    
+
     # if multifurcating return None
     if not bioPhyloIsBinary(bpTree):
         return None
     else:
         # otherwise convert to tupleTree
         tree = bioPhyloToTupleTree(bpTree)
+        tree = stripBranchLenTupleTree(tree)
         return tree
 
 def bioPhyloIsBinary(bpTree):

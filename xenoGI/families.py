@@ -30,6 +30,7 @@ originFamilies object.
 
     # create initial families
     initialFamiliesO, locusMapD=createInitialFamiliesO(maxFamilySize,speciesTree,scoresO,genesO,aabrhHardCoreL,paramD)
+
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
@@ -40,7 +41,7 @@ originFamilies object.
     trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
 
-    initialFamiliesO = readFamilies(paramD['initFamilyFN'],speciesTree,genesO)
+    #initialFamiliesO = readFamilies(paramD['initFamilyFN'],speciesTree,genesO)
     
     # load gene trees
     singleGeneInitFamNumL,multifurcatingL,bifurcatingL = loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
@@ -51,15 +52,15 @@ originFamilies object.
     print("Initial families updated with reconciliations and gene trees",file=sys.stderr)
     
     # create origin families
-    originFamiliesO = createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    #originFamiliesO = createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
 
     # write origin familes to file
-    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
-    print("Origin families:",file=outputSummaryF)
-    writeFamilyFormationSummary(originFamiliesO,outputSummaryF)
+    #writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
+    #print("Origin families:",file=outputSummaryF)
+    #writeFamilyFormationSummary(originFamiliesO,outputSummaryF)
 
-    return originFamiliesO
-
+    #return originFamiliesO
+    return None
 
 ## Support functions
     
@@ -702,7 +703,7 @@ def reconcileAllGeneTrees(speciesTree,geneTreeL,initialFamiliesO,locusMapD,genes
     with Pool(processes=paramD['numProcesses']) as p:
         for initFamNum,optRootedGeneTree,optMPR in p.imap_unordered(reconcile, argumentL):
             initialFamiliesO.getFamily(initFamNum).addGeneTree(optRootedGeneTree)
-            initialFamiliesO.getFamily(initFamNum).addReconciliation(optMPR)
+            initialFamiliesO.getFamily(initFamNum).addReconciliation(optMPR,'rawBranch')
 
     return initialFamiliesO
         
@@ -795,82 +796,83 @@ corresponding initial family.
 
     return originFamiliesO
     
-def addOriginFamilyFromReconciliation(rootedGeneTree,reconciliation,originFamiliesO,sourceFam,genesO):
-    '''Given a rooted gene tree and a reconciliation, add origin
-families. One origin family for each origin event.
+def addOriginFamilyFromReconciliation(rootedGeneTree,rawReconD,originFamiliesO,sourceFam,genesO):
+    '''Given a rooted gene tree and a reconciliation (raw output from
+DTLOR_BP, add origin families. One origin family for each origin
+event.
     '''
-    nodeLocusMapD, keyByNodeD=parseReconForLocus(reconciliation)
+    branchLocusMapD, keyByBranchD=parseReconForLocus(rawReconD)
     rootedGeneTreeD=trees.getTreeDictionary(rootedGeneTree,{})
    
     #construct an origin family for each Origin event, a locus family for each R event
-    for node in nodeLocusMapD.keys():
-        locus_t,locus_b=nodeLocusMapD[node]
-        if locus_t=='*':
-            if  locus_b!='*':  #if you use integer conversion, '*' need to be changed
-                startNode = node  
-                #parse the reconciliation to only include the part responsible for origin family
-                partialRecon = getPartialRecon(reconciliation, keyByNodeD[startNode])
+    for branch in branchLocusMapD.keys():
+        topIsStarB,locusAtBottom=branchLocusMapD[branch]
+        if topIsStarB==True:
+            if locusAtBottom!='*':  #if you use integer conversion, '*' need to be changed
+                startBranch = branch  
+                #parse the rawReconD to only include the part responsible for origin family
+                partialRecon = getPartialRecon(rawReconD, keyByBranchD[startBranch])
                 famNum = originFamiliesO.getNumFamilies()
-                _,speciesBr,_=partialRecon[startNode]
+                _,speciesBr,_=partialRecon[startBranch]
                 originFamiliesO.initializeFamily(famNum,speciesBr,rootedGeneTree,partialRecon,sourceFam) #use the species for MRCA
-                getLocusFamiliesInOrigin(startNode, rootedGeneTreeD, nodeLocusMapD, famNum, originFamiliesO, genesO, partialRecon)
+                getLocusFamiliesInOrigin(startBranch, rootedGeneTreeD, branchLocusMapD, famNum, originFamiliesO, genesO, partialRecon)
 
     return originFamiliesO
 
-def parseReconForLocus(reconciliation):
+def parseReconForLocus(rawReconD):
     """
     Input
     ---------
-    reconciliation:  DTLOR reconciliation dictionary for the whole gene tree
+    rawReconD:  DTLOR reconciliation dictionary for the whole gene tree
     Return
     ---------
-    nodeLocusMapD:  a dictionary mapping each gene node to its (top, bottom) loci
+    branchLocusMapD:  a dictionary mapping each gene branch to its (topIsStarB,locusAtBottom)
     given by the DTLOR recon
 
-    keyByNodeD:  a dict of keys in the reconciliation organized by node
+    keyByBranchD:  a dict of keys in the reconciliation organized by node
     """
-    nodeLocusMapD=dict()
-    keyByNodeD=dict()
-    for key in reconciliation.keys():
-        node=key[0]
-        locus_t=key[2]
-        locus_b=key[3]
-        if node not in nodeLocusMapD:
-            nodeLocusMapD[node]=(locus_t,locus_b)
-        if node not in keyByNodeD:
-            keyByNodeD[node]=[key]
+    branchLocusMapD=dict()
+    keyByBranchD=dict()
+    for key in rawReconD.keys():
+        branch=key[0]
+        topIsStarB=key[2]
+        locusAtBottom=key[3]
+        if branch not in branchLocusMapD:
+            branchLocusMapD[branch]=(topIsStarB,locusAtBottom)
+        if branch not in keyByBranchD:
+            keyByBranchD[branch]=[key]
         else:
-            keyByNodeD[node].append(key)
-    return nodeLocusMapD, keyByNodeD
+            keyByBranchD[branch].append(key)
+    return branchLocusMapD, keyByBranchD
 
-def getPartialRecon(reconciliation,mappingNodes):
+def getPartialRecon(rawReconD,mappingNodes):
     """
     Returns a partial dictionary with only key,values pairs
     corresponding to the sub(gene)tree rooted at startNode. 
-    Key is a gene node, value is (species branch, locus)
+    Key is a gene branch, value is (species branch, locus)
     """
   
-    nodeMap={}
+    branchMap={}
     queue=deque(mappingNodes)
     while len(queue)>0:
         currentMapping=queue.popleft()
-        value=reconciliation[currentMapping]
+        value=rawReconD[currentMapping]
         eventType, child1Mapping, child2Mapping=value
-        geneBr, speciesBr, tl, bl=currentMapping
+        geneBr, speciesBr, tB, bl=currentMapping
         if eventType!='L':  #if it is a loss event the gene node has not been mapped to the bottom 
-            nodeMap[geneBr]=(eventType,speciesBr,bl)
+            branchMap[geneBr]=(eventType,speciesBr,bl) # collisions here? ???
         for child in [child1Mapping,child2Mapping]:
             if child!=(None, None, None, None):
                 queue.append(child)
-    return nodeMap
+    return branchMap
 
-def getLocusFamiliesInOrigin(startNode, rootedGeneTreeD, nodeLocusMapD, famNum, originFamiliesO, genesO, recon):
+def getLocusFamiliesInOrigin(startNode, rootedGeneTreeD, branchLocusMapD, famNum, originFamiliesO, genesO, recon):
     """
     Helper function that adds the locus families to originFamiliesO. These locus families
     belong in the origin family object that starts with startNode
     """
     LeaftoMRCA={}
-    getMRCAforOR(startNode,rootedGeneTreeD,nodeLocusMapD,LeaftoMRCA)
+    getMRCAforOR(startNode,rootedGeneTreeD,branchLocusMapD,LeaftoMRCA)
     MRCAtoLeaves={}
     for gene, MRCA in LeaftoMRCA.items():
         if MRCA in MRCAtoLeaves:
@@ -878,30 +880,30 @@ def getLocusFamiliesInOrigin(startNode, rootedGeneTreeD, nodeLocusMapD, famNum, 
         else:
             MRCAtoLeaves[MRCA]=[gene]
     for startNode in MRCAtoLeaves:
-        _,locus_b=nodeLocusMapD[startNode]
+        _,locusAtBottom=branchLocusMapD[startNode]
         _,speciesBr,_=recon[startNode]
         #new locus family with the current gene node's recon mapping species node/branch as the MRCA
         newLocusNum=originFamiliesO.getNumLocusFamilies()
-        # lf=LocusFamily(famNum,int(locus_b),speciesBr)
-        lf=LocusFamily(famNum,newLocusNum,speciesBr, int(locus_b))
+        # lf=LocusFamily(famNum,int(locusAtBottom),speciesBr)
+        lf=LocusFamily(famNum,newLocusNum,speciesBr, int(locusAtBottom))
         leaves= MRCAtoLeaves[startNode]
         lf.addGenes(leaves, genesO)
         originFamiliesO.addLocusFamily(lf)
 
-def getMRCAforOR(startNode, rootedGeneTreeD, nodeLocusMapD,MRCA):
+def getMRCAforOR(startNode, rootedGeneTreeD, branchLocusMapD,MRCA):
     """
     populates the MRCA map from gene leaf to the gene node of the last O or R event
     from it to the root
     """
-    locus_t,locus_b=nodeLocusMapD[startNode]
-    if locus_b!=locus_t:
+    topIsStarB,locusAtBottom=branchLocusMapD[startNode]
+    if locusAtBottom!=topIsStarB:
         leaves= trees.getLeavesInSubtree(startNode, rootedGeneTreeD)
         for leaf in leaves:
             MRCA[leaf]=startNode
     if startNode in rootedGeneTreeD:
         left, right=rootedGeneTreeD[startNode]
-        getMRCAforOR(left, rootedGeneTreeD, nodeLocusMapD, MRCA)
-        getMRCAforOR(right, rootedGeneTreeD, nodeLocusMapD, MRCA)
+        getMRCAforOR(left, rootedGeneTreeD, branchLocusMapD, MRCA)
+        getMRCAforOR(right, rootedGeneTreeD, branchLocusMapD, MRCA)
 
 #### Input/output
 
