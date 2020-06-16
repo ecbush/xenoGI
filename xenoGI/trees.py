@@ -654,98 +654,70 @@ def validRooting(tree, locusMapForRootingD):
        return False
     else: return True
 
-def get_all_rerootings(tree, locusMapForRootingD):
+def get_all_rerootings(tree,locusMapForRootingD):
+    """Given a tree, find all rerootings.
     """
-    Compute all rerootings of a tree
 
-    Parameters
-    --------------------
-        tree                   -- a four tuple tree
-        locusMapForRootingD   -- a dictionary mapping the gene node name
-                                 to a syntenic location or "*" if cannot be imputed by parsimony
+    def reroot_left(t):
+        root, left, right, _ = t
+        lt_name, A, B , _= left
+        if len(A) == 0: # cannot move root
+            return
 
-    Return
-    --------------------
-        rerootings  -- a list of RLR trees 
-    """
-    #global memorization variables
-    #records all distinctive trees by their left and right subtree roots (branch where rooting happens)
-    alltrees=set()
-    #keeps track of the actuall rerootings
-    rerootings=[]
+        # create rerooted trees
+        t1 = (root,
+                    A,
+                    (lt_name, B, right, None),
+                    None
+             )
+        t2 = (root,
+                    B,
+                    (lt_name, A, right, None),
+                    None
+             )
 
-    #keeps the original tree
-    if validRooting(tree, locusMapForRootingD):
-        rerootings+=[tree]
-    originaltree=frozenset([get_name(left_subtree(tree)),get_name(right_subtree(tree))])
-    alltrees.add(originaltree)
+        # add to rerooted trees
+        if validRooting(t1, locusMapForRootingD):
+            trees.append(t1)
+        if validRooting(t1, locusMapForRootingD):
+            trees.append(t2)
 
-    #call the helper function where actually rerooting happens
-    helperRerooting(tree, alltrees, rerootings, locusMapForRootingD)
-    return rerootings  
+        # recur to keep moving down left subtree
+        reroot_left(t1)
+        reroot_left(t2)
 
-def helperRerooting(tree, alltrees, rerootings, locusMapForRootingD):
-    """
-    The actual function for rerooting
-    Reroot on the path to grandchildren of root if possible
-    calls addTree to record rerootings and trees generated so far
+    def reroot_right(t):
+        root, left, right, _ = t
+        rt_name, C, D, _ = right
+        if len(C) == 0: # cannot move root
+            return
 
-    Parameters
-    --------------------
-        tree        -- a 4-tuple tree
+        # create rerooted trees
+        t1 = (root,
+                   (rt_name, left, D, None),
+                   C,
+                   None
+             )
+        t2 = (root,
+                   (rt_name, left, C, None),
+                   D,
+                   None
+             )
+        # add to rerooted trees
+        if validRooting(t1, locusMapForRootingD):
+            trees.append(t1)
+        if validRooting(t1, locusMapForRootingD):
+            trees.append(t2)
 
-    """
-    
-    if not is_leaf(left_subtree(tree)):
-        #if the left tree has two children
-        #first we can root on the path to its left children
-        newleft=left_subtree(left_subtree(tree))
-        newright=(get_name(left_subtree(tree)),right_subtree(left_subtree(tree)),right_subtree(tree))
+        # recur to keep moving down right subtree
+        reroot_right(t1)
+        reroot_right(t2)
 
-        #if this tree has not been encountered, add it
-        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
-    
-        #second we can root on the path to its left
-        newleft=(get_name(left_subtree(tree)),left_subtree(left_subtree(tree)),right_subtree(tree))
-        newright=right_subtree(left_subtree(tree))
+    trees = [tree]
+    reroot_left(tree)
+    reroot_right(tree)
+    return trees
 
-        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
-        
-
-    if not is_leaf(right_subtree(tree)):
-        #if the right tree has two children
-        #first we can root on the path to its right children
-        newright=right_subtree(right_subtree(tree))
-        newleft=(get_name(right_subtree(tree)),left_subtree(right_subtree(tree)),left_subtree(tree))
-
-        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
-    
-        #second we can root on the path to its left
-        newright=(get_name(right_subtree(tree)),right_subtree(right_subtree(tree)),left_subtree(tree))
-        newleft=left_subtree(right_subtree(tree))
-
-        addTree(tree,newleft,newright, alltrees, rerootings, locusMapForRootingD)
-
-def addTree(tree, newleft, newright, alltrees, rerootings, locusMapForRootingD):
-    """
-    helper function for the helperRerooting function
-    This function add a new rerooting to the rerootings and alltrees if not already found
-    and calls the helperRerooting on the new rerooting
-
-    Parameters
-    --------------------
-        tree        -- a 4-tuple tree that is the orginal tree
-        newleft     -- a new left tree generated in helperRerooting
-        newright    -- a new right tree generated in helperRerooting
-
-    """
-    newtree=frozenset([get_name(newright),get_name(newleft)])
-    if newtree not in alltrees:
-        newrooting=(get_name(tree),newleft,newright)
-        if validRooting(newrooting, locusMapForRootingD):
-            rerootings+=[newrooting]
-        alltrees.add(newtree)
-        helperRerooting(newrooting, alltrees, rerootings, locusMapForRootingD)
 
 #### Convert to tree format for DTLOR
 
