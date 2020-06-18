@@ -396,11 +396,11 @@ def debugWrapper(paramD):
     #fam=originFamiliesO.getFamily(lfO.famNum)
 
     fam = initialFamiliesO.getFamily(261)
+    reconD = families.convertReconBranchToNode(fam.reconD,fam.geneTree)
+    families.printReconByGeneTree(reconD,fam.geneTree,0)
 
-    D = fam.convertReconBranchToNode()
-
-    Family.Family.printReconByGeneTree(fam,D)
-
+    #trees.writeTreeNoBrLen(fam.geneTree,"261rooted.tre")
+    
     code.interact(local=locals())
 
     

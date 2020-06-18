@@ -1,4 +1,5 @@
 import sys
+from . import trees
 
 class LocusFamily:
     def __init__(self, famNum, locusFamNum, lfMrca,locusNum=None):
@@ -76,7 +77,7 @@ gene2...
         
         
 class Family:
-    def __init__(self,famNum,mrca,geneTree=None,reconD={},sourceFam=None):
+    def __init__(self,famNum,mrca,geneTree=None,reconD=None,sourceFam=None):
         '''Initialize an object of class Family.'''
 
         self.famNum = famNum
@@ -126,161 +127,12 @@ connections to this family.'''
 object is assumed to be a tuple tree.'''
         self.geneTree = geneTree
 
-    def addReconciliation(self,rD,key):
+    def addReconciliation(self,rD):
         '''Given a dictionary rD storing reconciliation values, store as attribute.'''
-        self.reconD[key] = rD
+        self.reconD = rD
         
-    def convertReconBranchToNode(self):
-        '''Take a reconciliation dictionary in the branch based format. (The
-    format produced by the dtlor dp function, which represents the
-    placement of gene tree branches on the species tree). Return a
-    dictionary where reconciliation events are explicitly
-    characterized as falling at nodes or branches in the gene and
-    species trees. This output dictionary contains two
-    subdictionaries. One is event based (outD['event']), where keys
-    are of the form
-
-    (geneNB,'n/b',speciesNB,'n/b',eventType)
-
-    The values (topIsStarB,locusAtBottom,cm1Key,cm2Key) where cm1Key
-        is a child mapping.
-
-        '''
-
-        if 'rawBranch' not in self.reconD:
-            raise ValueError("Reconciliation dict does not contain reconciliation in raw branch format.")
-        
-        rootKeyInputFormat = ''
-        for key in self.reconD['rawBranch']:
-            if key[0] == 'root':
-                rootKeyInputFormat = key
-
-        eventsL = self.getEventsL(rootKeyInputFormat)
-
-        # make output dict
-        rootKey = eventsL[0][0]
-        eventD = {}
-        for eventKey,topIsStarB,locusAtBottom,cm1Key,cm2Key in eventsL:
-            eventD[eventKey] = topIsStarB,locusAtBottom,cm1Key,cm2Key
-
-        return eventD
-
-    def getEventsL(self,brKey):
-        '''Traverse the branch based reconciliation dict in preorder starting
-    at brKey.'''
-
-        if brKey[0] == None:
-            return [] # reached tip of gene tree
-        else:
-            _, child1Mapping, child2Mapping = self.reconD['rawBranch'][brKey]
-            eventTL = self.parseOneBranchEntry(brKey)
-            lL = self.getEventsL(child1Mapping) # left
-            rL = self.getEventsL(child2Mapping) # right
-            return eventTL + lL + rL
-
-    def parseOneBranchEntry(self,brKey):
-        '''Given a key to the branch based reconciliation dictionary, extract
-    the event or events (can have multiple when O or R occurs), and return
-    as a list of tuples. Each tuples has all the info for one event.
-
-        '''
-        eventTL = [] # output
-        geneNB,speciesNB,topIsStarB,locusAtBottom = brKey
-        eventType, child1Mapping, child2Mapping = self.reconD['rawBranch'][brKey]
-
-        # get the key we'll use for main event (DTLSC)
-        eventKey = self.determineNodeOrBranch(geneNB,speciesNB,eventType)
-
-
-        # temp until the brReconDs have O and R explicitly
-        if topIsStarB==True and locusAtBottom!='*':
-            # O event
-            inducedEventKey = self.determineNodeOrBranch(geneNB,speciesNB,'O')
-
-            eventT = (inducedEventKey,topIsStarB,locusAtBottom,eventKey,None) # points to associated DTS
-            eventTL.append(eventT)
-        # I'm skipping R, will do when they update the beReconD format.
-
-        # get event types of children
-        cm1GeneNB,cm1spNB,cm1LocAtTop,cm1LocAtBot = child1Mapping # cm1 is childMapping1
-        if cm1GeneNB == None:
-            cm1Event = None
-        else:
-            cm1Event = self.reconD['rawBranch'][child1Mapping][0]
-
-        cm1Key = self.determineNodeOrBranch(cm1GeneNB,cm1spNB,cm1Event)
-
-        cm2GeneNB,cm2spNB,cm2LocAtTop,cm2LocAtBot = child2Mapping # cm2 is childMapping2
-        if cm2GeneNB == None:
-            cm2Event = None
-        else:
-            cm2Event = self.reconD['rawBranch'][child2Mapping][0]
-
-        cm2Key = self.determineNodeOrBranch(cm2GeneNB,cm2spNB,cm2Event)
-
-        eventT = (eventKey,topIsStarB,locusAtBottom,cm1Key,cm2Key)
-        eventTL.append(eventT)
-
-        return eventTL
-
-    def determineNodeOrBranch(self,geneNB,speciesNB,eventType):
-        '''Determine whether the gene and species locations are on nodes or
-    branches based on the event type.'''
-
-        if eventType == 'D': # duplication
-            # implies geneNB is a node, speciesNB is a branch
-            return (geneNB,'n',speciesNB,'b',eventType)
-        elif eventType == 'T': # transfer
-            # implies geneNB is a node, speciesNB is a branch
-            return (geneNB,'n',speciesNB,'b',eventType)
-        elif eventType == 'L': # loss
-            # implies geneNB is a branch, speciesNB is a node
-            return (geneNB,'b',speciesNB,'n',eventType)
-        elif eventType == 'O': # origin
-            # implies geneNB is a branch, speciesNB is a branch
-            return (geneNB,'b',speciesNB,'b',eventType)
-        elif eventType == 'R': # rearrangement
-            # implies geneNB is a branch, speciesNB is a branch
-            return (geneNB,'b',speciesNB,'b',eventType)
-        elif eventType == 'C': # cotermination
-            # implies geneNB is a node, speciesNB is a node
-            return (geneNB,'n',speciesNB,'n',eventType)
-        elif eventType == 'S': # cospeciation
-            # implies geneNB is a node, speciesNB is a node
-            return (geneNB,'n',speciesNB,'n',eventType)
-        else:
-            return # should never get here
-
     def printReconByGeneTree(self,eventD,fileF=sys.stdout):
         ''''''
-
-        # find starting point
-        rootkey = ''
-        for key in eventD:
-            if key[0] == 'root':
-                rootkey = key
-
-        for l in self.traverseReconByGeneTree(eventD,rootkey):
-            print(l,file=fileF)
-            
-    def traverseReconByGeneTree(self,eventD,key):
-        ''''''
-
-        if key[4] == 'C':
-            # cotermination, stop.
-            return [(key,eventD[key])]
-        else:
-            L = [(key,eventD[key])]
-            _,_,lkey,rkey = eventD[key]
-            lL = self.traverseReconByGeneTree(eventD,lkey)
-            
-            if key[4] in 'DTS':
-                # branching event
-                rL = self.traverseReconByGeneTree(eventD,rkey)
-            else:
-                # is O or R, no event in right slot
-                rL = []
-            return L + lL + rL
             
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum <tab> 
@@ -355,6 +207,12 @@ to create the corresponding family.
     def getFamily(self,famNum):
         return self.familiesD[famNum]
 
+    def addGeneTreeToFamily(self,famNum,geneTree):
+        self.familiesD[famNum].addGeneTree(geneTree)
+
+    def addReconciliationToFamily(self,famNum,reconD):
+        self.familiesD[famNum].addReconciliation(reconD)
+        
     def iterLocusFamilies(self):
         '''Iterate over all LocusFamilies in order of locusFamNum.
         '''

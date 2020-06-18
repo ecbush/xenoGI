@@ -779,33 +779,3 @@ def parseTreeForDP(tree, parasite):
     parsedTree[key]=value
     
     return parseHelper(tree, parsedTree)
-
-#### Another dict format for trees (we should really make a tree object...)
-
-def getTreeDictionary(geneTree,tree_dict):
-    """
-    Input: tuple tree format 
-    Output: dictionary with key as parent node and value as the children tuple
-    """
-    root=geneTree[0]
-    left=geneTree[1]
-    right=geneTree[2]
-    if left==():
-        return tree_dict  #meaningless length
-    else:
-        tree_dict[root]=(left[0], right[0])
-        tree_dict=getTreeDictionary(left, tree_dict)
-        tree_dict=getTreeDictionary(right, tree_dict)
-        return tree_dict
-
-def getLeavesInSubtree(startNode, tree_dict):
-    """
-    returns the list of leaves in the subtree rooted at startNode
-    """
-    if startNode not in tree_dict: #it is a tip
-        return [int(startNode)]    #prepare for addGene which needs integer
-    else:
-        left, right=tree_dict[startNode]
-        leaves=getLeavesInSubtree(left, tree_dict)
-        leaves.extend(getLeavesInSubtree(right, tree_dict))
-        return leaves
