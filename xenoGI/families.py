@@ -700,7 +700,7 @@ def reconcileAllGeneTrees(speciesTree,geneTreeL,initialFamiliesO,locusMapD,genes
             reconD = convertReconBranchToNode(optMPR,optRootedGeneTree)
 
             # sanity check
-            costCheck(minCost,reconD,D,T,L,O,R)
+            #costCheck(minCost,reconD,D,T,L,O,R)
             
             # store
             ifam = initialFamiliesO.getFamily(initFamNum)
@@ -750,7 +750,7 @@ def reconcile(argT):
         try:
             MPR,cost=DTLOR_DP.DP(speciesTree, geneTreeD, tipMapD, gtLocusMapD, D, T, L, O, R)
         except IndexError:
-            with open("temp.txt",'w') as f:
+            with open("error.txt",'w') as f:
                 f.write(str(argT))
             raise IndexError("saved to temp.txt")
                 
@@ -766,10 +766,23 @@ def reconcile(argT):
     #sample one MPR from the MPRs for this specific unrooted tree
     optRootedGeneTree,optMPR,minCost=random.choice(bestMPRs) 
 
+    # TEMP for finding cost problems
+    reconD = convertReconBranchToNode(optMPR,optRootedGeneTree)
+    sm = costSum(reconD,D,T,L,O,R)
+    if round(sm,3) != round(minCost,3):
+        with open("costError.txt",'a') as f:
+            f.write(str(sm)+" "+str(minCost)+"\n")
+            f.write(str(argT)+"\n")
+        
     return initFamNum,optRootedGeneTree,optMPR,minCost 
 
 def costCheck(minCost,reconD,D,T,L,O,R):
     '''Sanity check to ensure the events in reconD sum to minCost.'''
+    sm = costSum(reconD,D,T,L,O,R)
+    assert round(sm,3) == round(minCost,3), "Events in this reconcilation don't sum to minCost."
+
+def costSum(reconD,D,T,L,O,R):
+    '''Sum the costs implied by the recon in reconD.'''
     sm = 0
     for valL in reconD.values():
         for eventType,_,_,_ in valL:
@@ -784,7 +797,8 @@ def costCheck(minCost,reconD,D,T,L,O,R):
             elif eventType == 'R':
                 sm+=R
             # S, C and N events have no cost
-    assert round(sm,3) == round(minCost,3), "Events in this reconcilation don't sum to minCost."
+    return sm
+
     
 def createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO):
     '''Create and return an originFamilies object, based on the initial families and recocniliations.'''
