@@ -269,7 +269,8 @@ def interactiveAnalysisWrapper(paramD):
     ## Set up the modules a bit differently for interactive mode
     import code,sys
     from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printLocusIslandNeighb,vPrintLocusIslandsAtNode,coreNonCoreCtAtNode,printOutsideFamilyScores
-
+    from .xenoGI import families # remove later
+    
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
     
@@ -360,6 +361,7 @@ def interactiveAnalysisWrapper(paramD):
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])    
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],tree)
     gene2FamIslandD = createGene2FamIslandD(islandByNodeD,originFamiliesO)
@@ -387,7 +389,7 @@ def debugWrapper(paramD):
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
 
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
+    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
     
     #originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
 
@@ -395,12 +397,66 @@ def debugWrapper(paramD):
 
     #fam=originFamiliesO.getFamily(lfO.famNum)
 
-    fam = initialFamiliesO.getFamily(261)
-    reconD = families.convertReconBranchToNode(fam.reconD,fam.geneTree)
-    families.printReconByGeneTree(reconD,fam.geneTree,0)
+    #fam = initialFamiliesO.getFamily(261)
+    #reconD = families.convertReconBranchToNode(fam.reconD,fam.geneTree)
+    #families.printReconByGeneTree(reconD,fam.geneTree,0)
 
     #trees.writeTreeNoBrLen(fam.geneTree,"261rooted.tre")
+
+    def eventList(reconD):
+        L=[]
+        for valL in reconD.values():
+            for eventType,_,_,_ in valL:
+                L.append(eventType)
+        return L
+
+    def eventListBr(brReconD):
+        return [k[0] for k in brReconD.values()]
     
+    def eventSum(reconD,D,T,L,O,R):
+        sm = 0
+        for eventType in eventList(reconD):
+            if eventType == 'D':
+                sm+=D
+            elif eventType == 'T':
+                sm+=T
+            elif eventType == 'L':
+                sm+=L
+            elif eventType == 'O':
+                sm+=O
+            elif eventType == 'R':
+                sm+=R
+            # S and C events have no cost
+        return sm
+
+    D=float(paramD["duplicationCost"])
+    T=float(paramD["transferCost"])
+    L=float(paramD["lossCost"])
+    O=float(paramD["originCost"])
+    R=float(paramD["rearrangeCost"])
+    
+    reconsL = []
+    #with open("temp.txt","r") as f:
+    with open("a","r") as f:
+        while True:
+            s=f.readline()
+            if s=="":
+                break
+            initFamNum,minCost,reconD,brReconD = s.rstrip().split("\t")
+            initFamNum = int(initFamNum)
+            minCost = float(minCost)
+            reconD = eval(reconD)
+            brReconD = eval(brReconD)
+            reconsL.append((initFamNum,minCost,reconD,brReconD))
+
+    #for initFamNum,minCost,reconD,brReconD in reconsL:
+        
+    #    sm=eventSum(reconD,D,T,L,O,R)        
+    #    if minCost!=sm:
+    #        print(initFamNum,minCost,sm)
+
+
+            
     code.interact(local=locals())
 
     

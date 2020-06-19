@@ -25,8 +25,6 @@ originFamilies object.
     geneInfoFN = paramD['geneInfoFN']
     iFamGeneTreeFileStem = 'initFam'
 
-
-    """
     # checks
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
@@ -39,7 +37,6 @@ originFamilies object.
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
     print("Initial families written out to %s"%initFamilyFN,file=sys.stderr)
 
-
     # make gene family trees
     trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
@@ -47,18 +44,10 @@ originFamilies object.
     # load gene trees
     singleGeneInitFamNumL,multifurcatingL,bifurcatingL = loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
 
-
     # reconcile
     initialFamiliesO = reconcileAllGeneTrees(speciesTree,bifurcatingL,initialFamiliesO,locusMapD,genesO,paramD)
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
-    print("Initial families updated with reconciliations and gene trees",file=sys.stderr)
-    """
-
-    ### TEMP
-    initialFamiliesO = readFamilies(paramD['initFamilyFN'],speciesTree,genesO) # TEMP
-    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
-    ### TEMP
-    
+    print("Initial families updated with reconciliations and gene trees",file=sys.stderr)    
     # create origin families
     originFamiliesO = createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
 
@@ -638,7 +627,6 @@ outputSummaryF.
         else:
             multipleStrainFams += 1
 
-
     summaryL.append(["Number of families with one LocusFamily",str(singleLfFams)])
     summaryL.append(["Number of families with multiple LocusFamilies",str(multipleLfFams)])
     summaryL.append(["Number of families with gene(s) in only one strain",str(singleStrainFams)])
@@ -703,16 +691,22 @@ def reconcileAllGeneTrees(speciesTree,geneTreeL,initialFamiliesO,locusMapD,genes
         locusMapForRootingD = trees.createLocusMapForRootingD(geneTree,copy.deepcopy(gtLocusMapD))
         
         # add to argumentL
-        argT = (speciesTree,initFamNum,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R)
+        argT = (initFamNum,speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R)
         argumentL.append(argT)
-
+        
     # run on multiple processors
     with Pool(processes=paramD['numProcesses']) as p:
-        for initFamNum,optRootedGeneTree,optMPR in p.imap_unordered(reconcile, argumentL):
+        for initFamNum,optRootedGeneTree,optMPR,minCost in p.imap_unordered(reconcile, argumentL):
+            reconD = convertReconBranchToNode(optMPR,optRootedGeneTree)
+
+            # sanity check
+            costCheck(minCost,reconD,D,T,L,O,R)
+            
+            # store
             ifam = initialFamiliesO.getFamily(initFamNum)
             ifam.addGeneTree(optRootedGeneTree)
-            ifam.addReconciliation(optMPR)
-    
+            ifam.addReconciliation(reconD)
+
     return initialFamiliesO
         
 def getTipMapping(geneTree, genesO):
@@ -736,7 +730,7 @@ def reduceLocusMap(geneTree,locusMapD):
 def reconcile(argT):
     '''Reconcile a single gene tree.'''
 
-    speciesTree,initFamNum,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R = argT
+    initFamNum,speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R = argT
 
     # species tree to right format
     speciesTree=trees.parseTreeForDP(speciesTree,parasite=False)
@@ -748,25 +742,50 @@ def reconcile(argT):
 
     # try all rootings and record the ones and their
     # solutions with the best scores
-    best_score=float('inf')
+    minCost=float('inf')
     bestMPRs=[]
     for geneTree in allRootingsL:
         geneTreeD=trees.parseTreeForDP(geneTree,parasite=True) # gene tree to right format
-        MPR,cost=DTLOR_DP.DP(speciesTree, geneTreeD, tipMapD, gtLocusMapD, D, T, L, O, R)
-        if cost<best_score: 
+
+        try:
+            MPR,cost=DTLOR_DP.DP(speciesTree, geneTreeD, tipMapD, gtLocusMapD, D, T, L, O, R)
+        except IndexError:
+            with open("temp.txt",'w') as f:
+                f.write(str(argT))
+            raise IndexError("saved to temp.txt")
+                
+        if cost<minCost: 
             #if the score is better than current best
             #update best score, clear record and add new record
-            best_score=cost
+            minCost=cost
             bestMPRs=[]
-            bestMPRs.append((geneTree,MPR))
-        elif cost==best_score:
-            bestMPRs.append((geneTree,MPR))
+            bestMPRs.append((geneTree,MPR,minCost))
+        elif cost==minCost:
+            bestMPRs.append((geneTree,MPR,minCost))
 
     #sample one MPR from the MPRs for this specific unrooted tree
-    optRootedGeneTree,optMPR=random.choice(bestMPRs) 
+    optRootedGeneTree,optMPR,minCost=random.choice(bestMPRs) 
 
-    return initFamNum,optRootedGeneTree,optMPR    
+    return initFamNum,optRootedGeneTree,optMPR,minCost 
 
+def costCheck(minCost,reconD,D,T,L,O,R):
+    '''Sanity check to ensure the events in reconD sum to minCost.'''
+    sm = 0
+    for valL in reconD.values():
+        for eventType,_,_,_ in valL:
+            if eventType == 'D':
+                sm+=D
+            elif eventType == 'T':
+                sm+=T
+            elif eventType == 'L':
+                sm+=L
+            elif eventType == 'O':
+                sm+=O
+            elif eventType == 'R':
+                sm+=R
+            # S, C and N events have no cost
+    assert round(sm,3) == round(minCost,3), "Events in this reconcilation don't sum to minCost."
+    
 def createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO):
     '''Create and return an originFamilies object, based on the initial families and recocniliations.'''
 
@@ -779,10 +798,8 @@ def createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifu
     # add in families from reconciliation
     for initFamNum,geneTree in bifurcatingL:
         iFam = initialFamiliesO.getFamily(initFamNum)
-        rootedGeneTree = iFam.geneTree
-        brReconD = iFam.reconD
         sourceFam = iFam.famNum
-        originFamiliesO = addOriginFamilyFromReconciliation(rootedGeneTree,brReconD,originFamiliesO,sourceFam,genesO)
+        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneTree,iFam.reconD,originFamiliesO,sourceFam,genesO)
 
     return originFamiliesO
         
@@ -804,14 +821,12 @@ corresponding initial family.
 
     return originFamiliesO
     
-def addOriginFamilyFromReconciliation(geneTree,brReconD,originFamiliesO,sourceFam,genesO):
+def addOriginFamilyFromReconciliation(geneTree,reconD,originFamiliesO,sourceFam,genesO):
     '''Given a rooted gene tree and a reconciliation (raw output from
 DTLOR_BP, add origin families. One origin family for each origin
 event.
     '''
-    reconD = convertReconBranchToNode(brReconD,geneTree)
-
-    # get origin defined trees
+        # get origin defined trees
     branchOriginL = getBranchesWithSpecifiedEvents(reconD,"O")
     originTreeL = splitTreeByOrigin(geneTree,branchOriginL)
 
@@ -885,10 +900,11 @@ is defined by the most recent R event (or O) in its history.
 
     for locFamT in locFamTL:
         geneTreeRBranch,locFamGenesT = locFamT
-        nbKey = (geneTreeRBranch,'b')
-        _,lfSpeciesMrca,_,locusAtBottom = splitReconD[nbKey][0]
+        lfReconRootKey = (geneTreeRBranch,'b')
+        # pull out the R or O event to get mrca
+        _,lfSpeciesMrca,_,locusAtBottom = [val for val in splitReconD[lfReconRootKey] if val[0] in 'OR'][0]
         newLocusNum=originFamiliesO.getNumLocusFamilies()
-        lf=LocusFamily(famNum,newLocusNum,lfSpeciesMrca,int(locusAtBottom))
+        lf=LocusFamily(famNum,newLocusNum,lfSpeciesMrca,int(locusAtBottom),lfReconRootKey)
         lf.addGenes(locFamGenesT,genesO)
         originFamiliesO.addLocusFamily(lf)
     return originFamiliesO
@@ -900,7 +916,7 @@ no R events, then defined by its O event (each tree has an O at
 root). We do this recursively. Function returns a tuple
 (outFreeGeneL,outLocFamTL). outFreeGeneL is simply a list of genes
 that have not yet encountered an R event. outLocFamTL is a list of
-tuples, which each tuple is a locus family. It contains two
+tuples, where each tuple is a locus family. It contains two
 elements. The left is the branch on which the defining R event
 occurs. The right is a list of genes defined by this. If we are at a
 node where an R event occurred (is present in branchRL) then we take
@@ -913,13 +929,13 @@ a tuple, and add to outLocFamTL.
     elif geneTree[1] == () and geneTree[0] not in branchRL:
         return [geneTree[0]],[]
     else:
-       leftFreeGeneL,leftLocFamTL = splitTreeByOrigin(geneTree[1],branchRL) 
-       rightFreeGeneL,rightLocFamTL = splitTreeByOrigin(geneTree[2],branchRL)
+       leftFreeGeneL,leftLocFamTL = splitTreeIntoLocusFamilies(geneTree[1],branchRL) 
+       rightFreeGeneL,rightLocFamTL = splitTreeIntoLocusFamilies(geneTree[2],branchRL)
        if geneTree[0] in branchRL:
            outLocFamT = (geneTree[0],tuple(leftFreeGeneL+rightFreeGeneL))
            return [],[outLocFamT]+leftLocFamTL+rightLocFamTL
        else:
-           outFreeGeneL = [geneTree[0]]+leftFreeGeneL+rightFreeGeneL
+           outFreeGeneL = leftFreeGeneL+rightFreeGeneL
            outLocFamTL = leftLocFamTL+rightLocFamTL
            return outFreeGeneL,outLocFamTL
     
@@ -933,11 +949,12 @@ dictionary where reconciliation events are explicitly characterized as
 falling at nodes or branches in the gene tree. This output dictionary
 
     '''
+
     rootKey = ''
     for key in brReconD:
-        if key[0] == 'root':
+        if key[0] == 'pTop':
             rootKey = key
-
+            
     # get list of events. top of stem branch always '*'
     nodeBranchEventsL = getNodeBranchEventsL(brReconD,rootKey,'*')
 
@@ -952,60 +969,60 @@ falling at nodes or branches in the gene tree. This output dictionary
         
     return reconD
 
-def getNodeBranchEventsL(brReconD,brKey,locusAtTop):
+def getNodeBranchEventsL(brReconD,brKey,synLocAtTop):
     '''Traverse the branch based reconciliation dict in preorder starting
-at brKey. locusAtTop is the syntenic locus at the top (beginning) of
+at brKey. synLocAtTop is the syntenic locus at the top (beginning) of
 the branch brKey is on.
 
     '''
-    if brKey[0] == None:
+    if brKey not in brReconD:
         return [] # reached tip of gene tree
     else:
         _, child1Mapping, child2Mapping = brReconD[brKey]
-        nodeBranchEventsL = parseOneBranchEntry(brReconD,brKey,locusAtTop)
-        locusAtBottom = brKey[3]
-        lL = getNodeBranchEventsL(brReconD,child1Mapping,locusAtBottom) # left
-        rL = getNodeBranchEventsL(brReconD,child2Mapping,locusAtBottom) # right
+        nodeBranchEventsL = parseOneBranchEntry(brReconD,brKey,synLocAtTop)
+        synLocAtBottom = brKey[2]
+        lL = getNodeBranchEventsL(brReconD,child1Mapping,synLocAtBottom) # left
+        rL = getNodeBranchEventsL(brReconD,child2Mapping,synLocAtBottom) # right
         return nodeBranchEventsL + lL + rL
 
-def parseOneBranchEntry(brReconD,brKey,locusAtTop):
+def parseOneBranchEntry(brReconD,brKey,synLocAtTop):
     '''Given a key to the branch based reconciliation dictionary, extract
 the event or events (can have multiple when O or R occurs), and return
 as a list of tuples. This list has all the info from this entry
 (though there may be other entries which are also on the same gene
 tree branch). Here is the form of the tuples
 
-((geneTreeLoc,geneTreeNB),(eventType,speciesTreeLoc,spTreeNB,locusAtBottom))
+((geneTreeLoc,geneTreeNB),(eventType,speciesTreeLoc,spTreeNB,synLocAtBottom))
 
 Each tuple corresponds to one event.
 
-locusAtTop is the syntenic locus at the top (beginning) of the branch
+synLocAtTop is the syntenic locus at the top (beginning) of the branch
 this entry is on. We use it to identify R events.
     '''
     nodeBranchEventsL = [] # for output
     
-    geneTreeLoc,speciesTreeLoc,topIsStarB,locusAtBottom = brKey
-    eventType, child1Mapping, child2Mapping = brReconD[brKey]
+    geneTreeLoc,speciesTreeLoc,synLocAtBottom = brKey
+    eventType, child1Mapping,child2Mapping = brReconD[brKey]
 
     # determine branch or node for each ('n' or 'b')
     geneTreeNB,spTreeNB = determineNodeOrBranch(geneTreeLoc,speciesTreeLoc,eventType)
 
     eventKey = (geneTreeLoc,geneTreeNB)
-    eventValue = (eventType,speciesTreeLoc,spTreeNB,locusAtBottom)
+    eventValue = (eventType,speciesTreeLoc,spTreeNB,synLocAtBottom)
     nodeBranchEventsL.append((eventKey,eventValue))
 
     # check for O,R events if eventType is D,T,S or C (not L, because
     # this may cause it to show up multiple times)
     if eventType in 'DTSC':
-        if topIsStarB==True and locusAtBottom!='*':
+        if synLocAtTop=='*' and synLocAtBottom!='*':
             # O event
             eventKey = (geneTreeLoc,'b') # the branch leading to this DTSC event
-            eventValue = ('O',speciesTreeLoc,'b',locusAtBottom)
+            eventValue = ('O',speciesTreeLoc,'b',synLocAtBottom)
             nodeBranchEventsL.append((eventKey,eventValue))
-        elif topIsStarB==False and locusAtTop != locusAtBottom:
+        elif synLocAtTop!='*' and synLocAtTop != synLocAtBottom:
             # R event
             eventKey = (geneTreeLoc,'b') # the branch leading to this DTSC event
-            eventValue = ('R',speciesTreeLoc,'b',locusAtBottom)
+            eventValue = ('R',speciesTreeLoc,'b',synLocAtBottom)
             nodeBranchEventsL.append((eventKey,eventValue))
     
     return nodeBranchEventsL
@@ -1035,36 +1052,12 @@ branches based on the event type.'''
     elif eventType == 'S': # cospeciation
         # implies geneTreeLoc is a node, speciesTreeLoc is a node
         return ('n','n')
+    if eventType == 'N': # null, when outside species tree
+        # implies geneTreeLoc is a node, speciesTreeLoc is a branch
+        return ('n','b')
     else:
         return # should never get here
 
-def printReconByGeneTree(reconD,geneTree,level,fileF=sys.stdout):
-    ''''''
-
-    def printOneKey(printPrefix,reconD,nbKey):
-        if nbKey in reconD:
-            for eventT in reconD[nbKey]:
-                gt,gtNB = nbKey
-                event,st,stNB,locus = eventT
-                outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(st)+" "+stNB+") "+str(locus)
-                print(outStr,file=fileF)
-
-    # recurse over tree, printing out for each branch and node
-    levelSpace = "   "*level
-    if geneTree[1] == ():
-        print(levelSpace+"- "+str(geneTree[0]),file=fileF)
-        printOneKey(levelSpace+"  ",reconD,(geneTree[0],'b'))
-        printOneKey(levelSpace+"  ",reconD,(geneTree[0],'n'))
-        return
-    else:
-        childStr = " (children:"+str(geneTree[1][0])+","+str(geneTree[2][0])+")"
-        print(levelSpace+"- "+str(geneTree[0])+childStr,file=fileF)
-        printOneKey(levelSpace+"  ",reconD,(geneTree[0],'b'))
-        printOneKey(levelSpace+"  ",reconD,(geneTree[0],'n'))
-        
-        printReconByGeneTree(reconD,geneTree[1],level+1,fileF)
-        printReconByGeneTree(reconD,geneTree[2],level+1,fileF)
-    
 #### Input/output
 
 def writeFamilies(familiesO,familyFN,genesO,strainNamesT,paramD):

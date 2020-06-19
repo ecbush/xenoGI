@@ -39,7 +39,7 @@ def valid(synteny, allsynteny):
     is_top_star = (synteny == "*")
     return valid_star(is_top_star, allsynteny)
 
-def delta(synteny1, synteny2, O, R):
+def delta_cost(synteny1, synteny2, O, R):
     if synteny1==synteny2:
         return 0
     elif synteny1=="*":
@@ -78,6 +78,46 @@ def postorder(tree, rootEdgeName):
                postorder(tree, rightChildEdgeName) + \
                [rootEdgeName]
 
+def check_tip(vh, eh1, eh2):
+    if eh1 is None and eh2 is None:
+        return True
+    elif eh1 is not None and eh2 is not None:
+        return False
+    else:
+        assert False, "Species node with one child: {}".format(vh)
+
+# returns ce = oplus_i ce_i
+#TODO: rename
+def combine_costs(events_list):
+    """
+    Combines the events list into a single events list
+    Each element of events_list is a tuple of (cost, [events])
+    Which holds the DP entry for some part of the DP and the associated events
+    This combines them into the entry of lowest cost, combining
+    all events that have lowest cost
+    """
+    cost = Infinity
+    events = []
+    for c,e in events_list:
+        #print("\tCost: {}".format(c))
+        #print("\tEvents: {}".format(events))
+        #assert type(e) is list, e
+        #assert (type(c) is float) or (type(c) is int), (c, e)
+        if cost > c:
+            cost = c
+            events = e
+        elif cost == c:
+            events.extend(e)
+    #print("Events: {}".format(events))
+    return (cost, events)
+
+#TODO: optimization where valid returns only the synteny locations for the clade UNDER a given gene node
+#TODO: delta no longer needs to use * since null counts origins separately...?
+#TODO: iterable rather than actually creating lists
+#TODO: Refactor other code to reflect the tree representation change:
+# ("C", None, None) versus ("C", (None, None, None, None), (None, None, None, None))
+# and ("L", (...), None) versus ("L", (...), (None, None, None, None)
+
 def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
     """ Takes a hostTree, parasiteTree, tip mapping function phi, a locus_map, 
         and duplication cost (D), transfer cost (T), loss cost (L), 
@@ -86,266 +126,221 @@ def DP(hostTree, parasiteTree, phi, locus_map, D, T, L, Origin, R):
         dynamic programming algorithm are explained in the tech report.
         Cospeciation is assumed to cost 0. """
 
-    A = {}  # A, C, O, and bestSwitch are all defined in tech report
+    A = {}  # A, C, O, and best_switch are all defined in tech report
     C = {}
     O = {}
     eventsDict = {} # Dictionary to keep track of events that correspond to the min cost reconciliation 
-    bestSwitch = {} 
-    Minimums = {} # Dictionary to keep track of minimum reconciliation costs
-    oBest = {} # Dictionary to keep track of the lowest costing events in O
-    bestSwitchLocations = {} # Dictionary to keep track of switch locations
+    best_switch = {} 
     allsynteny=list(locus_map.values())
-    Allsynteny=copy.deepcopy(allsynteny)
-    Allsynteny.append("*")
+    # Capture O, R for ease of use
+    delta = lambda s1, s2: delta_cost(s1, s2, Origin, R)
     #print("The dimensions is %d by %d by %d by %d"%(len(postorder(parasiteTree, "pTop")),len(Allsynteny), len(Allsynteny),len(postorder(hostTree, "hTop"))))
     for ep in postorder(parasiteTree, "pTop"):
         _,vp,ep1,ep2 = parasiteTree[ep]
-        # is vp a tip?
-        if ep1 == None: # then ep2 == None too and vp is a tip!
-            vpIsATip = True
-        else:
-            vpIsATip = False
-        for top_is_star in [True, False]:    #loop over all the possible locus 
-            for l_bottom in valid_star(top_is_star, allsynteny):  #for start and end vertex of gene edge
-                for eh in postorder(hostTree, "hTop"):
-                    _,vh,eh1,eh2 = hostTree[eh]
-                    eventsDict[(vp, vh, top_is_star, l_bottom)] = []
-                    oBest[(vp, vh, top_is_star, l_bottom)] = []
-                    # is vh a tip?
-                    if eh1 == None: # then eh2 == None too and vh is a tip!
-                        vhIsATip = True
-                    else:
-                        vhIsATip = False
-                    # Compute A(ep, eh)
-                    if vhIsATip:
-                        if vpIsATip and phi[vp] == vh and locus_map[vp]==l_bottom:
-                            A[(ep, eh, top_is_star, l_bottom)] = 0
-                            # Contemporary event to be added to eventsDict
-                            Amin = [["C", (None, None, None, None), (None, None, None, None)]] 
-                        else: 
-                            A[(ep, eh, top_is_star, l_bottom)] = Infinity
-                            Amin = [Infinity]
-                    else: #vh is not a tip
-                        # Compute S and create event list to add to eventsDict
-                        if not vpIsATip:
-                            COepeh=Infinity
-                            coMin = []
-                            lowest_cost_spec=[]
-                            for l1 in valid(l_bottom, allsynteny):
-                                for l2 in valid(l_bottom, allsynteny):
-                                    l_is_star = l_bottom == "*"
-                                    synteny_cost = delta(l_bottom, l1, Origin, R) + delta(l_bottom, l2, Origin, R)
-                                    # Add in the delta for handle branch 
-                                    if ep=='pTop':
-                                        synteny_cost += delta(top_is_star, l_bottom, Origin, R)
-
-                                    #TODO these two lines take up >50% of time in the nested loop for locs
-                                    co1=C[(ep1, eh1, l_is_star, l1)] + C[(ep2, eh2, l_is_star, l2)]
-                                    co2=C[(ep1, eh2, l_is_star, l1)] + C[(ep2, eh1, l_is_star, l2)]
-                                    
-                                    CO_cost=min(co1,co2)
-                                    CO_total=synteny_cost+CO_cost
-                                    if CO_total<COepeh:
-                                        COepeh=CO_total
-                                        if CO_cost==co1:
-                                            lowest_cost_spec=["S", (ep1, eh1, l_is_star, l1), \
-                                            (ep2, eh2, l_is_star, l2)]
-                                        else:
-                                            lowest_cost_spec=["S", (ep1, eh2, l_is_star, l1), \
-                                            (ep2, eh1, l_is_star, l2)]
-                            if COepeh<Infinity:
-                                
-                                coMin.append(lowest_cost_spec)
-                            else:
-                                coMin = [Infinity]
-
-                        else:
-                            COepeh = Infinity
-                            coMin = [Infinity]
-                        # Compute L and create event list to add to eventsDict
-                        lossMin = [] # List to keep track of lowest cost loss
-                        loss_eh2=C[(ep, eh1, top_is_star, l_bottom)] #eh2 no longer has ep
-                        loss_eh1=C[(ep, eh2, top_is_star, l_bottom)]
-                        LOSSepeh = min(loss_eh2, loss_eh1)
-                        #NOTE loss events record the mapping of parasite edge onto surviving host child
-                        if LOSSepeh == loss_eh2: 
-                            lossMin.append(["L", (vp, eh1, top_is_star, l_bottom), (None, None, None, None)])
-                        if LOSSepeh == loss_eh1: 
-                            lossMin.append(["L", (vp, eh2, top_is_star, l_bottom), (None, None, None, None)])
-                        if ep!="pTop" and not top_is_star:
-                            LOSSepeh += L 
-                        # Determine which event occurs for A[(ep, eh)]
-                        
-                        A[(ep, eh, top_is_star, l_bottom)] = min(COepeh, LOSSepeh)     
-                        # Record event occuring for A[(ep, eh)] as Amin
-                        if COepeh < LOSSepeh:
-                            Amin = coMin
-                        elif LOSSepeh < COepeh: 
-                            Amin = lossMin
-                        else:
-                            #lossMin, coMin are  list of lists
-                            Amin = lossMin + coMin
-                        
-
-                    # Compute C(ep, eh,l_top, l_bottom)
-                    #   First, compute D
-                    if not vpIsATip:
-                        DUPepeh=Infinity
-                        # List to keep track of lowest cost duplication event
-                        dupList=[Infinity]
-                        for l1 in valid(l_bottom, allsynteny):
-                            for l2 in valid(l_bottom, allsynteny):
-                                l_is_star = l_bottom == "*"
-                                #TODO: this line takes over half of time in this nested loop
-                                dup_cost=delta(l_bottom, l1, Origin, R)+delta(l_bottom, l2, Origin, R) + \
-                                        C[(ep1, eh, l_is_star, l1)]+C[(ep2, eh, l_is_star, l2)]
-                                #only add the duplication cost if the bottom synteny on ep is not *
-                                if l_bottom!="*":
-                                    dup_cost+=D
-                                if dup_cost<DUPepeh:
-                                    DUPepeh=dup_cost
-                                    dupList=["D", (ep1, vh, l_is_star, l1), (ep2, vh, l_is_star, l2)]
-                    else:
-                        DUPepeh = Infinity
-                        dupList = [Infinity]
-                   
-                    #   Next, Compute T and create event list to add 
-                    #   to eventsDict using bestSwitchLocations
-                    if not vpIsATip and l_bottom!="*":
-                        switchList = [] # List to keep track of lowest cost switch
-                        SWITCHepeh=Infinity
-                        #need to find all possible children syntenies
-                        for l1 in valid(l_bottom, allsynteny):
-                            for l2 in valid(l_bottom, allsynteny):
-                                l_is_star = l_bottom == "*"
-                                ep2_switch=C[(ep1, eh, l_is_star, l1)] + bestSwitch[(ep2, eh, l2)]
-                                ep1_switch=C[(ep2, eh, l_is_star, l2)] + bestSwitch[(ep1, eh, l1)]
-                                min_switch=min(ep2_switch, ep1_switch)
-                                switch_cost = T+delta(l_bottom,l1, Origin, R)+delta(l_bottom,l2, Origin, R)+ min_switch
-                                if switch_cost<SWITCHepeh:
-                                    SWITCHepeh=switch_cost
-                                    # if ep2 switching has the lowest cost
-                                    if ep2_switch < ep1_switch:
-                                        for location in bestSwitchLocations[(ep2,vh,l2)]:
-                                            currentLoc = location[1] # Switch landing site
-                                            switchList.append(["T", (ep1, vh, l1), (ep2, \
-                                                currentLoc, l2)])
-                                    # if ep1 switching has the lowest cost
-                                    elif ep1_switch<ep2_switch: 
-                                        for location in bestSwitchLocations[(ep1,vh, l1)]:
-                                            currentLoc = location[1]
-                                            switchList.append(["T", (ep2, vh, l2), \
-                                                (ep1, currentLoc, l1)])
-                                    # if ep1 switching has the same cost as ep2 switching
-                                    else: 
-                                        for location in bestSwitchLocations[(ep2, vh, l2)]:
-                                            currentLoc = location[1]
-                                            if currentLoc != None:
-                                                switchList.append(["T", (ep1, vh, l1), (ep2, \
-                                                currentLoc, l2)])
-                                            else:
-                                                switchList.append(["T", (ep1, vh, l1), \
-                                                    (ep2, currentLoc, l2)])
-                                   
-                                        for location in bestSwitchLocations[(ep1,vh, l1)]:
-                                            currentLoc = location[1]
-                                            if currentLoc != None:
-                                                switchList.append(["T", (ep2, vh, l2), \
-                                                (ep1, currentLoc, l1)])
-                                            else:
-                                                switchList.append(["T", (ep1, vh, l1), \
-                                                    (ep2, currentLoc, l2)])           
-                        if switchList==[]:
-                            switchList=[[Infinity]]
-
-                    else:
-                        SWITCHepeh = Infinity
-                        switchList = [[Infinity]]
-                    # Compute C[(ep, eh, l_top, l_bottom)] and add the event or events with that cost
-                    # to the dictionary eventsDict
-                    co_min=min(A[(ep, eh, top_is_star, l_bottom)], DUPepeh, SWITCHepeh)  
-                    C[(ep, eh, top_is_star, l_bottom)] = co_min
-                    Minimums[(vp, vh, top_is_star, l_bottom)] =co_min #min cost of reconciliation with this mapping and below
-                    if co_min == DUPepeh:
-                        eventsDict[(vp, vh, top_is_star, l_bottom)].append(dupList)  #duplist should just be a 1d list
-                    if co_min == SWITCHepeh:
-                        eventsDict[(vp, vh, top_is_star, l_bottom)].extend(switchList)     #switchList should be a list of lists
-                    if co_min == A[(ep, eh, top_is_star, l_bottom)]:
-                        eventsDict[(vp, vh, top_is_star, l_bottom)].extend(Amin)
-                   
-                    #do not allow top of gene tree handle to be an actual synteny
-                    if Minimums[(vp, vh, top_is_star, l_bottom)] == Infinity or (ep=="pTop" and not top_is_star):
-                        del Minimums[(vp, vh, top_is_star, l_bottom)]
-                        del eventsDict[(vp, vh, top_is_star, l_bottom)]
-                    # Compute O(ep, eh, l_top, l_bottom)
-                    # Compute oBest[(vp, vh, l_top, l_bottom)], the source of O(ep, eh, l_top, l_bottom)
-                    if vhIsATip: 
-                        O[(ep, eh, top_is_star, l_bottom)] = C[(ep, eh, top_is_star, l_bottom)]  
-                        oBest[(vp, vh, top_is_star, l_bottom)] = [(vp, vh, top_is_star, l_bottom)]              
+        vp_is_a_tip = check_tip(vp, ep1, ep2)
+        #TODO: rename l_bottom
+        for l_bottom in allsynteny:  #for start and end vertex of gene edge
+            for eh in postorder(hostTree, "hTop"):
+                _,vh,eh1,eh2 = hostTree[eh]
+                eventsDict[(vp, vh, l_bottom)] = []
+                # is vh a tip?
+                vh_is_a_tip = check_tip(vh, eh1, eh2)
+                # Compute A[(ep, eh, l_bottom)]
+                if vh_is_a_tip:
+                    if vp_is_a_tip and phi[vp] == vh and locus_map[vp]==l_bottom:
+                        A[(ep, eh, l_bottom)] = (0, [("C", None, None)])
                     else: 
-                    
-                        #finds Minimum Cost for O
-                        O_list= [C[(ep, eh, top_is_star, l_bottom)], O[(ep, eh1, top_is_star, l_bottom)], O[(ep, eh2, top_is_star, l_bottom)]]
-                        O_min=min(O_list)
-                        O[(ep, eh, top_is_star, l_bottom)] = O_min     
-                        #finds the minimum switch locations for O
-                        oMin = O_list.index(O_min)
-                        if oMin == 0:
-                            oBest[(vp,vh, top_is_star, l_bottom)].append((vp, vh, top_is_star, l_bottom))
-                        if oMin == 1:
-                            oBest[(vp,vh, top_is_star, l_bottom)].extend(oBest[(vp, eh1, top_is_star, l_bottom)])
-                        if oMin == 2:
-                            oBest[(vp,vh, top_is_star, l_bottom)].extend(oBest[(vp, eh2, top_is_star, l_bottom)])
-                # Compute bestSwitch values
-                bestSwitch[(ep, "hTop", l_bottom)] = Infinity
-                bestSwitchLocations[(vp, hostTree["hTop"][1], l_bottom)] = [(None,None, None, None)]
-                for eh in preorder(hostTree, "hTop"):
-                    _, vh, eh1, eh2 = hostTree[eh]
-
-                    # is vh a tip?
-                    if eh1 == None: # then eh2 == None too and vh is a tip!
-                        vhIsATip = True
+                        A[(ep, eh, l_bottom)] = (Infinity, [])
+                else: # vh is not a tip
+                    # Compute cospeciation events
+                    if not vp_is_a_tip:
+                        def get_cospeciations(l1, l2):
+                            synteny_cost = delta(l_bottom, l1) + delta(l_bottom, l2)
+                            co1 = (synteny_cost + C[(ep1, eh1, l1)][0] + C[(ep2, eh2, l2)][0], \
+                                    [("S", (ep1, eh1, l1), (ep2, eh2, l2))])
+                            co2 = (synteny_cost + C[(ep1, eh2, l1)][0] + C[(ep2, eh1, l2)][0], \
+                                    [("S", (ep1, eh2, l1), (ep2, eh1, l2))])
+                            return combine_costs([co1, co2])
+                        cospeciation_list = [get_cospeciations(l1, l2) for l1 in allsynteny for l2 in allsynteny]
+                        cospeciations = combine_costs(cospeciation_list)
                     else:
-                        vhIsATip = False
-                    # find best place for a switch to occur (bestSwitch)
-                    # and the location to which the edge switches (bestSwitchLocations)   
-                    if eh1 != None and eh2 != None: # not a tip
-                        bestSwitchLocations[(vp, eh1, l_bottom)] = []
-                        bestSwitchLocations[(vp, eh2, l_bottom)] = []
-                        ep_bestSwitch=bestSwitch[(ep, eh, l_bottom)]
-                        O_eh2=O[(ep, eh2, top_is_star, l_bottom)]
-                        O_eh1=O[(ep, eh1, top_is_star, l_bottom)]
-                        bestSwitch[(ep, eh1, l_bottom)] = min(ep_bestSwitch,O_eh2)
-                        bestSwitch[(ep, eh2, l_bottom)] = min(ep_bestSwitch,O_eh1)
-                    
-                        if bestSwitch[(ep, eh1, l_bottom)] == ep_bestSwitch and \
-                        bestSwitchLocations[(vp, vh, l_bottom)] != [(None, None, None, None)]:
-                            bestSwitchLocations[(vp, eh1, l_bottom)].extend\
-                            (bestSwitchLocations[(vp, vh, l_bottom)])
-                        if bestSwitch[(ep, eh1, l_bottom)] == O_eh2 and \
-                        oBest[(vp, eh2, top_is_star, l_bottom)]!= [(None, None, None, None)]:
-                            bestSwitchLocations[(vp, eh1, l_bottom)].extend\
-                            (oBest[(vp, eh2, top_is_star, l_bottom)])
-                        if bestSwitch[(ep, eh2, l_bottom)] == ep_bestSwitch and \
-                        bestSwitchLocations[(vp, vh,  l_bottom)] != [(None, None, None, None)]:
-                            bestSwitchLocations[(vp, eh2, l_bottom)].extend\
-                            (bestSwitchLocations[(vp, vh, l_bottom)])
-                        if bestSwitch[(ep, eh2, l_bottom)] == O_eh1 and \
-                        oBest[(vp, eh1, top_is_star, l_bottom)]!=[(None, None, None, None)]:
-                            bestSwitchLocations[(vp, eh2, l_bottom)].extend\
-                            (oBest[(vp, eh1, top_is_star, l_bottom)])
-    
-    for key in bestSwitchLocations:
-        if bestSwitchLocations[key][0] == (None, None, None, None):
-            bestSwitchLocations[key] = bestSwitchLocations[key][1:]
+                        cospeciations = (Infinity, [])
+                    # Compute loss events
+                    # eh1 is the branch where ep is lost
+                    loss_eh1 = (C[(ep, eh2, l_bottom)][0] + L, [("L", (vp, eh2, l_bottom), None)])
+                    # eh2 is the branch where ep is lost
+                    loss_eh2 = (C[(ep, eh1, l_bottom)][0] + L, [("L", (vp, eh1, l_bottom), None)])
+                    losses = combine_costs([loss_eh1, loss_eh2])
 
-    # Use findPath and findBestRoots to construct the DTLOR graph dictionary
-    #this finds the optimal solutions (mappings)
-    treeMin, min_cost = findBestRoots(parasiteTree, Minimums)
-    #This picks a random MPR from the optimal ones
-    MPR = findOneMPR(treeMin, eventsDict, {})  
+                    # Determine which event occurs for A[(ep, eh, l_bottom)] 
+                    A[(ep, eh, l_bottom)] = combine_costs([cospeciations, losses])
+
+                # Compute C[(ep, eh,l_top, l_bottom)]
+                # First, compute duplications
+                if not vp_is_a_tip:
+                    DUPepeh=Infinity
+                    # List to keep track of lowest cost duplication event
+                    dupList=[Infinity]
+                    def get_duplication(l1, l2):
+                        synteny_cost = delta(l_bottom, l1) + delta(l_bottom, l2)
+                        dup_cost = C[(ep1, eh, l1)][0] + C[(ep2, eh, l2)][0] + D
+                        dup_event = ("D", (ep1, vh, l1), (ep2, vh, l2))
+                        return (dup_cost, [dup_event])
+                    dup_list = [get_duplication(l1, l2) for l1 in allsynteny for l2 in allsynteny]
+                    duplications = combine_costs(dup_list)
+                else:
+                    duplications = (Infinity, [])
+               
+                # Compute transfer table
+                if not vp_is_a_tip:
+                    switchList = [] # List to keep track of lowest cost switch
+                    SWITCHepeh=Infinity
+                    #need to find all possible children syntenies
+                    def get_transfer(l1, l2):
+                        synteny_cost = delta(l_bottom, l1) + delta(l_bottom, l2)
+                        # Cost to transfer ep2
+                        ep2_cost, ep2_locations = best_switch[(ep2, eh, l2)]
+                        ep2_switch_cost = T + synteny_cost + C[(ep1, eh, l1)][0] + ep2_cost
+                        ep2_switch_events = [("T", (ep1, vh, l1), (ep2, location[1], l2)) for location in \
+                                ep2_locations]
+                        ep2_switch = (ep2_switch_cost, ep2_switch_events)
+                        # Cost to transfer ep1
+                        ep1_cost, ep1_locations = best_switch[(ep1, eh, l1)]
+                        ep1_switch_cost = T + synteny_cost + C[(ep2, eh, l2)][0] + ep1_cost
+                        ep1_switch_events = [("T", (ep2, vh, l2), (ep1, location[1], l1)) for location in \
+                                ep1_locations]
+                        ep1_switch = (ep1_switch_cost, ep1_switch_events)
+                        return combine_costs([ep2_switch, ep1_switch])
+                    transfer_list = [get_transfer(l1,l2) for l1 in allsynteny for l2 in allsynteny]
+                    transfers = combine_costs(transfer_list)
+                else:
+                    transfers = (Infinity, [])
+
+                # Compute C[(ep, eh, l_top, l_bottom)] and add the event or events with that cost
+                # to the dictionary eventsDict
+                C[(ep, eh, l_bottom)] = \
+                        combine_costs([A[(ep, eh, l_bottom)], duplications, transfers])
+
+                # Compute O[(ep, eh, l_bottom)]
+                # O is mapping_node -> (cost, [mapping_node])
+                if vh_is_a_tip: 
+                    O[(ep, eh, l_bottom)] = (C[(ep, eh, l_bottom)][0], [(vp, vh, l_bottom)])
+                else: 
+                    o_c = (C[(ep, eh, l_bottom)][0], [(vp, vh, l_bottom)])
+                    o_l = (O[(ep, eh1, l_bottom)])
+                    o_r = (O[(ep, eh2, l_bottom)])
+                    O[(ep, eh, l_bottom)] = combine_costs([o_c, o_l, o_r])
+
+            # Compute best_switch values
+            best_switch[(ep, "hTop", l_bottom)] = (Infinity, [])
+            for eh in preorder(hostTree, "hTop"):
+                _, vh, eh1, eh2 = hostTree[eh]
+                # Is vh a tip?
+                if check_tip(vh, eh1, eh2):
+                    best_switch[(ep, eh, l_bottom)] = (Infinity, [])
+                # Find the best switches and switch locations
+                else:
+                    ep_best_switch = best_switch[(ep, eh, l_bottom)]
+                    O_eh2=O[(ep, eh2, l_bottom)]
+                    O_eh1=O[(ep, eh1, l_bottom)]
+                    best_switch[(ep, eh1, l_bottom)] = combine_costs([ep_best_switch, O_eh2, O_eh1])
+        # Compute the cost of not giving a syntenic location
+        # Impossible for a tip not to get one
+        if vp_is_a_tip:
+            C[(vp, "hTop", "*")] = (Infinity, [])
+        else:
+            def get_single_null(eh, l):
+                # Left child stays null
+                l_map = (ep1, "hTop", "*")
+                r_map = (ep2, eh, l)
+                left_null_cost = C[l_map][0] + C[r_map][0] + Origin
+                left_null_event = ("N", l_map, r_map)
+                left_null = (left_null_cost, [left_null_event])
+                # Right child stays null
+                l_map = (ep1, eh, l)
+                r_map = (ep2, "hTop", "*")
+                right_null_cost = C[l_map][0] + C[r_map][0] + Origin
+                right_null_event = ("N", l_map, r_map)
+                right_null = (right_null_cost, [right_null_event])
+                return combine_costs([left_null, right_null])
+            single_null_list = [get_single_null(eh, l) \
+                    for eh in postorder(hostTree, "hTop") for l in allsynteny]
+            single_null = combine_costs(single_null_list)
+
+            # Neither child gets a synteny
+            l_map = (ep1, "hTop", "*")
+            r_map = (ep2, "hTop", "*")
+            both_null_cost = C[l_map][0] + C[r_map][0]
+            both_null_event = ("N", l_map, r_map)
+            both_null = (both_null_cost, [both_null_event])
+
+            def get_neither_child_null(eh1, l1, eh2, l2):
+                l_map = (ep1, eh1, l1)
+                r_map = (ep2, eh2, l2)
+                neither_null_cost = C[l_map][0] + C[r_map][0] + 2 * Origin
+                neither_null_event = ("N", l_map, r_map)
+                return (neither_null_cost, [neither_null_event])
+
+            neither_null_list = [get_neither_child_null(eh1, l1, eh2, l2) \
+                    for eh1 in postorder(hostTree, "hTop") for eh2 in postorder(hostTree, "hTop") \
+                    for l1 in allsynteny for l2 in allsynteny]
+            neither_null = combine_costs(neither_null_list)
+
+            C[(ep, "hTop", "*")] = combine_costs([single_null, both_null, neither_null])
+
+    # Cost for assigning the root a syntenic location
+    def get_root_not_null(eh, l):
+        m = C[("pTop", eh, l)]
+        return (m[0] + Origin, m[1])
+    root_not_null_list = [get_root_not_null(eh, l) for eh in postorder(hostTree, "hTop") for l in allsynteny]
+    root_null = C[("pTop", "hTop", "*")]
+    root_list = root_not_null_list + [root_null]
+    min_cost, _ = combine_costs(root_list)
+
+    # Find the mapping nodes involving pTop of minimum cost
+    best_roots = [m for m,c in C.items() if m[0] == "pTop" and c[0] == min_cost]
+
+    # This picks a random MPR from the optimal ones
+    MPR = find_MPR(best_roots, C)
     return MPR, min_cost
 
+def find_MPR(best_roots, C):
+    """
+    Find a single MPR for the given C dict and best_roots.
+    """
+    return find_MPR_helper(best_roots, C, {})
+
+def find_MPR_helper(nodes, C, MPR):
+    """
+    Recursively find a single MPR using C. Does the work for find_MPR.
+    """
+    mapping = choice(nodes)
+    event = choice(C[mapping][1])
+    MPR[mapping] = event
+    e_type, e_left, e_right = event
+    if e_left is not None:
+        _ = find_MPR_helper([e_left], C, MPR)
+    if e_right is not None:
+        _ = find_MPR_helper([e_right], C, MPR)
+    return MPR
+
+def MPR_graph(best_roots, C):
+    """
+    Find the MPR graph for a given C dict and best_roots.
+    """
+    return MPR_graph_helper(best_roots, C, {})
+
+def MPR_graph_helper(nodes, C, G):
+    """
+    Recursively create the entire MPR graph. Does the work for MPR_graph.
+    """
+    for mapping in nodes:
+        events = c[mapping][1]
+        G[mapping] = events
+        for e_type, e_left, e_right in events:
+            MPR_graph_helper([e_left], C, G)
+            MPR_graph_helper([e_right], C, G)
+    return G
 
 def preorderDTLORsort(DTLOR, ParasiteRoot):
     """This takes in a DTL reconciliation graph and parasite root and returns 
@@ -374,6 +369,7 @@ def addScores(treeMin, DTLORDict, ScoreDict):
     ParasiteRoot=treeMin[0][0]
     preOrder = preorderDTLORsort(DTLORDict, ParasiteRoot)
     for root in preOrder:
+        #TODO: when would this be true?
         if root != (None, None): #format (key, level)
             vertices = root[0] #format (vp, vh, l, l)
             if root[1] == 0:
@@ -382,12 +378,12 @@ def addScores(treeMin, DTLORDict, ScoreDict):
                 _,child1,child2,oldScore = DTLORDict[vertices][n]
                 newDTLOR[vertices][n][3] = parentsDict[vertices] * \
                 (1.0 * oldScore / ScoreDict[vertices])
-                if child1!= (None, None, None, None):
+                if child1 is not None:
                     if child1 in parentsDict:
                         parentsDict[child1] += newDTLOR[vertices][n][3]
                     else: 
                         parentsDict[child1] = newDTLOR[vertices][n][3] 
-                if child2!=(None, None, None, None):
+                if child2 is not None:
                     if child2 in parentsDict:
                         parentsDict[child2] += newDTLOR[vertices][n][3]
                     else: 
@@ -398,53 +394,4 @@ def addScores(treeMin, DTLORDict, ScoreDict):
             event[-1] = event[-1]/normalize
     
     return newDTLOR, normalize
-
-def findBestRoots(Parasite, MinimumDict):
-    """Takes Parasite Tree and a dictionary of minimum reconciliation costs
-    and returns a list of the minimum cost reconciliation tree roots and the associated minimum cost"""
-    treeTops = []
-    for key in MinimumDict:
-        #pick out the set of keys in C (MinimumDict) that correspond to mapping 
-        #the root of parasite to any place in host tree
-        #and any locus combinations
-        if key[0] == Parasite['pTop'][1]:
-            treeTops.append(key)
-    treeMin = []
-    min_cost=min([MinimumDict[root] for root in treeTops])
-    for pair in treeTops:
-        #pick out the set of keys that gives the minimum of C (cost of optimal solution)
-        #note there might be multiple equally optimal mappings
-        if MinimumDict[pair] == min_cost:
-            treeMin.append(pair)
-    return treeMin,min_cost
-
-def findPath(tupleList, eventDict, uniqueDict):
-    """Takes as input tupleList, a list of minimum reconciliation cost mappings 
-     of the form (vp, vh, l_top, l_bottom), eventDict, the dictionary of events and 
-     children for each node, and uniqueDict, the dictionary of unique vertex mappings. 
-     This returns the completed DTL graph as a Dictionary"""
-     #findPath(treeMin, eventsDict, {})
-    for mapping in tupleList:
-        if not mapping in uniqueDict:
-            uniqueDict[mapping] = eventDict[mapping]
-        for event in eventDict[mapping][:-1]:
-            for location in event:
-                if type(location) is tuple and location != (None, None, None, None):
-                    findPath([location], eventDict, uniqueDict)
-    return uniqueDict
-
-def findOneMPR(tupleList, eventDict, MPR):
-    """
-    Takes as input tupleList, a list of minimum reconciliation cost mappings 
-     of the form (vp, vh, l_top, l_bottom), eventDict, the dictionary of events and 
-     children for each node, and a dictionary to record one MPR, which is returned. 
-    """
-    mapping = choice(tupleList)
-    event = choice(eventDict[mapping])  #randomly pick an event
-    #print(event)
-    MPR[mapping]=event  
-    for location in event: #there should be eventType,and two child mapping nodes
-        if type(location) is tuple and location != (None, None, None, None):
-            findOneMPR([location], eventDict, MPR)
-    return MPR
 

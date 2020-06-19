@@ -2,15 +2,17 @@ import sys
 from . import trees
 
 class LocusFamily:
-    def __init__(self, famNum, locusFamNum, lfMrca,locusNum=None):
+    def __init__(self, famNum, locusFamNum, lfMrca,locusNum=None,reconRootKey=None):
         '''Initialize a LocusFamily object with a family number, a LocusFamily
 number, and the mrca for this locus family (which may differ from the
 mrca for its family.'''
         self.famNum = famNum
         self.locusFamNum = locusFamNum # a unique number for each lf
-        self.lfMrca = lfMrca
+        self.lfMrca = lfMrca # species tree
         self.locusNum = locusNum # indicates location, several lf may share
         self.geneD = {}
+        # root branch of locus family in family recon. (geneTreeLoc,geneTreeNB)
+        self.reconRootKey = reconRootKey 
 
     def addGene(self, gene,genesO):
         '''Add a gene (in numerical form) to this LocusFamily.'''
@@ -47,11 +49,16 @@ occurs.'''
             yield strain
 
     def origin(self,familiesO):
-        '''Determine the event or events at the origin of this locus
-family.
+        '''Determine the event at the origin of this locus family. Returns "O" or "R".
         '''
         fam = familiesO.getFamily(self.famNum)
-        return fam.reconD[self.lfMrca]
+        eventTypeL=[]
+        for valL in fam.reconD[self.reconRootKey]:
+            for eventType,_,_,_ in valL:
+                if eventType == 'R' or eventType == 'O':
+                    eventTypeL.append(eventType)
+        assert len(eventTypeL) == 0, "Should be at most one O or one R on branch."
+        return eventTypeL[0]
         
     def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
@@ -131,9 +138,37 @@ object is assumed to be a tuple tree.'''
         '''Given a dictionary rD storing reconciliation values, store as attribute.'''
         self.reconD = rD
         
-    def printReconByGeneTree(self,eventD,fileF=sys.stdout):
-        ''''''
-            
+    def printReconByGeneTree(self,fileF=sys.stdout):
+        '''Print a text summary of the reconciliation.'''
+        self.printReconByGeneTreeHelper(self.geneTree,0,fileF)
+        
+    def printReconByGeneTreeHelper(self,geneTree,level,fileF=sys.stdout):
+        '''Actual recursive function to print reconciliation.'''
+
+        def printOneKey(printPrefix,reconD,nbKey):
+            if nbKey in reconD:
+                for eventT in reconD[nbKey]:
+                    gt,gtNB = nbKey
+                    event,st,stNB,locus = eventT
+                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(st)+" "+stNB+") "+str(locus)
+                    print(outStr,file=fileF)
+
+        # recurse over tree, printing out for each branch and node
+        levelSpace = "   "*level
+        if geneTree[1] == ():
+            print(levelSpace+"- "+str(geneTree[0]),file=fileF)
+            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'b'))
+            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'n'))
+            return
+        else:
+            childStr = " (children:"+str(geneTree[1][0])+","+str(geneTree[2][0])+")"
+            print(levelSpace+"- "+str(geneTree[0])+childStr,file=fileF)
+            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'b'))
+            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'n'))
+
+            self.printReconByGeneTreeHelper(geneTree[1],level+1,fileF)
+            self.printReconByGeneTreeHelper(geneTree[2],level+1,fileF)
+    
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum <tab> 
         mrca <tab> locusFamNum1,locusFamGenes <tab>
