@@ -389,74 +389,75 @@ def debugWrapper(paramD):
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
 
-    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
-    
-    #originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
-
-    #lfO=originFamiliesO.getLocusFamily(1935) # ifam 14 went with this
-
-    #fam=originFamiliesO.getFamily(lfO.famNum)
-
-    #fam = initialFamiliesO.getFamily(261)
-    #reconD = families.convertReconBranchToNode(fam.reconD,fam.geneTree)
-    #families.printReconByGeneTree(reconD,fam.geneTree,0)
-
-    #trees.writeTreeNoBrLen(fam.geneTree,"261rooted.tre")
-
-    def eventList(reconD):
-        L=[]
-        for valL in reconD.values():
-            for eventType,_,_,_ in valL:
-                L.append(eventType)
-        return L
-
-    def eventListBr(brReconD):
-        return [k[0] for k in brReconD.values()]
-    
-    def eventSum(reconD,D,T,L,O,R):
-        sm = 0
-        for eventType in eventList(reconD):
-            if eventType == 'D':
-                sm+=D
-            elif eventType == 'T':
-                sm+=T
-            elif eventType == 'L':
-                sm+=L
-            elif eventType == 'O':
-                sm+=O
-            elif eventType == 'R':
-                sm+=R
-            # S and C events have no cost
-        return sm
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
+    #ifam=initialFamiliesO.getFamily(734)
 
     D=float(paramD["duplicationCost"])
     T=float(paramD["transferCost"])
     L=float(paramD["lossCost"])
     O=float(paramD["originCost"])
     R=float(paramD["rearrangeCost"])
+
+    speciesTree = tree
+    iFamGeneTreeFileStem = 'initFam'
+    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
+    originFamiliesO = families.createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
     
-    reconsL = []
-    #with open("temp.txt","r") as f:
-    with open("a","r") as f:
+
+    for lfO in originFamiliesO.iterLocusFamilies():
+        orig = lfO.origin(originFamiliesO)
+        if orig == 'R':
+            print(orig)
+            lfO. printReconByGeneTree(originFamiliesO)
+            print('---')
+    
+    """    
+    # lf example with hTop mrca
+    lfO = originFamiliesO.getLocusFamily(9105)
+    fam = originFamiliesO.getFamily(9020)
+
+    # reconD still has hTop. Go to original output to get brReconD
+    
+
+    with open("reconTemp.tsv","r") as f:
+        s=f.readline() # skip first line
         while True:
             s=f.readline()
             if s=="":
                 break
-            initFamNum,minCost,reconD,brReconD = s.rstrip().split("\t")
-            initFamNum = int(initFamNum)
-            minCost = float(minCost)
-            reconD = eval(reconD)
-            brReconD = eval(brReconD)
-            reconsL.append((initFamNum,minCost,reconD,brReconD))
-
-    #for initFamNum,minCost,reconD,brReconD in reconsL:
-        
-    #    sm=eventSum(reconD,D,T,L,O,R)        
-    #    if minCost!=sm:
-    #        print(initFamNum,minCost,sm)
-
-
+            initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
+            optMPR=eval(optMPR)
+            optRootedGeneTree = eval(optRootedGeneTree)
+            minCost=eval(minCost)
+            argT=eval(argT)
             
+            reconD = families.convertReconBranchToNode(optMPR,optRootedGeneTree)
+
+            if initFamNum == '2217':
+                break
+
+    print(families.costSum(reconD,D,T,L,O,R))
+
+    print("brReconD")
+    for l in optMPR.items():
+        print(l)
+
+
+    print("reconD")
+    for l in reconD.items():
+        print(l)
+
+    families.parseOneBranchEntry(optMPR,('pTop', 'hTop', 4602),'*')
+        
+
+    for geneTree,splitReconD in families.getGeneTreeReconPairs(originTreeL,reconD):
+        print(geneTree)
+        print(splitReconD)
+        print('---')
+    """
+
+
     code.interact(local=locals())
 
     

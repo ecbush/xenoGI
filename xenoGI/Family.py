@@ -12,7 +12,7 @@ mrca for its family.'''
         self.locusNum = locusNum # indicates location, several lf may share
         self.geneD = {}
         # root branch of locus family in family recon. (geneTreeLoc,geneTreeNB)
-        self.reconRootKey = reconRootKey 
+        self.reconRootKey = reconRootKey
 
     def addGene(self, gene,genesO):
         '''Add a gene (in numerical form) to this LocusFamily.'''
@@ -49,23 +49,41 @@ occurs.'''
             yield strain
 
     def origin(self,familiesO):
-        '''Determine the event at the origin of this locus family. Returns "O" or "R".
+        '''Determine the event at the origin of this locus family. Returns "O"
+        or "R". If reconRootKey is None, then no reconcilation has
+        been done, and we return None.
+
         '''
-        fam = familiesO.getFamily(self.famNum)
-        eventTypeL=[]
-        for valL in fam.reconD[self.reconRootKey]:
-            for eventType,_,_,_ in valL:
+        if self.reconRootKey == None:
+            return None
+        else:
+            fam = familiesO.getFamily(self.famNum)
+            eventTypeL=[]
+            for eventValue in fam.reconD[self.reconRootKey]:
+                eventType = eventValue[0]
                 if eventType == 'R' or eventType == 'O':
                     eventTypeL.append(eventType)
-        assert len(eventTypeL) == 0, "Should be at most one O or one R on branch."
-        return eventTypeL[0]
-        
+            assert len(eventTypeL) < 2, "Should be at most one O or one R on branch."
+            return eventTypeL[0]
+
+    def printReconByGeneTree(self,familiesO,fileF=sys.stdout):
+        '''Print a text summary of the reconciliation corresponding to this
+locus family.'''
+        if self.reconRootKey == None:
+            print(None)
+        else:
+            fam = familiesO.getFamily(self.famNum)
+            rootOfLfSubtree = self.reconRootKey[0]
+            lfSubtree = trees.subtree(fam.geneTree,rootOfLfSubtree)
+            fam.printReconByGeneTreeHelper(lfSubtree,0,fileF)
+    
     def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
 gene2...
         '''
-        outL=[str(self.locusFamNum),self.lfMrca,str(self.locusNum)]
+        reconRootKeyStr = ("_".join(map(str,self.reconRootKey)) if self.reconRootKey!=None else str(self.reconRootKey))
+        outL=[str(self.locusFamNum),self.lfMrca,str(self.locusNum),reconRootKeyStr]
         
         for geneNum in self.iterGenes():
             outL.append(genesO.numToName(geneNum))
