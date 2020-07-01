@@ -246,7 +246,7 @@ arguments so we can pass in different things in different contexts
     
     # Print species files with all the genes, grouped by contig
     gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeD,originFamiliesO)
-    analysis.printSpeciesContigs(geneOrderD,genesFNstem,".tsv",genesO,gene2FamIslandD,originFamiliesO,strainNamesT)
+    analysis.printSpeciesContigs(geneOrderD,genesFNstem,".tsv",genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,strainNamesT)
 
 def createIslandBedWrapper(paramD):
     """Wrapper to make output bed files."""
@@ -387,38 +387,41 @@ def debugWrapper(paramD):
     from .xenoGI import Family
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    tree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
+    speciesTree,subtreeD = loadTreeRelatedData(paramD['treeFN'])
 
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],tree,genesO)
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],tree,genesO)
-    #ifam=initialFamiliesO.getFamily(734)
+    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesTree,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
 
+    #ifam = initialFamiliesO.getFamily(1)
+    
     D=float(paramD["duplicationCost"])
     T=float(paramD["transferCost"])
     L=float(paramD["lossCost"])
     O=float(paramD["originCost"])
     R=float(paramD["rearrangeCost"])
+    rootFocalClade = paramD["rootFocalClade"]
 
-    speciesTree = tree
-    iFamGeneTreeFileStem = 'initFam'
-    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
-    originFamiliesO = families.createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    for fam in originFamiliesO.iterFamilies():
+        if fam.reconD == None or fam.geneTree == None:
+            if fam.reconD != fam.geneTree:
+                print(fam.famNum)
     
+    #fam=originFamiliesO.getFamily(1818)
+    #fam.createGeneHistoryD(speciesTree,rootFocalClade)
+    #fam.geneHistoryD
 
+    #iFamGeneTreeFileStem = 'initFam'
+    #singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
+    #originFamiliesO = families.createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    
+    """    
     for lfO in originFamiliesO.iterLocusFamilies():
         orig = lfO.origin(originFamiliesO)
         if orig == 'R':
             print(orig)
-            lfO. printReconByGeneTree(originFamiliesO)
+            lfO.printReconByGeneTree(originFamiliesO)
             print('---')
-    
-    """    
-    # lf example with hTop mrca
-    lfO = originFamiliesO.getLocusFamily(9105)
-    fam = originFamiliesO.getFamily(9020)
 
-    # reconD still has hTop. Go to original output to get brReconD
-    
 
     with open("reconTemp.tsv","r") as f:
         s=f.readline() # skip first line
@@ -427,6 +430,7 @@ def debugWrapper(paramD):
             if s=="":
                 break
             initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
+            initFamNum = eval(initFamNum)
             optMPR=eval(optMPR)
             optRootedGeneTree = eval(optRootedGeneTree)
             minCost=eval(minCost)
@@ -434,22 +438,23 @@ def debugWrapper(paramD):
             
             reconD = families.convertReconBranchToNode(optMPR,optRootedGeneTree)
 
-            if initFamNum == '2217':
+            if initFamNum == 1:
                 break
+
+
+            ifam = initialFamiliesO.getFamily(initFamNum)
+            #print(ifam.reconD)
+            ifam.addGeneTree(optRootedGeneTree)
+            ifam.addReconciliation(reconD)
+            #print(ifam.reconD)
+            #print("---")
+
+    families.writeFamilies(initialFamiliesO,"initFamTemp.out",genesO,strainNamesT,paramD)
+            
 
     print(families.costSum(reconD,D,T,L,O,R))
 
-    print("brReconD")
-    for l in optMPR.items():
-        print(l)
-
-
-    print("reconD")
-    for l in reconD.items():
-        print(l)
-
     families.parseOneBranchEntry(optMPR,('pTop', 'hTop', 4602),'*')
-        
 
     for geneTree,splitReconD in families.getGeneTreeReconPairs(originTreeL,reconD):
         print(geneTree)

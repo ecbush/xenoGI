@@ -245,7 +245,7 @@ LocusIsland, Family and LocusFamily for each gene.'''
 
 ## Print species files with all the genes, grouped by contig
 
-def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,familiesO,strainNamesT):
+def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,familiesO,rootFocalClade,strainNamesT):
     '''This function produces a set of species specific genome
 files. These contain all the genes in a strain laid out in the order
 they occur on the contigs. Each gene entry includes LocusIsland and
@@ -256,11 +256,11 @@ function.
         if strainName in geneOrderD:
             contigT = geneOrderD[strainName]
             with open(fileStemStr+'-'+strainName+fileExtensionStr,'w') as fileF:
-                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
+                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> gene history string <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
                 print(headerStr,file=fileF)
                 for contig in contigT:
                     print("########### Begin contig",file=fileF)
-                    printGenesTsv(contig,genesO,gene2FamIslandD,familiesO,fileF)
+                    printGenesTsv(contig,genesO,gene2FamIslandD,familiesO,rootFocalClade,fileF)
     return
     
 ## Print neighborhood of an island
@@ -364,20 +364,32 @@ that are in islandGenesInStrainL.'''
 
     printTable(rowsL,indent=4,fileF=fileF)
 
-def printGenesTsv(neighbGenesL,genesO,gene2FamIslandD,familiesO,fileF):
+def printGenesTsv(neighbGenesL,genesO,gene2FamIslandD,familiesO,rootFocalClade,fileF):
     '''Given a list of contiguous genes, print them out in a tsv
-format. Gene name, locusIsland, family, locusFamily, locFamMRCA, gene
+format. Gene name,geneHisStr,locusIsland, family, locusFamily, locFamMRCA, gene
 description.'''
 
+    # get strains in focal clade
+    focalSubtree = trees.subtree(familiesO.speciesTree,rootFocalClade)
+    focalCladeStrainsS = set(trees.leafList(focalSubtree))
+    
     for geneNum in neighbGenesL:
-
+        strainName = genesO.numToStrainName(geneNum)
         infoT=genesO.numToGeneInfo(geneNum)
         geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
         
         locIslNum,famNum,locFamNum = gene2FamIslandD[geneNum]
+        famO = familiesO.getFamily(famNum)
+
+        # only print geneHistory if gene is in focal clade
+        if strainName in focalCladeStrainsS:
+            geneHisStr = famO.getGeneHistoryStr(geneNum,familiesO.speciesTree,rootFocalClade)
+        else:
+            geneHisStr = ""
+            
         lfMrca = familiesO.getLocusFamily(locFamNum).lfMrca
 
-        infoL = [geneName,str(locIslNum),str(famNum),str(locFamNum),lfMrca,descrip]
+        infoL = [geneName,geneHisStr,str(locIslNum),str(famNum),str(locFamNum),lfMrca,descrip]
 
         print("\t".join(infoL),file=fileF)
         

@@ -817,7 +817,6 @@ def costSum(reconD,D,T,L,O,R):
                 sm+=R
             # S, C and N events have no cost
     return sm
-
     
 def createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO):
     '''Create and return an originFamilies object, based on the initial families and recocniliations.'''
@@ -986,7 +985,7 @@ falling at nodes or branches in the gene tree. This output dictionary
 
     rootKey = ''
     for key in brReconD:
-        if key[0] == 'pTop':
+        if key[0] == 'root':
             rootKey = key
             
     # get list of events. initial synLocAtTop should be '*'
@@ -1039,37 +1038,33 @@ this entry is on. We use it to identify R events.
     geneTreeLoc,speciesTreeLoc,synLocAtBottom = brKey
     eventType, child1Mapping,child2Mapping = brReconD[brKey]
 
+    # recognize N events as outside species tree
+    if eventType == 'N':
+        # we are outside the species tree
+        speciesTreeLoc = 'xeno'
+        
+    # we want to refer to co-termination events with 'M', not 'C'
+    if eventType == 'C':
+        eventType = 'M'
+
     # determine branch or node for geneTreeLoc,speciesTreeLoc ('n' or 'b')
     geneTreeNB,spTreeNB = determineNodeOrBranch(eventType)
 
-    # if geneTreeLoc is pTop, rename as root
-    if geneTreeLoc == 'pTop':
-        geneTreeLoc = 'root'
-
-    # if speciesTreeLoc is 'hTop', rename
-    if speciesTreeLoc == 'hTop':
-        if eventType == 'N':
-            # we are outside the species tree
-            speciesTreeLoc = 'xeno'
-        else:
-            # for other events, we're on the branch leading to species root.
-            speciesTreeLoc = 's0' # TEMP HACK!!!
-             
     eventKey = (geneTreeLoc,geneTreeNB)
     eventValue = (eventType,speciesTreeLoc,spTreeNB,synLocAtBottom)
     nodeBranchEventsL.append((eventKey,eventValue))
 
-    # check for O,R events if eventType is D,T,S or C (not L, because
+    # check for O,R events if eventType is D,T,S or M (not L, because
     # this may cause it to show up multiple times)
-    if eventType in 'DTSC':
+    if eventType in 'DTSM':
         if synLocAtTop=='*' and synLocAtBottom!='*':
             # O event
-            eventKey = (geneTreeLoc,'b') # the branch leading to this DTSC event
+            eventKey = (geneTreeLoc,'b') # the branch leading to this DTSM event
             eventValue = ('O',speciesTreeLoc,'b',synLocAtBottom)
             nodeBranchEventsL.append((eventKey,eventValue))
         elif synLocAtTop!='*' and synLocAtTop != synLocAtBottom:
             # R event
-            eventKey = (geneTreeLoc,'b') # the branch leading to this DTSC event
+            eventKey = (geneTreeLoc,'b') # the branch leading to this DTSM event
             eventValue = ('R',speciesTreeLoc,'b',synLocAtBottom)
             nodeBranchEventsL.append((eventKey,eventValue))
     
@@ -1094,7 +1089,7 @@ branches based on the event type.'''
     elif eventType == 'R': # rearrangement
         # implies geneTreeLoc is a branch, speciesTreeLoc is a branch
         return ('b','b')
-    elif eventType == 'C': # cotermination
+    elif eventType == 'M': # cotermination
         # implies geneTreeLoc is a node, speciesTreeLoc is a node
         return ('n','n')
     elif eventType == 'S': # cospeciation

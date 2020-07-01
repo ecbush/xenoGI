@@ -1,5 +1,6 @@
 # functions for loading, manipulating and creating phylogenetic trees
 from Bio import Phylo
+from collections import OrderedDict
 import sys, os, glob, subprocess, shutil
 from multiprocessing import Pool
 from xenoGI import xenoGI, blast, scores, parameters, fasta, genomes
@@ -69,6 +70,23 @@ def subtree(tree,node):
             return r
         else:
             return l
+
+def ancestors(tree,node):
+    '''Return a list of nodes ancestral to node.'''
+    if tree[0] == node:
+        return []
+    elif tree[1] == ():
+        # hit tip and didn't find anything
+        return None
+    else:
+        lt = ancestors(tree[1],node)
+        rt = ancestors(tree[2],node)
+        if lt != None:
+            return [tree[0]] + lt
+        elif rt != None:
+            return [tree[0]] + rt
+        else:
+            return None
     
 def prune(tree,strainsToKeep):
     '''Given a tree and a group of strains strainsToKeep (which we assume
@@ -185,7 +203,7 @@ def isSpeciesPresent(tree,species):
         l=isSpeciesPresent(tree[1],species)
         r=isSpeciesPresent(tree[2],species)
         return l or r
-        
+
 def tupleTree2Newick(tree):
     '''Convert a four tuple based tree (root,left,right,branchLen) into a
 newick formated string.'''
@@ -202,6 +220,22 @@ def writeTree(tree,fileName):
     f.write("("+tupleTree2Newick(tree)+");")
     f.close()
 
+def tupleTree2NoBrLenNewick(tree):
+    '''Convert a four tuple based tree (root,left,right,branchLen) into a
+newick formated string, without branch lengths.'''
+    if tree[1]==():
+        return str(tree[0])
+    else:
+        leftStr=tupleTree2NoBrLenNewick(tree[1])
+        rightStr=tupleTree2NoBrLenNewick(tree[2])
+        return "("+leftStr+","+rightStr+")"+str(tree[0])
+
+def writeTreeNoBrLen(tree,fileName):
+    '''Write tree to fileName (in newick format).'''
+    f=open(fileName,"w")
+    f.write(tupleTree2NoBrLenNewick(tree)+";")
+    f.close()
+    
 #### Functions for creating gene and species trees
 
 def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
@@ -512,22 +546,6 @@ already (e.g. if confidence values have been put in the name field).'''
         n.name=nameStem+str(j)
     return tree 
 
-def tupleTree2NoBrLenNewick(tree):
-    '''Convert a four tuple based tree (root,left,right,branchLen) into a
-newick formated string, without branch lengths.'''
-    if tree[1]==():
-        return str(tree[0])
-    else:
-        leftStr=tupleTree2NoBrLenNewick(tree[1])
-        rightStr=tupleTree2NoBrLenNewick(tree[2])
-        return "("+leftStr+","+rightStr+")"+str(tree[0])
-
-def writeTreeNoBrLen(tree,fileName):
-    '''Write tree to fileName (in newick format).'''
-    f=open(fileName,"w")
-    f.write(tupleTree2NoBrLenNewick(tree)+";")
-    f.close()
-    
 def stripBranchLen(bpTree):
     '''Remove branch lengths from bpTree. Modifies in place.'''
     for n in bpTree.get_nonterminals() + bpTree.get_terminals():
@@ -725,34 +743,34 @@ def parseTreeForDP(tree, parasite):
     """
     Input: four tuple tree as defined by the trees.py (xenoGI)
     Output: tree format represented by a dictionary as required by the 
-            DTLOR_DP.py. Note, if an edge directs to a tip, than the children 
+            DTLOR_DP.py. Note, if an edge directs to a tip, the children 
             edges will be None
     """
-    def parseHelper(tree,treeDict):
+    def parseHelper(tree, treeDict):
         """
-        recursive helper. Note the edge to the root of 
+        Recursive helper. Note the edge to the root of 
         the tree is already in treeDict
         """
         if tree[1]==(): pass  #can't be at a leaf
         lt=tree[1]
         rt=tree[2]
-        if lt[1]==(): #if left child is a leaf, add the edge to left child and stop
+        if lt[1]==(): # If left child is a leaf, add the edge to left child and stop
             key=lt[0]
             value=(tree[0],lt[0],None,None)
             treeDict[key]=value
-        else: #if left child is not a leaf, add the edge to left child and recur on lt
+        else: # If left child is not a leaf, add the edge to left child and recur on lt
             key=lt[0]
-            #the left child of left tree
+            # The left child of left tree
             lt_lt=lt[1]
             rt_lt=lt[2]
             value=(tree[0],lt[0],lt_lt[0],rt_lt[0])
             treeDict[key]=value
             treeDict=parseHelper(lt,treeDict)
-        if rt[1]==(): #if right child is a leaf, add the edge to right child and stop
+        if rt[1]==(): # If right child is a leaf, add the edge to right child and stop
             key=rt[0]
             value=(tree[0],rt[0],None,None)
             treeDict[key]=value
-        else: #if right child is not a leaf, add the edge to right child and recur on lt
+        else: # If right child is not a leaf, add the edge to right child and recur on lt
             key=rt[0]
             lt_rt=rt[1]
             rt_rt=rt[2]
@@ -763,19 +781,20 @@ def parseTreeForDP(tree, parasite):
         return treeDict
 
 
-    if tree[1]==(): #this tree cannot be only a root
+    if tree[1]==(): # This tree cannot be only a root
         return None
-    parsedTree={}
+
+    parsedTree = OrderedDict()
     
     lt=tree[1]
     rt=tree[2]
     if parasite:
     # (start vertex, end vertex, left child edge name, right child edge name)
-        value=("p_root",tree[0], lt[0], rt[0])
-        key="pTop"
+        value=("p_root", tree[0], lt[0], rt[0])
+        key = tree[0]
     else:
-        value=("h_root",tree[0], lt[0], rt[0])
-        key="hTop"
-    parsedTree[key]=value
+        value=("h_root", tree[0], lt[0], rt[0])
+        key = tree[0]
+    parsedTree[key] = value
     
     return parseHelper(tree, parsedTree)

@@ -109,12 +109,11 @@ class Family:
         self.mrca = mrca
         self.locusFamiliesL = []   # will contain locusFamily objects for this family
         self.geneTree = geneTree   # rooted gene tree object
-        # dict giving mapping of gene tree onto species tree. May have
-        # keys rawBranch, event, species corresponding to different
-        # formats. e.g. value of rawBranch is the output format of
-        # DTLOR_DP
-        self.reconD = reconD
+        self.reconD = reconD # mapping of gene tree onto species tree.
         self.sourceFam = sourceFam # only for originFams. gives ifam num that originFam came from
+
+        # attributes not saved to file and must be recreated when needed
+        self.geneHistoryD = None
         
     def addLocusFamily(self,lfO):
         self.locusFamiliesL.append(lfO)
@@ -156,19 +155,108 @@ object is assumed to be a tuple tree.'''
         '''Given a dictionary rD storing reconciliation values, store as attribute.'''
         self.reconD = rD
         
+    def createGeneHistoryD(self,speciesTree,rootFocalClade):
+        '''Create a dict of gene histories. Keyed by tip gene. Value is a
+string giving history of gene. We convert O events into either C
+(core, happened at or before the rootFocalClade) or X (xeno hgt)
+events.
+        '''
+        # support func
+        def createGeneHistoryStringL(rfCladeAndAncestorsL,geneTree):
+            '''Actual recursive function for making strings of gene
+histories. Returns a list of tuples. Each tuple contains
+(tipGene,historyStr).
+
+            '''
+            # get sequence for this branch and node
+            hisStr=''
+            for nbKey in [(geneTree[0],'b'),(geneTree[0],'n')]:
+                if nbKey in self.reconD:
+                    for event,stLoc,stNB,locus in self.reconD[nbKey]:
+                        if event == 'L':
+                            pass
+                        elif event == 'O':
+                            if stLoc in rfCladeAndAncestorsL:
+                                hisStr+='C' # core gene
+                            else:
+                                hisStr+='X' # xeno hgt event
+                        else:
+                            hisStr+=event
+
+            if geneTree[1] == ():
+                return [(geneTree[0],hisStr)]
+            else:
+                lL = createGeneHistoryStringL(rfCladeAndAncestorsL,geneTree[1])
+                rL = createGeneHistoryStringL(rfCladeAndAncestorsL,geneTree[2])
+
+                # loop and add current hisStr to events in these
+                outL = []
+                for geneNum,hisStrRestOfTree in lL+rL:
+                    outL.append((geneNum,hisStr+hisStrRestOfTree))
+
+                return outL
+        # end support func
+            
+        # get list of nodes ancestral to and including rootFocalClade
+        rfCladeAndAncestorsL = trees.ancestors(speciesTree,rootFocalClade) + [rootFocalClade]
+
+        # get history strings
+        hisStrL = createGeneHistoryStringL(rfCladeAndAncestorsL,self.geneTree)
+
+        # need to only have string back to rootFocalClade in species tree. cut it off before that. do this by keeping the speciesTree placements.
+        
+        # put in dict
+        self.geneHistoryD = {}
+        for geneNum,hisStr in hisStrL:
+            self.geneHistoryD[geneNum] = hisStr
+
+    def getGeneHistoryStr(self,geneNum,speciesTree,rootFocalClade):
+        '''Return a gene history string. Possible characters are:
+
+        D - duplication
+        T - transfer (hgt within the species tree)
+        C - core gene origin event
+        X - xeno hgt origin event
+        R - rearrangment event
+
+        Note, loss (L) events won't show up in these. And we don't
+        print the cotermination (M) events.
+        '''
+
+        if self.geneHistoryD != None:
+            # geneHistoryD already made
+            return self.geneHistoryD[geneNum]    
+        elif self.reconD != None:
+            # geneHistoryD not created yet and reconciliation is present
+            self.createGeneHistoryD(speciesTree,rootFocalClade)
+            return self.geneHistoryD[geneNum]    
+        else:
+            # this family has no recon, so we can't caculate a history
+            return ""
+        
     def printReconByGeneTree(self,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''
         self.printReconByGeneTreeHelper(self.geneTree,0,fileF)
-        
+
     def printReconByGeneTreeHelper(self,geneTree,level,fileF=sys.stdout):
-        '''Actual recursive function to print reconciliation.'''
+        '''Actual recursive function to print reconciliation. Single letter
+codes for events are as follows:
+
+        D - duplication
+        T - transfer (hgt withing the species tree)
+        L - loss (deletion so that gene is lost on species tree lineage)
+        O - origin (either core or xeno hgt).
+        R - rearrangment event
+        M - cotermination event (gene tree tip maps onto species tree tip)
+
+        '''
 
         def printOneKey(printPrefix,reconD,nbKey):
             if nbKey in reconD:
                 for eventT in reconD[nbKey]:
                     gt,gtNB = nbKey
-                    event,st,stNB,locus = eventT
-                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(st)+" "+stNB+") "+str(locus)
+                    event,stLoc,stNB,locus = eventT
+                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(stLoc)+" "+stNB+") "+str(locus)
                     print(outStr,file=fileF)
 
         # recurse over tree, printing out for each branch and node
@@ -226,7 +314,6 @@ object is assumed to be a tuple tree.'''
 
     def __repr__(self):
         return "<fam:"+str(self.famNum)+">"
-    
 
 class Families:
 
@@ -241,7 +328,7 @@ class Families:
         ## object. familiesD has key famNum and value
         ## a Family object.
         
-    def initializeFamily(self,famNum,mrca,geneTree=None,reconD={},sourceFam=None):
+    def initializeFamily(self,famNum,mrca,geneTree=None,reconD=None,sourceFam=None):
         '''Set up an entry for family famNum.'''
         # the seed genes are the original PHiGs seed.
 
