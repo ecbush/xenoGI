@@ -401,14 +401,10 @@ def debugWrapper(paramD):
     R=float(paramD["rearrangeCost"])
     rootFocalClade = paramD["rootFocalClade"]
 
-    for fam in originFamiliesO.iterFamilies():
-        if fam.reconD == None or fam.geneTree == None:
-            if fam.reconD != fam.geneTree:
-                print(fam.famNum)
     
-    #fam=originFamiliesO.getFamily(1818)
-    #fam.createGeneHistoryD(speciesTree,rootFocalClade)
-    #fam.geneHistoryD
+    fam=originFamiliesO.getFamily(7506)
+    fam.createGeneHistoryD(speciesTree,rootFocalClade)
+    fam.geneHistoryD
 
     #iFamGeneTreeFileStem = 'initFam'
     #singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)

@@ -48,8 +48,8 @@ occurs.'''
         for strain in self.geneD.keys():
             yield strain
 
-    def origin(self,familiesO):
-        '''Determine the event at the origin of this locus family. Returns "O"
+    def origin(self,familiesO,rootFocalClade):
+        '''Determine the event at the origin of this locus family. Returns "C", "X" or
         or "R". If reconRootKey is None, then no reconcilation has
         been done, and we return None.
 
@@ -64,7 +64,13 @@ occurs.'''
                 if eventType == 'R' or eventType == 'O':
                     eventTypeL.append(eventType)
             assert len(eventTypeL) < 2, "Should be at most one O or one R on branch."
-            return eventTypeL[0]
+
+            if eventTypeL[0] == 'R':
+                orig = 'R'
+            else:
+                orig = fam.origin(familiesO.speciesTree,rootFocalClade)
+            
+            return orig
 
     def printReconByGeneTree(self,familiesO,fileF=sys.stdout):
         '''Print a text summary of the reconciliation corresponding to this
@@ -161,33 +167,28 @@ string giving history of gene. We convert O events into either C
 (core, happened at or before the rootFocalClade) or X (xeno hgt)
 events.
         '''
-        # support func
-        def createGeneHistoryStringL(rfCladeAndAncestorsL,geneTree):
+        # support funcs
+        def createGeneHistoryStringL(geneTree):
             '''Actual recursive function for making strings of gene
 histories. Returns a list of tuples. Each tuple contains
 (tipGene,historyStr).
 
             '''
             # get sequence for this branch and node
-            hisStr=''
+            hisStr = ""
             for nbKey in [(geneTree[0],'b'),(geneTree[0],'n')]:
                 if nbKey in self.reconD:
-                    for event,stLoc,stNB,locus in self.reconD[nbKey]:
-                        if event == 'L':
+                    for event,stLoc,stNB,synLocus in self.reconD[nbKey]:
+                        if event in 'LM':
                             pass
-                        elif event == 'O':
-                            if stLoc in rfCladeAndAncestorsL:
-                                hisStr+='C' # core gene
-                            else:
-                                hisStr+='X' # xeno hgt event
                         else:
                             hisStr+=event
-
+                            
             if geneTree[1] == ():
                 return [(geneTree[0],hisStr)]
             else:
-                lL = createGeneHistoryStringL(rfCladeAndAncestorsL,geneTree[1])
-                rL = createGeneHistoryStringL(rfCladeAndAncestorsL,geneTree[2])
+                lL = createGeneHistoryStringL(geneTree[1])
+                rL = createGeneHistoryStringL(geneTree[2])
 
                 # loop and add current hisStr to events in these
                 outL = []
@@ -195,13 +196,10 @@ histories. Returns a list of tuples. Each tuple contains
                     outL.append((geneNum,hisStr+hisStrRestOfTree))
 
                 return outL
-        # end support func
+        # end support funcs
             
-        # get list of nodes ancestral to and including rootFocalClade
-        rfCladeAndAncestorsL = trees.ancestors(speciesTree,rootFocalClade) + [rootFocalClade]
-
         # get history strings
-        hisStrL = createGeneHistoryStringL(rfCladeAndAncestorsL,self.geneTree)
+        hisStrL = createGeneHistoryStringL(self.geneTree)
 
         # need to only have string back to rootFocalClade in species tree. cut it off before that. do this by keeping the speciesTree placements.
         
@@ -215,9 +213,9 @@ histories. Returns a list of tuples. Each tuple contains
 
         D - duplication
         T - transfer (hgt within the species tree)
-        C - core gene origin event
-        X - xeno hgt origin event
+        O - origin event (entry into species tree)
         R - rearrangment event
+        S - cospeciation event
 
         Note, loss (L) events won't show up in these. And we don't
         print the cotermination (M) events.
@@ -233,6 +231,37 @@ histories. Returns a list of tuples. Each tuple contains
         else:
             # this family has no recon, so we can't caculate a history
             return ""
+
+    def origin(self,speciesTree,rootFocalClade):
+        '''Intepret the O event at the base of this family by determining if
+it is a core gene (C) or xeno hgt (X). We assess whether it is core or
+not at the base of the rootFocalClade of the species tree. If there is
+no reconciliation, return empty string.
+
+        '''
+        if self.reconD == None:
+            return ""
+
+        # get the origin event out. There should only be one. If more,
+        # this is probably an intial family.
+        Ocount = 0
+        for valL in self.reconD.values():
+            for eventType,stLoc,stNB,synLocus in valL:
+                if eventType == 'O':
+                    OstLoc = stLoc
+                    Ocount+=1
+        if Ocount != 1:
+            raise ValueError("There should be exactly one origin event in reconD.")
+
+        # it is C if originated in rfclade branch or ancestors of it
+        rfAncL = trees.ancestors(speciesTree,rootFocalClade) + [rootFocalClade]
+        if OstLoc in rfAncL:
+            # core gene
+            orig = 'C'
+        else:
+            orig = 'X'
+
+        return orig
         
     def printReconByGeneTree(self,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''

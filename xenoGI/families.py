@@ -824,8 +824,8 @@ def createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifu
     originFamiliesO = Families(speciesTree)
 
     # add in families where we have no reconciliation
-    originFamiliesO = addOriginFamilyFromInitialFamiliesO(singleGeneInitFamNumL,initialFamiliesO,originFamiliesO,genesO)
-    originFamiliesO = addOriginFamilyFromInitialFamiliesO(multifurcatingL,initialFamiliesO,originFamiliesO,genesO)
+    originFamiliesO = addOriginFamilyFromInitialFamiliesO(singleGeneInitFamNumL,False,initialFamiliesO,originFamiliesO,genesO)
+    originFamiliesO = addOriginFamilyFromInitialFamiliesO(multifurcatingL,True,initialFamiliesO,originFamiliesO,genesO)
 
     # add in families from reconciliation
     for initFamNum,geneTree in bifurcatingL:
@@ -835,15 +835,20 @@ def createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifu
 
     return originFamiliesO
         
-def addOriginFamilyFromInitialFamiliesO(initFamNumL,initialFamiliesO,originFamiliesO,genesO):
+def addOriginFamilyFromInitialFamiliesO(initFamNumL,isMultiFurc,initialFamiliesO,originFamiliesO,genesO):
     '''For cases where there is no reconciliation, base origin family on
 corresponding initial family.
     '''
     for initFamNum in initFamNumL:
         initFamO = initialFamiliesO.getFamily(initFamNum)
         famNum=originFamiliesO.getNumFamilies() # num for new family
-        originFamiliesO.initializeFamily(famNum,initFamO.mrca)
-
+        if isMultiFurc:
+            originFamiliesO.initializeFamily(famNum,initFamO.mrca)
+        else:
+            # should be single gene family
+            geneTree,reconD = createSingleGeneFamilyGeneTreeRecon(initFamO,genesO)
+            originFamiliesO.initializeFamily(famNum,initFamO.mrca,geneTree,reconD)
+            
         for initLocFamO in initFamO.getLocusFamilies():
             locFamNum = originFamiliesO.getNumLocusFamilies() # num for new loc fam
             lfO = LocusFamily(famNum,locFamNum,initLocFamO.lfMrca,initLocFamO.locusNum)
@@ -852,10 +857,26 @@ corresponding initial family.
             originFamiliesO.addLocusFamily(lfO)
 
     return originFamiliesO
+
+def createSingleGeneFamilyGeneTreeRecon(initFamO,genesO):
+    '''Construct a gene tree and reconD for a single gene family.'''
+    
+    geneL=list(initFamO.iterGenes())
+    assert(len(geneL)==1) # verify single gene
+    geneNum=geneL[0]
+    strainName = genesO.numToStrainName(geneNum)
+    locusNum = initFamO.locusFamiliesL[0].locusNum
+
+    geneTree = (geneNum, (), (), None)
+    reconD = {}
+    reconD[(geneNum,'b')] = [('O', strainName, 'b', locusNum)]
+    reconD[(geneNum,'n')] = [('M', strainName, 'n', locusNum)]
+
+    return geneTree,reconD
     
 def addOriginFamilyFromReconciliation(geneTree,reconD,originFamiliesO,sourceFam,genesO):
     '''Given a rooted gene tree and a reconciliation (raw output from
-DTLOR_BP, add origin families. One origin family for each origin
+DTLOR_DP, add origin families. One origin family for each origin
 event.
     '''
     

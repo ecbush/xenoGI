@@ -256,7 +256,7 @@ function.
         if strainName in geneOrderD:
             contigT = geneOrderD[strainName]
             with open(fileStemStr+'-'+strainName+fileExtensionStr,'w') as fileF:
-                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> gene history string <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
+                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> gene origin <tab> gene history string <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
                 print(headerStr,file=fileF)
                 for contig in contigT:
                     print("########### Begin contig",file=fileF)
@@ -381,15 +381,17 @@ description.'''
         locIslNum,famNum,locFamNum = gene2FamIslandD[geneNum]
         famO = familiesO.getFamily(famNum)
 
-        # only print geneHistory if gene is in focal clade
+        # only print geneHistory,orign if gene is in focal clade
         if strainName in focalCladeStrainsS:
             geneHisStr = famO.getGeneHistoryStr(geneNum,familiesO.speciesTree,rootFocalClade)
+            geneOrigin = famO.origin(familiesO.speciesTree,rootFocalClade)
         else:
             geneHisStr = ""
+            geneOrigin = ""
             
         lfMrca = familiesO.getLocusFamily(locFamNum).lfMrca
 
-        infoL = [geneName,geneHisStr,str(locIslNum),str(famNum),str(locFamNum),lfMrca,descrip]
+        infoL = [geneName,geneOrigin,geneHisStr,str(locIslNum),str(famNum),str(locFamNum),lfMrca,descrip]
 
         print("\t".join(infoL),file=fileF)
         
