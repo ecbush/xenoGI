@@ -138,17 +138,17 @@ have.
 
     printTable(printL,indent=8,fileF=fileF)
 
-def vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF):
+def vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF):
     '''Verbose print of a locus island.'''
 
     print("  LocusIsland",island.id,file=fileF)
-    
+
     # get species nodes subtended by this mrca
     speciesNodesL=trees.leafList(subtreeD[island.mrca])
 
     # put everything in lists.
     printL=[]
-    printL.append(['LocusFamily','Family'])
+    printL.append(['LocusFamily','lfOrig','Family'])
     for node in speciesNodesL:
         printL[0].append(node)
 
@@ -156,6 +156,7 @@ def vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF):
     for locusFamO in island.iterLocusFamilies(familiesO):
         newRow=[]
         newRow.append(str(locusFamO.locusFamNum))
+        newRow.append(locusFamO.origin(familiesO,rootFocalClade))
         newRow.append(str(locusFamO.famNum))
         for node in speciesNodesL:
             entryL = []
@@ -190,13 +191,13 @@ def vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF):
 
     return
     
-def vPrintLocusIslandsAtNode(islandL,subtreeD,familiesO,genesO,fileF):
+def vPrintLocusIslandsAtNode(islandL,rootFocalClade,subtreeD,familiesO,genesO,fileF):
     '''Print a list of islands at a single node.'''
     print("  Summary",file=fileF)
     printIslandLSummary(islandL,fileF)
     print("  -------",file=fileF)
     for island in islandL:
-        vPrintLocusIsland(island,subtreeD,familiesO,genesO,fileF)
+        vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF)
         print('  ------',file=fileF)
 
 def vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,genesO,fileF):
@@ -205,13 +206,13 @@ def vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,g
     for node in trees.nodeList(focalTree):
         print('########################### ',"Locus Islands at node",node,file=fileF)
         print('',file=fileF)
-        vPrintLocusIslandsAtNode(islandByNodeD[node],subtreeD,familiesO,genesO,fileF)
+        vPrintLocusIslandsAtNode(islandByNodeD[node],rootFocalClade,subtreeD,familiesO,genesO,fileF)
 
 def printAllLocusIslandsTsv(islandByNodeD,tree,rootFocalClade,familiesO,genesO,fileF):
     '''Loop over all nodes in tree, printing locus islands at each in tsv form. '''
 
     # header
-    headerTxt = """# Format: locusIslandNum <tab> mrca <tab> [Locus Families and genes in locusIsland]
+    headerTxt = """# Format: locusIslandNum <tab> mrca <tab> locusFamilyOriginStr <tab> [Locus Families and genes in locusIsland]
 # The remaining part of each line is organized by locus family
 # locusFamilyNum,geneA,geneB <tab> locusFamilyNum,geneC,geneD etc.
 # for however many locusFamilies there are."""
@@ -220,7 +221,8 @@ def printAllLocusIslandsTsv(islandByNodeD,tree,rootFocalClade,familiesO,genesO,f
     focalTree = trees.subtree(tree,rootFocalClade)
     for node in trees.nodeList(focalTree):
         for island in islandByNodeD[node]:
-            printL=[str(island.id),str(island.mrca)]
+            oStr = island.getLocusFamilyOriginStr(familiesO,rootFocalClade)
+            printL=[str(island.id),str(island.mrca),oStr]
             for locusFamO in island.iterLocusFamilies(familiesO):
                 lfamGeneL=[str(locusFamO.locusFamNum)]
                 for geneNum in locusFamO.iterGenes():

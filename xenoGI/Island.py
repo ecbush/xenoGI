@@ -44,6 +44,14 @@ score function.
         for lfO in self.iterLocusFamilies(familiesO):
             for gene in lfO.iterGenes():
                 yield gene
+
+    def getLocusFamilyOriginStr(self,familiesO,rootFocalClade):
+        '''Return a string with the origin for each locus family in the island
+(C,X,R).'''
+        L = []
+        for lfO in self.iterLocusFamilies(familiesO):
+            L.append(lfO.origin(familiesO,rootFocalClade))
+        return "".join(L)
         
 def str2Island(islandStr):
     '''Given a island string (e.g. produced by the fileStr method) parse to produce island.'''

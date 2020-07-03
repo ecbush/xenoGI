@@ -281,10 +281,11 @@ def interactiveAnalysisWrapper(paramD):
     level. familyNum is the numerical identifier of a family, and
     familiesO is a family object.
         '''
-                    
+
         print("Family",familyNum,file=fileF)
+        fam = familiesO.getFamily(familyNum)
         # print out the locus families
-        for lfO in familiesO.getFamily(familyNum).getLocusFamilies():
+        for lfO in fam.getLocusFamilies():
             print("    LocusFamily",lfO.getStr(genesO," "),file=fileF)
         
         # print("Family error score (count of possibly misassigned genes):",familiesO[familyNum].possibleErrorCt,file=fileF)
@@ -309,6 +310,9 @@ def interactiveAnalysisWrapper(paramD):
         print(file=fileF)
         print(file=fileF)
 
+        print("Reconciliation of gene tree onto species tree",file=fileF)       
+        fam.printReconByGeneTree(fileF)
+        
     def findLocusIsland(searchStr,fileF=sys.stdout):
         '''Print the gene, LocusIsland family and LocusFamily associated with
     searchStr. This is a wrapper that assumes various required objects

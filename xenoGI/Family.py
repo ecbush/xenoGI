@@ -51,11 +51,11 @@ occurs.'''
     def origin(self,familiesO,rootFocalClade):
         '''Determine the event at the origin of this locus family. Returns "C", "X" or
         or "R". If reconRootKey is None, then no reconcilation has
-        been done, and we return None.
+        been done, and we return " ".
 
         '''
         if self.reconRootKey == None:
-            return None
+            return " "
         else:
             fam = familiesO.getFamily(self.famNum)
             eventTypeL=[]

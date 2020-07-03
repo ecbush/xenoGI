@@ -53,10 +53,26 @@ If you want protein alignments rather than DNA, then change "dna" to "prot" in t
 Making a tree suitable for xenoGI
 ---------------------------------
 
-If you have a species tree for your strains obtained from elsewhere (ie from the phylogenetic reconstruction program of your choice) you will likely have to make several modifications to it before in can be used with xenoGI. The prepareTree.py script in misc/ will take an input tree in Newick format. It then roots this tree, adds names to its internal nodes, and removes branch lengths.
+If you have a species tree for your strains obtained from elsewhere (ie from the phylogenetic reconstruction program of your choice) you will likely have to make several modifications to it before in can be used with xenoGI. The prepareSpeciesTree.py script in misc/ will take an input tree in Newick format. It then roots this tree, adds names to its internal nodes, and removes branch lengths.
 
 Run it like this::
 
-  python3 path-to-xenoGI-github-repository/misc/prepareTree.py input.tre output.tre Vibrio_cholerae_N16961
+  python3 path-to-xenoGI-github-repository/misc/prepareSpeciesTree.py input.tre output.tre Vibrio_cholerae_N16961
 
-The final argument here is a known outgroup. It can also be a clade, in which you would separate the names of the strains in that clade with whitespace.
+The final argument here is a known outgroup. It can also be a clade, in which case you would separate the names of the strains in that clade with whitespace.
+
+
+Reconcile a single gene tree with the species tree
+--------------------------------------------------
+
+The reconcileOneGeneTree.py script in misc/ allows you to reconcile a single gene tree against the species tree. This may be useful if you want to play with the DTLOR parameters to see how they affect the reconcilation. (To be honest it may be of most interest to developers).
+
+This script depends on xenoGI having been run up to the makeFamilies stage, because it makes use of the syntenic location assignments that get done at that point.
+
+As arguments it takes a species tree, a gene tree (both in newick) a xenoGI parameters file, and the costs for each of the DTLOR operations.
+
+Run it like this::
+
+  python3 path-to-xenoGI-github-repository/misc/reconcileOneGeneTree.py example.tre geneFamilyTrees/initFam001699.tre params.py 1 1 1 1 1
+
+As output it produces a rooted gene tree (determined by trying all possible rootings and picking the one with the best reconcilation) and a representation of the reconcilation given by traversing the gene tree.
