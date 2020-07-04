@@ -2,7 +2,7 @@
 xenoGI
 ======
 
-Code for detecting genomic island insertions in clades of microbes.
+Code for reconstructing genome evolution in clades of microbes.
 
 Requirements
 ------------
@@ -10,6 +10,10 @@ Requirements
 * NCBI blast+
 
   We need blastp and makeblastdb executables (ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/).
+
+* MUSCLE (https://www.drive5.com/muscle/). For creating protein or DNA alignments.
+
+* FastTree (http://www.microbesonline.org/fasttree/). To make gene trees.
 
 * Python 3
 
@@ -32,10 +36,6 @@ Requirements
 * Additional dependencies
 
   If you make use of the ``makeSpeciesTree`` flag, you will also need the following
-
-  - MUSCLE (https://www.drive5.com/muscle/).
-
-  - FastTree (http://www.microbesonline.org/fasttree/).
 
   - ASTRAL (https://github.com/smirarab/ASTRAL/).
 
@@ -65,9 +65,9 @@ Required files
 
 The working directory must contain:
 
-* A parameter file. In the provided ``example/`` directory this is called ``params.py``. The ``blastExecutDirPath`` parameter in this file should be edited to point to the directory where the blastp and makeblastdb executables are.
+* A parameter file. In the provided ``example/`` directory this is called ``params.py``. The ``blastExecutDirPath`` parameter in this file should be edited to point to the directory where the blastp and makeblastdb executables are. Similarly, ``musclePath`` should give the path to the MUSCLE executable, and ``fastTreePath`` should give the path to the FastTree executable.
 
-* A newick format tree representing the relationships of the strains. In the example this is called ``example.tre``. Note that branch lengths are not used in xenoGI, and ``example.tre`` does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter ``treeFN`` in ``params.py`` has the path to this tree file. If a strain tree is not available, xenoGI has some accessory methods, described below, to help obtain one.
+* A newick format tree representing the relationships of the strains. In the example this is called ``example.tre``. Note that branch lengths are not used in xenoGI, and ``example.tre`` does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter ``speciesTreeFN`` in ``params.py`` has the path to this tree file. If a strain tree is not available, xenoGI has some accessory methods, described below, to help obtain one.
 
 * A subdirectory of sequence files. In the example, this is called ``ncbi/``. Contained in this subdirectory will be genbank (gbff) files for the species. The parameter ``genbankFilePath`` in ``params.py`` has the path to these files.
 
@@ -85,7 +85,7 @@ Running the code
 
 If you install via pip, then you should have an executable script in your path called xenoGI.
 
-You run the code from within the working directory. To run the example, you would cd into the ``example/`` directory. You will need to ensure that the ``params.py`` parameters file contains the  correct path to the directory with the blastp and makeblastdb executables in it. Then, the various steps of xenoGI can be run all at once like this::
+You run the code from within the working directory. To run the example, you would cd into the ``example/`` directory. You will need to ensure that the ``params.py`` parameters file contains the  correct path to the directory with the blastp and makeblastdb executables in it, as well as the MUSCLE and FastTree executables. Then, the various steps of xenoGI can be run all at once like this::
 
   xenoGI params.py runAll
 
@@ -110,7 +110,7 @@ What the steps do
 
 * ``parseGenbank`` runs through the genbank files and produces input files that are used by subsequent code.
   
-* ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numThreads parameter in the parameter file. Before running a particular comparison, runBlast checks to see if the output file for that comparison already exists (e.g. from a previous run). If so it skips the comparison.
+* ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numProcesses parameter in the parameter file. Before running a particular comparison, runBlast checks to see if the output file for that comparison already exists (e.g. from a previous run). If so it skips the comparison.
   
 * ``calcScores`` calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
   
@@ -137,9 +137,7 @@ A brief illustration will allow us to define some terminology used in xenoGI's o
 
 Consider a clade of three species: (A,B),C. In this group, A and B are most closely related, and C is the outgroup. Gene a in species A has an ortholog b in species B. These two genes have high synteny, but have no ortholog in C. We call a and b a *locus family* because they are descended from a common ancestor, and occur in the same syntenic location.
 
-When a genomic island inserts as a part of a horizontal transfer event, it typically brings in multiple locus families at the same time. xenoGI will attempt to group these into a *locus island*. In the a/b case, if there were several other locus families nearby that also inserted on the branch leading to the A,B clade, we would group them together into a single locus island.
-
-At present, locus islands and locus families are the basic units of output. If you are interested in finding genomic islands that inserted on a particular branch in your tree, you would be looking for locus islands identified on that branch.
+When a genomic island inserts as a part of a horizontal transfer event, it typically brings in multiple locus families at the same time. xenoGI will attempt to group these into a *locus island*. In the a/b case, if there were several other locus families nearby that also inserted on the branch leading to the A,B clade, we would group them together into a single locus island. At present, locus islands and locus families are the basic units of output.
 
 Let us define one last bit of terminology. Consider another clade of three species: (X,Y),Z. Genes x1 and y1 represent a locus family in the X,Y clade. They are orthologs sharing high synteny. (And they have no ortholog species Z). Imagine that there is also a set of paralogs x2 and y2 which resulted from a gene duplication in the lineage leading to the X,Y clade. These occur in a different syntenic location. In this case, x2 and y2 constitute another locus family. Because these two locus families descended from a common ancestor gene within the species tree, we place them in the same *family*. In general, a family consists of one or more locus families.
 
@@ -150,11 +148,18 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
 
 * ``printAnalysis``
 
-  ``islands.tsv`` tab delimited listing of locus islands. Each line corresponds to one locus island. The first field is the locus island number, the second field is its mrca (most recent common ancestor), and subsequent fields represent locus families in this locus island. Each locus family is listed with its number, and then the genes it contains, separated by commas.
-  
-  ``islandsSummary.txt`` A more human readable summary of locus islands, organized by node. This includes a tabular printout of the island, as well as a listing of each gene and its description if any.
+  - This script produces a set of species specific genome files. These files all have the name genes in their stem, followed by the strain name, and the extension .tsv. In the example/ data set, ``genes-E_coli_K12.tsv`` is one such. These files contain all the genes in a strain laid out in the order they occur on the contigs. Each line corresponds to one gene and contains:
+    + gene name
+    + origin of the gene, specified by a single character: a C indicating core gene, or an X indicating xeno horizontal transfer. This field is an interpretation of the O event from the DTLOR reconcilation based on its placement in the species tree.
+    + gene history, specified by a string. This gives the history of the gene from its origin until the tip of the gene tree, and consists of single letters corresponding to the operations in the reconcilation model. D, duplication; T, transfer (within the species tree); O, origin; R, rearrangement.
+    + locus island number
+    + family number
+    + locus family number
+    + gene description
 
-  This script also produces a set of species specific genome files. These contain all the genes in a strain laid out in the order they occur on the contigs. Each gene entry includes locus island and family information, as well as a brief description of the gene's function. These files all have the name genes in their stem, followed by the strain name, and the extension .tsv.
+  - ``islands.tsv`` tab delimited listing of locus islands. Each line corresponds to one locus island. The first field is the locus island number, the second field is its mrca (most recent common ancestor), and the third is a string giving the origin of each locus family in the locus island (possible values for each locus family are C for core gene, X for xeno HGT, and R for rearrangement). Subsequent fields give the locus families in this locus island. Each locus family is listed with its number, and then the genes it contains, separated by commas.
+  
+  - ``islandsSummary.txt`` A more human readable summary of locus islands, organized by node. This includes a tabular printout of the island, as well as a listing of each gene and its description if any.
 
 * ``createIslandBed`` creates a subdirectory called bed/ containing bed files for each genome showing the locus islands in different colors. (Color is specified in the RGB field of the bed).
 
@@ -192,8 +197,10 @@ From within python, you can then run functions such as
 
   Print scores within a particular gene family, and also with similar genes not in the family::
   
-    printFam(3279)
+    printFam(5426,originFamiliesO)
 
+  This function also prints a summary of the reconciliation between the gene tree for this family and the species tree.
+    
   Note that this function takes a family number, not a locus family number.
 
 Obtaining a species tree if you don't already have one
@@ -201,7 +208,7 @@ Obtaining a species tree if you don't already have one
 
 Having an accurate species tree is a key to the xenoGI method.
 
-The package does include some functions that may be helpful if you don't have a species tree. These use MUSCLE to create either protein or DNA alignments, FastTree to make gene trees, and ASTRAL to consolidate the gene trees into a species tree.
+The package does include some functions that may be helpful if you don't have a species tree. These use MUSCLE and FastTree to make gene trees, and ASTRAL to consolidate those gene trees into a species tree.
 
 You begin by running the first three steps of xenoGI::
 
@@ -241,4 +248,4 @@ Produce a set of pdf files showing histograms of scores between all possible str
 Additional files
 ----------------
 
-The github repository also contains an additional directory called misc/. This contains various python scripts that may be of use in conjunction with xenoGI. Installation via pip does not include this, so to use these you need to clone the github repository. There is some brief documentation included in the directory.
+The github repository also contains an additional directory called misc/. This contains various python scripts that may be of use in conjunction with xenoGI. Installation via pip does not include this, so to use these you need to clone the github repository. There is some brief documentation included in the misc/ directory.

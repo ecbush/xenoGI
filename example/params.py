@@ -38,7 +38,7 @@ fastaFilePath = 'fasta/*.fa'
 # will be ignored).
 # If makeSpeciesTree will be run (the tree is to be calculated) then
 # this is where the input tree will be put
-treeFN='example.tre'
+speciesTreeFN='example.tre'
 
 # The node and the branch leading to it define the focal clade where
 # islands will be reconstructed. Everything outside of this will be
@@ -70,7 +70,7 @@ aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'
 
 # where to keep ASTRAL output. The final tree (which has been rooted,
 # stripped of branch lengths and had internal nodes named) will be put
-# in treeFN given above.
+# in speciesTreeFN given above.
 astralTreeFN = 'astralTree.tre'
 
 # for rooting the tree
@@ -160,13 +160,12 @@ coreSynWsize = 20
 # gene on that side.
 minCoreSynThresh = 0.5
 
-#DTLOR event costs
-
-duplicationCost = 0.3
-transferCost = 0.4
-lossCost = 0.4
-originCost = 0.1
-rearrangeCost = 0.2
+# DTLOR event costs. Ints.
+duplicationCost = 3
+transferCost = 4
+lossCost = 4
+originCost = 1
+rearrangeCost = 2
 
 #### Visualization and analysis output files ####
 

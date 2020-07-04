@@ -200,16 +200,16 @@ def vPrintLocusIslandsAtNode(islandL,rootFocalClade,subtreeD,familiesO,genesO,fi
         vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF)
         print('  ------',file=fileF)
 
-def vPrintAllLocusIslands(islandByNodeD,tree,rootFocalClade,subtreeD,familiesO,genesO,fileF):
-    '''Loop over all nodes in tree, printing islands at each. '''
-    focalTree = trees.subtree(tree,rootFocalClade)
+def vPrintAllLocusIslands(islandByNodeD,speciesTree,rootFocalClade,subtreeD,familiesO,genesO,fileF):
+    '''Loop over all nodes in speciesTree, printing islands at each. '''
+    focalTree = trees.subtree(speciesTree,rootFocalClade)
     for node in trees.nodeList(focalTree):
         print('########################### ',"Locus Islands at node",node,file=fileF)
         print('',file=fileF)
         vPrintLocusIslandsAtNode(islandByNodeD[node],rootFocalClade,subtreeD,familiesO,genesO,fileF)
 
-def printAllLocusIslandsTsv(islandByNodeD,tree,rootFocalClade,familiesO,genesO,fileF):
-    '''Loop over all nodes in tree, printing locus islands at each in tsv form. '''
+def printAllLocusIslandsTsv(islandByNodeD,speciesTree,rootFocalClade,familiesO,genesO,fileF):
+    '''Loop over all nodes in speciesTree, printing locus islands at each in tsv form. '''
 
     # header
     headerTxt = """# Format: locusIslandNum <tab> mrca <tab> locusFamilyOriginStr <tab> [Locus Families and genes in locusIsland]
@@ -218,7 +218,7 @@ def printAllLocusIslandsTsv(islandByNodeD,tree,rootFocalClade,familiesO,genesO,f
 # for however many locusFamilies there are."""
     print(headerTxt,file=fileF)
     # print locusIslands
-    focalTree = trees.subtree(tree,rootFocalClade)
+    focalTree = trees.subtree(speciesTree,rootFocalClade)
     for node in trees.nodeList(focalTree):
         for island in islandByNodeD[node]:
             oStr = island.getLocusFamilyOriginStr(familiesO,rootFocalClade)
@@ -398,48 +398,3 @@ description.'''
         print("\t".join(infoL),file=fileF)
         
     return
-    
-# support functions for printCoreNonCoreByNode
-
-def createFamilyByNodeL(geneOrderT,gene2LocFamD):
-    '''Create a list where index is node, and where the value is all the
-families present in that strain. Internal nodes are None, tips are a set of
-families.'''
-
-    # an index for each node. internal nodes get none, just like in geneOrderT
-    familyByNodeL=[set() if x!=None else None for x in geneOrderT]
-
-    for i in range(len(geneOrderT)):
-        contigT = geneOrderT[i]
-        if contigT != None:
-            for contig in contigT:
-                for geneNum in contig:
-                    fam=gene2LocFamD[geneNum]
-                    familyByNodeL[i].add(fam)
-    return familyByNodeL
-
-def coreNonCoreCtAtNode(tree,node,familyByNodeL,familiesO):
-    '''Given a tree and a node, first get all the families present in
-descendant species. Then figure out which of these families are
-non-core (their mrca is located below node) and which are core (mrca
-is at node or above). Return count of non-core and core.'''
-
-    subtree = trees.subtree(tree,node)
-    nonCoreMrcaL = trees.nodeList(subtree[1]) + trees.nodeList(subtree[2])
-    
-    # get set of all families with members in descendant species of this node
-    decFamS = set()
-    for leaf in trees.leafList(subtree):
-        decFamS.update(familyByNodeL[leaf])
-
-    # figure out which are core, non-core
-    coreCt=0
-    nonCoreCt=0
-    totCt = len(decFamS)
-    for fam in decFamS:
-        if familyL[fam].mrca in nonCoreMrcaL:
-            nonCoreCt += 1
-        else:
-            coreCt += 1
-            
-    return nonCoreCt,coreCt

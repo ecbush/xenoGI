@@ -8,7 +8,7 @@ number, and the mrca for this locus family (which may differ from the
 mrca for its family.'''
         self.famNum = famNum
         self.locusFamNum = locusFamNum # a unique number for each lf
-        self.lfMrca = lfMrca # species tree
+        self.lfMrca = lfMrca # on species tree
         self.locusNum = locusNum # indicates location, several lf may share
         self.geneD = {}
         # root branch of locus family in family recon. (geneTreeLoc,geneTreeNB)

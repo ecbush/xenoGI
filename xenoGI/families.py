@@ -39,7 +39,7 @@ originFamilies object.
 
     # make gene family trees
     # TEMP COMMENT
-    #trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
+    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
 
     # load gene trees
@@ -669,13 +669,13 @@ binary families with more than 1 genes.
 
     multifurcatingL = []
     bifurcatingL = []
-    for treeFN in allTreeFN_L:
-        tree = trees.loadOneGeneTree(treeFN)
-        initFamNum = int(treeFN.split(iFamGeneTreeFileStem)[1].split('.tre')[0].lstrip('0'))
-        if tree == None:
+    for geneTreeFN in allTreeFN_L:
+        geneTree = trees.loadOneGeneTree(geneTreeFN)
+        initFamNum = int(geneTreeFN.split(iFamGeneTreeFileStem)[1].split('.tre')[0].lstrip('0'))
+        if geneTree == None:
             multifurcatingL.append(initFamNum)
         else:
-            bifurcatingL.append((initFamNum,tree))
+            bifurcatingL.append((initFamNum,geneTree))
         
     return singleGeneInitFamNumL,multifurcatingL,bifurcatingL
 

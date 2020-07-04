@@ -7,11 +7,11 @@ import math
     
 ## Main function  
 
-def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,rootFocalClade,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeD,speciesTree,paramD,familiesO,rootFocalClade,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
     ## Checks
-    rootFocalCladeCheck(tree,rootFocalClade,outputSummaryF)
+    rootFocalCladeCheck(speciesTree,rootFocalClade,outputSummaryF)
     
     ## Parameters
     numProcesses = paramD['numProcesses']
@@ -22,9 +22,9 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,rootFocalClade,ou
     maxClusterSize = paramD['maxClusterSize']
     
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange )
-    locIslByNodeD=createLocIslByNodeD(familiesO,tree)
+    locIslByNodeD=createLocIslByNodeD(familiesO,speciesTree)
     numIslandsAtEachNodeAtStartD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
-    focalNodesL = getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade)
+    focalNodesL = getFocalNodesInOrderOfNumDescendants(speciesTree,rootFocalClade)
 
     ##  Merge in clusters
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
@@ -70,23 +70,23 @@ def makeLocusIslands(geneOrderD,subtreeD,tree,paramD,familiesO,rootFocalClade,ou
 
 ## Support functions
 
-def rootFocalCladeCheck(tree,rootFocalClade,outputSummaryF):
+def rootFocalCladeCheck(speciesTree,rootFocalClade,outputSummaryF):
     '''Check that there is a correct rootFocalClade given.'''
     
-    if rootFocalClade not in trees.iNodeList(tree):
-        raise ValueError("Given rootFocalClade is not present in tree.")
-    elif tree[0] == rootFocalClade:
+    if rootFocalClade not in trees.iNodeList(speciesTree):
+        raise ValueError("Given rootFocalClade is not present in speciesTree.")
+    elif speciesTree[0] == rootFocalClade:
         print("""Warning: the chosen rootFocalClade falls at the root of the input
- tree and thus does not have any outgroups. This is not recommended
+ speciesTree and thus does not have any outgroups. This is not recommended
  because it can lead to problems accurately recognizing core gene
  families in the presence of gene deletion."""+"\n",file=outputSummaryF)
 
-def createLocIslByNodeD(familiesO,tree):
+def createLocIslByNodeD(familiesO,speciesTree):
     '''Create locus islands, one family each. Initially store islands
 separately by mrca in a dict.
 
     '''
-    locIslByNodeD = {node:[] for node in trees.nodeList(tree)}
+    locIslByNodeD = {node:[] for node in trees.nodeList(speciesTree)}
     
     for lfO in familiesO.iterLocusFamilies():
         liO = LocusIsland(lfO.locusFamNum, lfO.lfMrca, [lfO.locusFamNum])
@@ -98,16 +98,16 @@ separately by mrca in a dict.
     
     return locIslByNodeD
 
-def getFocalNodesInOrderOfNumDescendants(tree,rootFocalClade):
+def getFocalNodesInOrderOfNumDescendants(speciesTree,rootFocalClade):
     '''Get a list of all the nodes in the rootFocalClade. Then sort these
 according to the number of leaves descending from them, biggest
 first.'''
 
-    focalSubtree = trees.subtree(tree,rootFocalClade)
+    focalSubtree = trees.subtree(speciesTree,rootFocalClade)
     focalNodesL = []
     for node in trees.nodeList(focalSubtree):
         # go through every node in the focal clade
-        numDescend = trees.leafCount(trees.subtree(tree,node)) # count descendants
+        numDescend = trees.leafCount(trees.subtree(speciesTree,node)) # count descendants
         focalNodesL.append((node,numDescend))
     focalNodesL.sort(key=lambda x: x[1],reverse=True) # sort on 2nd pos, biggest first
     # extract and return only the nodes
@@ -492,11 +492,11 @@ def writeIslands(locIslByNodeD,islandOutFN):
                 print(island.fileStr(),file=f)
     return
                 
-def readIslands(islandFN,tree):
+def readIslands(islandFN,speciesTree):
     '''Given a file name for a islands output file, load back
 recreating locIslByNodeD.'''
 
-    locIslByNodeD = {node:[] for node in trees.nodeList(tree)}
+    locIslByNodeD = {node:[] for node in trees.nodeList(speciesTree)}
     
     with open(islandFN,'r') as f:
         while True:

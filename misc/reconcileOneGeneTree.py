@@ -26,11 +26,11 @@ if __name__ == "__main__":
     speciesTreeFN = sys.argv[1]
     geneTreeFN = sys.argv[2]
     paramFN =  sys.argv[3]
-    D =  float(sys.argv[4])
-    T =  float(sys.argv[5])
-    L =  float(sys.argv[6])   
-    O =  float(sys.argv[7])
-    R =  float(sys.argv[8])
+    D =  int(sys.argv[4])
+    T =  int(sys.argv[5])
+    L =  int(sys.argv[6])   
+    O =  int(sys.argv[7])
+    R =  int(sys.argv[8])
 
     # load trees
     speciesTree = trees.readTree(speciesTreeFN)
