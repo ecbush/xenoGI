@@ -83,9 +83,12 @@ def nodes_postorder(tree, root_edge_name):
     else:
         assert False, "Tree with invalid edge: {}".format(root_edge_name)
 
-def preorder(tree, rootEdgeName):
+def preorder(tree, rootEdgeName = None):
     """ Takes a tree as input (see format description above) and returns a 
     list of the edges in that tree in preorder (high edges to low edges)"""
+
+    if rootEdgeName is None:
+        rootEdgeName = next(iter(tree))
 
     value = tree[rootEdgeName]
     _,_,leftChildEdgeName,rightChildEdgeName = value
@@ -98,9 +101,12 @@ def preorder(tree, rootEdgeName):
                 preorder(tree, leftChildEdgeName) + \
                 preorder(tree, rightChildEdgeName)
 
-def postorder(tree, rootEdgeName):
+def postorder(tree, rootEdgeName = None):
     """ Takes a tree as input (see format description above) and returns a 
     list of the edges in that tree in postorder (low edges to high edges)"""
+
+    if rootEdgeName is None:
+        rootEdgeName = next(iter(tree))
 
     value = tree[rootEdgeName]
     _,_,leftChildEdgeName,rightChildEdgeName = value
