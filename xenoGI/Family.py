@@ -305,13 +305,12 @@ codes for events are as follows:
             self.printReconByGeneTreeHelper(geneTree[2],level+1,fileF)
     
     def fileStr(self,genesO):
-        '''Return string representation of single family. Format is: famNum <tab> 
-        mrca <tab> locusFamNum1,locusFamGenes <tab>
-        locusFamNum2,locusFamGenes... <tab> geneTree <tab> reconciliation
+        '''Return string representation of single family. Format is: famNum
+        <tab> geneTree <tab> reconciliation <tab> mrca <tab>
+        locusFamNum1,locusFamGenes <tab> locusFamNum2,locusFamGenes...
         The LocusFamily object representations are comma separated.
-        The geneTree is string version of a tuple.
-        reconciliation is a string of the dict.
-        In future improve this...
+        The geneTree is string version of a tuple.  reconciliation is
+        a string of the dict.  In future improve this...
         '''
 
         # family number and mrca

@@ -1,7 +1,8 @@
 """Provides the entry point to xenoGI's functionality."""
 __version__ = "2.2.0"
 import sys, glob, os
-from . import parameters,genbank,blast,trees,genomes,Score,scores,Family,families,islands,analysis,islandBed
+from . import parameters,genbank,blast,trees,genomes,Score,scores,families,islands,analysis,islandBed
+from .Tree import *
 
 def main():
     
@@ -366,8 +367,20 @@ def debugWrapper(paramD):
     ## Set up the modules a bit differently for interactive mode
     import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
-    from .xenoGI import Family
+    #from .xenoGI import Family
+
+    #rtree = Rtree()
+    #rtree.fromNewickFileLoadSpeciesTree("testE.tre")
+
+    #s=rtree.fileStr()
+
+    #r = Rtree()
+    #r.fromString(s)
+
+    utree = Utree()
+    utree.fromNewickFile("initFam000071.tre")
     
+    """    
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
@@ -392,7 +405,7 @@ def debugWrapper(paramD):
     #singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
     #originFamiliesO = families.createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
     
-    """    
+
     for lfO in originFamiliesO.iterLocusFamilies():
         orig = lfO.origin(originFamiliesO)
         if orig == 'R':
