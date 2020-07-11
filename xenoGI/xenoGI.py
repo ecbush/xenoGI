@@ -178,15 +178,16 @@ def makeSpeciesTreeWrapper(paramD):
 
 def loadTreeRelatedData(speciesTreeFN):
     """Load some data related to trees."""
-    speciesTree = trees.readTree(speciesTreeFN)
-    subtreeD=trees.createSubtreeD(speciesTree)
-    return speciesTree,subtreeD
+    speciesRtree = Rtree()
+    speciesRtree.fromNewickFileLoadSpeciesTree(speciesTreeFN)
+    subtreeD=speciesRtree.createSubtreeD()
+    return speciesRTree,subtreeD
 
 def makeFamiliesWrapper(paramD):
     """Wrapper to create gene families."""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    speciesRTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
     ## read scores
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
@@ -194,20 +195,20 @@ def makeFamiliesWrapper(paramD):
 
     ## make gene families
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        originFamiliesO = families.createFamiliesO(speciesTree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
+        originFamiliesO = families.createFamiliesO(speciesRTree,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
         
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    speciesRTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     
     ## read gene families
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRTree,genesO)
 
     ## group gene families into islands
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
-        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,speciesTree,paramD,originFamiliesO,paramD['rootFocalClade'],islandFormationSummaryF)
+        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,speciesRTree,paramD,originFamiliesO,paramD['rootFocalClade'],islandFormationSummaryF)
 
 def printAnalysisWrapper(paramD,speciesTreeFN,rootFocalClade):
     """Wrapper to run analysis. We take speciesTreeFN and rootFocalClade as
@@ -226,24 +227,24 @@ arguments so we can pass in different things in different contexts
     genesFNstem = os.path.join(analDir,paramD['genesFNstem'])
     
     ## load stuff
-    speciesTree,subtreeD = loadTreeRelatedData(speciesTreeFN)
-    strainNamesT=tuple(trees.leafList(speciesTree))
+    speciesRTree,subtreeD = loadTreeRelatedData(speciesTreeFN)
+    strainNamesT=tuple(trees.leafList(speciesRTree))
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],strainNamesT)
     genesO = genomes.genes(paramD['geneInfoFN'])
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
-    islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesTree)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRTree,genesO)
+    islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRTree)
     
     ## analysis
 
     # Print islands summary file
     with open(islandsSummaryFN,'w') as islandsOutF:
-        analysis.vPrintAllLocusIslands(islandByNodeD,speciesTree,rootFocalClade,subtreeD,originFamiliesO,genesO,islandsOutF)
+        analysis.vPrintAllLocusIslands(islandByNodeD,speciesRTree,rootFocalClade,subtreeD,originFamiliesO,genesO,islandsOutF)
 
     # print islands tsv file
     with open(islandsTsvFN,'w') as islandsTsvF:
-        analysis.printAllLocusIslandsTsv(islandByNodeD,speciesTree,rootFocalClade,originFamiliesO,genesO,islandsTsvF)
+        analysis.printAllLocusIslandsTsv(islandByNodeD,speciesRTree,rootFocalClade,originFamiliesO,genesO,islandsTsvF)
     
     # Print species files with all the genes, grouped by contig
     gene2FamIslandD = analysis.createGene2FamIslandD(islandByNodeD,originFamiliesO)
@@ -253,16 +254,16 @@ def createIslandBedWrapper(paramD):
     """Wrapper to make output bed files."""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
-    islandByNodeD = islands.readIslands(paramD['islandOutFN'],speciesTree)
+    speciesRTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRTree,genesO)
+    islandByNodeD = islands.readIslands(paramD['islandOutFN'],speciesRTree)
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
     
     # get islands organized by strain
     islandByStrainD = islandBed.createIslandByStrainD(strainNamesT,islandByNodeD,originFamiliesO,genesO)
 
-    islandBed.createAllBeds(islandByStrainD,genesO,speciesTree,strainNamesT,paramD)
+    islandBed.createAllBeds(islandByStrainD,genesO,speciesRTree,strainNamesT,paramD)
 
 def interactiveAnalysisWrapper(paramD):
     """Enter interactive mode."""
@@ -332,7 +333,7 @@ def interactiveAnalysisWrapper(paramD):
 
     def printLocusIslandsAtNode(node,fileF=sys.stdout):
         '''This is a wrapper to provide an easy way to print all the LocusIslands
-    at a particular node in the speciesTree. For ease of use, we take only a node
+    at a particular node in the speciesRTree. For ease of use, we take only a node
     number as argument, assuming all the other required stuff is available
     at the top level.
         '''
@@ -341,12 +342,12 @@ def interactiveAnalysisWrapper(paramD):
     ## Load data
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])    
+    speciesRTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])    
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesTree,genesO)
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
-    islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesTree)
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRTree,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRTree,genesO)
+    islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRTree)
     gene2FamIslandD = createGene2FamIslandD(islandByNodeD,originFamiliesO)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
     scoresO.createNodeConnectD() # make nodeConnectD attribute
@@ -357,8 +358,8 @@ def makeGeneFamilyTreesWrapper(paramD):
     '''Create a gene tree for each family.'''
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
+    speciesRTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRTree,genesO)
     trees.makeGeneFamilyTrees(paramD,genesO,originFamiliesO)
     
 def debugWrapper(paramD):
@@ -369,23 +370,41 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
     #from .xenoGI import Family
 
-    #rtree = Rtree()
-    #rtree.fromNewickFileLoadSpeciesTree("testE.tre")
+    rtree = Rtree()
+    rtree.fromNewickFileLoadSpeciesTree("testE.tre")
 
+    D=rtree.subtree('i8')
+    ttree = Rtree(D,'i8')
+
+
+    
     #s=rtree.fileStr()
 
     #r = Rtree()
     #r.fromString(s)
 
-    utree = Utree()
-    utree.fromNewickFile("initFam000071.tre")
+    #utree = Utree()
+    #utree.fromNewickFile("initFam000071.tre")
+
+    #r=utree.root(('9066', 'g10'))
+    #r.createDtlorD()
     
+    #from Bio import Phylo
+    #bpTree = Phylo.read("initFam000071.tre", 'newick', rooted=False)
+
+    #iNodeNum = 0
+    #iNodeNum,nodeConnectD = traverse(bpTree.clade,"",{},iNodeNum)
+
+    #for k,v in nodeConnectD.items():
+    #    print(k,v)
+
+        
     """    
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    speciesRTree,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesTree,genesO)
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesTree,genesO)
+    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRTree,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRTree,genesO)
 
     #ifam = initialFamiliesO.getFamily(1)
     
@@ -398,12 +417,12 @@ def debugWrapper(paramD):
 
     
     fam=originFamiliesO.getFamily(7506)
-    fam.createGeneHistoryD(speciesTree,rootFocalClade)
+    fam.createGeneHistoryD(speciesRTree,rootFocalClade)
     fam.geneHistoryD
 
     #iFamGeneTreeFileStem = 'initFam'
     #singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
-    #originFamiliesO = families.createOriginFamiliesO(speciesTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    #originFamiliesO = families.createOriginFamiliesO(speciesRTree,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
     
 
     for lfO in originFamiliesO.iterLocusFamilies():
