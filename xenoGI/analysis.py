@@ -385,7 +385,7 @@ description.'''
 
         # only print geneHistory,orign if gene is in focal clade
         if strainName in focalCladeStrainsS:
-            geneHisStr = famO.getGeneHistoryStr(geneNum,familiesO.speciesTree,rootFocalClade)
+            geneHisStr = famO.getGeneHistoryStr(geneNum)
             geneOrigin = famO.origin(familiesO.speciesTree,rootFocalClade)
         else:
             geneHisStr = ""

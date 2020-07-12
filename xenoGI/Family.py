@@ -68,7 +68,7 @@ occurs.'''
             if eventTypeL[0] == 'R':
                 orig = 'R'
             else:
-                orig = fam.origin(familiesO.speciesTree,rootFocalClade)
+                orig = fam.origin(familiesO.speciesRtree,rootFocalClade)
             
             return orig
 
@@ -80,7 +80,7 @@ locus family.'''
         else:
             fam = familiesO.getFamily(self.famNum)
             rootOfLfSubtree = self.reconRootKey[0]
-            lfSubtree = trees.subtree(fam.geneTree,rootOfLfSubtree)
+            lfSubtree = trees.subtree(fam.geneRtree,rootOfLfSubtree)
             fam.printReconByGeneTreeHelper(lfSubtree,0,fileF)
     
     def getStr(self,genesO,sep):
@@ -108,13 +108,13 @@ gene2...
         
         
 class Family:
-    def __init__(self,famNum,mrca,geneTree=None,reconD=None,sourceFam=None):
+    def __init__(self,famNum,mrca,geneRtree=None,reconD=None,sourceFam=None):
         '''Initialize an object of class Family.'''
 
         self.famNum = famNum
         self.mrca = mrca
         self.locusFamiliesL = []   # will contain locusFamily objects for this family
-        self.geneTree = geneTree   # rooted gene tree object
+        self.geneRtree = geneRtree   # rooted gene tree object
         self.reconD = reconD # mapping of gene tree onto species tree.
         self.sourceFam = sourceFam # only for originFams. gives ifam num that originFam came from
 
@@ -152,23 +152,23 @@ connections to this family.'''
                     otherGenesS.add(otherGene)
         return otherGenesS
 
-    def addGeneTree(self,geneTree):
-        '''Given tree object geneTree, store as attribute. Currently this
+    def addGeneTree(self,geneRtree):
+        '''Given tree object geneRtree, store as attribute. Currently this
 object is assumed to be a tuple tree.'''
-        self.geneTree = geneTree
+        self.geneRtree = geneRtree
 
     def addReconciliation(self,rD):
         '''Given a dictionary rD storing reconciliation values, store as attribute.'''
         self.reconD = rD
         
-    def createGeneHistoryD(self,speciesTree,rootFocalClade):
+    def createGeneHistoryD(self):
         '''Create a dict of gene histories. Keyed by tip gene. Value is a
 string giving history of gene. We convert O events into either C
 (core, happened at or before the rootFocalClade) or X (xeno hgt)
 events.
         '''
         # support funcs
-        def createGeneHistoryStringL(geneTree):
+        def createGeneHistoryStringL(geneRtree,node):
             '''Actual recursive function for making strings of gene
 histories. Returns a list of tuples. Each tuple contains
 (tipGene,historyStr).
@@ -176,7 +176,7 @@ histories. Returns a list of tuples. Each tuple contains
             '''
             # get sequence for this branch and node
             hisStr = ""
-            for nbKey in [(geneTree[0],'b'),(geneTree[0],'n')]:
+            for nbKey in [(node,'b'),(node,'n')]:
                 if nbKey in self.reconD:
                     for event,stLoc,stNB,synLocus in self.reconD[nbKey]:
                         if event in 'LM':
@@ -184,31 +184,33 @@ histories. Returns a list of tuples. Each tuple contains
                         else:
                             hisStr+=event
                             
-            if geneTree[1] == ():
-                return [(geneTree[0],hisStr)]
+            if geneRtree.isLeaf(node):
+                return [(node,hisStr)]
             else:
-                lL = createGeneHistoryStringL(geneTree[1])
-                rL = createGeneHistoryStringL(geneTree[2])
-
+                tempL = []
+                for child in geneRtree.children(node):
+                    partialTempL = createGeneHistoryStringL(geneRtree,child)
+                    tempL.extend(partialTempL)
+                    
                 # loop and add current hisStr to events in these
                 outL = []
-                for geneNum,hisStrRestOfTree in lL+rL:
+                for geneNum,hisStrRestOfTree in tempL:
                     outL.append((geneNum,hisStr+hisStrRestOfTree))
 
                 return outL
         # end support funcs
-            
-        # get history strings
-        hisStrL = createGeneHistoryStringL(self.geneTree)
 
-        # need to only have string back to rootFocalClade in species tree. cut it off before that. do this by keeping the speciesTree placements.
+        # get history strings
+        hisStrL = createGeneHistoryStringL(self.geneRtree,self.rootNode)
+
+        # need to only have string back to rootFocalClade in species tree. cut it off before that. do this by keeping the species Tree placements.
         
         # put in dict
         self.geneHistoryD = {}
         for geneNum,hisStr in hisStrL:
             self.geneHistoryD[geneNum] = hisStr
 
-    def getGeneHistoryStr(self,geneNum,speciesTree,rootFocalClade):
+    def getGeneHistoryStr(self,geneNum):
         '''Return a gene history string. Possible characters are:
 
         D - duplication
@@ -226,13 +228,13 @@ histories. Returns a list of tuples. Each tuple contains
             return self.geneHistoryD[geneNum]    
         elif self.reconD != None:
             # geneHistoryD not created yet and reconciliation is present
-            self.createGeneHistoryD(speciesTree,rootFocalClade)
+            self.createGeneHistoryD()
             return self.geneHistoryD[geneNum]    
         else:
             # this family has no recon, so we can't caculate a history
             return ""
 
-    def origin(self,speciesTree,rootFocalClade):
+    def origin(self,speciesRtree,rootFocalClade):
         '''Intepret the O event at the base of this family by determining if
 it is a core gene (C) or xeno hgt (X). We assess whether it is core or
 not at the base of the rootFocalClade of the species tree. If there is
@@ -254,7 +256,7 @@ no reconciliation, return empty string.
             raise ValueError("There should be exactly one origin event in reconD.")
 
         # it is C if originated in rfclade branch or ancestors of it
-        rfAncL = trees.ancestors(speciesTree,rootFocalClade) + [rootFocalClade]
+        rfAncL = speciesRtree.ancestors(rootFocalClade) + [rootFocalClade]
         if OstLoc in rfAncL:
             # core gene
             orig = 'C'
@@ -265,9 +267,9 @@ no reconciliation, return empty string.
         
     def printReconByGeneTree(self,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''
-        self.printReconByGeneTreeHelper(self.geneTree,0,fileF)
+        self.printReconByGeneTreeHelper(self.geneRtree,self.geneRtree.rootNode,0,fileF)
 
-    def printReconByGeneTreeHelper(self,geneTree,level,fileF=sys.stdout):
+    def printReconByGeneTreeHelper(self,geneRtree,node,level,fileF=sys.stdout):
         '''Actual recursive function to print reconciliation. Single letter
 codes for events are as follows:
 
@@ -290,35 +292,39 @@ codes for events are as follows:
 
         # recurse over tree, printing out for each branch and node
         levelSpace = "   "*level
-        if geneTree[1] == ():
+        if geneRtree.isLeaf(node):
             print(levelSpace+"- "+str(geneTree[0]),file=fileF)
             printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'b'))
             printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'n'))
             return
         else:
-            childStr = " (children:"+str(geneTree[1][0])+","+str(geneTree[2][0])+")"
-            print(levelSpace+"- "+str(geneTree[0])+childStr,file=fileF)
-            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'b'))
-            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'n'))
-
-            self.printReconByGeneTreeHelper(geneTree[1],level+1,fileF)
-            self.printReconByGeneTreeHelper(geneTree[2],level+1,fileF)
+            childL = []
+            for child in geneRtree.children(node):
+                childL.append(child)
+            childStr = " (children:"+",".join(childL)+")"
+            print(levelSpace+"- "+node+childStr,file=fileF)
+            printOneKey(levelSpace+"  ",self.reconD,(node,'b'))
+            printOneKey(levelSpace+"  ",self.reconD,(node,'n'))
+            for child in childL:
+                self.printReconByGeneTreeHelper(child,level+1,fileF)
     
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum
-        <tab> geneTree <tab> reconciliation <tab> mrca <tab>
+        <tab> geneRtree <tab> reconciliation <tab> mrca <tab>
         locusFamNum1,locusFamGenes <tab> locusFamNum2,locusFamGenes...
         The LocusFamily object representations are comma separated.
-        The geneTree is string version of a tuple.  reconciliation is
-        a string of the dict.  In future improve this...
+        The geneRtree is string version of the Rtree object.
+        reconciliation is a string of the dict.  In future improve
+        this...
+
         '''
 
         # family number and mrca
         outL =[str(self.famNum),self.mrca]
 
-        # geneTree
-        if self.geneTree != None:
-            outL.append(str(self.geneTree))
+        # geneRtree
+        if self.geneRtree != None:
+            outL.append(geneTree.fileStr())
         else:
             outL.append("None")
 
@@ -345,10 +351,10 @@ codes for events are as follows:
 
 class Families:
 
-    def __init__(self,speciesTree):
+    def __init__(self,speciesRtree):
         '''Initialize an object of class Families.'''
 
-        self.speciesTree = speciesTree
+        self.speciesRtree = speciesRtree
         self.locusFamiliesD = {}
         self.familiesD = {} 
 
@@ -356,11 +362,11 @@ class Families:
         ## object. familiesD has key famNum and value
         ## a Family object.
         
-    def initializeFamily(self,famNum,mrca,geneTree=None,reconD=None,sourceFam=None):
+    def initializeFamily(self,famNum,mrca,geneRtree=None,reconD=None,sourceFam=None):
         '''Set up an entry for family famNum.'''
         # the seed genes are the original PHiGs seed.
 
-        self.familiesD[famNum] = Family(famNum,mrca,geneTree,reconD,sourceFam)
+        self.familiesD[famNum] = Family(famNum,mrca,geneRtree,reconD,sourceFam)
 
     def addLocusFamily(self, lfO):
         '''Add a LocusFamily. Assumes initializeFamily has already been called
@@ -375,8 +381,8 @@ to create the corresponding family.
     def getFamily(self,famNum):
         return self.familiesD[famNum]
 
-    def addGeneTreeToFamily(self,famNum,geneTree):
-        self.familiesD[famNum].addGeneTree(geneTree)
+    def addGeneTreeToFamily(self,famNum,geneRtree):
+        self.familiesD[famNum].addGeneTree(geneRtree)
 
     def addReconciliationToFamily(self,famNum,reconD):
         self.familiesD[famNum].addReconciliation(reconD)

@@ -43,6 +43,17 @@ than 3 branches).'''
             if len(connecT) > 3:
                 multifurcL.append(node)
         return multifurcL
+
+    def isLeaf(self,node):
+        '''Return boolean if node is a leaf'''
+        if len(self.nodeConnectD[node]) == 1:
+            return True
+        else: return False
+
+    def children(self,node):
+        '''Return tuple of children of node.'''
+        connecT = self.nodeConnectD[node]
+        return connecT[1:]
         
     def __updateSecondaryAttributes__(self):
         '''Create leafNodeT and internalNodeT.'''
@@ -168,6 +179,37 @@ and have named internal nodes.
 
         return tuple(traverse(self.nodeConnectD,node))
 
+    def getParent(self,node):
+        connecT = self.nodeConnectD[node]
+        return connecT[0] # in rooted tree, parent is first element
+        
+    def getNearestNeighborL(self,leaf):
+        '''Given a leaf, return a list containing the other leaf or
+    leaves which are most closely related to leaf.'''
+        parent = self.getParent(leaf) # assume leaf is in tree
+        subRtree = self.subtree(parent)
+        leafL = list(subRtree.leaves())
+        leafL.remove(leaf)
+        return leafL
+
+    def findMrcaPair(self,node1,node2):
+        '''Return the most recent common ancestor of node1 and node2.'''
+
+        anc1L = (node1,) + self.ancestors(node1)
+        anc2L = (node2,) + self.ancestors(node2)
+
+        for node in anc1L:
+            if node in anc2L:
+                return node
+        return None
+
+    def findMrca(self,nodeL):
+        '''Get mrca of a list of nodes'''
+        mrca = nodeL[0]
+        for node in nodeL[1:]:
+            mrca = self.findMrcaPair(mrca,node)
+        return mrca
+            
     def createDtlorD(self,spTreeB):
         '''Return a dict in the format expected by the dtlor reconciliation
 code. Key is a node, value is (parent, node, child1, child2). For now
