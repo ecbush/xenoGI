@@ -90,6 +90,10 @@ synAdjustExtent = 1.05
 # parameter to get the value we use as a threshold.
 singleStrainFamilyThresholdAdjust = 0.5
 
+## Other
+
+iFamGeneTreeFileStem = 'initFam'
+
 #### LocusIsland formation ####
 
 # geneProximityRange tells us how far out we want to go from each gene

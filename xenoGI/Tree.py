@@ -2,7 +2,7 @@ from Bio import Phylo
 
 ## Globals
 
-PARENTOFROOT = "" # name for the parent of the root node in rooted trees
+ROOT_PARENT_NAME = "" # name for the parent of the root node in rooted trees
 
 ## Classes
 
@@ -50,11 +50,6 @@ than 3 branches).'''
             return True
         else: return False
 
-    def children(self,node):
-        '''Return tuple of children of node.'''
-        connecT = self.nodeConnectD[node]
-        return connecT[1:]
-        
     def __updateSecondaryAttributes__(self):
         '''Create leafNodeT and internalNodeT.'''
         leafNodeL = []
@@ -117,13 +112,24 @@ been read from a file). This method allows multifurcating trees.'''
             self.nodeConnectD[node] = connecT
         self.__updateSecondaryAttributes__()
             
-    def fromNewickFileLoadSpeciesTree(self,treeFN):
+    def fromNewickFileLoadSpeciesTree(self,treeFN,outGroupTaxaL=None):
         '''Populate attributes based on newick file in treeFN. This method
-assumes we are working with a species tree. It must be rooted, bifurcating
-and have named internal nodes.
+assumes we are working with a species tree. It must be rooted,
+bifurcating and have named internal nodes. An optional argument
+outGroupTaxaL can be used to provide a list of outgroups to root the
+tree. If outGroupTaxaL is present, we assume we are being asked to
+prepare a species tree (e.g. from ASTRAL output) and we do other
+preparation such as naming internal nodes).
+
         '''
-        bpTree = Phylo.read(treeFN, 'newick', rooted=True)
+        if outGroupTaxaL == None:
+            bpTree = Phylo.read(treeFN, 'newick', rooted=True)
+        else:
+            bpTree = Phylo.read(treeFN, 'newick')
+            bpTree = trees.prepareTree(bpTree,outGroupTaxaL)
+            
         self.__checkSpeciesTree__(bpTree)
+        
         self.nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree)
         self.rootNode = bpTree.root.name
         self.__updateSecondaryAttributes__()
@@ -131,7 +137,7 @@ and have named internal nodes.
 
     def toNewickStr(self):
         '''Output a newick string.'''
-        return self.__traverseForNewickStr__(self.rootNode,PARENTOFROOT)
+        return self.__traverseForNewickStr__(self.rootNode,ROOT_PARENT_NAME)
         
     def subtree(self,node):
         '''Return a new Rtree object with the subtree rooted at node.'''
@@ -152,11 +158,10 @@ and have named internal nodes.
 
         # put special value in parent of root position
         oldConnecT = subD[node]
-        newConnecT = (PARENTOFROOT,)+oldConnecT[1:]
+        newConnecT = (ROOT_PARENT_NAME,)+oldConnecT[1:]
         subD[node] = newConnecT
         
-        #return Rtree(subD,node)
-        return subD
+        return Rtree(subD,node)
         
     def createSubtreeD(self):
         '''Get all subtrees and put them in a dict keyed by node name.'''
@@ -166,13 +171,18 @@ and have named internal nodes.
             subtreeD[node] = subtree
         return subtreeD
             
+    def children(self,node):
+        '''Return tuple of children of node.'''
+        connecT = self.nodeConnectD[node]
+        return connecT[1:]
+        
     def ancestors(self,node):
         '''Return a tuple of nodes ancestral to node.'''
 
         def traverse(D,node):
             connecT=D[node]
             parent = connecT[0]
-            if parent == PARENTOFROOT: # at root
+            if parent == ROOT_PARENT_NAME: # at root
                 return []
             else:
                 return [parent]+traverse(D,parent)
@@ -224,6 +234,7 @@ tree.
         for node,connecT in self.nodeConnectD.items():
             if len(connecT) == 1:
                 # leaf
+                parent = connecT[0]
                 dtlorD[node] = (parent, node, None, None)
             else:
                 parent,child1,child2 = connecT                
@@ -256,7 +267,7 @@ internally separated by spaces.
         '''Check that a biopython tree is rooted, bifurcating, and has named
     internal nodes. Throw error if not. Returns None.
         '''
-        # check its bifurcating. This actually ignors the root, but checks
+        # check its bifurcating. This actually ignores the root, but checks
         # for non-bifurcating nodes below that.
         if not bpTree.is_bifurcating():
             raise ValueError("This tree is not bifurcating.")
@@ -276,8 +287,8 @@ internally separated by spaces.
         '''Convert a biopython tree object to a node connection dict with keys
     that are nodes, and values that are (parent, child1, child2...).'''
         nodeConnectD = {}
-        # parent of root is PARENTOFROOT
-        return self.__bioPhyloCladeToNodeConnectD__(bpTree.root,nodeConnectD,PARENTOFROOT)
+        # parent of root is ROOT_PARENT_NAME
+        return self.__bioPhyloCladeToNodeConnectD__(bpTree.root,nodeConnectD,ROOT_PARENT_NAME)
 
     def __bioPhyloCladeToNodeConnectD__(self,clade,nodeConnectD,parent):
         '''Recursive helper to convert a biopython clade object.
@@ -293,7 +304,7 @@ internally separated by spaces.
 
     def __traversePreOrder__(self,node):
         '''Traverse in preorder starting at rootNode'''
-        return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.rootNode,PARENTOFROOT))
+        return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.rootNode,ROOT_PARENT_NAME))
     def __repr__(self):
         return "Rtree: "+self.toNewickStr()
 
@@ -316,7 +327,7 @@ named interal nodes (we will create those).
 
         '''
         bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-        iNodeNum,nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree.clade,PARENTOFROOT,{},0)
+        iNodeNum,nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
         self.nodeConnectD = nodeConnectD
         self.__updateSecondaryAttributes__()
         self.arbitraryNode = self.internals()[0]
@@ -325,7 +336,7 @@ named interal nodes (we will create those).
 
     def toNewickStr(self):
         '''Output a newick string.'''
-        return self.__traverseForNewickStr__(self.arbitraryNode,PARENTOFROOT)
+        return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
 
     def root(self,branchPair):
         '''Root using the tuple branchPair and return an Rtree object.'''
@@ -370,7 +381,7 @@ the oposite direction from parentNode.
 
         # must add the root
         rootNode = "root"
-        newD[rootNode] = (PARENTOFROOT,branchPair[0],branchPair[1])
+        newD[rootNode] = (ROOT_PARENT_NAME,branchPair[0],branchPair[1])
 
         # adjust children of root to say root is parent
         newD = updateChildOfRoot(newD,branchPair[0],branchPair[1])
@@ -382,7 +393,7 @@ the oposite direction from parentNode.
         '''Iterator yielding all possible rooted trees from this unrooted tree.'''
         for branchPair in self.branchPairT:
             yield self.root(branchPair)
-        
+
     def __bioPhyloToNodeConnectD__(self,bpClade,parentNodeStr,nodeConnectD,iNodeNum):
         '''Convert a biopython clade object to a node connection dict with
 keys that are nodes, and values that are the nodes connected to. For
@@ -390,7 +401,7 @@ internals (node1, node2, node3...). We assume bpClade does not have
 named internal nodes, and we name them here: g0, g1 etc.
 
         '''
-        if parentNodeStr == PARENTOFROOT:
+        if parentNodeStr == ROOT_PARENT_NAME:
             connecL = [] # for the outer case, where we're not coming from anywhere
         else:
             connecL = [parentNodeStr]
@@ -435,6 +446,6 @@ the two nodes on either end.
         
     def __traversePreOrder__(self,node):
         '''Traverse in preorder starting at arbitraryNode'''
-        return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.arbitraryNode,PARENTOFROOT))
+        return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.arbitraryNode,ROOT_PARENT_NAME))
     def __repr__(self):
         return "Utree: "+self.toNewickStr()
