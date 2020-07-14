@@ -355,7 +355,7 @@ the oposite direction from parentNode.
                     connecL.append(tempNode)
             connecT = tuple(connecL)
             
-            newD[node] = oldConnecT # store
+            newD[node] = connecT # store
             
             if len(connecT)==1:
                 return

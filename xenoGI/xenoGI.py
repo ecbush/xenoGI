@@ -368,22 +368,71 @@ def debugWrapper(paramD):
     ## Set up the modules a bit differently for interactive mode
     import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
-    #from .xenoGI import Family
+    from . import DTLOR_DP
     import copy
     
     geneUtreeO = Utree()
     geneUtreeO.fromNewickFile("geneFamilyTrees/initFam000728.tre")
 
-    for geneRtreeO in geneUtreeO.iterAllRootedTrees():
-        geneTreeD = geneRtreeO.createDtlorD(False)
-        break
+    r=geneUtreeO.root(('g1', '132'))
+    r.nodeConnectD['g0']
 
-    for k,v in geneTreeD.items():
+
+    newD = {}
+
+    def traverse(D,newD,node,parentNode):
+        '''Get nodeConnectD for the part of the tree defined by node, and in
+           the oposite direction from parentNode.
+
+        '''
+        oldConnecT=D[node]
+
+        # make sure parent node is first
+        assert(parentNode in oldConnecT)
+        connecL = [parentNode]
+        for tempNode in oldConnecT:
+            if tempNode != parentNode:
+                connecL.append(tempNode)
+                print(connecL)
+        connecT = tuple(connecL)
+
+        newD[node] = connecT # store
+
+        if len(connecT)==1:
+            return
+        else:
+            for child in connecT:
+                if child != parentNode:
+                    traverse(D,newD,child,node)
+            return
+
+    traverse(geneUtreeO.nodeConnectD,newD,'g0','g1')
+
+    
+    """    
+    
+    for k,v in r.nodeConnectD.items():
         print(k)
         print(v)
         print('---')
     
-    """    
+    i=0
+    for geneRtreeO in geneUtreeO.iterAllRootedTrees():
+        geneTreeD = geneRtreeO.createDtlorD(False)
+
+        try:
+            DTLOR_DP.postorder(geneTreeD)
+        except:
+            for k,v in geneTreeD.items():
+                print(k)
+                print(v)
+                print('---')
+            break
+        i+=1
+        
+
+    
+
     D=float(paramD["duplicationCost"])
     T=float(paramD["transferCost"])
     L=float(paramD["lossCost"])
