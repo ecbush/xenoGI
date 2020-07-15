@@ -370,16 +370,48 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
     from . import DTLOR_DP
     import copy
-    
-    geneUtreeO = Utree()
-    geneUtreeO.fromNewickFile("geneFamilyTrees/initFam000728.tre")
+    from Bio import Phylo
 
-    r=geneUtreeO.root(('g1', '132'))
-    r.nodeConnectD['g0']
+    # example 2 branch tree
+    #geneUtreeO = Utree()
+    #geneUtreeO.fromNewickFile("geneFamilyTrees/initFam000436.tre")
+    #bpTree = Phylo.read("geneFamilyTrees/initFam002319.tre", 'newick', rooted=False)
+
+
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    iFamGeneTreeFileStem = 'initFam'
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
+    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
+    multifurcatingL = [initFamNum for initFamNum,_ in multifurcatingL]
+    
+    originFamiliesO = families.createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    
+    """            
+
+    rtempL=[]
+    with open("reconTemp.tsv","r") as f:
+        s=f.readline() # skip first line
+        while True:
+            s=f.readline()
+            if s=="":
+                break
+            initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
+            initFamNum = eval(initFamNum)
+            optMPR=eval(optMPR)
+            rtempL.append(initFamNum)
+
+
+    
+    i=0
+    for geneRtreeO in geneUtreeO.iterAllRootedTrees():
+        break
+        print(i)
+        geneTreeD = geneRtreeO.createDtlorD(False)
+        i+=1
 
 
     newD = {}
-
     def traverse(D,newD,node,parentNode):
         '''Get nodeConnectD for the part of the tree defined by node, and in
            the oposite direction from parentNode.
@@ -406,10 +438,9 @@ def debugWrapper(paramD):
                     traverse(D,newD,child,node)
             return
 
-    traverse(geneUtreeO.nodeConnectD,newD,'g0','g1')
 
     
-    """    
+
     
     for k,v in r.nodeConnectD.items():
         print(k)

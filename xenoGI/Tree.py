@@ -316,7 +316,7 @@ class Utree(Tree):
         
         if self.nodeConnectD != None:
             # arbitraryNode provides a starting point for some methods
-            self.arbitraryNode = self.internals()[0]
+            self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
             self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
             self.branchPairT = self.__createBranchPairT__()
             
@@ -330,13 +330,17 @@ named interal nodes (we will create those).
         iNodeNum,nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
         self.nodeConnectD = nodeConnectD
         self.__updateSecondaryAttributes__()
-        self.arbitraryNode = self.internals()[0]
+        self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
         self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
         self.branchPairT = self.__createBranchPairT__()
 
     def toNewickStr(self):
         '''Output a newick string.'''
-        return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
+        if self.nodeCount() == 2:
+            # two tip tree is a special case            
+            return "("+self.leafNodeT[0]+","+self.leafNodeT[1]+")"
+        else:
+            return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
 
     def root(self,branchPair):
         '''Root using the tuple branchPair and return an Rtree object.'''
@@ -401,18 +405,20 @@ internals (node1, node2, node3...). We assume bpClade does not have
 named internal nodes, and we name them here: g0, g1 etc.
 
         '''
-        if parentNodeStr == ROOT_PARENT_NAME:
-            connecL = [] # for the outer case, where we're not coming from anywhere
-        else:
-            connecL = [parentNodeStr]
 
-        if bpClade.is_terminal():
-            thisNodeStr = bpClade.name
-            nodeConnectD[thisNodeStr] = tuple(connecL)
-        else:
+        def generalCase(bpCladeL,parentNodeStr,nodeConnectD,iNodeNum):
+            '''Helper function for the general cases. bpCladeL can be a list of bp
+clades we put together, or else a bpClade object which is not a
+tip.
+            '''
+            connecL = []
+            if parentNodeStr != ROOT_PARENT_NAME:
+                connecL.append(parentNodeStr)
+            # if we're just starting, it's ROOT_PARENT_NAME, and we
+            # don't want to put that in the list of connections
             thisNodeStr = "g"+str(iNodeNum)
             iNodeNum += 1
-            for childClade in bpClade:
+            for childClade in bpCladeL:
 
                 # collect connection
                 if childClade.is_terminal():
@@ -427,8 +433,42 @@ named internal nodes, and we name them here: g0, g1 etc.
             # add in thie connection for this node
             nodeConnectD[thisNodeStr] = tuple(connecL)
 
-        return iNodeNum,nodeConnectD
+            return iNodeNum,nodeConnectD
 
+        
+        # main body of __bioPhyloToNodeConnectD__
+        if bpClade.is_terminal():
+            # parentNodeStr will never be ROOT_PARENT_NAME in this case
+            nodeConnectD[bpClade.name] = (parentNodeStr,)
+        elif parentNodeStr == ROOT_PARENT_NAME and bpClade.count_terminals() == 2:
+            # special case where entire tree only has 2 tips. Don't
+            # create a new internal node
+            self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
+            self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
+        elif parentNodeStr == ROOT_PARENT_NAME and len(bpClade) == 2:
+            # biopython has put 2 branches only at the base. Our
+            # structure requires 3 or more. We'll collect all tips at
+            # this level or at the child level and attch them to one
+            # internal node.
+            def getBaseBpClades(bpClade,level):
+                if level > 2:
+                    return []
+                elif bpClade.is_terminal():
+                    return [bpClade]
+                else:
+                    outL = []
+                    for childClade in bpClade:
+                        outL.extend(getBaseBpClades(childClade,level+1))
+                    return outL
+
+            baseCladeL = getBaseBpClades(bpClade,0) # usually, but not always length 3
+            iNodeNum,nodeConnectD = generalCase(baseCladeL,parentNodeStr,nodeConnectD,iNodeNum)
+        else:
+            
+            iNodeNum,nodeConnectD = generalCase(bpClade,parentNodeStr,nodeConnectD,iNodeNum)
+            
+        return iNodeNum,nodeConnectD
+    
     def __createBranchPairT__(self):
         '''Make the branchPairT attribute to represent the branches. This is a
 tuple of tuples, where the subtuples represent edges and consist of
@@ -446,6 +486,12 @@ the two nodes on either end.
         
     def __traversePreOrder__(self,node):
         '''Traverse in preorder starting at arbitraryNode'''
-        return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.arbitraryNode,ROOT_PARENT_NAME))
+
+        if self.nodeCount() == 2:
+            # two tip tree is a special case            
+            return self.leafNodeT
+        else:
+            return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.arbitraryNode,ROOT_PARENT_NAME))
+        
     def __repr__(self):
         return "Utree: "+self.toNewickStr()

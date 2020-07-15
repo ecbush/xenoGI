@@ -631,7 +631,6 @@ binary families with more than 1 genes.
     multifurcatingL = []
     bifurcatingL = []
     for geneTreeFN in allTreeFN_L:
-
         geneUtreeO = Utree()
         geneUtreeO.fromNewickFile(geneTreeFN)
         initFamNum = int(geneTreeFN.split(iFamGeneTreeFileStem)[1].split('.tre')[0].lstrip('0'))
@@ -731,7 +730,13 @@ def reconcile(argT):
     minCost=float('inf')
     bestMPRs=[]
     for geneRtreeO in geneUtreeO.iterAllRootedTrees():
-        geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
+
+        try:
+            geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
+        except:
+            print(initFamNum)
+            sys.exit()
+            
         MPR,cost=DTLOR_DP.DP(speciesTreeD,geneTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
                 
         if cost<minCost: 
@@ -784,7 +789,7 @@ def createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bi
     for initFamNum,geneTree in bifurcatingL:
         iFam = initialFamiliesO.getFamily(initFamNum)
         sourceFam = iFam.famNum
-        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneTree,iFam.reconD,originFamiliesO,sourceFam,genesO)
+        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneRtree,iFam.reconD,originFamiliesO,sourceFam,genesO)
 
     return originFamiliesO
         
@@ -1103,11 +1108,13 @@ def readFamilies(familyFN,speciesRtreeO,genesO):
         famNum=int(L[0])
         mrca = L[1]
 
-        geneTree = eval(L[2])
+        geneRtreeO = Rtree()
+        geneRtreeO.fromString(L[2])
+        
         recon = eval(L[3].replace('inf', "float('inf')")) # a hack!
         # eval didn't like the string inf.
         sourceFam = eval(L[4])
-        familiesO.initializeFamily(famNum,mrca,geneTree,recon,sourceFam)
+        familiesO.initializeFamily(famNum,mrca,geneRtreeO,recon,sourceFam)
         
         lfL = L[5:]
         for lfStr in lfL:

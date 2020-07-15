@@ -324,7 +324,7 @@ codes for events are as follows:
 
         # geneRtree
         if self.geneRtree != None:
-            outL.append(geneTree.fileStr())
+            outL.append(self.geneRtree.fileStr())
         else:
             outL.append("None")
 
