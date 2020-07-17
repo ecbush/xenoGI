@@ -7,11 +7,11 @@ import math
     
 ## Main function  
 
-def makeLocusIslands(geneOrderD,subtreeD,speciesTree,paramD,familiesO,rootFocalClade,outputSummaryF):
+def makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,familiesO,rootFocalClade,outputSummaryF):
     '''Parallelized wrapper to merge locus islands at different nodes.'''
 
     ## Checks
-    rootFocalCladeCheck(speciesTree,rootFocalClade,outputSummaryF)
+    rootFocalCladeCheck(speciesRtreeO,rootFocalClade,outputSummaryF)
     
     ## Parameters
     numProcesses = paramD['numProcesses']
@@ -22,9 +22,9 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesTree,paramD,familiesO,rootFocalC
     maxClusterSize = paramD['maxClusterSize']
     
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange )
-    locIslByNodeD=createLocIslByNodeD(familiesO,speciesTree)
+    locIslByNodeD=createLocIslByNodeD(familiesO,speciesRtreeO)
     numIslandsAtEachNodeAtStartD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
-    focalNodesL = getFocalNodesInOrderOfNumDescendants(speciesTree,rootFocalClade)
+    focalNodesL = getFocalNodesInOrderOfNumDescendants(speciesRtreeO,rootFocalClade)
 
     ##  Merge in clusters
     locusIslandClusterL,singletonClusterL = createLocusIslandClusters(locIslByNodeD,focalNodesL,subtreeD,familiesO,geneProximityD,geneProximityRange,maxClusterSize)
@@ -70,24 +70,23 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesTree,paramD,familiesO,rootFocalC
 
 ## Support functions
 
-def rootFocalCladeCheck(speciesTree,rootFocalClade,outputSummaryF):
+def rootFocalCladeCheck(speciesRtreeO,rootFocalClade,outputSummaryF):
     '''Check that there is a correct rootFocalClade given.'''
     
-    if rootFocalClade not in trees.iNodeList(speciesTree):
-        raise ValueError("Given rootFocalClade is not present in speciesTree.")
-    elif speciesTree[0] == rootFocalClade:
+    if rootFocalClade not in speciesRtreeO:
+        raise ValueError("Given rootFocalClade is not present in species tree.")
+    elif speciesRtreeO.rootNode == rootFocalClade:
         print("""Warning: the chosen rootFocalClade falls at the root of the input
- speciesTree and thus does not have any outgroups. This is not recommended
+ species tree and thus does not have any outgroups. This is not recommended
  because it can lead to problems accurately recognizing core gene
  families in the presence of gene deletion."""+"\n",file=outputSummaryF)
 
-def createLocIslByNodeD(familiesO,speciesTree):
+def createLocIslByNodeD(familiesO,speciesRtreeO):
     '''Create locus islands, one family each. Initially store islands
 separately by mrca in a dict.
 
     '''
-    locIslByNodeD = {node:[] for node in trees.nodeList(speciesTree)}
-    
+    locIslByNodeD = {node:[] for node in speciesRtreeO.preorder()}
     for lfO in familiesO.iterLocusFamilies():
         liO = LocusIsland(lfO.locusFamNum, lfO.lfMrca, [lfO.locusFamNum])
         locIslByNodeD[liO.mrca].append(liO)
@@ -98,16 +97,16 @@ separately by mrca in a dict.
     
     return locIslByNodeD
 
-def getFocalNodesInOrderOfNumDescendants(speciesTree,rootFocalClade):
+def getFocalNodesInOrderOfNumDescendants(speciesRtreeO,rootFocalClade):
     '''Get a list of all the nodes in the rootFocalClade. Then sort these
 according to the number of leaves descending from them, biggest
 first.'''
 
-    focalSubtree = trees.subtree(speciesTree,rootFocalClade)
+    focalSubtreeRtreeO = speciesRtreeO.subtree(rootFocalClade)
     focalNodesL = []
-    for node in trees.nodeList(focalSubtree):
+    for node in focalSubtreeRtreeO.preorder():
         # go through every node in the focal clade
-        numDescend = trees.leafCount(trees.subtree(speciesTree,node)) # count descendants
+        numDescend = speciesRtreeO.subtree(node).leafCount() # count descendants
         focalNodesL.append((node,numDescend))
     focalNodesL.sort(key=lambda x: x[1],reverse=True) # sort on 2nd pos, biggest first
     # extract and return only the nodes
@@ -128,10 +127,10 @@ are likely to merge.'''
     #loop through all of the mrcaNode lists 
     for mrcaNode in focalNodesL:
 
-        subtree = subtreeD[mrcaNode]
+        subRtreeO = subtreeD[mrcaNode]
         islandsAtMrcaNodeL = locIslByNodeD[mrcaNode] 
         
-        mrcaClustersL,mrcaSingletonClustersL = createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThreshold,maxClusterSize)
+        mrcaClustersL,mrcaSingletonClustersL = createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subRtreeO,geneProximityD,proximityThreshold,maxClusterSize)
 
         singletonClustersL.extend(mrcaSingletonClustersL)
         
@@ -139,7 +138,7 @@ are likely to merge.'''
     
     return locusIslandClustersL,singletonClustersL
 
-def createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThreshold,maxClusterSize):
+def createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subRtreeO,geneProximityD,proximityThreshold,maxClusterSize):
     
     '''Takes in a Mrca node and other node information 
     and clusters the nodes within the mrca node that are likely 
@@ -157,7 +156,7 @@ def createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,p
         clusterL = [] 
         onDeckL = [islandsAtMrcaNodeL.pop()]
         
-        clusterL,islandsAtMrcaNodeL = populateCluster(clusterL,onDeckL,islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThreshold,maxClusterSize)
+        clusterL,islandsAtMrcaNodeL = populateCluster(clusterL,onDeckL,islandsAtMrcaNodeL,familiesO,subRtreeO,geneProximityD,proximityThreshold,maxClusterSize)
         
         if len(clusterL) > 1:
             mrcaClustersL.append(clusterL)
@@ -167,7 +166,7 @@ def createMrcaNodeClusters(islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,p
     return mrcaClustersL,mrcaSingletonClustersL
 
 
-def populateCluster(clusterL,onDeckL,islandsAtMrcaNodeL,familiesO,subtree,geneProximityD,proximityThreshold,maxClusterSize):
+def populateCluster(clusterL,onDeckL,islandsAtMrcaNodeL,familiesO,subRtreeO,geneProximityD,proximityThreshold,maxClusterSize):
     '''Populate clusterL by searching for islands in
 islandsAtMrcaNodeL. onDeckL consists of islands that will be added to
 clusterL, but which need to be used to search first.
@@ -184,7 +183,7 @@ clusterL, but which need to be used to search first.
         for liO in islandsAtMrcaNodeL:
             locFamO = list(liO.iterLocusFamilies(familiesO))[0]
 
-            proxB = proximitySubtree(searchSeedLocFamO,locFamO,geneProximityD,proximityThreshold,subtree)
+            proxB = proximitySubtree(searchSeedLocFamO,locFamO,geneProximityD,proximityThreshold,subRtreeO,subRtreeO.rootNode)
             if proxB:
                 tempFoundL.append(liO)
 
@@ -203,18 +202,21 @@ clusterL, but which need to be used to search first.
                 return clusterL,islandsAtMrcaNodeL
 
     return clusterL,islandsAtMrcaNodeL
-        
-def proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subtree):
+
+def proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subRtreeO,node):
     '''Given two gene families with the same mrcaNode, return boolean
 indicating whether any of their genes are within proximityThreshold of
 each other.
     '''
-    if subtree[1] == ():
-        return proximity(lfam0,lfam1,geneProximityD,proximityThreshold,subtree[0])
+    if subRtreeO.isLeaf(node):
+        # node is strain in this species subtree
+        return proximity(lfam0,lfam1,geneProximityD,proximityThreshold,node)
     else:
-        left = proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subtree[1])
-        right = proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subtree[2])
-        return left or right
+        outB = False
+        for childNode in subRtreeO.children(node):
+            tempB = proximitySubtree(lfam0,lfam1,geneProximityD,proximityThreshold,subRtreeO,childNode)
+            outB = outB or tempB
+        return outB
 
 def updateIslandByNodeLEntries(locIslByNodeD,focalNodesL,mergedL):
     '''Given a list mergedL containing merged clusters of LocusIslands,
@@ -331,25 +333,25 @@ def costDiffDict(argT):
     '''Create a dictionary of costDiff scores between all pairs of locus
 families in lFamNumL.'''
 
-    lFamNumL,familiesO,geneProximityD,proximityThreshold,subtree=argT
+    lFamNumL,familiesO,geneProximityD,proximityThreshold,subRtreeO=argT
 
     cdD={}
     for i in range(len(lFamNumL)-1):
         lf1 = familiesO.getLocusFamily(lFamNumL[i])
         for j in range(i+1,len(lFamNumL)):
             lf2 = familiesO.getLocusFamily(lFamNumL[j])
-            cdsc = costDiff(lf1,lf2,geneProximityD,proximityThreshold,subtree)
+            cdsc = costDiff(lf1,lf2,geneProximityD,proximityThreshold,subRtreeO)
             cdD[(lf1.locusFamNum,lf2.locusFamNum)] = cdsc
             cdD[(lf2.locusFamNum,lf1.locusFamNum)] = cdsc
     return cdD
 
-def costDiff(lfam1,lfam2,geneProximityD,proximityThreshold,subtree):
+def costDiff(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO):
     '''Given two LocusFamilies calculate the difference in rcost depending on
 whether we assume the root is not proximate or proximate.
     '''
     memoD = {}
-    t=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,True,memoD)
-    f=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,False,memoD)
+    t=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,subRtreeO.rootNode,True,memoD)
+    f=rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,subRtreeO.rootNode,False,memoD)
     return(f-t)
 
 def createScoreD(locusIslandL,costDiffD):
@@ -388,32 +390,28 @@ is measured in genes, e.g. 1 means the adjacent gene.
                 return True
     return False
   
-def rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree,rootProximate,memoD):
+def rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,node,rootProximate,memoD):
     '''Memoized, parsimony based calculation of cost of evolutionary rearrangement
-given lfam1 and lfam2 begin at root of subtree. Assume either
+given lfam1 and lfam2 begin at root of subRtreeO. Assume either
 proximate (nearby) or not proximate at root. This is specificed by the
 argument rootProximate. Charge 1 for each rearrangment.
     '''
-    memoKey = (lfam1.locusFamNum,lfam2.locusFamNum,subtree,rootProximate)
+    memoKey = (lfam1.locusFamNum,lfam2.locusFamNum,subRtreeO.fileStr(),rootProximate)
     if memoKey in memoD:
         return memoD[memoKey]
-    elif subtree[1]==():
-        prox=proximity(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[0])
+    elif subRtreeO.isLeaf(node):
+        prox=proximity(lfam1,lfam2,geneProximityD,proximityThreshold,node)
         if (prox and rootProximate) or (not prox and not rootProximate):
             # state given by rootProximate matches adjacency info in our data
             output = 0
         else:
             output = 1
     else:
-        # left subtree
-        left = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[1],rootProximate,memoD)
-        chLeft = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[1],not rootProximate,memoD)
-
-        # right subtree
-        right = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[2],rootProximate,memoD)
-        chRight = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subtree[2],not rootProximate,memoD)
-
-        output = min(left,chLeft) + min(right,chRight)
+        output = float('inf')
+        for childNode in subRtreeO.children(node):
+            temp = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,childNode,rootProximate,memoD)
+            chTemp = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,childNode,not rootProximate,memoD)        
+            output = min(output,temp,chTemp)
         
     memoD[memoKey] = output
     return output
@@ -492,11 +490,11 @@ def writeIslands(locIslByNodeD,islandOutFN):
                 print(island.fileStr(),file=f)
     return
                 
-def readIslands(islandFN,speciesTree):
+def readIslands(islandFN,speciesRtreeO):
     '''Given a file name for a islands output file, load back
 recreating locIslByNodeD.'''
 
-    locIslByNodeD = {node:[] for node in trees.nodeList(speciesTree)}
+    locIslByNodeD = {node:[] for node in speciesRtreeO.preorder()}
     
     with open(islandFN,'r') as f:
         while True:

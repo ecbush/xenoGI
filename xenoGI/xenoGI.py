@@ -228,7 +228,7 @@ arguments so we can pass in different things in different contexts
     
     ## load stuff
     speciesRtreeO,subtreeD = loadTreeRelatedData(speciesTreeFN)
-    strainNamesT=tuple(trees.leafList(speciesRtreeO))
+    strainNamesT=speciesRtreeO.leaves()
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],strainNamesT)
     genesO = genomes.genes(paramD['geneInfoFN'])
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
@@ -372,22 +372,35 @@ def debugWrapper(paramD):
     import copy
     from Bio import Phylo
 
-    # example 2 branch tree
-    #geneUtreeO = Utree()
-    #geneUtreeO.fromNewickFile("geneFamilyTrees/initFam000436.tre")
-    #bpTree = Phylo.read("geneFamilyTrees/initFam002319.tre", 'newick', rooted=False)
-
-
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    iFamGeneTreeFileStem = 'initFam'
+
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
-    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
-    multifurcatingL = [initFamNum for initFamNum,_ in multifurcatingL]
-    
-    originFamiliesO = families.createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
     
     """            
+    
+    with open("reconTemp.tsv","r") as f:
+        s=f.readline() # skip first line
+        while True:
+            s=f.readline()
+            if s=="":
+                break
+            initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
+            initFamNum = eval(initFamNum)
+            optMPR=eval(optMPR)
+            if initFamNum == 2726:
+                break
+    #rtree = Rtree()
+    #rtree.fromString(optRootedGeneTree)
+    #reconD = families.convertReconBranchToNode(optMPR,rtree)
+
+    initFamNum,speciesRtreeO,geneUtreeO,tipMapD,gtLocusMapD,D,T,L,O,R = argT
+    
+    speciesTreeD = speciesRtreeO.createDtlorD(True)
+    geneTreeD = geneRtreeO.createDtlorD(False)    
+    
+
 
     rtempL=[]
     with open("reconTemp.tsv","r") as f:

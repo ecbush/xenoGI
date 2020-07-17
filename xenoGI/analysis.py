@@ -144,12 +144,12 @@ def vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF):
     print("  LocusIsland",island.id,file=fileF)
 
     # get species nodes subtended by this mrca
-    speciesNodesL=trees.leafList(subtreeD[island.mrca])
-
+    speciesNodesT = subtreeD[island.mrca].leaves()
+    
     # put everything in lists.
     printL=[]
     printL.append(['LocusFamily','lfOrig','Family'])
-    for node in speciesNodesL:
+    for node in speciesNodesT:
         printL[0].append(node)
 
     # print table of family (row) by gene (col)
@@ -158,7 +158,7 @@ def vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF):
         newRow.append(str(locusFamO.locusFamNum))
         newRow.append(locusFamO.origin(familiesO,rootFocalClade))
         newRow.append(str(locusFamO.famNum))
-        for node in speciesNodesL:
+        for node in speciesNodesT:
             entryL = []
             for geneNum in locusFamO.iterGenesByStrain(node):
                 infoT=genesO.numToGeneInfo(geneNum)
@@ -200,16 +200,16 @@ def vPrintLocusIslandsAtNode(islandL,rootFocalClade,subtreeD,familiesO,genesO,fi
         vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF)
         print('  ------',file=fileF)
 
-def vPrintAllLocusIslands(islandByNodeD,speciesTree,rootFocalClade,subtreeD,familiesO,genesO,fileF):
-    '''Loop over all nodes in speciesTree, printing islands at each. '''
-    focalTree = trees.subtree(speciesTree,rootFocalClade)
-    for node in trees.nodeList(focalTree):
+def vPrintAllLocusIslands(islandByNodeD,speciesRtreeO,rootFocalClade,subtreeD,familiesO,genesO,fileF):
+    '''Loop over all nodes in speciesRtreeO, printing islands at each. '''
+    focalRtreeO = speciesRtreeO.subtree(rootFocalClade)
+    for node in focalRtreeO.preorder():
         print('########################### ',"Locus Islands at node",node,file=fileF)
         print('',file=fileF)
         vPrintLocusIslandsAtNode(islandByNodeD[node],rootFocalClade,subtreeD,familiesO,genesO,fileF)
 
-def printAllLocusIslandsTsv(islandByNodeD,speciesTree,rootFocalClade,familiesO,genesO,fileF):
-    '''Loop over all nodes in speciesTree, printing locus islands at each in tsv form. '''
+def printAllLocusIslandsTsv(islandByNodeD,speciesRtreeO,rootFocalClade,familiesO,genesO,fileF):
+    '''Loop over all nodes in speciesRtreeO, printing locus islands at each in tsv form. '''
 
     # header
     headerTxt = """# Format: locusIslandNum <tab> mrca <tab> locusFamilyOriginStr <tab> [Locus Families and genes in locusIsland]
@@ -218,8 +218,8 @@ def printAllLocusIslandsTsv(islandByNodeD,speciesTree,rootFocalClade,familiesO,g
 # for however many locusFamilies there are."""
     print(headerTxt,file=fileF)
     # print locusIslands
-    focalTree = trees.subtree(speciesTree,rootFocalClade)
-    for node in trees.nodeList(focalTree):
+    focalRtreeO = speciesRtreeO.subtree(rootFocalClade)
+    for node in focalRtreeO.preorder():
         for island in islandByNodeD[node]:
             oStr = island.getLocusFamilyOriginStr(familiesO,rootFocalClade)
             printL=[str(island.id),str(island.mrca),oStr]
@@ -372,9 +372,8 @@ format. Gene name,geneHisStr,locusIsland, family, locusFamily, locFamMRCA, gene
 description.'''
 
     # get strains in focal clade
-    focalSubtree = trees.subtree(familiesO.speciesTree,rootFocalClade)
-    focalCladeStrainsS = set(trees.leafList(focalSubtree))
-    
+    focalSubRtreeO = familiesO.speciesRtreeO.subtree(rootFocalClade)
+    focalCladeStrainsS = set(focalSubRtreeO.leaves())
     for geneNum in neighbGenesL:
         strainName = genesO.numToStrainName(geneNum)
         infoT=genesO.numToGeneInfo(geneNum)
@@ -385,8 +384,8 @@ description.'''
 
         # only print geneHistory,orign if gene is in focal clade
         if strainName in focalCladeStrainsS:
-            geneHisStr = famO.getGeneHistoryStr(geneNum)
-            geneOrigin = famO.origin(familiesO.speciesTree,rootFocalClade)
+            geneHisStr = famO.getGeneHistoryStr(str(geneNum)) # geneHistoryD has string keys
+            geneOrigin = famO.origin(familiesO.speciesRtreeO,rootFocalClade)
         else:
             geneHisStr = ""
             geneOrigin = ""

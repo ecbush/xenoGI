@@ -1,4 +1,5 @@
 from Bio import Phylo
+from collections import OrderedDict
 
 ## Globals
 
@@ -8,7 +9,13 @@ ROOT_PARENT_NAME = "" # name for the parent of the root node in rooted trees
 
 class Tree:
     def __init__(self, nodeConnectD=None):
-        '''Base class to be inherited by Rtree and Utree.'''
+        '''Base class to be inherited by Rtree and Utree. Key internal data
+structure is nodeConnectD, which is keyed by node and has values
+(parent, child1, child2...). All nodes names are represented as
+strings. In the case of a gene tree, the tip may be a gene number, but
+we still hold it as a string.
+
+        '''
         self.nodeConnectD = nodeConnectD
         self.leafNodeT = None
         self.internalNodeT = None
@@ -50,6 +57,9 @@ than 3 branches).'''
             return True
         else: return False
 
+    def __contains__(self,node):
+        return node in self.nodeConnectD
+        
     def __updateSecondaryAttributes__(self):
         '''Create leafNodeT and internalNodeT.'''
         leafNodeL = []
@@ -230,8 +240,9 @@ tree.
         if self.multifurcatingNodes() != []:
             raise ValueError("This tree is not bifurcating.")
         
-        dtlorD = {}
-        for node,connecT in self.nodeConnectD.items():
+        dtlorD = OrderedDict()
+        for node in self.preorder():
+            connecT = self.nodeConnectD[node]
             if len(connecT) == 1:
                 # leaf
                 parent = connecT[0]

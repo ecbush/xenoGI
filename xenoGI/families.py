@@ -39,7 +39,7 @@ originFamilies object.
 
     # make gene family trees
     # TEMP COMMENT
-    #trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
+    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
 
     # load gene trees
@@ -667,7 +667,7 @@ def reconcileAllGeneTrees(speciesRtreeO,geneTreeL,initialFamiliesO,locusMapD,gen
     with Pool(processes=paramD['numProcesses']) as p:
         for initFamNum,optGeneRtreeO,optMPR,minCost in p.imap_unordered(reconcile, argumentL):
             
-            reconD = convertReconBranchToNode(optMPR,optGeneRtreeO)
+            reconD = convertReconBranchToNode(optMPR)
             
             # sanity check
             #costCheck(minCost,reconD,D,T,L,O,R)
@@ -686,7 +686,7 @@ def reconcileAllGeneTrees(speciesRtreeO,geneTreeL,initialFamiliesO,locusMapD,gen
 
             argT=findArg(initFamNum,argumentL)
             with open("reconTemp.tsv","a") as f:
-                outL = map(str,[initFamNum,optGeneRtreeO,optMPR,minCost,argT])
+                outL = [str(initFamNum),optGeneRtreeO.fileStr(),str(optMPR),str(minCost),str(argT)]
                 outStr = "\t".join(outL)
                 print(outStr,file=f)
                 
@@ -789,7 +789,7 @@ def createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bi
     for initFamNum,geneTree in bifurcatingL:
         iFam = initialFamiliesO.getFamily(initFamNum)
         sourceFam = iFam.famNum
-        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneRtree,iFam.reconD,originFamiliesO,sourceFam,genesO)
+        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneRtreeO,iFam.reconD,originFamiliesO,sourceFam,genesO)
 
     return originFamiliesO
         
@@ -804,8 +804,8 @@ corresponding initial family.
             originFamiliesO.initializeFamily(famNum,initFamO.mrca)
         else:
             # should be single gene family
-            geneTree,reconD = createSingleGeneFamilyGeneTreeRecon(initFamO,genesO)
-            originFamiliesO.initializeFamily(famNum,initFamO.mrca,geneTree,reconD)
+            geneRtreeO,reconD = createSingleGeneFamilyGeneTreeRecon(initFamO,genesO)
+            originFamiliesO.initializeFamily(famNum,initFamO.mrca,geneRtreeO,reconD)
             
         for initLocFamO in initFamO.getLocusFamilies():
             locFamNum = originFamiliesO.getNumLocusFamilies() # num for new loc fam
@@ -825,14 +825,18 @@ def createSingleGeneFamilyGeneTreeRecon(initFamO,genesO):
     strainName = genesO.numToStrainName(geneNum)
     locusNum = initFamO.locusFamiliesL[0].locusNum
 
-    geneTree = (geneNum, (), (), None)
+    # tree
+    nodeConnectD = {str(geneNum):(ROOT_PARENT_NAME,)}
+    geneRtreeO = Rtree(nodeConnectD,str(geneNum))
+
+    # recon
     reconD = {}
     reconD[(geneNum,'b')] = [('O', strainName, 'b', locusNum)]
     reconD[(geneNum,'n')] = [('M', strainName, 'n', locusNum)]
 
-    return geneTree,reconD
+    return geneRtreeO,reconD
     
-def addOriginFamilyFromReconciliation(geneTree,reconD,originFamiliesO,sourceFam,genesO):
+def addOriginFamilyFromReconciliation(geneRtreeO,reconD,originFamiliesO,sourceFam,genesO):
     '''Given a rooted gene tree and a reconciliation (raw output from
 DTLOR_DP, add origin families. One origin family for each origin
 event.
@@ -840,21 +844,21 @@ event.
     
     # get origin defined trees
     branchOriginL = getBranchesWithSpecifiedEvents(reconD,"O")
-    originTreeL = splitTreeByOrigin(geneTree,branchOriginL)
-
+    originTreeL = splitTreeByOrigin(geneRtreeO,branchOriginL)
+    
     # extract parts of reconD corresponding to each tree
-    for geneTree,splitReconD in getGeneTreeReconPairs(originTreeL,reconD):
+    for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,reconD):
         famNum = originFamiliesO.getNumFamilies()
-        keyNB = (geneTree[0],'n')
+        keyNB = (geneRtreeO.rootNode,'n')
         speciesMrca = splitReconD[keyNB][0][1] # remember, the value in reconD is a list of events
-        originFamiliesO.initializeFamily(famNum,speciesMrca,geneTree,splitReconD,sourceFam)
-        originFamiliesO = getLocusFamiliesInOrigin(splitReconD,geneTree,originFamiliesO,famNum,genesO)
+        originFamiliesO.initializeFamily(famNum,speciesMrca,geneRtreeO,splitReconD,sourceFam)
+        originFamiliesO = getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO)
 
     return originFamiliesO
 
 def getBranchesWithSpecifiedEvents(reconD,event):
     '''Given a reconD keyed by (geneTreeLoc,geneTreeNB) tuples, extract
-the branches (geneTreeLoc's) where and O even occurred.'''
+the branches (geneTreeLoc's) where an O even occurred.'''
     outL = []
     for key,value in reconD.items():
         geneTreeLoc,geneTreeNB = key
@@ -865,7 +869,7 @@ the branches (geneTreeLoc's) where and O even occurred.'''
             outL.append(geneTreeLoc)
     return outL
 
-def splitTreeByOrigin(geneTree,branchOriginL):
+def splitTreeByOrigin(geneRtreeO,branchOriginL):
     '''Take a gene tree, and a list of branches where origin events
 occur. Split the tree into multiple trees, where each origin event
 defines the root of a new tree. Note that if there is no origin event
@@ -873,46 +877,42 @@ at the root (ie they come later) this may mean that some parts of the
 gene tree are not included.
 
     '''
-    if geneTree[0] in branchOriginL:
-        return [geneTree]
-    elif geneTree[1] == ():
-        raise ValueError("Reconciliation has a path from root to a tip with no origin event.")
-    else:
-       lL = splitTreeByOrigin(geneTree[1],branchOriginL) 
-       rL = splitTreeByOrigin(geneTree[2],branchOriginL) 
-       return lL + rL
+    originTreeL = []
+    for branch in branchOriginL:
+        originTreeL.append(geneRtreeO.subtree(branch))
+    return originTreeL
 
 def getGeneTreeReconPairs(originTreeL,reconD):
     '''Given a list of geneTrees (new origin families), extract the
 corresponding parts from the reconD for each.'''
 
     geneTreeReconPairL = []
-    for geneTree in originTreeL:
+    for geneRtreeO in originTreeL:
         splitReconD = {}
-        for geneTreeLoc in trees.nodeList(geneTree):
+        for geneTreeLoc in geneRtreeO.preorder():
             nbKey = (geneTreeLoc,'b')
             if nbKey in reconD:
                 splitReconD[nbKey] = reconD[nbKey]
             nbKey = (geneTreeLoc,'n')
             if nbKey in reconD:
                 splitReconD[nbKey] = reconD[nbKey]
-        geneTreeReconPairL.append((geneTree,splitReconD))
+        geneTreeReconPairL.append((geneRtreeO,splitReconD))
     return geneTreeReconPairL
         
-def getLocusFamiliesInOrigin(splitReconD,geneTree,originFamiliesO,famNum,genesO):
-    '''Given a geneTree for an origin family, and the corresponding
+def getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO):
+    '''Given a geneRtreeO for an origin family, and the corresponding
 splitReconD, divide up further into locusFamilies. Each locus family
 is defined by the most recent R event (or O) in its history.
 
     '''
     branchRL = getBranchesWithSpecifiedEvents(splitReconD,"R")
-    freeGeneL,locFamTL = splitTreeIntoLocusFamilies(geneTree,branchRL)
+    freeGeneL,locFamTL = splitTreeIntoLocusFamilies(geneRtreeO,geneRtreeO.rootNode,branchRL)
     if len(freeGeneL)>0:
-        locFamTL.append((geneTree[0],tuple(freeGeneL))) # add last, O event can begin LF
+        locFamTL.append((geneRtreeO.rootNode,tuple(freeGeneL))) # add last, O event can begin LF
 
     for locFamT in locFamTL:
-        geneTreeRBranch,locFamGenesT = locFamT
-        lfReconRootKey = (geneTreeRBranch,'b')
+        geneRtreeORBranch,locFamGenesT = locFamT
+        lfReconRootKey = (geneRtreeORBranch,'b')
         # pull out the R or O event to get mrca
         _,lfSpeciesMrca,_,locusAtBottom = [val for val in splitReconD[lfReconRootKey] if val[0] in 'OR'][0]
         newLocusNum=originFamiliesO.getNumLocusFamilies()
@@ -921,9 +921,9 @@ is defined by the most recent R event (or O) in its history.
         originFamiliesO.addLocusFamily(lf)
     return originFamiliesO
 
-def splitTreeIntoLocusFamilies(geneTree,branchRL):
-    '''Split tips in geneTree into locus families. Each gene is put into a
-locus family according to the most recent R event in its lineage. If
+def splitTreeIntoLocusFamilies(geneRtreeO,node,branchRL):
+    '''Split tips in geneRtreeO into locus families. Each gene is put into
+a locus family according to the most recent R event in its lineage. If
 no R events, then defined by its O event (each tree has an O at
 root). We do this recursively. Function returns a tuple
 (outFreeGeneL,outLocFamTL). outFreeGeneL is simply a list of genes
@@ -932,33 +932,36 @@ tuples, where each tuple is a locus family. It contains two
 elements. The left is the branch on which the defining R event
 occurs. The right is a list of genes defined by this. If we are at a
 node where an R event occurred (is present in branchRL) then we take
-the genes in outFreeGeneL, make into
-a tuple, and add to outLocFamTL.
+the genes in outFreeGeneL, make into a tuple, and add to outLocFamTL.
 
     '''
-    if geneTree[1] == () and geneTree[0] in branchRL:
-        return [],[(geneTree[0],(geneTree[0],))]
-    elif geneTree[1] == () and geneTree[0] not in branchRL:
-        return [geneTree[0]],[]
+    # in gene tree tip number is string. when making a list of genes,
+    # we should make it into an int
+    if geneRtreeO.isLeaf(node) and node in branchRL:
+        return [],[(node,(int(node),))]
+    elif geneRtreeO.isLeaf(node) and node not in branchRL:
+        return [int(node)],[] 
     else:
-       leftFreeGeneL,leftLocFamTL = splitTreeIntoLocusFamilies(geneTree[1],branchRL) 
-       rightFreeGeneL,rightLocFamTL = splitTreeIntoLocusFamilies(geneTree[2],branchRL)
-       if geneTree[0] in branchRL:
-           outLocFamT = (geneTree[0],tuple(leftFreeGeneL+rightFreeGeneL))
-           return [],[outLocFamT]+leftLocFamTL+rightLocFamTL
-       else:
-           outFreeGeneL = leftFreeGeneL+rightFreeGeneL
-           outLocFamTL = leftLocFamTL+rightLocFamTL
-           return outFreeGeneL,outLocFamTL
+        childFreeGeneL = []
+        childLocFamTL = []
+        for childNode in geneRtreeO.children(node):
+            tempFreeGeneL,tempLocFamTL = splitTreeIntoLocusFamilies(geneRtreeO,childNode,branchRL)
+            childFreeGeneL.extend(tempFreeGeneL)
+            childLocFamTL.extend(tempLocFamTL)
+        if node in branchRL:
+            outLocFamT = (node,tuple(childFreeGeneL))
+            return [],[outLocFamT]+childLocFamTL
+        else:
+            return childFreeGeneL,childLocFamTL
     
 #### Convert reconciliation format
 
-def convertReconBranchToNode(brReconD,geneTree):
+def convertReconBranchToNode(brReconD):
     '''Take a reconciliation dictionary in the branch based format. (The
 format produced by the dtlor dp function, which represents the
 placement of gene tree branches on the species tree). Return a
 dictionary where reconciliation events are explicitly characterized as
-falling at nodes or branches in the gene tree. This output dictionary
+falling at nodes or branches in the gene tree.
 
     '''
 
@@ -1127,7 +1130,6 @@ def readFamilies(familyFN,speciesRtreeO,genesO):
                 reconRootKey = None
             else:
                 geneTreeLoc,geneTreeNB = lfSplitL[3].split('_')
-                if geneTreeLoc.isdigit(): geneTreeLoc = int(geneTreeLoc)
                 reconRootKey = (geneTreeLoc,geneTreeNB)
             
             geneL=[]
