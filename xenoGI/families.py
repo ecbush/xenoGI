@@ -751,7 +751,7 @@ def reconcile(argT):
     #sample one MPR from the MPRs for this specific unrooted tree
     optGeneRtreeO,optMPR,minCost=random.choice(bestMPRs) 
         
-    return initFamNum,optGeneRtreeO,optMPR,minCost 
+    return initFamNum,optGeneRtreeO,optMPR,minCost
 
 def costCheck(minCost,reconD,D,T,L,O,R):
     '''Sanity check to ensure the events in reconD sum to minCost.'''

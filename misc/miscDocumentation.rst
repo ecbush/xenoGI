@@ -34,13 +34,6 @@ Tools for visualization with the IGB browser
 
   moves the bed files into the newly created igbExample directory. You can then set IGB up to load this.
 
-* We also include a script for creating gff files.
-
-  It can be run like this::
-    
-    python3 path-to-xenoGI-github-repository/misc/createIslandGffs.py params.py
-
-
 Obtaining alignments
 --------------------
 

@@ -2,7 +2,7 @@ import sys,os
 from Bio import Phylo
 sys.path.insert(0,os.path.join(sys.path[0],'..'))
 from xenoGI import trees
-
+from xenoGI import Tree
 
 if __name__ == "__main__":
     
@@ -12,8 +12,10 @@ if __name__ == "__main__":
     
     bpTree = Phylo.read(inTreeFN, 'newick')
     
-    tupleTree=trees.prepareTree(bpTree,outGroupTaxaL)
-
+    speciesRtreeO = Tree.Rtree()
+    speciesRtreeO.fromNewickFileLoadSpeciesTree(inTreeFN,outGroupTaxaL)
+    
     # write final tree. rooted, with named internal nodes and no
     # branch lengths
-    trees.writeTreeNoBrLen(tupleTree,outTreeFN)
+    with open(outTreeFN,'w') as f:
+        f.write(speciesRtreeO.toNewickStr())

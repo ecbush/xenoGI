@@ -306,7 +306,7 @@ codes for events are as follows:
             printOneKey(levelSpace+"  ",self.reconD,(node,'b'))
             printOneKey(levelSpace+"  ",self.reconD,(node,'n'))
             for child in childL:
-                self.printReconByGeneTreeHelper(child,level+1,fileF)
+                self.printReconByGeneTreeHelper(geneRtreeO,child,level+1,fileF)
     
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum

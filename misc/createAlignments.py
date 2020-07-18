@@ -33,7 +33,7 @@ if __name__ == "__main__":
     for orthoT in aabrhHardCoreL[:200]:
         orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad with 0's so ls will display in right order
         outAlignFN=os.path.join(alignDirName,"align"+orthoGroupNumStr+".afa")
-        trees.alignOneOrthoT(orthoT,paramD['musclePath'],inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
+        trees.alignOneOrthoT(orthoT,True,paramD['musclePath'],inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
         orthoGroupNum+=1
 
     os.remove(inTempProtFN)

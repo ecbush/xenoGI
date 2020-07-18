@@ -1,22 +1,22 @@
 import sys,os,copy
 sys.path.insert(0,os.path.join(sys.path[0],'..'))
-from xenoGI import parameters,trees,genomes,families,Family
+from xenoGI import parameters,trees,Tree,genomes,families,Family
 
 
-def getGtLocusMap(geneTree,initialFamiliesO):
+def getGtLocusMap(geneUtreeO,initialFamiliesO):
     '''Get the mapping of genes to syntenic locations for this gene
 tree. We rely on xenoGI having been run already to the family
 formation state (to obtain an initialFamiliesO object).'''
 
     gtLocusMapD = {}
-    for geneNum in trees.leafList(geneTree):
-        gtLocusMapD[geneNum] = None
+    for geneNumStr in geneUtreeO.leaves():
+        gtLocusMapD[geneNumStr] = None
 
     # now fill with syntenic location numbers
     for lfO in initialFamiliesO.iterLocusFamilies():
         for geneNum in lfO.iterGenes():
-            if geneNum in gtLocusMapD:
-                gtLocusMapD[geneNum] = lfO.locusNum
+            if str(geneNum) in gtLocusMapD:
+                gtLocusMapD[str(geneNum)] = lfO.locusNum
 
     return gtLocusMapD
 
@@ -33,34 +33,35 @@ if __name__ == "__main__":
     R =  int(sys.argv[8])
 
     # load trees
-    speciesTree = trees.readTree(speciesTreeFN)
-    geneTree = trees.loadOneGeneTree(geneTreeFN) # expects xenoGI gene numbers on tips
+    speciesRtreeO = Tree.Rtree()
+    speciesRtreeO.fromNewickFileLoadSpeciesTree(speciesTreeFN)
+
+    geneUtreeO = Tree.Utree()
+    geneUtreeO.fromNewickFile(geneTreeFN) # expects xenoGI gene numbers on tips
 
     # parameters file
     paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
     
     # support data
     genesO = genomes.genes(paramD['geneInfoFN'])
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesTree,genesO)
-    tipMapD=families.getTipMapping(geneTree,genesO)
-    gtLocusMapD = getGtLocusMap(geneTree,initialFamiliesO)
-    locusMapForRootingD = trees.createLocusMapForRootingD(geneTree,copy.deepcopy(gtLocusMapD))
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
+    tipMapD=families.getTipMapping(geneUtreeO,genesO)
+    gtLocusMapD = getGtLocusMap(geneUtreeO,initialFamiliesO)
 
     # prepare input arguments, initFam number doesn't matter, so made it 1
-    argT = (1,speciesTree,geneTree,tipMapD,gtLocusMapD,locusMapForRootingD,D,T,L,O,R)
- 
+    argT = (1,speciesRtreeO,geneUtreeO,tipMapD,gtLocusMapD,D,T,L,O,R) 
     # reconcile
-    initFamNum,optRootedGeneTree,optMPR,minCost = families.reconcile(argT)
-
+    initFamNum,optGeneRtreeO,optMPR,minCost = families.reconcile(argT)
+    
     # output
-    reconD = families.convertReconBranchToNode(optMPR,optRootedGeneTree)
+    reconD = families.convertReconBranchToNode(optMPR)
     
     print("Rooted gene tree:")
-    newickOutTree = trees.tupleTree2NoBrLenNewick(optRootedGeneTree)
+    newickOutTree = optGeneRtreeO.toNewickStr()
     print(newickOutTree)
     print()
 
     # put in family object so we can use its methods
-    fam = Family.Family(None,None,optRootedGeneTree,reconD)
+    fam = Family.Family(None,None,optGeneRtreeO,reconD)
     print("Reconciliation:")
     fam.printReconByGeneTree()
