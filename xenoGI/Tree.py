@@ -1,5 +1,6 @@
 from Bio import Phylo
 from collections import OrderedDict
+from xenoGI import trees
 
 ## Globals
 
@@ -23,6 +24,12 @@ we still hold it as a string.
 
         if self.nodeConnectD != None:
             self.__updateSecondaryAttributes__()
+
+    def isLeaf(self,node):
+        '''Return boolean if node is a leaf'''
+        if len(self.nodeConnectD[node]) == 1:
+            return True
+        else: return False
 
     def preorder(self):
         return self.preOrderT
@@ -50,12 +57,6 @@ than 3 branches).'''
             if len(connecT) > 3:
                 multifurcL.append(node)
         return multifurcL
-
-    def isLeaf(self,node):
-        '''Return boolean if node is a leaf'''
-        if len(self.nodeConnectD[node]) == 1:
-            return True
-        else: return False
 
     def __contains__(self,node):
         return node in self.nodeConnectD

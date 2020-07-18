@@ -176,7 +176,7 @@ From within python, you can then run functions such as
 
   Usage::
 
-    printLocusIslandsAtNode('i2')         # All locus islands at node i2
+    printLocusIslandsAtNode('s2')         # All locus islands at node s2
     printLocusIslandsAtNode('E_coli_K12') # All locus islands on the E. coli K12 branch
 
 * findLocusIsland

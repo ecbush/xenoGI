@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "2.2.0"
+__version__ = "3.0.0"
 import sys, glob, os
 from . import parameters,genbank,blast,trees,genomes,Score,scores,families,islands,analysis,islandBed
 from .Tree import *
@@ -263,15 +263,15 @@ def createIslandBedWrapper(paramD):
     # get islands organized by strain
     islandByStrainD = islandBed.createIslandByStrainD(strainNamesT,islandByNodeD,originFamiliesO,genesO)
 
-    islandBed.createAllBeds(islandByStrainD,genesO,speciesRtreeO,strainNamesT,paramD)
+    islandBed.createAllBeds(islandByStrainD,genesO,speciesRtreeO,strainNamesT,paramD,originFamiliesO)
 
 def interactiveAnalysisWrapper(paramD):
     """Enter interactive mode."""
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys
-    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printLocusIslandNeighb,vPrintLocusIslandsAtNode,coreNonCoreCtAtNode,printOutsideFamilyScores
-    from .xenoGI import families # remove later
+    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printLocusIslandNeighb,vPrintLocusIslandsAtNode,printOutsideFamilyScores
+    from .xenoGI import families
     
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
@@ -337,7 +337,7 @@ def interactiveAnalysisWrapper(paramD):
     number as argument, assuming all the other required stuff is available
     at the top level.
         '''
-        vPrintLocusIslandsAtNode(islandByNodeD[node],subtreeD,originFamiliesO,genesO,fileF)
+        vPrintLocusIslandsAtNode(islandByNodeD[node],paramD['rootFocalClade'],subtreeD,originFamiliesO,genesO,fileF)
 
     ## Load data
     

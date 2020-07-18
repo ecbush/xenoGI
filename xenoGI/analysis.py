@@ -258,7 +258,7 @@ function.
         if strainName in geneOrderD:
             contigT = geneOrderD[strainName]
             with open(fileStemStr+'-'+strainName+fileExtensionStr,'w') as fileF:
-                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> gene origin <tab> gene history string <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
+                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> family origin <tab> gene history string <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
                 print(headerStr,file=fileF)
                 for contig in contigT:
                     print("########### Begin contig",file=fileF)
@@ -285,9 +285,7 @@ def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,g
     mrca = island.mrca
     print("  mrca:",mrca,file=fileF)
 
-    leavesL=trees.leafList(subtreeD[mrca])
-
-    for strainName in leavesL:
+    for strainName in subtreeD[mrca].leaves():
 
         print("  In",strainName,end=' ',file=fileF)
 

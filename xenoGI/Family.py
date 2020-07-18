@@ -293,9 +293,9 @@ codes for events are as follows:
         # recurse over tree, printing out for each branch and node
         levelSpace = "   "*level
         if geneRtreeO.isLeaf(node):
-            print(levelSpace+"- "+str(geneTree[0]),file=fileF)
-            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'b'))
-            printOneKey(levelSpace+"  ",self.reconD,(geneTree[0],'n'))
+            print(levelSpace+"- "+node,file=fileF)
+            printOneKey(levelSpace+"  ",self.reconD,(node,'b'))
+            printOneKey(levelSpace+"  ",self.reconD,(node,'n'))
             return
         else:
             childL = []

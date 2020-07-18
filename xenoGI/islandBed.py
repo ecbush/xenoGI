@@ -26,12 +26,12 @@ def createIslandByStrainD(strainNamesT,islandByNodeD,familiesO,genesO):
                 tempStrainD[leaf]=[]
 
             # put LocusFamily number and genes tuple for each strain in tempStrainD
-            for locFam in locIsland.iterLocusFamilies(familiesO):
+            for locFamO in locIsland.iterLocusFamilies(familiesO):
                 for leaf in strainNamesT:
-                    geneNumsNamesL=[(gene,genesO.numToName(gene)) for gene in locFam.iterGenesByStrain(leaf)]
+                    geneNumsNamesL=[(gene,genesO.numToName(gene)) for gene in locFamO.iterGenesByStrain(leaf)]
                     if geneNumsNamesL != []:
                         # only add if the family has some genes in this strain.
-                        tempStrainD[leaf].append((locFam.locusFamNum,geneNumsNamesL))
+                        tempStrainD[leaf].append((locFamO.locusFamNum,geneNumsNamesL))
 
             # now make island tuple (minStart,island, locFamilyL) where
             # minStart is the lowest start coord we've seen in the
@@ -81,20 +81,19 @@ return its chrom,start,end.
     return chrom,islandMedianMidpoint,islandMin,islandMax
 
 def orderedIslandsInStrain(strainName,islandByStrainD):
-    '''returns a list of all the islands in the strain given, in the order they appear'''
+    '''Returns a list of all the islands in the strain given, in the order they appear'''
     islandsInStrainL = islandByStrainD[strainName]
     chromStartIslandLL = []
-    #for each island in the strain, order first by chromosome and then by island start pos
+    # for each island in the strain, order first by chromosome and then by island start pos
     for islandT in islandsInStrainL:
         chrom,_,start,_,_,locIslandNum,locFamilyL=islandT
         chromStartIslandLL.append([chrom,start,islandT])
     sortedChromStartIslandLL = sorted(chromStartIslandLL)
-    #make an ordered list of just the islands without the other information
+    # make an ordered list of just the islands without the other information
     sortedIslandsL = [x[2] for x in sortedChromStartIslandLL]
     return sortedIslandsL
 
-
-def islandToBed(islandT,genesO,tree,islandColorD):
+def islandToBed(islandT,islandColorD,originFamiliesO,genesO,speciesRtreeO,rootFocalClade):
     '''Given a islandT (the values of islandByStrainD are lists of these)
 convert into a string suitable for writing in a bed file. Return
 this. Note that we're using the score field to color the genes in
@@ -108,41 +107,47 @@ we've done already.
     score = str(islandColorD[str(locIslandNum)])
     
     # loop over families to get genes
-    for locFam,geneL in locFamilyL:
+    for locFamNum,geneL in locFamilyL:
+
+        famNum = originFamiliesO.getLocusFamily(locFamNum).famNum
+        famO = originFamiliesO.getFamily(famNum)
+        famOrig = famO.origin(speciesRtreeO,rootFocalClade)
+        
         for geneNum,geneName in geneL:
             geneName,commonName,locusTag,descrip,chrom,start,end,strand=genesO.numToGeneInfo(geneNum)
             if commonName != '':
                 Name=commonName
             else:
                 Name=geneName
-
-            attributes = 'ID='+geneName+';Name='+Name+';gene='+Name+';Note= | '+locIslandID+" | locFam_"+str(locFam)+" | mrca_"+mrca + " | "+descrip
+                
+            attributes = "ID="+geneName+";Name="+Name+";gene="+Name+";Note= | familyOrigin_"+famOrig+" | "+locIslandID+" | locFam_"+str(locFamNum)+" | mrca_"+mrca + " | "+descrip
             
             bedL.append('\t'.join([chrom,start,end,Name,'0',str(strand),start,start,score,'1',str(int(end)-int(start)),'0',geneName,attributes]))
 
     bedStr = '\n'.join(bedL)
     return bedStr
     
-def writeStrainBed(islandByStrainD,genesO,tree,strain,bedFileName,islandColorD):
+def writeStrainBed(islandByStrainD,genesO,originFamiliesO,strain,bedFileName,islandColorD,speciesRtreeO,rootFocalClade):
     '''For a given strain, Write bed file.'''
     f=open(bedFileName,'w')
     f.write('track name='+strain+' type=bedDetail visibility=full itemRgb="On" useScore=0 \n')
     orderedIslandsInStrainL = orderedIslandsInStrain(strain,islandByStrainD)
     for islandT in orderedIslandsInStrainL:
-        bedStr = islandToBed(islandT,genesO,tree,islandColorD)
+        bedStr = islandToBed(islandT,islandColorD,originFamiliesO,genesO,speciesRtreeO,rootFocalClade)
         f.write(bedStr+'\n')
     f.close()
 
-def createAllBeds(islandByStrainD,genesO,tree,strainNamesT,paramD):
+def createAllBeds(islandByStrainD,genesO,speciesRtreeO,strainNamesT,paramD,originFamiliesO):
     '''Writes beds to file.'''
     
     bedFilePath = paramD['bedFilePath']
     potentialRgbL = paramD['potentialRgbL']
     bedNumTries = paramD['bedNumTries']
-
+    rootFocalClade = paramD['rootFocalClade']
+    
     # create a set of all leaf nodes outside the rootFocalClade
-    allLeavesS = set(trees.leafList(tree))
-    focalLeavesS = set(trees.leafList(trees.subtree(tree,paramD['rootFocalClade'])))
+    allLeavesS = set(speciesRtreeO.leaves())
+    focalLeavesS = set(speciesRtreeO.subtree(paramD['rootFocalClade']).leaves())
     nodesOutsideFocalCladeS= allLeavesS - focalLeavesS
     
     # if directory for beds doesn't exist yet, make it
@@ -164,7 +169,7 @@ def createAllBeds(islandByStrainD,genesO,tree,strainNamesT,paramD):
     
     for strain in islandByStrainD:
         bedFileName = bedDir+strain+bedExtension
-        writeStrainBed(islandByStrainD,genesO,tree,strain,bedFileName,islandColorD)
+        writeStrainBed(islandByStrainD,genesO,originFamiliesO,strain,bedFileName,islandColorD,speciesRtreeO,rootFocalClade)
 
     #print('Number of islands miscolored is '+str(numberOfIslandsMiscolored)+' after '+str(bedNumTries)+' tries.',file=sys.stderr)
 

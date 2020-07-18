@@ -108,13 +108,13 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     gtFileStem = 'aabrhHardCoreFam'
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     aabrhHardCoreGeneTreesFN = paramD['aabrhHardCoreGeneTreesFN']
-    outSpeciesTreeFN = paramD['treeFN'] # for main output
+    outSpeciesTreeFN = paramD['speciesTreeFN'] # for main output
     deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
     outGroupTaxaL = [paramD['outGroup']]
 
     # if tree file already exists, throw error
-    if os.path.isfile(paramD['treeFN']):
-        raise IOError("The tree file " + paramD['treeFN'] + " already exists.")
+    if os.path.isfile(outSpeciesTreeFN):
+        raise IOError("The tree file " + outSpeciesTreeFN + " already exists.")
 
     ## make gene tree for each aabrh hard Core set
     # add numbering to list
