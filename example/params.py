@@ -160,7 +160,11 @@ coreSynWsize = 20
 # gene on that side.
 minCoreSynThresh = 0.5
 
-# DTLOR event costs. Ints.
+# Family formation
+# maximum size of initial families (and gene trees for reconcilation)
+maxIfamSize = 25
+
+# DTLOR
 duplicationCost = 3
 transferCost = 4
 lossCost = 4

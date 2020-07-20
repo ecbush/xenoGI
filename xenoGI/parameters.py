@@ -63,13 +63,6 @@ nonHomologRightPeakLimit = 0.6
 
 ## Thresholds
 
-# quantile to use when getting absMinRawThresholdForHomology
-# from aabrh raw scores for a strain pair
-quantileForMinRawThreshold = 0.05
-
-# floor for absMinRawThresholdForHomology
-defaultAbsMinRawThresholdForHomology = 0.5
-
 # quantiles for synteny threshold calculation
 quantileForObtainingSynThresholds = 0.1
 multiplierForObtainingSynThresholds = 0.75

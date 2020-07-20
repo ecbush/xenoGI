@@ -17,7 +17,7 @@ originFamilies object.
     '''
 
     # threshold for maximum size of gene tree, if above, split
-    maxFamilySize=25
+    maxIfamSize = paramD['maxIfamSize']
 
     # define some variables
     initFamilyFN = paramD['initFamilyFN']
@@ -29,14 +29,13 @@ originFamilies object.
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # create initial families
-    initialFamiliesO, locusMapD=createInitialFamiliesO(maxFamilySize,speciesRtreeO,scoresO,genesO,aabrhHardCoreL,paramD)
-
+    initialFamiliesO, locusMapD=createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,maxIfamSize,strainNamesT)
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
     print("Initial families written out to %s"%initFamilyFN,file=sys.stderr)
-
+    
     # make gene family trees
     # TEMP COMMENT
     trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
@@ -68,7 +67,6 @@ originFamilies object.
     writeFamilyFormationSummary(originFamiliesO,outputSummaryF)
 
     return originFamiliesO
-
 
 
 ## Support functions
@@ -200,7 +198,7 @@ score.
 
 #### Create initial families object
 
-def createInitialFamiliesO(maxFamilySize,speciesRtreeO,scoresO,genesO,aabrhHardCoreL,paramD):
+def createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,maxIfamSize,strainNamesT):
     '''Given a scoresO object, create initial genes families based on
     blast connectivity and return as a familiesO object.
     '''
@@ -208,33 +206,51 @@ def createInitialFamiliesO(maxFamilySize,speciesRtreeO,scoresO,genesO,aabrhHardC
     # get synteny thesholds for locus family formation
     synThresholdD = getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO)
 
+    # needed for PhiGs to break big families up
+    scoresO.createNodeConnectD()
+    scoresO.createAabrhScoreSummaryD(strainNamesT,aabrhHardCoreL,genesO)
+    
     # get initial families as list of sets
     initFamilySetL, degreeD = createInitialFamilySetL(scoresO, genesO)
     print("Number of initial families before size control:",len(initFamilySetL),file=sys.stderr)
-    
+
     initFamilySetL.sort(reverse=True,key=len)  #sort by number of genes in descending order
-    oversizedFamiliesL = [familyS for familyS in initFamilySetL if len(familyS)>maxFamilySize]
-    print("Number of initial families with more than %d genes: %d"%(maxFamilySize,len(oversizedFamiliesL)))
+
+    # split oversized families
+    properlySizedFamilySetL = []
+    numOversized = 0
+    for familyS in initFamilySetL:
+        if len(familyS) < maxIfamSize:
+            properlySizedFamilySetL.append(familyS)
+        else:
+            numOversized += 1
+            splitL = []
+            phigsL = splitOversizedFamUsingPhiGs(familyS,genesO,speciesRtreeO,scoresO,paramD)
+            for splitS in phigsL:
+                if len(splitS) < maxIfamSize:
+                    splitL.append(splitS)
+                else:
+                    # failsafe, split by locus family
+                    tempLocusFamLL=divideInitialFamilyIntoLocusFamilies(splitS,genesO,scoresO,paramD,synThresholdD)
+                    splitByLocFamsL=splitOversizedFamByLocus(splitS,scoresO,maxIfamSize,tempLocusFamLL)
+                    for locSplitS,_ in splitByLocFamsL:
+                        splitL.append(locSplitS)
+
+            splitLenL=[len(fam) for fam in splitL]
+            
+            properlySizedFamilySetL.extend(splitL)
+    
+    print("Number of initial families with more than %d genes: %d"%(maxIfamSize,numOversized))
+        
     # for index, family in enumerate(oversized): 
     #     visualize_connectivity(family,"oversized_family_%d"%index,scoresO,degreeD)
 
-    # divide these families into locus families, and split oversized
+    # divide these families into locus families
     initFamilyDivIntoLocFamsL=[]
-    for i,familyS in enumerate(oversizedFamiliesL):
-        # visualize_connectivity(familyS,"oversizedFam_%d"%i,scoresO, degreeD)
+    for familyS in properlySizedFamilySetL:
         locusFamLL=divideInitialFamilyIntoLocusFamilies(familyS, genesO,scoresO,paramD,synThresholdD)  #list of lists
-        splitFamsL=splitOversizedFamByLocus(familyS, scoresO,maxFamilySize, locusFamLL)
-        for j, (familyS, locusFamLL) in enumerate(splitFamsL):
-            # visualize_connectivity(familyS,"%i_postSplit_%d"%(i,j),scoresO)
-            initFamilyDivIntoLocFamsL.append((len(familyS),familyS,locusFamLL))
-            
-    for familyS in initFamilySetL[len(oversizedFamiliesL):]:
-        locusFamLL=divideInitialFamilyIntoLocusFamilies(familyS, genesO,scoresO,paramD,synThresholdD)
         initFamilyDivIntoLocFamsL.append((len(familyS),familyS,locusFamLL))
-      
-    # sort the list, descending by size (so treeFNs in dir are thus ordered)
-    initFamilyDivIntoLocFamsL.sort(reverse=True,key=lambda x: x[0])
-
+            
     # create output objects
     locusMapD={}
     # construct Family object for initial families
@@ -378,7 +394,272 @@ in that family, add the family to the object.
     famNumCounter+=1
     return locusFamNumCounter, famNumCounter,totalAddedTolocusFamilies
 
-def splitOversizedFamByLocus(family, scoresO,maxFamilySize, locusFamLL):
+## Code for splitting large initial families
+
+# PhiGs
+
+def splitOversizedFamUsingPhiGs(familyS,genesO,speciesRtreeO,scoresO,paramD):
+    '''Split families that are too large using the PhiGs
+algorithm. Returns list of sets.'''
+
+    # get mrca
+    speciesS=set()
+    for geneNum in familyS:
+        species = genesO.numToStrainName(geneNum)
+        speciesS.add(species)
+    mrca = speciesRtreeO.findMrca(list(speciesS))
+
+    # get tree rooted at this node
+    if mrca == speciesRtreeO.rootNode:
+        outerRtreeO = speciesRtreeO
+    else:
+        outerRtreeO = speciesRtreeO.subtree(mrca)
+    
+    # geneUsedD keeps track of which genes have been used.
+    geneUsedD = {gene: False for gene in familyS}
+
+    # thresholds for fams on tips if we have to use PhiGs
+    tipFamilyRawThresholdD = getTipFamilyRawThresholdD(speciesRtreeO,scoresO,paramD)
+    
+    outFamL = []
+    
+    for node in outerRtreeO.preorder():
+
+        if outerRtreeO.isLeaf(node):
+            geneUsedD,tempL = createFamiliesAtTip(familyS,geneUsedD,genesO,node,tipFamilyRawThresholdD,scoresO)
+            outFamL.extend(tempL)
+            
+        else:       
+            # not a tip
+            subRtreeO = outerRtreeO.subtree(node)
+            geneUsedD,tempL = createFamiliesDescendingFromInternalNode(familyS,subRtreeO,genesO,scoresO,geneUsedD)
+            outFamL.extend(tempL)
+
+
+    assert(all(geneUsedD.values())) # make sure we got all genes in familyS
+    
+    return outFamL
+
+def getTipFamilyRawThresholdD(speciesRtreeO,scoresO,paramD):
+    '''Return a dictionary containing a raw score threshold for each
+tip. This threshold is for use in forming families on the tip,
+defining the minimum distance within which we will combine two genes
+into a family.'''
+
+    tipFamilyRawThresholdD = {}
+    for leaf in speciesRtreeO.leaves():
+        # get average score at core genes for neighbors
+
+        # put in call to get average...
+        threshold,std = getNearestNeighborAverageScore(leaf,speciesRtreeO,scoresO)
+        
+        # multiply in an adjustment parameter (since average core gene
+        # scores of neighbors would be way too high)
+        threshold *= paramD['singleStrainFamilyThresholdAdjust']
+
+        tipFamilyRawThresholdD[leaf] = threshold
+
+    return tipFamilyRawThresholdD
+
+def getNearestNeighborAverageScore(species,speciesRtreeO,scoresO):
+    '''Get all the nearest neighbors of species, and collect the average
+score for each against species at aabrh core genes. Return the average
+of this. Assumes that scoreSummaryD has been initialized in
+scoresO.
+    '''
+    neighbL = speciesRtreeO.getNearestNeighborL(species)
+    avScore = 0
+    avStd = 0
+    for neighb in neighbL:
+        sc,std = scoresO.scoreSummaryD[(species,neighb)]
+        avScore += sc
+        avStd += std
+    avScore /= len(neighbL)
+    avStd /= len(neighbL)
+    return avScore,avStd
+
+def createFamiliesAtTip(familyS,geneUsedD,genesO,leafNode,tipFamilyRawThresholdD,scoresO):
+    '''Create at families from familyS genes present at this leaf
+node. Because we've come through the nodes in pre-order, we know that
+all unused genes at this node are in families with mrca here.
+
+    '''
+    outL = []
+    unusedGenesAtThisTipS=set()
+    for geneNum in familyS:
+        if not geneUsedD[geneNum]:
+            # not used yet
+            strain = genesO.numToStrainName(geneNum)
+            if strain == leafNode:
+                unusedGenesAtThisTipS.add(geneNum)
+
+    # pull out the threshold we'll use given the strain
+    tipFamilyRawThreshold = tipFamilyRawThresholdD[leafNode]
+
+    # Now we pull out families greedily. Simply take a gene,
+    # and get all other genes that isSameFamily says are shared
+    while len(unusedGenesAtThisTipS)>0:
+        seed = unusedGenesAtThisTipS.pop()
+        newFamS=set([seed])
+        for newGene in unusedGenesAtThisTipS:
+
+            if scoresO.isEdgePresentByEndNodes(seed,newGene):
+
+                rawSc = scoresO.getScoreByEndNodes(seed,newGene,'rawSc')
+                if rawSc >= tipFamilyRawThreshold:
+                    newFamS.add(newGene)
+
+        # newFamS now contains a set of genes with significant
+        # similarity. Remove it from unusedGenesAtThisTipS,
+        # and create a new family from it.
+        unusedGenesAtThisTipS.difference_update(newFamS)
+        for gene in newFamS: # mark these as used
+            geneUsedD[gene] = True
+
+        outL.append(newFamS)
+
+    return geneUsedD,outL
+            
+def createFamiliesDescendingFromInternalNode(familyS,subRtreeO,genesO,scoresO,geneUsedD):
+    '''Creates all families descending from the node which is the root of
+subRtreeO. Returns a list of sets.
+
+    '''
+    outL = [] 
+    leftS,rightS = createLRSets(familyS,subRtreeO,genesO)
+    seedL = createSeedL(leftS,rightS,scoresO,genesO)
+    for seed in seedL:
+        # each seed corresponds to a prospective gene family.
+        seedRawSc,seedG1,seedG2 = seed
+
+        if seedRawSc == -float('inf'):
+            # we've gotten to the point in the seed list with
+            # genes having no match on the other branch
+            break
+        else:
+            # getting initial family, using only raw score and synteny bump
+            famS=createFamilyFromSeed(seedG1,seedG2,geneUsedD,scoresO,leftS,rightS,genesO,seedRawSc)
+
+            if famS == None:
+                # one of the genes in the family was already
+                # used, so createFamilyFromSeed returned None
+                continue
+            else:
+                # none of the genes in famS used yet
+                for gene in famS:
+                    geneUsedD[gene] = True
+
+                outL.append(famS)
+
+    return geneUsedD,outL
+
+def createLRSets(familyS,subRtreeO,genesO):
+    '''For a given subtree, obtain all genes in species in left branch and
+put in leftS, and all genes from species in right branch to
+rightS.
+
+    '''
+    # get children, species tree must be bifurcating
+    lchild,rchild = subRtreeO.children(subRtreeO.rootNode) 
+
+    leftLeavesS = set(subRtreeO.subtree(lchild).leaves())
+    rightLeavesS = set(subRtreeO.subtree(rchild).leaves())
+
+    leftS=set()
+    rightS=set()
+    for geneNum in familyS:
+        strain = genesO.numToStrainName(geneNum)
+        if strain in leftLeavesS:
+            leftS.add(geneNum)
+        else:
+            rightS.add(geneNum)
+        
+    return(leftS,rightS)
+    
+def createSeedL(leftS,rightS,scoresO,genesO):
+    '''Create a list which has the closest match for each gene on the
+opposite side of the tree. e.g. if a gene is in tree[1] then we're
+looking for the gene in tree[2] with the closest match. For each gene
+we get this closest match, put in a list, sort, and return.
+
+    '''
+    seedL=[]
+    for gene in leftS:
+        seedL.append(closestMatch(gene,rightS,scoresO,genesO))
+    for gene in rightS:
+        seedL.append(closestMatch(gene,leftS,scoresO,genesO))
+    seedL.sort(reverse=True)
+    return seedL
+
+def closestMatch(gene,S,scoresO,genesO):
+    '''Find the closest match to gene among the genes in the set S in the
+graph scoresO.
+    '''
+    bestGene=None
+    bestEdgeScore = -float('inf')
+    connectL = scoresO.getConnectionsGene(gene)
+    if connectL != None:
+        for otherGene in connectL:
+            if otherGene in S:
+                bestEdgeScore = scoresO.getScoreByEndNodes(gene,otherGene,'rawSc')
+                bestGene = otherGene
+    return bestEdgeScore, gene, bestGene
+
+def createFamilyFromSeed(g1,g2,geneUsedD,scoresO,leftS,rightS,genesO,thisFamRawThresh):
+    '''Based on a seed (seedScore, g1, g2) search for a family. Using the
+PhiGs approach, we collect all genes which are closer to members of
+the family than the two seeds are from each other. Returns a set
+containing genes in the family.
+
+    '''
+    if geneUsedD[g1] or geneUsedD[g2]:
+        # one of these has been used already, stop now.
+        return None
+
+    famS = set()
+    genesToSearchForConnectionsS = set([g1,g2])
+
+    while len(genesToSearchForConnectionsS) > 0:
+        
+        matchesS = getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,genesO,thisFamRawThresh,geneUsedD)
+
+        if matchesS == None:
+            return None
+        
+        famS.update(genesToSearchForConnectionsS)
+        genesToSearchForConnectionsS = matchesS
+        
+    return famS
+
+def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,genesO,thisFamRawThresh,geneUsedD):
+    '''Helper that actually gets genes that belong in this family'''
+    matchesS=set()
+    for famGene in genesToSearchForConnectionsS:
+        for newGene in scoresO.getConnectionsGene(famGene):
+            if newGene in leftS or newGene in rightS:
+                # it is from a species descended from the node
+                # we're working on
+                if newGene not in genesToSearchForConnectionsS and newGene not in famS:
+                    # it shouldn't be in our current list to search,
+                    # or be one we've already put in the family (or
+                    # we'll waste effort)
+                    rawSc = scoresO.getScoreByEndNodes(famGene,newGene,'rawSc')
+                    if rawSc >= thisFamRawThresh:
+                        # If its within the seed distance, add it
+                        # (basic PhiGs approach). we have the =
+                        # there in case thisFamRawThresh is 1.
+                        if geneUsedD[newGene]:
+                            # this one's been used already. That
+                            # means the whole family should be
+                            # thrown out. Just stop now.
+                            return None
+                        else:
+                            matchesS.add(newGene)
+    return matchesS
+
+## 
+
+def splitOversizedFamByLocus(family, scoresO,maxIfamSize, locusFamLL):
     """Split families that are too large without breaking up locus
     families.  Returns a list of new smaller families with their locus
     families in (family, [locus families]) pair
@@ -417,10 +698,10 @@ def splitOversizedFamByLocus(family, scoresO,maxFamilySize, locusFamLL):
             #current_loc should already be deleted form the list
             max_ind=numpy.argmax([similarity[current_loc[0]][other_loc[0]] for other_loc in locusFamLL])
             current_loc=locusFamLL[max_ind]
-        if len(current_loc)>maxFamilySize:
+        if len(current_loc)>maxIfamSize:
             print("There is a locus family with size over threshold, putting that as one initial family")
         #try putting into the current bucket
-        if (currentSize==0) or (currentSize+len(current_loc)<=maxFamilySize):
+        if (currentSize==0) or (currentSize+len(current_loc)<=maxIfamSize):
             #always allow putting into empty bucket, or if adding to bucket doesn't overflow
             current_bucket.append(current_loc)
             currentSize+=len(current_loc)
@@ -482,20 +763,20 @@ def divideInitialFamilyIntoLocusFamilies(familyS, genesO, scoresO, paramD,synThr
 
     
     #if there are too few genes, we should probably not cluster further
-    if len(familyS)<=minGenes:
+    if len(familyS) < minGenes:
         locusFamilyL=list(familyS)
         return [locusFamilyL]
     #construct the fully connected graph with weighted edges 
     num_gene=len(familyS)
-    genesAr=numpy.array(list(familyS))
+    genesL=list(familyS)
     geneNeighborsD={}
     #note there is no edge going from one to self.
-    
+
     #loop over all pairs of genes
-    for i in range(len(genesAr)):
-        for j in range(i+1, len(genesAr)):
-            gene1=genesAr[i]
-            gene2=genesAr[j]
+    for i in range(len(genesL)):
+        for j in range(i+1, len(genesL)):
+            gene1=genesL[i]
+            gene2=genesL[j]
             if scoresO.isEdgePresentByEndNodes(gene1,gene2):
                 sameLocusFam = isSameLocusFamily(gene1,gene2,scoresO,genesO,paramD,synThresholdD)
                 #the graph is symmetrical
@@ -525,7 +806,7 @@ def divideInitialFamilyIntoLocusFamilies(familyS, genesO, scoresO, paramD,synThr
 
     locusFamLL=[]
     visitedS=set()
-    for gene in genesAr: 
+    for gene in genesL: 
         if gene not in visitedS: 
             tempFamL =[]
             newFamL=stronglyConnected(tempFamL, gene, visitedS, geneNeighborsD)
