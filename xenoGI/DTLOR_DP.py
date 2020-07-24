@@ -252,26 +252,25 @@ def DP(host_tree, parasite_tree, phi, locus_map, D, T, L, Origin, R):
                
                 # Compute transfer table
                 if not vp_is_a_tip:
-                    #TODO: the transferred child keeps the same synteny?
                     # Over all possible children syntenies
-                    def get_transfer(new_l):
-                        synteny_cost = delta(lp, new_l)
+                    def get_transfer(new_l1, new_l2):
+                        synteny_cost = delta(lp, new_l1) + delta(lp, new_l2)
                         # Cost to transfer ep2
                         # Transferred child (ep2) keeps the same syntenic location (lp)
                         ep2_cost, ep2_locations = best_switch[(ep2, eh, lp)]
-                        ep2_switch_cost = T + synteny_cost + C[(ep1, eh, new_l)][0] + ep2_cost
-                        ep2_switch_events = [("T", (ep1, vh, new_l), (ep2, location[1], lp)) for location in \
+                        ep2_switch_cost = T + synteny_cost + C[(ep1, eh, new_l1)][0] + ep2_cost
+                        ep2_switch_events = [("T", (ep1, vh, new_l1), (ep2, location[1], new_l2)) for location in \
                                 ep2_locations]
                         ep2_switch = (ep2_switch_cost, ep2_switch_events)
                         # Cost to transfer ep1
                         # Now ep1 is being transferred and keeps lp
                         ep1_cost, ep1_locations = best_switch[(ep1, eh, lp)]
-                        ep1_switch_cost = T + synteny_cost + C[(ep2, eh, new_l)][0] + ep1_cost
-                        ep1_switch_events = [("T", (ep2, vh, new_l), (ep1, location[1], lp)) for location in \
+                        ep1_switch_cost = T + synteny_cost + C[(ep2, eh, new_l1)][0] + ep1_cost
+                        ep1_switch_events = [("T", (ep2, vh, new_l1), (ep1, location[1], new_l2)) for location in \
                                 ep1_locations]
                         ep1_switch = (ep1_switch_cost, ep1_switch_events)
                         return find_min_events([ep2_switch, ep1_switch])
-                    transfer_list = [get_transfer(l1) for l1 in allsynteny]
+                    transfer_list = [get_transfer(l1, l2) for l1 in allsynteny for l2 in allsynteny]
                     transfers = find_min_events(transfer_list)
                 else:
                     transfers = (Infinity, [])
@@ -362,8 +361,9 @@ def DP(host_tree, parasite_tree, phi, locus_map, D, T, L, Origin, R):
 
     # This picks a random MPR from the optimal ones
     MPR = find_MPR(best_roots, C)
-    #G = MPR_graph(best_roots, C)
-    return MPR, min_cost
+    G = MPR_graph(best_roots, C)
+    c = count_mprs(best_roots, G)
+    return min_cost, MPR, c
 
 def find_MPR(best_roots, C):
     """
@@ -404,6 +404,30 @@ def MPR_graph_helper(nodes, C, G):
             if e_right is not None:
                 MPR_graph_helper([e_right], C, G)
     return G
+
+def count_mprs(best_roots, G):
+    """
+    Count the number of MPRs for an mpr graph
+    """
+    return count_mprs_helper(best_roots, G)
+
+def count_mprs_helper(nodes, G):
+    totals = []
+    for mapping in nodes:
+        events = G[mapping]
+        e_counts = []
+        for e_type, e_left, e_right in events:
+            left_count = 1
+            if e_left is not None:
+                left_count = count_mprs_helper([e_left], G)
+            right_count = 1
+            if e_right is not None:
+                right_count = count_mprs_helper([e_right], G)
+            e_count = left_count * right_count
+            e_counts.append(e_count)
+        total = sum(e_counts)
+        totals.append(total)
+    return sum(totals)
 
 def preorderDTLORsort(DTLOR, ParasiteRoot):
     """This takes in a DTL reconciliation graph and parasite root and returns 

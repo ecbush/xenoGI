@@ -3,6 +3,7 @@ __version__ = "3.0.0"
 import sys, glob, os
 from . import parameters,genbank,blast,trees,genomes,Score,scores,families,islands,analysis,islandBed
 from .Tree import *
+from .Family import *
 
 def main():
     
@@ -375,10 +376,69 @@ def debugWrapper(paramD):
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
+
+    from enum import Enum, auto
+    from .new_DTLOR_DP import NodeType,GraphType
+
+    familyFN = paramD['initFamilyFN']
+
+    ROOT = NodeType.ROOT
+
+    """                
+    ###
+    #def readFamilies(familyFN,speciesRtreeO,genesO):
+    #    '''Read the family file named familyFN, creating a Families object.
+    #    '''
+    familiesO = Families(speciesRtreeO)
+    f=open(familyFN,'r')
+    while True:
+        s=f.readline()
+        if s=='':
+            break
+        L=s.split('\t')
+        famNum=int(L[0])
+        mrca = L[1]
+
+        geneRtreeO = Rtree()
+        geneRtreeO.fromString(L[2])
+
+        recon = eval(L[3])
+        # eval didn't like the string inf.
+        sourceFam = eval(L[4])
+        familiesO.initializeFamily(famNum,mrca,geneRtreeO,recon,sourceFam)
+
+        lfL = L[5:]
+        for lfStr in lfL:
+            lfSplitL = lfStr.rstrip().split(',')
+            locusFamNum=int(lfSplitL[0])
+            lfMrca = lfSplitL[1]
+            locusNum = eval(lfSplitL[2])
+
+            if lfSplitL[3] == 'None':
+                reconRootKey = None
+            else:
+                geneTreeLoc,geneTreeNB = lfSplitL[3].split('_')
+                reconRootKey = (geneTreeLoc,geneTreeNB)
+
+            geneL=[]
+            for geneName in lfSplitL[4:]:
+                geneNum = int(geneName.split('_')[0])
+                geneL.append(geneNum)
+            lfO = LocusFamily(famNum,locusFamNum,lfMrca,locusNum,reconRootKey)
+            lfO.addGenes(geneL,genesO)
+            familiesO.addLocusFamily(lfO)
+
+    f.close()
+        #return familiesO
+
+    ###
     
-    """            
+    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
+
+
+
+    
+
     
     with open("reconTemp.tsv","r") as f:
         s=f.readline() # skip first line
@@ -386,11 +446,9 @@ def debugWrapper(paramD):
             s=f.readline()
             if s=="":
                 break
-            initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
+            initFamNum,optRootedGeneTree,optG,minCost,argT = s.rstrip().split("\t")
             initFamNum = eval(initFamNum)
-            optMPR=eval(optMPR)
-            if initFamNum == 2726:
-                break
+            optMPR=eval(G)
     #rtree = Rtree()
     #rtree.fromString(optRootedGeneTree)
     #reconD = families.convertReconBranchToNode(optMPR,rtree)

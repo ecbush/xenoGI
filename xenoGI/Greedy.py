@@ -1,7 +1,6 @@
-
 # Greedy.py
 #Ivy Liu  
-#Modified from code by
+# Modified from code by
 # Srinidhi Srinivasan, Juliet Forman
 # June 2015
 
@@ -236,5 +235,4 @@ def Greedy(DTLOR, ParasiteTree):
             for i in range(len(currentDTLOR[key])-1):
                 if currentDTLOR[key][i][-1] != 0:
                     collected = True
-
     return scores, rec
