@@ -8,6 +8,22 @@ from .Tree import *
 from .analysis import printTable
 #import matplotlib.pyplot as plt
 
+#### Globals
+
+COSPECIATION = new_DTLOR_DP.NodeType.COSPECIATION
+DUPLICATION =  new_DTLOR_DP.NodeType.DUPLICATION
+LOSS =  new_DTLOR_DP.NodeType.LOSS
+TRANSFER =  new_DTLOR_DP.NodeType.TRANSFER
+LOCATION_ASSIGNMENT =  new_DTLOR_DP.NodeType.LOCATION_ASSIGNMENT
+LOCATION_LIST =  new_DTLOR_DP.NodeType.LOCATION_LIST
+LOCATION_MAPPING =  new_DTLOR_DP.NodeType.LOCATION_MAPPING
+SPECIES_LIST =  new_DTLOR_DP.NodeType.SPECIES_LIST
+SPECIES_MAPPING =  new_DTLOR_DP.NodeType.SPECIES_MAPPING
+ORIGIN =  new_DTLOR_DP.NodeType.ORIGIN
+ROOT =  new_DTLOR_DP.NodeType.ROOT
+REARRANGEMENT =  new_DTLOR_DP.NodeType.REARRANGEMENT
+ORIGIN_EVENT =  new_DTLOR_DP.NodeType.ORIGIN_EVENT
+
 #### Main function
 
 def createFamiliesO(speciesRtreeO,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,outputSummaryF):
@@ -37,8 +53,7 @@ originFamilies object.
     print("Initial families written out to %s"%initFamilyFN,file=sys.stderr)
     
     # make gene family trees
-    # TEMP COMMENT
-    #trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
+    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
     print("Finished making gene trees")
 
     # load gene trees
@@ -48,12 +63,6 @@ originFamilies object.
     multifurcatingL = [initFamNum for initFamNum,_ in multifurcatingL]
     
     # reconcile
-
-    # TEMP
-    with open("reconTemp.tsv","w") as f:
-        print("",file=f) # blank temp file
-    # TEMP
-    
     initialFamiliesO = reconcileAllGeneTrees(speciesRtreeO,bifurcatingL,initialFamiliesO,locusMapD,genesO,paramD)
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families updated with reconciliations and gene trees",file=sys.stderr)    
@@ -72,7 +81,6 @@ originFamilies object.
     
 def homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD):
     '''Check if the number of genes in the hard core is low. Print warning if so. Also check for homology peak in raw scores histogram.'''
-
 
     ## Check number of hard core genes
     # figure out average number of genes per genome
@@ -395,8 +403,6 @@ in that family, add the family to the object.
 
 ## Code for splitting large initial families
 
-# PhiGs
-
 def splitOversizedFamUsingPhiGs(familyS,genesO,speciesRtreeO,scoresO,paramD):
     '''Split families that are too large using the PhiGs
 algorithm. Returns list of sets.'''
@@ -656,8 +662,6 @@ def getFamilyMatches(genesToSearchForConnectionsS,scoresO,leftS,rightS,famS,gene
                             matchesS.add(newGene)
     return matchesS
 
-## 
-
 def splitOversizedFamByLocus(family, scoresO,maxIfamSize, locusFamLL):
     """Split families that are too large without breaking up locus
     families.  Returns a list of new smaller families with their locus
@@ -851,7 +855,6 @@ boolean.
 
 #### Family formation summary 
 
-
 def writeFamilyFormationSummary(familiesO,outputSummaryF):
     '''Write a summary of the families in familiesO to the file handle
 outputSummaryF.
@@ -947,20 +950,6 @@ def reconcileAllGeneTrees(speciesRtreeO,geneTreeL,initialFamiliesO,locusMapD,gen
     with Pool(processes=paramD['numProcesses']) as p:
         for initFamNum,optGeneRtreeO,optG,minCost in p.imap_unordered(reconcile, argumentL):
             
-            # TEMP
-            def findArg(initFamNum,argumentL):
-                for argT in argumentL:
-                    if argT[0] == initFamNum:
-                        return argT
-                return None
-
-            argT=findArg(initFamNum,argumentL)
-            with open("reconTemp.tsv","a") as f:
-                outL = [str(initFamNum),optGeneRtreeO.fileStr(),str(optG),str(minCost),str(argT)]
-                outStr = "\t".join(outL)
-                print(outStr,file=f)
-            # TEMP
-                
             # store
             ifam = initialFamiliesO.getFamily(initFamNum)
             ifam.addGeneTree(optGeneRtreeO)
@@ -968,7 +957,6 @@ def reconcileAllGeneTrees(speciesRtreeO,geneTreeL,initialFamiliesO,locusMapD,gen
             ifam.dtlorCost = minCost
 
     return initialFamiliesO
-
     
 def getTipMapping(geneUtreeO, genesO):
     """
@@ -1033,11 +1021,11 @@ def createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bi
 
     # add in families from reconciliation
     for initFamNum,geneTree in bifurcatingL:
-        print("initFamNum",initFamNum)
         iFam = initialFamiliesO.getFamily(initFamNum)
         sourceFam = iFam.famNum
-        reconD = iFam.getRandomOriginMprReconD()
-        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneRtreeO,iFam.reconD,originFamiliesO,sourceFam,genesO)
+        reconD = iFam.getRandomOriginMprReconD(speciesRtreeO.preorder())
+
+        originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneTreeO,reconD,originFamiliesO,sourceFam,genesO)
 
     return originFamiliesO
         
@@ -1054,6 +1042,8 @@ corresponding initial family.
             # should be single gene family
             geneRtreeO,reconD = createSingleGeneFamilyGeneTreeRecon(initFamO,genesO)
             originFamiliesO.initializeFamily(famNum,initFamO.mrca,"origin",geneRtreeO,reconD)
+
+        originFamiliesO.getFamily(famNum).sourceFam = initFamNum
             
         for initLocFamO in initFamO.getLocusFamilies():
             locFamNum = originFamiliesO.getNumLocusFamilies() # num for new loc fam
@@ -1089,7 +1079,6 @@ def addOriginFamilyFromReconciliation(geneRtreeO,reconD,originFamiliesO,sourceFa
 families. One origin family for each origin event.
 
     '''
-    
     # get origin defined trees
     branchOriginL = getBranchesWithSpecifiedEvents(reconD,"O")
     originTreeL = splitTreeByOrigin(geneRtreeO,branchOriginL)
@@ -1098,8 +1087,14 @@ families. One origin family for each origin event.
     for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,reconD):
         famNum = originFamiliesO.getNumFamilies()
         keyNB = (geneRtreeO.rootNode,'n')
-        speciesMrca = splitReconD[keyNB][0][1] # remember, the value in reconD is a list of events
-        originFamiliesO.initializeFamily(famNum,speciesMrca,"origin",geneRtreeO,splitReconD,sourceFam)
+
+        if geneRtreeO.isLeaf(geneRtreeO.rootNode):
+            speciesMrca = geneRtreeO.rootNode
+        else:
+            speciesMrca = splitReconD[keyNB][0][1] # remember, the value in reconD is a list of events
+            
+        originFamiliesO.initializeFamily(famNum,speciesMrca,"origin",geneRtreeO,splitReconD)
+        originFamiliesO.getFamily(famNum).sourceFam = sourceFam
         originFamiliesO = getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO)
 
     return originFamiliesO
@@ -1243,9 +1238,10 @@ def writeFamilies(familiesO,familyFN,genesO,strainNamesT,paramD):
         f.write(fam.fileStr(genesO)+'\n')
     f.close()
 
-def readFamilies(familyFN,speciesRtreeO,genesO):
+def readFamilies(familyFN,speciesRtreeO,genesO,famType):
     '''Read the family file named familyFN, creating a Families object.
     '''
+    
     familiesO = Families(speciesRtreeO)
     f=open(familyFN,'r')
     while True:
@@ -1262,7 +1258,7 @@ def readFamilies(familyFN,speciesRtreeO,genesO):
         recon = eval(L[3].replace('inf', "float('inf')")) # a hack!
         # eval didn't like the string inf.
         sourceFam = eval(L[4])
-        familiesO.initializeFamily(famNum,mrca,geneRtreeO,recon,sourceFam)
+        familiesO.initializeFamily(famNum,mrca,famType,geneRtreeO,recon,sourceFam)
         
         lfL = L[5:]
         for lfStr in lfL:

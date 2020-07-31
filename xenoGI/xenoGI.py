@@ -205,7 +205,7 @@ def makeIslandsWrapper(paramD):
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     
     ## read gene families
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
     ## group gene families into islands
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
@@ -234,7 +234,7 @@ arguments so we can pass in different things in different contexts
     genesO = genomes.genes(paramD['geneInfoFN'])
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
     
     ## analysis
@@ -256,7 +256,7 @@ def createIslandBedWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
     islandByNodeD = islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
@@ -346,8 +346,8 @@ def interactiveAnalysisWrapper(paramD):
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
     gene2FamIslandD = createGene2FamIslandD(islandByNodeD,originFamiliesO)
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
@@ -369,255 +369,17 @@ def debugWrapper(paramD):
     ## Set up the modules a bit differently for interactive mode
     import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
-    from . import DTLOR_DP
-    import copy
+    from . import DTLOR_DP,new_DTLOR_DP
+    import copy,pickle
     from Bio import Phylo
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-
-    from enum import Enum, auto
-    from .new_DTLOR_DP import NodeType,GraphType
-
-    familyFN = paramD['initFamilyFN']
-
-    ROOT = NodeType.ROOT
-
-    """                
-    ###
-    #def readFamilies(familyFN,speciesRtreeO,genesO):
-    #    '''Read the family file named familyFN, creating a Families object.
-    #    '''
-    familiesO = Families(speciesRtreeO)
-    f=open(familyFN,'r')
-    while True:
-        s=f.readline()
-        if s=='':
-            break
-        L=s.split('\t')
-        famNum=int(L[0])
-        mrca = L[1]
-
-        geneRtreeO = Rtree()
-        geneRtreeO.fromString(L[2])
-
-        recon = eval(L[3])
-        # eval didn't like the string inf.
-        sourceFam = eval(L[4])
-        familiesO.initializeFamily(famNum,mrca,geneRtreeO,recon,sourceFam)
-
-        lfL = L[5:]
-        for lfStr in lfL:
-            lfSplitL = lfStr.rstrip().split(',')
-            locusFamNum=int(lfSplitL[0])
-            lfMrca = lfSplitL[1]
-            locusNum = eval(lfSplitL[2])
-
-            if lfSplitL[3] == 'None':
-                reconRootKey = None
-            else:
-                geneTreeLoc,geneTreeNB = lfSplitL[3].split('_')
-                reconRootKey = (geneTreeLoc,geneTreeNB)
-
-            geneL=[]
-            for geneName in lfSplitL[4:]:
-                geneNum = int(geneName.split('_')[0])
-                geneL.append(geneNum)
-            lfO = LocusFamily(famNum,locusFamNum,lfMrca,locusNum,reconRootKey)
-            lfO.addGenes(geneL,genesO)
-            familiesO.addLocusFamily(lfO)
-
-    f.close()
-        #return familiesO
-
-    ###
-    
-    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
-
-
-
-    
-
-    
-    with open("reconTemp.tsv","r") as f:
-        s=f.readline() # skip first line
-        while True:
-            s=f.readline()
-            if s=="":
-                break
-            initFamNum,optRootedGeneTree,optG,minCost,argT = s.rstrip().split("\t")
-            initFamNum = eval(initFamNum)
-            optMPR=eval(G)
-    #rtree = Rtree()
-    #rtree.fromString(optRootedGeneTree)
-    #reconD = families.convertReconBranchToNode(optMPR,rtree)
-
-    initFamNum,speciesRtreeO,geneUtreeO,tipMapD,gtLocusMapD,D,T,L,O,R = argT
-    
-    speciesTreeD = speciesRtreeO.createDtlorD(True)
-    geneTreeD = geneRtreeO.createDtlorD(False)    
-    
-
-
-    rtempL=[]
-    with open("reconTemp.tsv","r") as f:
-        s=f.readline() # skip first line
-        while True:
-            s=f.readline()
-            if s=="":
-                break
-            initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
-            initFamNum = eval(initFamNum)
-            optMPR=eval(optMPR)
-            rtempL.append(initFamNum)
-
-
-    
-    i=0
-    for geneRtreeO in geneUtreeO.iterAllRootedTrees():
-        break
-        print(i)
-        geneTreeD = geneRtreeO.createDtlorD(False)
-        i+=1
-
-
-    newD = {}
-    def traverse(D,newD,node,parentNode):
-        '''Get nodeConnectD for the part of the tree defined by node, and in
-           the oposite direction from parentNode.
-
-        '''
-        oldConnecT=D[node]
-
-        # make sure parent node is first
-        assert(parentNode in oldConnecT)
-        connecL = [parentNode]
-        for tempNode in oldConnecT:
-            if tempNode != parentNode:
-                connecL.append(tempNode)
-                print(connecL)
-        connecT = tuple(connecL)
-
-        newD[node] = connecT # store
-
-        if len(connecT)==1:
-            return
-        else:
-            for child in connecT:
-                if child != parentNode:
-                    traverse(D,newD,child,node)
-            return
-
-
-    
-
-    
-    for k,v in r.nodeConnectD.items():
-        print(k)
-        print(v)
-        print('---')
-    
-    i=0
-    for geneRtreeO in geneUtreeO.iterAllRootedTrees():
-        geneTreeD = geneRtreeO.createDtlorD(False)
-
-        try:
-            DTLOR_DP.postorder(geneTreeD)
-        except:
-            for k,v in geneTreeD.items():
-                print(k)
-                print(v)
-                print('---')
-            break
-        i+=1
-        
-
-    
-
-    D=float(paramD["duplicationCost"])
-    T=float(paramD["transferCost"])
-    L=float(paramD["lossCost"])
-    O=float(paramD["originCost"])
-    R=float(paramD["rearrangeCost"])
-    rootFocalClade = paramD["rootFocalClade"]
-
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     iFamGeneTreeFileStem = 'initFam'
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO)
-    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
-
-
-
-    maxFamilySize=25
-
-    # define some variables
-    initFamilyFN = paramD['initFamilyFN']
-    originFamilyFN =  paramD['originFamilyFN']
-    geneInfoFN = paramD['geneInfoFN']
-    iFamGeneTreeFileStem = paramD['iFamGeneTreeFileStem']
-
-    initialFamiliesO, locusMapD = families.createInitialFamiliesO(maxFamilySize,speciesRtreeO,scoresO,genesO,aabrhHardCoreL,paramD)
-
-    geneUtreeO = Utree()
-    #geneUtreeO.fromNewickFile("initFam000071.tre")
-    geneUtreeO.fromNewickFile("geneFamilyTrees/initFam001800.tre")
-    geneRtreeO = geneUtreeO.root(geneUtreeO.branchPairT[0])
-
-    gtLocusMapD = families.reduceLocusMap(geneUtreeO,locusMapD)
-
-    branchesToReRootS = trees.createBranchesToReRootS(geneUtreeO,gtLocusMapD)
-    
-        
-
-    for lfO in originFamiliesO.iterLocusFamilies():
-        orig = lfO.origin(originFamiliesO)
-        if orig == 'R':
-            print(orig)
-            lfO.printReconByGeneTree(originFamiliesO)
-            print('---')
-
-
-    with open("reconTemp.tsv","r") as f:
-        s=f.readline() # skip first line
-        while True:
-            s=f.readline()
-            if s=="":
-                break
-            initFamNum,optRootedGeneTree,optMPR,minCost,argT = s.rstrip().split("\t")
-            initFamNum = eval(initFamNum)
-            optMPR=eval(optMPR)
-            optRootedGeneTree = eval(optRootedGeneTree)
-            minCost=eval(minCost)
-            argT=eval(argT)
-            
-            reconD = families.convertReconBranchToNode(optMPR,optRootedGeneTree)
-
-            if initFamNum == 1:
-                break
-
-
-            ifam = initialFamiliesO.getFamily(initFamNum)
-            #print(ifam.reconD)
-            ifam.addGeneTree(optRootedGeneTree)
-            ifam.addReconciliation(reconD)
-            #print(ifam.reconD)
-            #print("---")
-
-    families.writeFamilies(initialFamiliesO,"initFamTemp.out",genesO,strainNamesT,paramD)
-            
-
-    print(families.costSum(reconD,D,T,L,O,R))
-
-    families.parseOneBranchEntry(optMPR,('pTop', 'hTop', 4602),'*')
-
-    for geneTree,splitReconD in families.getGeneTreeReconPairs(originTreeL,reconD):
-        print(geneTree)
-        print(splitReconD)
-        print('---')
-    """
-
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
 
     code.interact(local=locals())
 

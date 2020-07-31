@@ -216,153 +216,96 @@ optimal cost?
         '''
         return new_DTLOR_DP.count_MPRs(self.reconD)[(new_DTLOR_DP.NodeType.ROOT,)]
         
-    def getRandomOriginMprReconD(self):
-        '''From the reconciliation graph, get a randomly chosen median mpr,
-convert to our node based format and return as a dict.
+    def getRandomOriginMprReconD(self,preOrderT):
+        '''From the reconciliation graph (dtlor output), get a randomly chosen
+median mpr, convert to our node based format and return as a dict.
 
         '''
+        ## support funcs
 
-        # num mprs TEMP
-        print("Num mprs",self.countMPRs())
+        def getEventTypeStr(eventTypeO):
+            '''Convert from the object representation (from dtlor) of an event to
+a string.
+            '''
+            if eventTypeO == new_DTLOR_DP.NodeType.DUPLICATION:
+                return "D"
+            elif eventTypeO == new_DTLOR_DP.NodeType.TRANSFER:
+                return "T"
+            elif eventTypeO == new_DTLOR_DP.NodeType.LOSS:
+                return "L"
+            elif eventTypeO == new_DTLOR_DP.NodeType.ORIGIN:
+                return "O"
+            elif eventTypeO == new_DTLOR_DP.NodeType.REARRANGEMENT:
+                return "R"
+            elif eventTypeO == new_DTLOR_DP.NodeType.COSPECIATION:
+                return "S"
+            else:
+                # should never get here
+                raise ValueError("Event is not among the D T L O R options.")
+
+        def getSpeciesNodeClosestToTips(speciesTreeLocL,postOrderT):
+            for stLoc in postOrderT:
+                if stLoc in speciesTreeLocL:
+                    return stLoc
+            # should never get here
+            raise ValueError("Species node not in list of postorder nodes from species tree.")
+
+        def determineDTLNodeOrBranch(eventTypeO):
+            '''Determine whether the gene and species locations are on nodes or
+        branches based on the event type.'''
+            if eventTypeO == new_DTLOR_DP.NodeType.DUPLICATION:
+                # implies geneTreeLoc is a node, speciesTreeLoc is a branch
+                return ('n','b')
+            elif eventTypeO == new_DTLOR_DP.NodeType.TRANSFER:
+                # implies geneTreeLoc is a node, speciesTreeLoc is a branch
+                return ('n','b')
+            elif eventTypeO == new_DTLOR_DP.NodeType.LOSS:
+                # implies geneTreeLoc is a branch, speciesTreeLoc is a node
+                return ('b','n')
+            elif eventTypeO == new_DTLOR_DP.NodeType.COSPECIATION:
+                # implies geneTreeLoc is a node, speciesTreeLoc is a node
+                return ('n','n')
+            else:
+                return # should never get here
         
-        # do median later?
-        eventG = new_DTLOR_DP.build_event_graph(self.reconD)
-        mpr = new_DTLOR_DP.find_MPR(eventG)
-        print(mpr)
+        ## main code
+        postOrderT = preOrderT[::-1]
         
-        #reconD = self.convertReconBranchToNode(mpr)
-        
-    def convertReconBranchToNode(self,brReconD):
-        '''Take a reconciliation mpr dictionary in the branch based
-    format. (The format produced by the dtlor dp function, which
-    represents the placement of gene tree branches on the species
-    tree). Return a dictionary where reconciliation events are
-    explicitly characterized as falling at nodes or branches in the
-    gene tree.
-
-        '''
-
-        rootKey = (new_DTLOR_DP.NodeType.ROOT,)
-
-        # get list of events. initial synLocAtTop should be '*'
-        nodeBranchEventsL = getNodeBranchEventsL(brReconD,rootKey,'*')
+        # get event list
+        eventG = new_DTLOR_DP.build_event_median_graph(self.reconD)
+        mpr = new_DTLOR_DP.find_MPR(eventG) # one randomly chosen median mpr
+        eventL = new_DTLOR_DP.get_events(mpr)
 
         # create dict with keys (geneTreeLoc,'n/b')
         reconD = {}
-        for eventKey,eventValue in nodeBranchEventsL:
-            # eventKey is of form (geneTreeLoc,'n/b'). May not be unique
-
+        for eventT in eventL:
+            if eventT[0] in (new_DTLOR_DP.NodeType.ORIGIN,new_DTLOR_DP.NodeType.REARRANGEMENT):
+                (eventTypeO, geneTreeLoc, location, speciesTreeLocL) = eventT
+                eventKey = (geneTreeLoc,'b')
+                eventType = getEventTypeStr(eventTypeO)
+                speciesTreeLoc = getSpeciesNodeClosestToTips(speciesTreeLocL,postOrderT)
+                eventValue = (eventType,speciesTreeLoc,'b',location)
+            elif eventT[0] in (new_DTLOR_DP.NodeType.DUPLICATION,new_DTLOR_DP.NodeType.TRANSFER,new_DTLOR_DP.NodeType.LOSS,new_DTLOR_DP.NodeType.COSPECIATION):
+                (eventTypeO, geneTreeLoc, speciesTreeLoc) = eventT
+                geneTreeNB,speciesTreeNB = determineDTLNodeOrBranch(eventTypeO)
+                eventKey = (geneTreeLoc,geneTreeNB)
+                eventType = getEventTypeStr(eventTypeO)
+                eventValue = (eventType,speciesTreeLoc,speciesTreeNB,None)
+                
+            # add it
             if eventKey in reconD:
                 reconD[eventKey].append(eventValue)
             else:
                 reconD[eventKey] = [eventValue]
-
+                
         return reconD
-
-    def getNodeBranchEventsL(brReconD,brKey,synLocAtTop):
-        '''Traverse the branch based reconciliation dict in preorder starting
-    at brKey. synLocAtTop is the syntenic locus at the top (beginning) of
-    the branch brKey is on.
-
-        '''
-        if brKey not in brReconD:
-            return [] # reached tip of gene tree
-        else:
-            _, child1Mapping, child2Mapping = brReconD[brKey]
-            nodeBranchEventsL = parseOneBranchEntry(brReconD,brKey,synLocAtTop)
-            synLocAtBottom = brKey[2]
-            lL = getNodeBranchEventsL(brReconD,child1Mapping,synLocAtBottom) # left
-            rL = getNodeBranchEventsL(brReconD,child2Mapping,synLocAtBottom) # right
-            return nodeBranchEventsL + lL + rL
-
-    def parseOneBranchEntry(brReconD,brKey,synLocAtTop):
-        '''Given a key to the branch based reconciliation dictionary, extract
-    the event or events (can have multiple when O or R occurs), and return
-    as a list of tuples. This list has all the info from this entry
-    (though there may be other entries which are also on the same gene
-    tree branch). Here is the form of the tuples
-
-    ((geneTreeLoc,geneTreeNB),(eventType,speciesTreeLoc,spTreeNB,synLocAtBottom))
-
-    Each tuple corresponds to one event.
-
-    synLocAtTop is the syntenic locus at the top (beginning) of the branch
-    this entry is on. We use it to identify R events.
-        '''
-        nodeBranchEventsL = [] # for output
-
-        geneTreeLoc,speciesTreeLoc,synLocAtBottom = brKey
-        eventType, child1Mapping,child2Mapping = brReconD[brKey]
-
-        # recognize N events as outside species tree
-        if eventType == 'N':
-            # we are outside the species tree
-            speciesTreeLoc = 'xeno'
-
-        # we want to refer to co-termination events with 'M', not 'C'
-        if eventType == 'C':
-            eventType = 'M'
-
-        # determine branch or node for geneTreeLoc,speciesTreeLoc ('n' or 'b')
-        geneTreeNB,spTreeNB = determineNodeOrBranch(eventType)
-
-        eventKey = (geneTreeLoc,geneTreeNB)
-        eventValue = (eventType,speciesTreeLoc,spTreeNB,synLocAtBottom)
-        nodeBranchEventsL.append((eventKey,eventValue))
-
-        # check for O,R events if eventType is D,T,S or M (not L, because
-        # this may cause it to show up multiple times)
-        if eventType in 'DTSM':
-            if synLocAtTop=='*' and synLocAtBottom!='*':
-                # O event
-                eventKey = (geneTreeLoc,'b') # the branch leading to this DTSM event
-                eventValue = ('O',speciesTreeLoc,'b',synLocAtBottom)
-                nodeBranchEventsL.append((eventKey,eventValue))
-            elif synLocAtTop!='*' and synLocAtTop != synLocAtBottom:
-                # R event
-                eventKey = (geneTreeLoc,'b') # the branch leading to this DTSM event
-                eventValue = ('R',speciesTreeLoc,'b',synLocAtBottom)
-                nodeBranchEventsL.append((eventKey,eventValue))
-
-        return nodeBranchEventsL
-
-    def determineNodeOrBranch(eventType):
-        '''Determine whether the gene and species locations are on nodes or
-    branches based on the event type.'''
-
-        if eventType == 'D': # duplication
-            # implies geneTreeLoc is a node, speciesTreeLoc is a branch
-            return ('n','b')
-        elif eventType == 'T': # transfer
-            # implies geneTreeLoc is a node, speciesTreeLoc is a branch
-            return ('n','b')
-        elif eventType == 'L': # loss
-            # implies geneTreeLoc is a branch, speciesTreeLoc is a node
-            return ('b','n')
-        elif eventType == 'O': # origin
-            # implies geneTreeLoc is a branch, speciesTreeLoc is a branch
-            return ('b','b')
-        elif eventType == 'R': # rearrangement
-            # implies geneTreeLoc is a branch, speciesTreeLoc is a branch
-            return ('b','b')
-        elif eventType == 'M': # cotermination
-            # implies geneTreeLoc is a node, speciesTreeLoc is a node
-            return ('n','n')
-        elif eventType == 'S': # cospeciation
-            # implies geneTreeLoc is a node, speciesTreeLoc is a node
-            return ('n','n')
-        if eventType == 'N': # null, when outside species tree
-            # implies geneTreeLoc is a node, speciesTreeLoc is a branch
-            return ('n','b')
-        else:
-            return # should never get here
 
     def __repr__(self):
         return "<ifam:"+str(self.famNum)+">"
 
 class originFamily(Family):
 
-    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None,sourceFam=None):
+    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None):
         '''Initialize an object of class originFamily.'''
         super().__init__(famNum,mrca,geneTreeO,reconD)
 
@@ -370,7 +313,7 @@ class originFamily(Family):
         # geneTreeO is a rooted tree.
         # reconD is a converted version of a single DTLOR MPR
 
-        self.sourceFam = sourceFam   # ifam num that originFam came from
+        self.sourceFam = None   # ifam num that originFam came from
 
         # attributes not saved to file and must be recreated when needed
         self.geneHistoryD = None
@@ -418,7 +361,7 @@ histories. Returns a list of tuples. Each tuple contains
         # end support funcs
 
         # get history strings
-        hisStrL = createGeneHistoryStringL(self.geneRtreeO,self.geneRtreeO.rootNode)
+        hisStrL = createGeneHistoryStringL(self.geneTreeO,self.geneTreeO.rootNode)
 
         # need to only have string back to rootFocalClade in species tree. cut it off before that. do this by keeping the species Tree placements.
         
@@ -484,7 +427,7 @@ no reconciliation, return empty string.
         
     def printReconByGeneTree(self,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''
-        self.printReconByGeneTreeHelper(self.geneRtreeO,self.geneRtreeO.rootNode,0,fileF)
+        self.printReconByGeneTreeHelper(self.geneTreeO,self.geneTreeO.rootNode,0,fileF)
 
     def printReconByGeneTreeHelper(self,geneRtreeO,node,level,fileF=sys.stdout):
         '''Actual recursive function to print reconciliation. Single letter
@@ -544,7 +487,7 @@ class Families:
         if famType == "initial":
             self.familiesD[famNum] = initialFamily(famNum,mrca,geneTreeO,reconD)
         else:
-            self.familiesD[famNum] = originFamily(famNum,mrca,geneTreeO,reconD,sourceFam)
+            self.familiesD[famNum] = originFamily(famNum,mrca,geneTreeO,reconD)
 
     def addLocusFamily(self, lfO):
         '''Add a LocusFamily. Assumes initializeFamily has already been called
