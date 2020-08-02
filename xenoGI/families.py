@@ -1,4 +1,4 @@
-import sys,numpy,os,random,glob,copy
+import sys,numpy,os,random,glob,copy,shutil
 from scipy.signal import find_peaks
 from Bio import Phylo
 from multiprocessing import Pool
@@ -45,16 +45,21 @@ originFamilies object.
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # create initial families
-    initialFamiliesO, locusMapD=createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,maxIfamSize,strainNamesT)
+    initialFamiliesO, locusMapD=createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,outputSummaryF,maxIfamSize,strainNamesT)
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
-    print("Initial families written out to %s"%initFamilyFN,file=sys.stderr)
     
-    # make gene family trees
-    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem) #create gene tree for each initial family 
-    print("Finished making gene trees")
+    # make gene family trees for each initial family
+    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+    if os.path.isdir(geneFamilyTreesDir):
+        # already exists, remove it. Failure to do this could lead to
+        # weird bugs, if old tree files remained when we run reconcile
+        # (e.g. if rerunning after a parameter change)
+        shutil.rmtree(geneFamilyTreesDir)
+    trees.makeGeneFamilyTrees(paramD,genesO,initialFamiliesO,iFamGeneTreeFileStem)
+    print("Finished making gene trees",file=sys.stderr)
 
     # load gene trees
     singleGeneInitFamNumL,multifurcatingL,bifurcatingL = loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
@@ -205,7 +210,7 @@ score.
 
 #### Create initial families object
 
-def createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,maxIfamSize,strainNamesT):
+def createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,outputSummaryF,maxIfamSize,strainNamesT):
     '''Given a scoresO object, create initial genes families based on
     blast connectivity and return as a familiesO object.
     '''
@@ -219,7 +224,7 @@ def createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,ma
     
     # get initial families as list of sets
     initFamilySetL, degreeD = createInitialFamilySetL(scoresO, genesO)
-    print("Number of initial families before size control:",len(initFamilySetL),file=sys.stderr)
+    print("  Number of initial families before size control:",len(initFamilySetL),file=outputSummaryF)
 
     initFamilySetL.sort(reverse=True,key=len)  #sort by number of genes in descending order
 
@@ -247,7 +252,7 @@ def createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,ma
             
             properlySizedFamilySetL.extend(splitL)
     
-    print("Number of initial families with more than %d genes: %d"%(maxIfamSize,numOversized))
+    print("  Number of initial families with more than %d genes before size control: %d"%(maxIfamSize,numOversized),file=outputSummaryF)
         
     # for index, family in enumerate(oversized): 
     #     visualize_connectivity(family,"oversized_family_%d"%index,scoresO,degreeD)
@@ -900,7 +905,9 @@ binary families with more than 1 genes.
     '''
 
     geneFamilyTreesDir = paramD['geneFamilyTreesDir']
-
+    if not os.path.isdir(geneFamilyTreesDir):
+        raise FileNotFoundError("Directory of gene trees is missing.")
+    
     # dir of gene trees lacks single gene families. Get their numbers.
     singleGeneInitFamNumL=[]
     for initFam in initialFamiliesO.iterFamilies():
@@ -1196,32 +1203,6 @@ the genes in outFreeGeneL, make into a tuple, and add to outLocFamTL.
             return [],[outLocFamT]+childLocFamTL
         else:
             return childFreeGeneL,childLocFamTL
-
-####
-
-def costCheck(minCost,reconD,D,T,L,O,R):
-    '''Sanity check to ensure the events in reconD sum to minCost.'''
-    sm = costSum(reconD,D,T,L,O,R)
-    assert round(sm,3) == round(minCost,3), "Events in this reconcilation don't sum to minCost."
-
-def costSum(reconD,D,T,L,O,R):
-    '''Sum the costs implied by the recon in reconD.'''
-    sm = 0
-    for valL in reconD.values():
-        for eventType,_,_,_ in valL:
-            if eventType == 'D':
-                sm+=D
-            elif eventType == 'T':
-                sm+=T
-            elif eventType == 'L':
-                sm+=L
-            elif eventType == 'O':
-                sm+=O
-            elif eventType == 'R':
-                sm+=R
-            # S, C and N events have no cost
-    return sm
-
         
 #### Input/output
 

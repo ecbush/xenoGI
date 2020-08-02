@@ -360,7 +360,7 @@ def makeGeneFamilyTreesWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
     trees.makeGeneFamilyTrees(paramD,genesO,originFamiliesO)
     
 def debugWrapper(paramD):
@@ -380,7 +380,43 @@ def debugWrapper(paramD):
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     iFamGeneTreeFileStem = 'initFam'
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
+    D=float(paramD["duplicationCost"])
+    T=float(paramD["transferCost"])
+    L=float(paramD["lossCost"])
+    O=float(paramD["originCost"])
+    R=float(paramD["rearrangeCost"])
+    
+    ifam = initialFamiliesO.getFamily(7)
+    reconD=ifam.getRandomOriginMprReconD(speciesRtreeO.preorder())
+    sm = ifam.__costSum__(reconD,D,T,L,O,R)
+    
+    """
+    
+    # examine number of mprs in each recon
+    ctD = {}
+    for ifam in initialFamiliesO.iterFamilies():
+
+        reconD=ifam.getRandomOriginMprReconD(speciesRtreeO.preorder())
+        
+        sm = ifam.__costSum__(reconD,D,T,L,O,R)
+
+        if round(sm,3) != round(ifam.dtlorCost,3):
+            print("costfail",ifam,sm,ifam.dtlorCost)
+        
+        ct = ifam.countMPRs()
+        if ct in ctD:
+            ctD[ct]+=1
+        else:
+            ctD[ct] = 1
+
+    #print("numMpr,num occurances")
+    #for k,v in sorted(ctD.items()):
+    #    print(k,v)
+
+    """
+        
     code.interact(local=locals())
 
     

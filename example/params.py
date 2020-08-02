@@ -162,7 +162,7 @@ minCoreSynThresh = 0.5
 
 # Family formation
 # maximum size of initial families (and gene trees for reconcilation)
-maxIfamSize = 25
+maxIfamSize = 200
 
 # DTLOR
 duplicationCost = 3

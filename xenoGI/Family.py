@@ -200,10 +200,10 @@ attribute.
     
 class initialFamily(Family):
 
-    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None):
+    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None,dtlorCost=None):
         '''Initialize an object of class initialFamily.'''
         super().__init__(famNum,mrca,geneTreeO,reconD)
-        self.dtlorCost = None # cost from dtlor alg
+        self.dtlorCost = dtlorCost # cost from dtlor alg
         
         # for initial families:
         # geneTreeO is presently a rooted tree. Perhaps in future unrooted.
@@ -216,7 +216,7 @@ optimal cost?
         '''
         return new_DTLOR_DP.count_MPRs(self.reconD)[(new_DTLOR_DP.NodeType.ROOT,)]
         
-    def getRandomOriginMprReconD(self,preOrderT):
+    def getRandomOriginMprReconD(self,speciesPreOrderT):
         '''From the reconciliation graph (dtlor output), get a randomly chosen
 median mpr, convert to our node based format and return as a dict.
 
@@ -269,7 +269,7 @@ a string.
                 return # should never get here
         
         ## main code
-        postOrderT = preOrderT[::-1]
+        speciesPostOrderT = speciesPreOrderT[::-1]
         
         # get event list
         eventG = new_DTLOR_DP.build_event_median_graph(self.reconD)
@@ -283,7 +283,7 @@ a string.
                 (eventTypeO, geneTreeLoc, location, speciesTreeLocL) = eventT
                 eventKey = (geneTreeLoc,'b')
                 eventType = getEventTypeStr(eventTypeO)
-                speciesTreeLoc = getSpeciesNodeClosestToTips(speciesTreeLocL,postOrderT)
+                speciesTreeLoc = getSpeciesNodeClosestToTips(speciesTreeLocL,speciesPostOrderT)
                 eventValue = (eventType,speciesTreeLoc,'b',location)
             elif eventT[0] in (new_DTLOR_DP.NodeType.DUPLICATION,new_DTLOR_DP.NodeType.TRANSFER,new_DTLOR_DP.NodeType.LOSS,new_DTLOR_DP.NodeType.COSPECIATION):
                 (eventTypeO, geneTreeLoc, speciesTreeLoc) = eventT
@@ -300,12 +300,35 @@ a string.
                 
         return reconD
 
+    def __costCheck__(self,minCost,reconD,D,T,L,O,R):
+        '''Sanity check to ensure the events in reconD sum to minCost.'''
+        sm = self.__costSum__(reconD,D,T,L,O,R)
+        assert round(sm,3) == round(minCost,3), "Events in this reconcilation don't sum to minCost."
+
+    def __costSum__(self,reconD,D,T,L,O,R):
+        '''Sum the costs implied by the recon in reconD.'''
+        sm = 0
+        for valL in reconD.values():
+            for eventType,_,_,_ in valL:
+                if eventType == 'D':
+                    sm+=D
+                elif eventType == 'T':
+                    sm+=T
+                elif eventType == 'L':
+                    sm+=L
+                elif eventType == 'O':
+                    sm+=O
+                elif eventType == 'R':
+                    sm+=R
+                # S, C events have no cost
+        return sm
+    
     def __repr__(self):
         return "<ifam:"+str(self.famNum)+">"
 
 class originFamily(Family):
 
-    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None):
+    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None,sourceFam=None):
         '''Initialize an object of class originFamily.'''
         super().__init__(famNum,mrca,geneTreeO,reconD)
 
@@ -313,7 +336,7 @@ class originFamily(Family):
         # geneTreeO is a rooted tree.
         # reconD is a converted version of a single DTLOR MPR
 
-        self.sourceFam = None   # ifam num that originFam came from
+        self.sourceFam = sourceFam # ifam num that originFam came from
 
         # attributes not saved to file and must be recreated when needed
         self.geneHistoryD = None
@@ -485,9 +508,10 @@ class Families:
         '''Set up an entry for family famNum.'''
 
         if famType == "initial":
-            self.familiesD[famNum] = initialFamily(famNum,mrca,geneTreeO,reconD)
+            # sourcFam is really dtlorCost in this case
+            self.familiesD[famNum] = initialFamily(famNum,mrca,geneTreeO,reconD,sourceFam)
         else:
-            self.familiesD[famNum] = originFamily(famNum,mrca,geneTreeO,reconD)
+            self.familiesD[famNum] = originFamily(famNum,mrca,geneTreeO,reconD,sourceFam)
 
     def addLocusFamily(self, lfO):
         '''Add a LocusFamily. Assumes initializeFamily has already been called
