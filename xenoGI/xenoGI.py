@@ -370,9 +370,9 @@ def debugWrapper(paramD):
     import code,sys,numpy
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
     from . import DTLOR_DP,new_DTLOR_DP
-    import copy,pickle
     from Bio import Phylo
-
+    import glob
+    
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
@@ -382,41 +382,21 @@ def debugWrapper(paramD):
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
-    D=float(paramD["duplicationCost"])
-    T=float(paramD["transferCost"])
-    L=float(paramD["lossCost"])
-    O=float(paramD["originCost"])
-    R=float(paramD["rearrangeCost"])
+    islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
+
+    geneProximityD = genomes.createGeneProximityD(geneOrderD,paramD['geneProximityRange'])
+    proximityThreshold = paramD['proximityThresholdMerge1']
+
+    lf2272 = originFamiliesO.getLocusFamily(2272)
+    lf4360 = originFamiliesO.getLocusFamily(4360)
+    li2272 = [li for li in islandByNodeD['s2'] if li.id==2272][0]
+    li4360 = [li for li in islandByNodeD['s2'] if li.id==4360][0]
+
+    islands.costDiff(lf2272,lf4360,geneProximityD,paramD['proximityThresholdMerge1'],subtreeD['s2'])
+
+    islands.rcost(lf2272,lf4360,geneProximityD,paramD['proximityThresholdMerge1'],subtreeD['s2'],'s2',False,{})
+    islands.rcost(lf2272,lf4360,geneProximityD,paramD['proximityThresholdMerge1'],subtreeD['s2'],'s2',True,{})
     
-    ifam = initialFamiliesO.getFamily(7)
-    reconD=ifam.getRandomOriginMprReconD(speciesRtreeO.preorder())
-    sm = ifam.__costSum__(reconD,D,T,L,O,R)
-    
-    """
-    
-    # examine number of mprs in each recon
-    ctD = {}
-    for ifam in initialFamiliesO.iterFamilies():
-
-        reconD=ifam.getRandomOriginMprReconD(speciesRtreeO.preorder())
-        
-        sm = ifam.__costSum__(reconD,D,T,L,O,R)
-
-        if round(sm,3) != round(ifam.dtlorCost,3):
-            print("costfail",ifam,sm,ifam.dtlorCost)
-        
-        ct = ifam.countMPRs()
-        if ct in ctD:
-            ctD[ct]+=1
-        else:
-            ctD[ct] = 1
-
-    #print("numMpr,num occurances")
-    #for k,v in sorted(ctD.items()):
-    #    print(k,v)
-
-    """
-        
     code.interact(local=locals())
 
     

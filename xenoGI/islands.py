@@ -21,7 +21,7 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,familiesO,rootFoca
     rscThresholdMerge1 = paramD['rscThresholdMerge1']
     maxClusterSize = paramD['maxClusterSize']
     
-    geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange )
+    geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange)
     locIslByNodeD=createLocIslByNodeD(familiesO,speciesRtreeO)
     numIslandsAtEachNodeAtStartD = {mrca:len(L) for mrca,L in locIslByNodeD.items()}
     focalNodesL = getFocalNodesInOrderOfNumDescendants(speciesRtreeO,rootFocalClade)
@@ -244,7 +244,7 @@ threshold. rscThreshold represents the threshold below which we no
 longer merge islands.
     '''
 
-    locusIslandL,geneProximityD,proximityThreshold,rscThreshold,subtree,familiesO = argT
+    locusIslandL,geneProximityD,proximityThreshold,rscThreshold,subRtreeO,familiesO = argT
     
     if len(locusIslandL) < 2:
         # nothing to merge
@@ -259,7 +259,7 @@ longer merge islands.
             # this li has more than one loc fam, add last as well
             lFamNumL.append(liO.locusFamilyL[-1])
         
-    costDiffD = costDiffDict((lFamNumL,familiesO,geneProximityD,proximityThreshold,subtree))
+    costDiffD = costDiffDict((lFamNumL,familiesO,geneProximityD,proximityThreshold,subRtreeO))
     
     # create initial scoreD
     scoreD = createScoreD(locusIslandL,costDiffD)
@@ -396,7 +396,7 @@ given lfam1 and lfam2 begin at root of subRtreeO. Assume either
 proximate (nearby) or not proximate at root. This is specificed by the
 argument rootProximate. Charge 1 for each rearrangment.
     '''
-    memoKey = (lfam1.locusFamNum,lfam2.locusFamNum,subRtreeO.fileStr(),rootProximate)
+    memoKey = (lfam1.locusFamNum,lfam2.locusFamNum,node,rootProximate)
     if memoKey in memoD:
         return memoD[memoKey]
     elif subRtreeO.isLeaf(node):
@@ -407,11 +407,11 @@ argument rootProximate. Charge 1 for each rearrangment.
         else:
             output = 1
     else:
-        output = float('inf')
+        output = 0
         for childNode in subRtreeO.children(node):
             temp = rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,childNode,rootProximate,memoD)
-            chTemp = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,childNode,not rootProximate,memoD)        
-            output = min(output,temp,chTemp)
+            chTemp = 1 + rcost(lfam1,lfam2,geneProximityD,proximityThreshold,subRtreeO,childNode,not rootProximate,memoD)
+            output += min(temp,chTemp)
         
     memoD[memoKey] = output
     return output

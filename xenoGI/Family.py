@@ -216,9 +216,11 @@ optimal cost?
         '''
         return new_DTLOR_DP.count_MPRs(self.reconD)[(new_DTLOR_DP.NodeType.ROOT,)]
         
-    def getRandomOriginMprReconD(self,speciesPreOrderT):
-        '''From the reconciliation graph (dtlor output), get a randomly chosen
-median mpr, convert to our node based format and return as a dict.
+    def getMedianMprReconD(self,speciesPreOrderT,paramD,rand):
+        '''From the reconciliation graph (dtlor output), get a median mpr,
+convert to our node based format and return as a dict. If rand is
+False, this will be arbitrarily chosen (and the same each time if done
+repeatedly). If rand is True, it will be randomly chosen.
 
         '''
         ## support funcs
@@ -273,7 +275,7 @@ a string.
         
         # get event list
         eventG = new_DTLOR_DP.build_event_median_graph(self.reconD)
-        mpr = new_DTLOR_DP.find_MPR(eventG) # one randomly chosen median mpr
+        mpr = new_DTLOR_DP.find_MPR(eventG,rand) # one median mpr
         eventL = new_DTLOR_DP.get_events(mpr)
 
         # create dict with keys (geneTreeLoc,'n/b')
@@ -297,13 +299,23 @@ a string.
                 reconD[eventKey].append(eventValue)
             else:
                 reconD[eventKey] = [eventValue]
-                
+
+        # make sure the costs implied by reconD correspond to what
+        # dtlor alg gave
+        self.__costCheck__(reconD,paramD)
+        
         return reconD
 
-    def __costCheck__(self,minCost,reconD,D,T,L,O,R):
-        '''Sanity check to ensure the events in reconD sum to minCost.'''
+    def __costCheck__(self,reconD,paramD):
+        '''Sanity check to ensure the events in reconD sum to dtlorCost.'''
+        D=int(paramD["duplicationCost"])
+        T=int(paramD["transferCost"])
+        L=int(paramD["lossCost"])
+        O=int(paramD["originCost"])
+        R=int(paramD["rearrangeCost"])
+
         sm = self.__costSum__(reconD,D,T,L,O,R)
-        assert round(sm,3) == round(minCost,3), "Events in this reconcilation don't sum to minCost."
+        assert round(sm,3) == round(self.dtlorCost,3), "Events in this reconcilation don't sum to minCost."
 
     def __costSum__(self,reconD,D,T,L,O,R):
         '''Sum the costs implied by the recon in reconD.'''
@@ -461,8 +473,6 @@ codes for events are as follows:
         L - loss (deletion so that gene is lost on species tree lineage)
         O - origin (either core or xeno hgt).
         R - rearrangment event
-        M - cotermination event (gene tree tip maps onto species tree tip)
-
         '''
 
         def printOneKey(printPrefix,reconD,nbKey):
@@ -470,7 +480,9 @@ codes for events are as follows:
                 for eventT in reconD[nbKey]:
                     gt,gtNB = nbKey
                     event,stLoc,stNB,locus = eventT
-                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(stLoc)+" "+stNB+") "+str(locus)
+                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(stLoc)+" "+stNB+")"
+                    if locus != None:
+                        outStr+=" synReg:"+str(locus)
                     print(outStr,file=fileF)
 
         # recurse over tree, printing out for each branch and node

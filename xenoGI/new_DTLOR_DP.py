@@ -1,6 +1,7 @@
 from collections import defaultdict
 from enum import Enum, auto
 from itertools import product
+import random
 from functools import reduce
 from .DTLOR_DP import check_tip, preorder, postorder, delta_r, find_min_events
 
@@ -75,7 +76,8 @@ from .DTLOR_DP import check_tip, preorder, postorder, delta_r, find_min_events
 # This can be obtained from the original graph using the build_event_graph function.
 # In this new representation, O and R events have their own nodes, with only one child. For example, if (g1, l1)
 # rearranges to (g2, l2) along the (g1, l1) branch, the corresponding graph will look like:
-# { (NodeType.LOCATION_MAPPING, g1, l1) : [(NodeType.REARRANGEMENT, ...)]
+# { (NodeType.LOCATION_MAPPING, g1, l1) : (NodeType.LOCATION_ASSIGNMENT((.., g2, ...), (.., g3, ...)))
+# NodeType.LOCATION_ASSIGNMENT((.., g2, ...), (.., g3, ...), (..., g1, ...)): [(NodeType.REARRANGEMENT, ...)]
 # (NodeType.REARRANGEMENT, ...) : [(NodeType.LOCATION_MAPPING, g2, l2)]}
 # For the ... in the above example, the rearrangement is labeled with both the parent and the child nodes in order
 # to ensure uniqueness.
@@ -167,9 +169,6 @@ def compute_dtlor_graph(species_tree, gene_tree, phi, locus_map, D, T, L, O, R):
     # First, compute C
     C, C_star, C_graph = DTL_reconcile(species_tree, gene_tree, phi, D, T, L)
     S, S_star, S_graph = synteny_reconcile(species_tree, gene_tree, locus_map, R)
-    #print(gene_tree)
-    #print(S_graph)
-    #print(postorder(gene_tree))
     # Union the two graphs before adding Null events
     G = {**C_graph, **S_graph}
     Origin = {}
@@ -211,7 +210,6 @@ def compute_dtlor_graph(species_tree, gene_tree, phi, locus_map, D, T, L, O, R):
     root_origin = Origin[gene_root]
     root_cost, root_events = find_min_events([root_null, root_origin])
     G[(NodeType.ROOT,)] = root_events
-    #print(G)
     # Remove the non-optimal parts of G
     G = prune_graph(G)
     return root_cost, G
@@ -408,9 +406,7 @@ def prune_graph(G, starting_points=None):
     while len(extant_nodes) != 0:
         node = extant_nodes.pop()
         if node[0].graph_type is not None:
-            #print(node)
             children = G[node]
-            #print(children)
             new_G[node] = children
             extant_nodes |= set(children)
     return new_G
@@ -589,23 +585,38 @@ def create_r_events(node, G, event_graph):
     assignments = []
     children = G[node]
     # Create an assignment node for the left and for the right
-    for i in [1,2]:
-        nodes = set([location_assignment[i] for location_assignment in children])
-        maps = get_mapping_nodes(nodes, G)
-        if len(maps) > 0:
-            assignment = (NodeType.LOCATION_LIST, node, i-1)
-            assignments.append(assignment)
-            event_graph[assignment] = []
-            for m in maps:
-                # If the syntenic location matches, it's not an R event
-                if m[2] == node[2]:
-                    event_graph[assignment].append(m)
-                # Otherwise, create the appropriate R event
-                else:
-                    r_event = (NodeType.REARRANGEMENT, node, m)
-                    event_graph[r_event] = [m]
-                    event_graph[assignment].append(r_event)
-    event_graph[node] = assignments
+    l_nodes = set([location_assignment[1] for location_assignment in children])
+    r_nodes = set([location_assignment[2] for location_assignment in children])
+    l_maps = get_mapping_nodes(l_nodes, G)
+    r_maps = get_mapping_nodes(r_nodes, G)
+    # Create the rearrangement events
+    for m in l_maps + r_maps:
+        if m[2] == node[2]:
+            pass
+        else:
+            r = (NodeType.REARRANGEMENT, node, m)
+            event_graph[r] = [m]
+    # Create the assignments
+    #TODO: doing this product is inefficient, but
+    # currently there isn't a NodeType for a mapping node that uses
+    # both of its children, and I'm not sure that such a node type
+    # should be introduced
+    event_graph[node] = []
+    for l, r in product(l_maps, r_maps):
+        # Add the node to the assignment signature: In this case, two
+        # nodes should not share their assignments, since those assignments will
+        # have different rearrangement node children
+        assignment = (NodeType.LOCATION_ASSIGNMENT, l, r, node)
+        if l[2] == node[2]:
+            l_node = l
+        else:
+            l_node = (NodeType.REARRANGEMENT, node, l)
+        if r[2] == node[2]:
+            r_node = r
+        else:
+            r_node = (NodeType.REARRANGEMENT, node, r)
+        event_graph[assignment] = [l_node, r_node]
+        event_graph[node].append(assignment)
 
 def create_o_events(node, G, event_graph):
     """
@@ -696,13 +707,34 @@ def get_events(MPR):
         elif node[0] is NodeType.LOCATION_MAPPING and node[2] != "*" and len(children) > 0:
             gene_node = node[1]
             assigns = MPR[node]
-            for a in assigns:
-                r = MPR[a]
-                assert len(r) == 1, "Invalid MPR: {}".format(r)
-                r = r[0]
-                if r[0] is NodeType.REARRANGEMENT:
-                    # r[2] is the location mapping with the new syntenic location
-                    species = get_species_mappings(r[2][1], MPR)
-                    event = (NodeType.REARRANGEMENT, r[2][1], r[2][2], species)
+            assert len(assigns) == 1, "Invalid MPR: {}".format(assigns)
+            assign = MPR[assigns[0]]
+            assert len(assign) == 2, "Invalid MPR: {}".format(assign)
+            l = assign[0]
+            r = assign[1]
+            for n in [l,r]:
+                if n[0] is NodeType.REARRANGEMENT:
+                    species = get_species_mappings(n[2][1], MPR)
+                    event = (NodeType.REARRANGEMENT, n[2][1], n[2][2], species)
                     events.append(event)
     return events
+
+def score_event(event, d, t, l, o, r):
+    if event[0] is NodeType.COSPECIATION:
+        return 0
+    elif event[0] is NodeType.DUPLICATION:
+        return d
+    elif event[0] is NodeType.TRANSFER:
+        return t
+    elif event[0] is NodeType.LOSS:
+        return l
+    elif event[0] is NodeType.ORIGIN:
+        return o
+    elif event[0] is NodeType.REARRANGEMENT:
+        return r
+    else:
+        assert False, "Bad Event Type: {}".format(event[0])
+
+def score_events(events_list, d, t, l, o, r):
+    return sum(map(lambda x: score_event(x, d, t, l, o, r), events_list))
+

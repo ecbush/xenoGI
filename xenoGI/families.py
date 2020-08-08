@@ -73,7 +73,7 @@ originFamilies object.
     print("Initial families updated with reconciliations and gene trees",file=sys.stderr)    
 
     # create origin families
-    originFamiliesO = createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO)
+    originFamiliesO = createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,paramD,genesO)
 
     # write origin familes to file
     writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
@@ -934,11 +934,11 @@ binary families with more than 1 genes.
 def reconcileAllGeneTrees(speciesRtreeO,geneTreeL,initialFamiliesO,locusMapD,genesO,paramD):
     '''Reconcile gene family trees to the species tree using the DTLOR algorithm.'''
 
-    D=float(paramD["duplicationCost"])
-    T=float(paramD["transferCost"])
-    L=float(paramD["lossCost"])
-    O=float(paramD["originCost"])
-    R=float(paramD["rearrangeCost"])
+    D=int(paramD["duplicationCost"])
+    T=int(paramD["transferCost"])
+    L=int(paramD["lossCost"])
+    O=int(paramD["originCost"])
+    R=int(paramD["rearrangeCost"])
 
     argumentL = []
     for initFamNum,geneUtreeO in geneTreeL:
@@ -1017,7 +1017,7 @@ def reconcile(argT):
 
     return initFamNum,optGeneRtreeO,optG,minCost
     
-def createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,genesO):
+def createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bifurcatingL,initialFamiliesO,paramD,genesO):
     '''Create and return an originFamilies object, based on the initial families and recocniliations.'''
 
     originFamiliesO = Families(speciesRtreeO)
@@ -1030,8 +1030,8 @@ def createOriginFamiliesO(speciesRtreeO,singleGeneInitFamNumL,multifurcatingL,bi
     for initFamNum,geneTree in bifurcatingL:
         iFam = initialFamiliesO.getFamily(initFamNum)
         sourceFam = iFam.famNum
-        reconD = iFam.getRandomOriginMprReconD(speciesRtreeO.preorder())
-
+         # get arbitrarily chosen mendian mpr
+        reconD = iFam.getMedianMprReconD(speciesRtreeO.preorder(),paramD,False)
         originFamiliesO = addOriginFamilyFromReconciliation(iFam.geneTreeO,reconD,originFamiliesO,sourceFam,genesO)
 
     return originFamiliesO
