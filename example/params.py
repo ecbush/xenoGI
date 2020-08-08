@@ -165,11 +165,12 @@ minCoreSynThresh = 0.5
 maxIfamSize = 200
 
 # DTLOR
-duplicationCost = 3
-transferCost = 4
-lossCost = 4
-originCost = 1
-rearrangeCost = 2
+# Should be integers. duplicationCost >= transferCost
+duplicationCost = 1
+transferCost = 1
+lossCost = 1
+originCost = 2
+rearrangeCost = 1
 
 #### Visualization and analysis output files ####
 
