@@ -378,24 +378,16 @@ def debugWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
     iFamGeneTreeFileStem = 'initFam'
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
 
-    geneProximityD = genomes.createGeneProximityD(geneOrderD,paramD['geneProximityRange'])
-    proximityThreshold = paramD['proximityThresholdMerge1']
+    synThresholdD = families.getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO)
 
-    lf2272 = originFamiliesO.getLocusFamily(2272)
-    lf4360 = originFamiliesO.getLocusFamily(4360)
-    li2272 = [li for li in islandByNodeD['s2'] if li.id==2272][0]
-    li4360 = [li for li in islandByNodeD['s2'] if li.id==4360][0]
-
-    islands.costDiff(lf2272,lf4360,geneProximityD,paramD['proximityThresholdMerge1'],subtreeD['s2'])
-
-    islands.rcost(lf2272,lf4360,geneProximityD,paramD['proximityThresholdMerge1'],subtreeD['s2'],'s2',False,{})
-    islands.rcost(lf2272,lf4360,geneProximityD,paramD['proximityThresholdMerge1'],subtreeD['s2'],'s2',True,{})
     
     code.interact(local=locals())
 

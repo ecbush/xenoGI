@@ -279,7 +279,7 @@ def createInitialFamiliesO(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO,ou
 
 def getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO):
     '''Creates a dictionary to store synteny thresholds. This dictionary
-itself contains two dictionaries one each for minCoreSyntThresh
+itself contains two dictionaries one each for minCoreSynThresh
 (minimum core synteny score allowed for family formation), and
 minSynThresh (minimum synteny score allowed for family
 formation). These dictionaries in turn are keyed by strain pair.
@@ -290,8 +290,9 @@ formation). These dictionaries in turn are keyed by strain pair.
     synThresholdD = {}
     synThresholdD['minSynThreshold'] = {}
     synThresholdD['minCoreSynThreshold'] = {}
-
-    # coreSynSc
+    
+    # coreSynSc. Note that if this ends up higher than 0.5, then there
+    # will need to be at least one core gene on both sides.
     for strainPair in scoresO.getStrainPairs():
         aabrhScL = scores.getScoresStrainPair(scoresO,strainPair,'coreSynSc',genesO,aabrhHardCoreL)
         thresh = multiplierForObtainingSynThresholds * numpy.quantile(aabrhScL,quantileForObtainingSynThresholds)

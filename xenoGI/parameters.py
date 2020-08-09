@@ -65,7 +65,7 @@ nonHomologRightPeakLimit = 0.6
 
 # quantiles for synteny threshold calculation
 quantileForObtainingSynThresholds = 0.1
-multiplierForObtainingSynThresholds = 0.75
+multiplierForObtainingSynThresholds = 0.5
 
 # We use syntenty scores to adjust similarity scores in family
 # finding. In particular, if synteny is very good, we give the raw

@@ -152,25 +152,17 @@ numSynToTake = 3
 # each direction.
 coreSynWsize = 20
 
-# Threshold for the core gene synteny score required for family
-# formation. (These scores range from 0 to 1). Note that if this is
-# set to higher than 0.5, then there will need to be at least one core
-# gene on both sides. This would mean that things at the end of a
-# contig won't get added to families because they lack a common core
-# gene on that side.
-minCoreSynThresh = 0.5
-
 # Family formation
 # maximum size of initial families (and gene trees for reconcilation)
 maxIfamSize = 200
 
 # DTLOR
-# Should be integers. duplicationCost >= transferCost
+# Should be integers. duplicationCost <= transferCost
 duplicationCost = 1
 transferCost = 1
 lossCost = 1
-originCost = 2
-rearrangeCost = 1
+originCost = 200
+rearrangeCost = 200
 
 #### Visualization and analysis output files ####
 
