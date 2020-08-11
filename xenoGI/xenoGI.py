@@ -375,18 +375,15 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    iFamGeneTreeFileStem = paramD['iFamGeneTreeFileStem']
 
-    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
-    iFamGeneTreeFileStem = 'initFam'
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
-
-    islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
-
-    synThresholdD = families.getSynThresholdD(paramD,scoresO,genesO,aabrhHardCoreL,speciesRtreeO)
+    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
+    
+    bpTree = Phylo.read('geneFamilyTrees/initFam000009.tre', 'newick', rooted=False)
+    
+    geneUtreeO = Utree()
+    geneUtreeO.fromNewickFile('geneFamilyTrees/initFam000009.tre')
 
     
     code.interact(local=locals())

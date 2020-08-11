@@ -82,13 +82,13 @@ def cladeTipNames(clade):
         L.append(tipC.name)
     return L
 
-def nameInternalNodes(tree,nameStem):
+def nameInternalNodes(bpTree,nameStem):
     '''Given a bio python tree without named internal nodes, name
 them. This obliterates any names that might have been inside
 already (e.g. if confidence values have been put in the name field).'''
-    for j,n in enumerate(tree.get_nonterminals()):
+    for j,n in enumerate(bpTree.get_nonterminals()):
         n.name=nameStem+str(j)
-    return tree 
+    return bpTree 
 
 #### Functions for creating gene and species trees
 

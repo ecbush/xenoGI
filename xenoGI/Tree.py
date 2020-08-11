@@ -331,6 +331,9 @@ class Utree(Tree):
             self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
             self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
             self.branchPairT = self.__createBranchPairT__()
+            self.branchLenD = None
+            # when populated, will be dict keyed by branch pair. For
+            # now, branch lengths are only defined for unrooted trees.
             
     def fromNewickFile(self,treeFN):
         '''Populate attributes based on newick file in treeFN. This method
@@ -339,13 +342,26 @@ named interal nodes (we will create those).
 
         '''
         bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-        iNodeNum,nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
+        iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
         self.nodeConnectD = nodeConnectD
         self.__updateSecondaryAttributes__()
         self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
         self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
         self.branchPairT = self.__createBranchPairT__()
 
+        # insert branch lengths
+        branchLenD = {}
+        for parent,child,brLen in branchLenL:
+            if parent != ROOT_PARENT_NAME:
+                # put key in same order as in branchPairT
+                if (parent,child) in self.branchPairT:
+                    key = (parent,child)
+                else:
+                    key = (child,parent)
+                branchLenD[key] = brLen
+        if not all(brLen==None for brLen in branchLenD.values()):
+            self.branchLenD = branchLenD
+        
     def toNewickStr(self):
         '''Output a newick string.'''
         if self.nodeCount() == 2:
@@ -354,6 +370,20 @@ named interal nodes (we will create those).
         else:
             return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
 
+    def iterBranchLengths(self):
+        '''Iterate over all branches, returning branchPair tuple and branch
+length.'''
+        if self.branchLenD == None:
+            raise ValueError("This unrooted tree object does not have branch lengths defined.")
+            
+        for branchPair in self.branchPairT:
+            branchLen = self.branchLenD[branchPair]
+            yield branchPair,branchLen
+
+    def maxBranchLen(self):
+        '''Return the maximum branch length present.'''
+        return max(self.branchLenD.values())
+        
     def root(self,branchPair):
         '''Root using the tuple branchPair and return an Rtree object.'''
 
@@ -424,6 +454,7 @@ clades we put together, or else a bpClade object which is not a
 tip.
             '''
             connecL = []
+            branchLenL = []
             if parentNodeStr != ROOT_PARENT_NAME:
                 connecL.append(parentNodeStr)
             # if we're just starting, it's ROOT_PARENT_NAME, and we
@@ -440,23 +471,39 @@ tip.
                     connecL.append("g"+str(iNodeNum))
 
                 # recurse
-                iNodeNum,nodeConnectD = self.__bioPhyloToNodeConnectD__(childClade,thisNodeStr,nodeConnectD,iNodeNum)
-
-            # add in thie connection for this node
+                iNodeNum,nodeConnectD,tempBranchLenL = self.__bioPhyloToNodeConnectD__(childClade,thisNodeStr,nodeConnectD,iNodeNum)
+                branchLenL.extend(tempBranchLenL)
+                
+            # add in this connection for this node
             nodeConnectD[thisNodeStr] = tuple(connecL)
 
-            return iNodeNum,nodeConnectD
+            # get branch len
+            if hasattr(bpCladeL,'branch_length'):
+                brLen = bpCladeL.branch_length
+            else:
+                brLen = None
+            branchLenL.append((parentNodeStr,thisNodeStr,brLen))
+            
+            return iNodeNum,nodeConnectD,branchLenL
 
         
         # main body of __bioPhyloToNodeConnectD__
         if bpClade.is_terminal():
             # parentNodeStr will never be ROOT_PARENT_NAME in this case
             nodeConnectD[bpClade.name] = (parentNodeStr,)
+            branchLenL = [(parentNodeStr,bpClade.name,bpClade.branch_length)]
         elif parentNodeStr == ROOT_PARENT_NAME and bpClade.count_terminals() == 2:
             # special case where entire tree only has 2 tips. Don't
             # create a new internal node
             self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
             self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
+
+            if bpClade[0].branch_length == None or bpClade[1].branch_length == None:
+                brLen = None
+            else:
+                brLen = bpClade[0].branch_length + bpClade[1].branch_length
+            branchLenL = [(bpClade[0].name,bpClade[1].name,brLen)]
+        
         elif parentNodeStr == ROOT_PARENT_NAME and len(bpClade) == 2:
             # biopython has put 2 branches only at the base. Our
             # structure requires 3 or more. We'll collect all tips at
@@ -474,12 +521,12 @@ tip.
                     return outL
 
             baseCladeL = getBaseBpClades(bpClade,0) # usually, but not always length 3
-            iNodeNum,nodeConnectD = generalCase(baseCladeL,parentNodeStr,nodeConnectD,iNodeNum)
+            iNodeNum,nodeConnectD,branchLenL = generalCase(baseCladeL,parentNodeStr,nodeConnectD,iNodeNum)
+            
         else:
+            iNodeNum,nodeConnectD,branchLenL = generalCase(bpClade,parentNodeStr,nodeConnectD,iNodeNum)
             
-            iNodeNum,nodeConnectD = generalCase(bpClade,parentNodeStr,nodeConnectD,iNodeNum)
-            
-        return iNodeNum,nodeConnectD
+        return iNodeNum,nodeConnectD,branchLenL
     
     def __createBranchPairT__(self):
         '''Make the branchPairT attribute to represent the branches. This is a
