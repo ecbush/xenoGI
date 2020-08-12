@@ -370,7 +370,7 @@ named interal nodes (we will create those).
         else:
             return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
 
-    def iterBranchLengths(self):
+    def iterBranches(self):
         '''Iterate over all branches, returning branchPair tuple and branch
 length.'''
         if self.branchLenD == None:
@@ -381,35 +381,16 @@ length.'''
             yield branchPair,branchLen
 
     def maxBranchLen(self):
-        '''Return the maximum branch length present.'''
-        return max(self.branchLenD.values())
+        '''Find the maximum branch length present, and return the
+corresponding branchPair tuple and the length.
+
+        '''
+        L=list(self.branchLenD.items())
+        L.sort(key=lambda x: x[1])
+        return L[-1]
         
     def root(self,branchPair):
         '''Root using the tuple branchPair and return an Rtree object.'''
-
-        def traverse(D,newD,node,parentNode):
-            '''Get nodeConnectD for the part of the tree defined by node, and in
-the oposite direction from parentNode.
-            '''
-            oldConnecT=D[node]
-
-            # make sure parent node is first
-            assert(parentNode in oldConnecT)
-            connecL = [parentNode]
-            for tempNode in oldConnecT:
-                if tempNode != parentNode:
-                    connecL.append(tempNode)
-            connecT = tuple(connecL)
-            
-            newD[node] = connecT # store
-            
-            if len(connecT)==1:
-                return
-            else:
-                for child in connecT:
-                    if child != parentNode:
-                        traverse(D,newD,child,node)
-                return
 
         def updateChildOfRoot(newD,nodeToWorkOn,nodeToReplace):
             '''Adjust child of root to say root is parent.'''
@@ -422,8 +403,8 @@ the oposite direction from parentNode.
             
         # make new nodeConnectD
         newD = {}
-        traverse(self.nodeConnectD,newD,branchPair[0],branchPair[1])
-        traverse(self.nodeConnectD,newD,branchPair[1],branchPair[0])
+        self.__splitNodeConnectD__(self.nodeConnectD,newD,branchPair[0],branchPair[1])
+        self.__splitNodeConnectD__(self.nodeConnectD,newD,branchPair[1],branchPair[0])
 
         # must add the root
         rootNode = "root"
@@ -440,6 +421,91 @@ the oposite direction from parentNode.
         for branchPair in self.branchPairT:
             yield self.root(branchPair)
 
+    def split(self,branchPair):
+        '''Split on the branch specified by branchPair into two new Utree
+objects.
+
+        '''
+        
+        def subUtree(oldNodeConnectD,oldBranchPairT,oldBranchLenD,node,parentNode):
+            '''Given an oldNodeConnectD from a Utree object, and a node and it's
+parent, create a new Utree object which is a sub tree. Assumes node is
+not a tip.
+
+            '''
+            # get subset of oldNodeConnectD, put in D
+            D = {}
+            self.__splitNodeConnectD__(oldNodeConnectD,D,node,parentNode)
+
+            # remove brach between node and parent node
+            if len(D[node])>3:
+                # it's a multifurcating node, just update the value in
+                # D, removing parentNode
+                connecT = D[node]
+                newConnecL = []
+                for tempNode in connecT:
+                    if tempNode != parentNode:
+                        newConnecL.append(tempNode)
+                D[node] = tuple(newConnecL)
+            else:
+                # bifurcating node
+                # get the two branches that connect to node so we can
+                # remove node itself.
+                _,child1,child2 = D[node]
+
+                assert(_==parentNode) # temp
+
+                # adjust entries for children
+                updateChild(D,node,child1,child2)
+                updateChild(D,node,child2,child1)
+                del D[node]
+            
+            # create output tree
+            newUtreeO = Utree(D)
+            
+            # get branch lengths
+            newBranchLenD = {}
+            for nbp in newUtreeO.branchPairT:
+                if child1 in nbp and child2 in nbp:
+                    # this branch len must be made by adding two old ones
+                    oldBP1 = [oldBP for oldBP in oldBranchPairT if (node in oldBP and child1 in oldBP)][0]
+                    oldBP2 = [oldBP for oldBP in oldBranchPairT if (node in oldBP and child2 in oldBP)][0]
+                    brLen = oldBranchLenD[oldBP1] + oldBranchLenD[oldBP2]
+                    newBranchLenD[nbp] = brLen
+                else:
+                    # might need to reverse order of nbp to find in oldBranchLenD
+                    if nbp in oldBranchLenD:
+                        newBranchLenD[nbp] = oldBranchLenD[nbp]
+                    else:
+                        newBranchLenD[nbp] = oldBranchLenD[(nbp[1],nbp[0])]
+                        
+            newUtreeO.branchLenD = newBranchLenD
+            return newUtreeO
+
+        def updateChild(D,node,child1,child2):
+            '''Update entries in D for child1 to connect to child2 rather than
+node.'''
+            connecL = list(D[child1])
+            connecL[connecL.index(node)] = child2
+            D[child1] = tuple(connecL)
+            return
+            
+        # main part of split
+        if self.isLeaf(branchPair[0]) and self.isLeaf(branchPair[1]):
+            return branchPair[0],branchPair[1]
+        elif self.isLeaf(branchPair[0]):
+            # one side is leaf
+            restUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[1],branchPair[0])
+            return branchPair[0],restUtreeO
+        elif self.isLeaf(branchPair[1]):
+            restUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[0],branchPair[1])
+            return branchPair[1],restUtreeO
+        else:
+            # internal
+            aUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[1],branchPair[0])
+            bUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[0],branchPair[1])
+            return aUtreeO,bUtreeO
+        
     def __bioPhyloToNodeConnectD__(self,bpClade,parentNodeStr,nodeConnectD,iNodeNum):
         '''Convert a biopython clade object to a node connection dict with
 keys that are nodes, and values that are the nodes connected to. For
@@ -551,6 +617,31 @@ the two nodes on either end.
             return self.leafNodeT
         else:
             return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.arbitraryNode,ROOT_PARENT_NAME))
+
+    def __splitNodeConnectD__(self,D,newD,node,parentNode):
+        '''Get nodeConnectD for the part of the tree defined by node, and in
+the oposite direction from parentNode. Put in newD. Returns None.
+
+        '''
+        oldConnecT=D[node]
+
+        # make sure parent node is first
+        assert(parentNode in oldConnecT)
+        connecL = [parentNode]
+        for tempNode in oldConnecT:
+            if tempNode != parentNode:
+                connecL.append(tempNode)
+        connecT = tuple(connecL)
+
+        newD[node] = connecT # store
+
+        if len(connecT)==1:
+            return
+        else:
+            for child in connecT:
+                if child != parentNode:
+                    self.__splitNodeConnectD__(D,newD,child,node)
+            return
         
     def __repr__(self):
         return "Utree: "+self.toNewickStr()

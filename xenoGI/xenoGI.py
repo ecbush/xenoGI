@@ -380,12 +380,21 @@ def debugWrapper(paramD):
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
     singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
     
-    bpTree = Phylo.read('geneFamilyTrees/initFam000009.tre', 'newick', rooted=False)
+    #bpTree = Phylo.read('geneFamilyTrees/initFam000009.tre', 'newick', rooted=False)
     
-    geneUtreeO = Utree()
-    geneUtreeO.fromNewickFile('geneFamilyTrees/initFam000009.tre')
+    #geneUtreeO = Utree()
+    #geneUtreeO.fromNewickFile('geneFamilyTrees/initFam000503.tre')
 
-    
+
+    for i,geneUtreeO in bifurcatingL+ multifurcatingL:
+        print(i)
+        bpT,brLen = geneUtreeO.maxBranchLen()
+
+        print(bpT)
+        print(geneUtreeO)
+        aUtreeO,bUtreeO = geneUtreeO.split(bpT)
+        print("---")
+        
     code.interact(local=locals())
 
     

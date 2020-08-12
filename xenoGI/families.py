@@ -1,4 +1,5 @@
 import sys,numpy,os,random,glob,copy,shutil
+sys.setrecursionlimit(100000)
 from scipy.signal import find_peaks
 from Bio import Phylo
 from multiprocessing import Pool
@@ -350,8 +351,6 @@ def createInitialFamilySetL(scoresO, genesO):
     degreeD={}
    
     def stronglyConnected(temp, gene, visited): 
-  
-       
         visited.add(gene)
         temp.add(gene) 
   
@@ -365,7 +364,9 @@ def createInitialFamilySetL(scoresO, genesO):
                     # Update the list 
                     temp = stronglyConnected(temp, i, visited) 
         
-        return temp 
+        return temp
+
+    # main for createInitialFamilySetL
     allGenesL=list(genesO.iterGenes())
     scoresO.createNodeConnectD() 
     connectedGenes=list(scoresO.nodeConnectD.keys())
