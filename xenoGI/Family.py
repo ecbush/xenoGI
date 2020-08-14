@@ -129,6 +129,9 @@ class Family:
             for gene in lfO.iterGenes():
                 yield gene
 
+    def geneCount(self):
+        return len(list(self.iterGenes()))
+        
     def iterStrains(self):
         '''Iterator that yields all the strains in which this family
 occurs.

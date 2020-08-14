@@ -85,7 +85,8 @@ singleStrainFamilyThresholdAdjust = 0.5
 
 ## Other
 
-iFamGeneTreeFileStem = 'initFam'
+aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
+blastFamGeneTreeFileStem = 'blastFam'
 
 #### LocusIsland formation ####
 

@@ -21,13 +21,99 @@ we still hold it as a string.
         self.leafNodeT = None
         self.internalNodeT = None
         self.preOrderT = None
-
+        self.branchLenD = None # for now, only Utree can have a non-None value here
+        
         if self.nodeConnectD != None:
             self.__updateSecondaryAttributes__()
 
+    def fileStr(self):
+        '''Return a string representation of a Tree object. Outer separator is "|".
+
+        rootNode/arbitraryNode | node connection info | branch len info
+
+        The first position gives the root node in a rooted tree, or
+        else the arbitraryNode in an unrooted tree.
+
+        Node connection info is organized as follows. Each entry in
+        nodeConnectD gets internally separated by spaces. Different
+        entries are separated by commas.
+
+        Branch connection info is organized similarly. Each entry in
+        branchLenD gets internally separated by spaces. Different
+        entries are separated by commas. If branch len info
+        is absent, will be None.
+        '''
+        outL = []
+
+        # root/arbitary node
+        if hasattr(self,"rootNode"):
+            # rooted tree
+            outL.append(str(self.rootNode))
+        else:
+            # unrooted
+            outL.append(str(self.arbitraryNode))
+
+        # node connection
+        nodeConnecL=[] # first thing is root node.
+        for node,connecT in self.nodeConnectD.items():
+            # elements in one entry of nodeConnectD separated by spaces
+            entry = node + " " + " ".join(connecT)
+            nodeConnecL.append(entry)
+        nodeConnecStr = ",".join(nodeConnecL)
+        outL.append(nodeConnecStr)
+
+        # branches
+        if self.branchLenD == None:
+            outL.append("None")
+        else:
+            branchLenL = []
+            for branchPair,brLen in self.branchLenD.items():
+                entry = branchPair[0] + " " + branchPair[1] + " " + str(brLen)
+                branchLenL.append(entry)
+            branchLenStr = ",".join(branchLenL)
+            outL.append(branchLenStr)
+            
+        return "|".join(outL)
+            
+    def fromString(self,treeStr):
+        '''Populate attributes by parsing the string treeStr (which has likely
+been read from a file). This method allows multifurcating trees. See
+fileStr method for description of format.
+
+        '''
+
+        rootArbNode,nodeConnecStr,branchLenStr = treeStr.split("|")
+
+        # root/arbitraryNode
+        if isinstance(self, Rtree):
+            self.rootNode = rootArbNode
+        else:
+            self.arbitraryNode = rootArbNode
+
+        # nodeConnectD
+        L = nodeConnecStr.split(",")
+        self.nodeConnectD = {}
+        for entryStr in L:
+            entryL = entryStr.split(" ")
+            node=entryL[0]
+            connecT=tuple(entryL[1:])
+            self.nodeConnectD[node] = connecT
+        self.__updateSecondaryAttributes__()
+
+        # branch lens
+        if branchLenStr == "None":
+            self.branchLenD = None
+        else:
+            L = branchLenStr.split(",")
+            self.branchLenD = {}
+            for entryStr in L:
+                br0,br1,brLen = entryStr.split(" ")
+                self.branchLenD[(br0,br1)] = float(brLen)
+            
     def isLeaf(self,node):
         '''Return boolean if node is a leaf'''
-        if len(self.nodeConnectD[node]) == 1:
+        if len(self.nodeConnectD[node]) < 3:
+            # internal node must have at least 3 connections
             return True
         else: return False
 
@@ -66,7 +152,8 @@ than 3 branches).'''
         leafNodeL = []
         internalNodeL = []
         for node,connecT in self.nodeConnectD.items():
-            if len(connecT) == 1:
+            if len(connecT) < 3:
+                # it's a tip
                 leafNodeL.append(node)
             else:
                 internalNodeL.append(node)
@@ -100,6 +187,46 @@ parentNode.
                     outL = outL + [newickStr]
             return "("+ ",".join(outL)+")"+node
 
+    def __eq__(self,other):
+        '''See if two trees are equivalent.'''
+        if hasattr(self,"rootNode") and  hasattr(other,"rootNode"):
+            # both rooted
+            if self.rootNode != other.rootNode: return False
+        elif hasattr(self,"arbitraryNode") and  hasattr(other,"arbitraryNode"):
+            # both unrooted
+            if self.arbitraryNode != other.arbitraryNode: return False
+        else:
+            # different types of tree
+            return False
+
+        # if we made it here, they are same type of tree, and basis
+        # node matches
+
+        # check node connections
+        if sorted(self.nodeConnectD.items()) != sorted(other.nodeConnectD.items()):
+            return False
+
+        # check branch lengths if they exist
+        if self.branchLenD == other.branchLenD:
+            return True
+        else:
+            # don't match
+            if self.branchLenD == None or other.branchLen == None:
+                # one is None
+                return False
+            else:
+                # both are dicts. Check more carefully
+                selfL = []
+                for brT,brLen in self.branchLenD.items():
+                    selfL.append((brT,round(brLen,4)))
+                otherL = []
+                for brT,brLen in other.branchLenD.items():
+                    otherL.append((brT,round(brLen,4)))
+
+                selfL.sort()
+                otherL.sort()
+                return selfL == otherL
+        
 class Rtree(Tree):
     def __init__(self, nodeConnectD=None,rootNode=None):
         '''Initialize a rooted tree object.'''
@@ -109,20 +236,6 @@ class Rtree(Tree):
         if self.nodeConnectD != None:
             self.preOrderT = self.__traversePreOrder__(self.rootNode)
         
-    def fromString(self,treeStr):
-        '''Populate attributes by parsing the string treeStr (which has likely
-been read from a file). This method allows multifurcating trees.'''
-
-        L = treeStr.split(",")
-        self.rootNode = L[0]
-        self.nodeConnectD = {}
-        for entryStr in L[1:]:
-            entryL = entryStr.split(" ")
-            node=entryL[0]
-            connecT=tuple(entryL[1:])
-            self.nodeConnectD[node] = connecT
-        self.__updateSecondaryAttributes__()
-            
     def fromNewickFileLoadSpeciesTree(self,treeFN,outGroupTaxaL=None):
         '''Populate attributes based on newick file in treeFN. This method
 assumes we are working with a species tree. It must be rooted,
@@ -260,19 +373,6 @@ tree.
                     
         return dtlorD
         
-    def fileStr(self):
-        '''Return a string representation of an Rtree object. This consists of
-the root node, followed by a series of entrys from nodeConnectD. These
-elements are separated by commas (and the entries in nodeConnectD are
-internally separated by spaces.
-        '''
-        outL=[self.rootNode] # first thing is root node.
-        for node,connecT in self.nodeConnectD.items():
-            # elements in one entry of nodeConnectD separated by spaces
-            entry = node + " " + " ".join(connecT)
-            outL.append(entry)
-        return ",".join(outL)
-            
     ## methods not for end users
     
     def __checkSpeciesTree__(self,bpTree):
@@ -331,9 +431,6 @@ class Utree(Tree):
             self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
             self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
             self.branchPairT = self.__createBranchPairT__()
-            self.branchLenD = None
-            # when populated, will be dict keyed by branch pair. For
-            # now, branch lengths are only defined for unrooted trees.
             
     def fromNewickFile(self,treeFN):
         '''Populate attributes based on newick file in treeFN. This method
@@ -342,14 +439,21 @@ named interal nodes (we will create those).
 
         '''
         bpTree = Phylo.read(treeFN, 'newick', rooted=False)
-        iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
+        # handle special case of one tip tree
+        if bpTree.count_terminals()==1:
+            # special case, one tip tree
+            nodeConnectD={bpTree.get_terminals()[0].name:()}
+            branchLenL=[('','',None)]
+        else:
+            iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
         self.nodeConnectD = nodeConnectD
         self.__updateSecondaryAttributes__()
         self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
         self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
         self.branchPairT = self.__createBranchPairT__()
 
-        # insert branch lengths
+        # insert branch lengths dict keyed by branch pair. For now,
+        # branch lengths are only defined for unrooted trees.
         branchLenD = {}
         for parent,child,brLen in branchLenL:
             if parent != ROOT_PARENT_NAME:
@@ -364,7 +468,9 @@ named interal nodes (we will create those).
         
     def toNewickStr(self):
         '''Output a newick string.'''
-        if self.nodeCount() == 2:
+        if self.nodeCount() == 1:
+            return "("+self.leafNodeT[0]+")"
+        elif self.nodeCount() == 2:
             # two tip tree is a special case            
             return "("+self.leafNodeT[0]+","+self.leafNodeT[1]+")"
         else:
@@ -437,16 +543,27 @@ not a tip.
             D = {}
             self.__splitNodeConnectD__(oldNodeConnectD,D,node,parentNode)
 
-            # remove brach between node and parent node
+            newBranchLenD = {}
             if len(D[node])>3:
-                # it's a multifurcating node, just update the value in
-                # D, removing parentNode
+                # it's a multifurcating node, node should remain in D,
+                # but we must remove the connection to parentNode
                 connecT = D[node]
                 newConnecL = []
                 for tempNode in connecT:
                     if tempNode != parentNode:
                         newConnecL.append(tempNode)
                 D[node] = tuple(newConnecL)
+
+                # create output tree
+                newUtreeO = Utree(D)
+                # get branch lengths
+                for nbp in newUtreeO.branchPairT:
+                    # might need to reverse order of nbp to find in oldBranchLenD
+                    if nbp in oldBranchLenD:
+                        newBranchLenD[nbp] = oldBranchLenD[nbp]
+                    else:
+                        newBranchLenD[nbp] = oldBranchLenD[(nbp[1],nbp[0])]
+                   
             else:
                 # bifurcating node
                 # get the two branches that connect to node so we can
@@ -460,24 +577,23 @@ not a tip.
                 updateChild(D,node,child2,child1)
                 del D[node]
             
-            # create output tree
-            newUtreeO = Utree(D)
-            
-            # get branch lengths
-            newBranchLenD = {}
-            for nbp in newUtreeO.branchPairT:
-                if child1 in nbp and child2 in nbp:
-                    # this branch len must be made by adding two old ones
-                    oldBP1 = [oldBP for oldBP in oldBranchPairT if (node in oldBP and child1 in oldBP)][0]
-                    oldBP2 = [oldBP for oldBP in oldBranchPairT if (node in oldBP and child2 in oldBP)][0]
-                    brLen = oldBranchLenD[oldBP1] + oldBranchLenD[oldBP2]
-                    newBranchLenD[nbp] = brLen
-                else:
-                    # might need to reverse order of nbp to find in oldBranchLenD
-                    if nbp in oldBranchLenD:
-                        newBranchLenD[nbp] = oldBranchLenD[nbp]
+                # create output tree
+                newUtreeO = Utree(D)
+
+                # get branch lengths
+                for nbp in newUtreeO.branchPairT:
+                    if child1 in nbp and child2 in nbp:
+                        # this branch len must be made by adding two old ones
+                        oldBP1 = [oldBP for oldBP in oldBranchPairT if (node in oldBP and child1 in oldBP)][0]
+                        oldBP2 = [oldBP for oldBP in oldBranchPairT if (node in oldBP and child2 in oldBP)][0]
+                        brLen = oldBranchLenD[oldBP1] + oldBranchLenD[oldBP2]
+                        newBranchLenD[nbp] = brLen
                     else:
-                        newBranchLenD[nbp] = oldBranchLenD[(nbp[1],nbp[0])]
+                        # might need to reverse order of nbp to find in oldBranchLenD
+                        if nbp in oldBranchLenD:
+                            newBranchLenD[nbp] = oldBranchLenD[nbp]
+                        else:
+                            newBranchLenD[nbp] = oldBranchLenD[(nbp[1],nbp[0])]
                         
             newUtreeO.branchLenD = newBranchLenD
             return newUtreeO
@@ -489,17 +605,17 @@ node.'''
             connecL[connecL.index(node)] = child2
             D[child1] = tuple(connecL)
             return
-            
+
         # main part of split
         if self.isLeaf(branchPair[0]) and self.isLeaf(branchPair[1]):
-            return branchPair[0],branchPair[1]
+            return Utree({branchPair[0]:()}),Utree({branchPair[1]:()}) # brLenD None by default
         elif self.isLeaf(branchPair[0]):
             # one side is leaf
             restUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[1],branchPair[0])
-            return branchPair[0],restUtreeO
+            return Utree({branchPair[0]:()}),restUtreeO
         elif self.isLeaf(branchPair[1]):
             restUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[0],branchPair[1])
-            return branchPair[1],restUtreeO
+            return restUtreeO,Utree({branchPair[1]:()})
         else:
             # internal
             aUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[1],branchPair[0])

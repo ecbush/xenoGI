@@ -371,30 +371,112 @@ def debugWrapper(paramD):
     from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
     from . import DTLOR_DP,new_DTLOR_DP
     from Bio import Phylo
-    import glob
+    import glob,random
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    iFamGeneTreeFileStem = paramD['iFamGeneTreeFileStem']
+    blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
+    aabrhHardCoreGeneTreeFileStem = paramD['aabrhHardCoreGeneTreeFileStem']
 
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
-    singleGeneInitFamNumL,multifurcatingL,bifurcatingL = families.loadGeneTrees(paramD,initialFamiliesO,iFamGeneTreeFileStem)
+
+    #geneTreeL = families.loadGeneTrees(paramD,blastFamGeneTreeFileStem)
+
+
+    geneUtreeO = Utree()
+    #geneUtreeO.fromNewickFile('geneFamilyTrees/blastFam000001.tre')
+
+    #splL = families.splitUtreeFailsafe([geneUtreeO],100,5)
+
+    #for ut in splL: print(ut.leafCount())
     
-    #bpTree = Phylo.read('geneFamilyTrees/initFam000009.tre', 'newick', rooted=False)
+    #aO,bO = families.forceSplitUtree(geneUtreeO)
+    #print(aO.leafCount(),bO.leafCount())
     
-    #geneUtreeO = Utree()
-    #geneUtreeO.fromNewickFile('geneFamilyTrees/initFam000503.tre')
+    #splitThresh = .95
+    #splitL=families.splitUtreeL([geneUtreeO],splitThresh)
 
 
-    for i,geneUtreeO in bifurcatingL+ multifurcatingL:
-        print(i)
-        bpT,brLen = geneUtreeO.maxBranchLen()
+    #singleGeneTreeL,multiGeneTreeL = families.createInitialFamiliesO(paramD,genesO,[])
 
-        print(bpT)
-        print(geneUtreeO)
-        aUtreeO,bUtreeO = geneUtreeO.split(bpT)
-        print("---")
+    """
+    numTipL=[]
+    for blastFamNum,geneUtreeO in multiGeneTreeL:
+        numTipL.append(geneUtreeO.leafCount())
+        if geneUtreeO.leafCount() == 251:
+            print(blastFamNum)
+
+    import scipy
+    scipy.stats.describe(numTipL)
+    
+
+    # tip checking
+    gutTipL = sorted(geneUtreeO.leaves())
+
+    splTipL = []
+    for tutO in splitL:
+        splTipL.extend(tutO.leaves())
+    splTipL.sort()
+
+    print("nodes same?",gutTipL==splTipL)
+
+    # splits by hand
+
+    aO,bO = splitTop(geneUtreeO)
+    # aO done, 1 br
+    baO,bbO = splitTop(bO)
+    # baO done, 5 br
+    bbaO,bbbO = splitTop(bbO)
+    # bbaO done, 5 br
+    bbbaO,bbbbO = splitTop(bbbO)
+    # bbbaO done, 7 br
+    bbbbaO,bbbbbO = splitTop(bbbbO)
+    # bbbbaO done, 1 br
+    bbbbbaO,bbbbbbO = splitTop(bbbbbO)
+    # bbbbbaO done, 1 br
+    # bbbbbbO done, 491 br
+    
+    # branch checking
+    aboveThresh = 0
+    for brPair,brLen in geneUtreeO.branchLenD.items():
+        if brLen > splitThresh:
+            aboveThresh += 1
+    print("Number of branches above threshold in geneUtreeO",aboveThresh)
+    
+    # branch length checking
+    gutSum = sum(geneUtreeO.branchLenD.values())
+
+    splSum = 0
+    for tutO in splitL:
+        splSum += sum(tutO.branchLenD.values())
+
+    print("Brlen compare",gutSum,splSum)
+    print(" sum of cut branches",)
         
+    #bpTree = Phylo.read('geneFamilyTrees/blastFam002175.tre', 'newick', rooted=False)
+
+    #aabrhHardCoreGeneTreeL = families.loadGeneTrees(paramD,aabrhHardCoreGeneTreeFileStem)
+    #aL=[b.maxBranchLen()[1] for a,b in aabrhHardCoreGeneTreeL]
+    
+    # obtain threshold for utree splitting
+    #splitThresh = families.calculateTreeSplitThreshold(paramD,aabrhHardCoreGeneTreeL)
+
+
+    #geneTreeL = families.loadGeneTrees(paramD,blastFamGeneTreeFileStem)
+    #gL=[b.maxBranchLen()[1] for a,b in geneTreeL if b.nodeCount()>1] # avoid single tip trees
+
+    def testTop(utreeO,splitThresh):
+        brPair,brLen = utreeO.maxBranchLen()
+        if brLen > splitThresh:
+            return True
+        else:
+            return False
+    
+    def splitTop(utreeO):
+        brPair,brLen = utreeO.maxBranchLen()
+        aO,bO = utreeO.split(brPair)
+        return aO,bO
+
+    """
     code.interact(local=locals())
 
     

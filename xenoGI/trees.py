@@ -105,17 +105,20 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     javaPath = paramD['javaPath']
     astralPath = paramD['astralPath']
     astralTreeFN = paramD['astralTreeFN']
-    gtFileStem = 'aabrhHardCoreFam'
+    gtFileStem = paramD['aabrhHardCoreGeneTreeFileStem']
     allGtFilePath = os.path.join(workDir,gtFileStem+'*.tre')
     aabrhHardCoreGeneTreesFN = paramD['aabrhHardCoreGeneTreesFN']
     outSpeciesTreeFN = paramD['speciesTreeFN'] # for main output
-    deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
     outGroupTaxaL = [paramD['outGroup']]
 
     # if tree file already exists, throw error
     if os.path.isfile(outSpeciesTreeFN):
         raise IOError("The tree file " + outSpeciesTreeFN + " already exists.")
 
+    # delete any pre-existing hard core gene trees
+    for fn in glob.glob(allGtFilePath):
+        os.remove(fn)
+    
     ## make gene tree for each aabrh hard Core set
     # add numbering to list
     newAabrhHardCoreL = []
@@ -124,6 +127,10 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     
     makeGeneTrees(paramD,True,genesO,workDir,gtFileStem,newAabrhHardCoreL)
 
+    # remove alignments
+    for fn in glob.glob(os.path.join(workDir,"align*.afa")):
+        os.remove(fn)
+    
     ## run Astral on gene trees
 
     # concatenate all gene tree files
@@ -139,11 +146,11 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     speciesRtreeO.fromNewickFileLoadSpeciesTree(astralTreeFN,outGroupTaxaL)
     with open(outSpeciesTreeFN,"w") as f: # final output
         f.write(speciesRtreeO.toNewickStr()+";\n")
-    
+
     ## delete the working directory
     if deleteSpeciesTreeWorkingDir:
         shutil.rmtree(workDir)
-
+        
 def makeGeneFamilyTrees(paramD,genesO,familiesO,gtFileStem = 'fam'):
     '''Given a families object, create a gene tree for each family.'''
 
