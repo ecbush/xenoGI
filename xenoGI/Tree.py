@@ -394,6 +394,11 @@ tree.
         internalL = bpTree.get_nonterminals()
         if len(internalL) != predictedNumIntNodes or any((n.name==None for n in internalL)):
             raise ValueError("All the internal nodes of the input tree must have names.")
+
+        # Make sure all names unique
+        nodeL = [n.name for n in bpTree.get_nonterminals() + bpTree.get_terminals()]
+        if len(nodeL) != len(set(nodeL)):
+            raise ValueError("All nodes of the input tree (tips and interal) must have unique names.")
         
     def __bioPhyloToNodeConnectD__(self,bpTree):
         '''Convert a biopython tree object to a node connection dict with keys
