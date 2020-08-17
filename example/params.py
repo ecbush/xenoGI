@@ -108,6 +108,7 @@ scoresFN = 'scores.bout'
 aabrhFN = 'aabrhHardCore.out'
 
 # family files
+blastFamilyFN = 'blastFam.out'
 initFamilyFN = 'initFam.out'
 originFamilyFN = 'originFam.out'
 
@@ -152,17 +153,33 @@ numSynToTake = 3
 # each direction.
 coreSynWsize = 20
 
+
 # Family formation
+
+# threshold of branch lengths for splitting unrooted gene trees from
+# blast families. obtained by examining this distribution of maximum
+# scores for aabrh hard core families.
+quantileForObtainingSplitThresholds = .99
+multiplierForObtainingSplitThresholds = 1.5
+
 # maximum size of initial families (and gene trees for reconcilation)
-maxIfamSize = 200
+maxIfamSize = 100
+
+# If some families still to large after splitting based on threshold,
+# we force them to be split on a large internal branch. The choice of
+# branch is based on branch length, and on achieving balance between
+# the number of nodes on each side. This parameter affects how much
+# weighting balance gets. Numbers > 1 mean we give more weight to
+# balance.
+forceSplitUtreeBalanceMultiplier = 10
 
 # DTLOR
 # Should be integers. duplicationCost <= transferCost
 duplicationCost = 1
 transferCost = 1
 lossCost = 1
-originCost = 200
-rearrangeCost = 200
+originCost = 2
+rearrangeCost = 2
 
 #### Visualization and analysis output files ####
 
