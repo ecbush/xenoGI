@@ -156,14 +156,18 @@ coreSynWsize = 20
 
 # Family formation
 
+# The maximum size for blast and initial families is a multiple of the
+# number of tips on the species tree. These parameters give the
+# multiplier used. We want larger blast families than initial
+# families, so the multiplier for blast should be larger.
+maxBlastFamSizeMultiplier = 8
+maxInitialFamSizeMultiplier = 4
+
 # threshold of branch lengths for splitting unrooted gene trees from
 # blast families. obtained by examining this distribution of maximum
 # scores for aabrh hard core families.
 quantileForObtainingSplitThresholds = .99
 multiplierForObtainingSplitThresholds = 1.5
-
-# maximum size of initial families (and gene trees for reconcilation)
-maxIfamSize = 100
 
 # If some families still to large after splitting based on threshold,
 # we force them to be split on a large internal branch. The choice of

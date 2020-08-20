@@ -384,6 +384,19 @@ def debugWrapper(paramD):
     blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
     aabrhHardCoreGeneTreeFileStem = paramD['aabrhHardCoreGeneTreeFileStem']
 
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
+
+    L=[]
+    for ifam in initialFamiliesO.iterFamilies():
+        if ifam.reconD != None:
+            L.append(ifam.geneCount())
+
+    print([numpy.quantile(L,0),numpy.quantile(L,.25),numpy.quantile(L,.5),numpy.quantile(L,.75),numpy.quantile(L,1)])
+    print("Num trees reconciled",len(L))
+
+    
     code.interact(local=locals())
 
     

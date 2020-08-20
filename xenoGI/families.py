@@ -32,9 +32,6 @@ object, then reconciles those against the species tree to make an
 originFamilies object.
     '''
 
-    # threshold for maximum size of gene tree, if above, split
-    maxIfamSize = paramD['maxIfamSize']
-
     # define some variables
     initFamilyFN = paramD['initFamilyFN']
     originFamilyFN =  paramD['originFamilyFN']
@@ -44,7 +41,7 @@ originFamilies object.
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # create blast families, output is directory of gene trees
-    createBlastFamilies(paramD,scoresO,genesO,outputSummaryF)
+    createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF)
     print("Finished making gene trees",file=sys.stderr)
 
     initialFamiliesO,locusMapD = createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF)
@@ -54,7 +51,12 @@ originFamilies object.
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
     
     # reconcile
+    import time
+    st=time.time()
     initialFamiliesO = reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD)
+    end = time.time()
+    print("DTLOR time in sec",end-st,file=sys.stderr)
+
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families updated with reconciliations",file=sys.stderr)    
 
@@ -194,9 +196,9 @@ score.
             peakPosInScoreUnitsL.append((peakHeight,peakPos,leftExtremeOfPeakPos,rightExtremeOfPeakPos))
     return peakPosInScoreUnitsL
 
-#### Create initial families object
+## Create blast families object
 
-def createBlastFamilies(paramD,scoresO,genesO,outputSummaryF):
+def createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF):
     '''Given a scoresO object, create gene families based on blast
     connectivity, then make gene trees with these.
 
@@ -204,11 +206,12 @@ def createBlastFamilies(paramD,scoresO,genesO,outputSummaryF):
     geneFamilyTreesDir = paramD['geneFamilyTreesDir']
     blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
     blastFamilyFN = paramD['blastFamilyFN']
+    maxBlastFamSize = int(paramD['maxBlastFamSizeMultiplier'] * speciesRtreeO.leafCount())
     
     ## get blast families as list of sets
-    blastFamilySetL = createBlastFamilySetL(scoresO, genesO)
-    print("  Number of blast families:",len(blastFamilySetL),file=outputSummaryF)
-    blastFamilySetL.sort(reverse=True,key=len) # sort by number of genes in descending order
+    print("Blast families:",file=outputSummaryF)
+    blastFamilySetL = createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize)
+
     # save and add numbering so elements are (num,blastFamS)
     with open(blastFamilyFN,'w') as f:
         tempL=[] # for adding numbers
@@ -219,7 +222,7 @@ def createBlastFamilies(paramD,scoresO,genesO,outputSummaryF):
             i+=1
         blastFamilySetL = tempL
         del tempL
-            
+        
     ## make gene family trees for each blast family
     # create work dir if it doesn't already exist
     if glob.glob(geneFamilyTreesDir)==[]:
@@ -236,7 +239,7 @@ def createBlastFamilies(paramD,scoresO,genesO,outputSummaryF):
     for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
         os.remove(fn)
     
-def createBlastFamilySetL(scoresO, genesO):
+def createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize):
     '''
     Input
     ------------------------------------------------
@@ -245,57 +248,245 @@ def createBlastFamilySetL(scoresO, genesO):
 
     Output
     ------------------------------------------------
-    initFamilySetL:      a list of sets where each set stores
+    blastFamilySetL:      a list of sets where each set stores
                     all the genes that are connected as
                     indicated by significant BLAST score 
                     (that appear in scoresO)
     '''
    
-    def stronglyConnected(temp, gene, visited): 
+    def getConnectedComponent(temp, gene, visited): 
         visited.add(gene)
         temp.add(gene) 
   
         # Repeat for all vertices adjacent 
         # to this gene
         neighbors=scoresO.getConnectionsGene(gene)
-        degreeD[gene]=len(neighbors)
         if neighbors:
             for i in neighbors: 
                 if i not in visited:     
                     # Update the list 
-                    temp = stronglyConnected(temp, i, visited) 
+                    temp = getConnectedComponent(temp, i, visited) 
         
         return temp
 
     # main for createBlastFamilySetL
-    degreeD = {}
     allGenesL=list(genesO.iterGenes())
     scoresO.createNodeConnectD() 
     connectedGenes=list(scoresO.nodeConnectD.keys())
-    blastFamilySetL=[]
+    connecComponentSetL=[]
     visited=set()
     for gene in allGenesL: 
         if gene in scoresO.nodeConnectD:
             if gene not in visited: 
                 temp =set()
-                newFam=stronglyConnected(temp, gene, visited)
+                newFam=getConnectedComponent(temp, gene, visited)
                 
-                blastFamilySetL.append(newFam) 
+                connecComponentSetL.append(newFam) 
         else:
             fam=set()
             fam.add(gene)
-            blastFamilySetL.append(fam)
+            connecComponentSetL.append(fam)
+
+    print("  Num initial connected components:",len(connecComponentSetL),file=outputSummaryF)
   
+    # filter out largest
+    blastFamilySetL = connecComponentSizeThreshold(connecComponentSetL,maxBlastFamSize,scoresO,outputSummaryF)
+
     return blastFamilySetL
 
+def connecComponentSizeThreshold(connecComponentSetL,maxBlastFamSize,scoresO,outputSummaryF):
+    '''For family sets larger than maxBlastFamSize, split by making a
+neighbor joining tree using raw scores.'''
+
+    blastFamilySetL = []
+    tooBigL = []
+    numAboveThresh = 0
+    for clusterS in connecComponentSetL:
+        if len(clusterS)> maxBlastFamSize:
+            numAboveThresh+=1
+            # force split
+            tooBigL.append((len(clusterS),clusterS))
+        else:
+            blastFamilySetL.append((len(clusterS),clusterS))
+            
+    print("  Num components to split (have more than %d genes):"%maxBlastFamSize,numAboveThresh,file=outputSummaryF)
+
+    # split the big ones
+    tooBigL.sort(reverse=True,key=lambda x: x[0])
+    for _,fullClusterS in tooBigL:
+        
+        splitClusterL = splitClusterFailsafe(fullClusterS,scoresO,maxBlastFamSize)
+
+        for clusterS in splitClusterL:
+            blastFamilySetL.append((len(clusterS),clusterS))
+
+    blastFamilySetL.sort(reverse=True,key=lambda x: x[0])
+
+    # strip out length and return
+    return [clusterS for _,clusterS in blastFamilySetL]
+
+def splitClusterFailsafe(fullClusterS,scoresO,maxBlastFamSize):
+    '''Split fullClusterS by setting higher and higher thresholds for
+homology. Find a threshold that is as low as possible, but still
+splits fullClusterS such that no subclusters are larger than
+maxBlastFamSize.
+
+    '''
+    splitClusterBinSearchSteps = 25 # max value of steps we'll allow
+    
+    connecT = getConnectionT(fullClusterS,scoresO)
+
+    lind = 0
+    hind = len(connecT)-1
+
+    bestInd = splitBinSearch(connecT,lind,hind,fullClusterS,maxBlastFamSize,splitClusterBinSearchSteps)
+    splitClusterL = buildClusterLFromConnecT(connecT[bestInd:],fullClusterS)
+   
+    return splitClusterL
+    
+def getConnectionT(fullClusterS,scoresO):
+    '''Get a tuple representation of the network for this cluster. Each
+    element is ((node1,node2),rawSc), and we sort of rawSc.
+    '''
+    connecD={}
+    for gene1 in fullClusterS:
+        neighborL=scoresO.getConnectionsGene(gene1)
+        for gene2 in neighborL:
+            if gene1 != gene2:
+                # must eliminate self connections
+                keyT=tuple(sorted([gene1,gene2]))
+                connecD[keyT] = scoresO.getScoreByEndNodes(keyT[0],keyT[1],'rawSc')
+    connecT = tuple(sorted(connecD.items(),key=lambda x: x[1]))
+    return connecT
+
+def splitBinSearch(connecT,lind,hind,fullClusterS,maxBlastFamSize,step):
+    '''Find the lowest index into connecT where the network made from that
+point forward has no clusters larger than maxBlastFamSize.
+
+    '''
+    mind = int((lind+hind)/2)
+    # base case
+    if mind==lind or mind==hind:
+        return hind
+    elif step == 0:
+        return hind
+    else:
+        splitClusterL = buildClusterLFromConnecT(connecT[mind:],fullClusterS)
+        if isSplitClusterLSmallEnough(splitClusterL,maxBlastFamSize):
+            hind=mind
+        else:
+            lind=mind
+        # recurse.
+        return splitBinSearch(connecT,lind,hind,fullClusterS,maxBlastFamSize,step-1)
+        
+def isSplitClusterLSmallEnough(splitClusterL,maxBlastFamSize):
+    '''Test if the clusters in splitClusterL are below
+maxBlastFamSize. Return True if they all are, False if any are too
+big.
+    '''
+    for clusterS in splitClusterL:
+        if len(clusterS)>maxBlastFamSize:
+            return False
+    return True
+    
+def buildClusterLFromConnecT(connecT,fullClusterS):
+    '''Build the clusters implied by connecL (which has already been
+reduced by thresholding). fullClusterS gives the full set of genes we
+must divide.
+
+    '''
+    ## functions
+    def getNodeConnectD(connecT):
+        '''Take all the connections in connecT, and put them in a node based
+    representaiton in nodeConnectD.'''
+
+        nodeConnectD = {}
+        for (gn1,gn2),_ in connecT:
+
+            if gn1 not in nodeConnectD:
+                nodeConnectD[gn1] = set([gn2])
+            else:
+                nodeConnectD[gn1].add(gn2)
+
+            if gn2 not in nodeConnectD:
+                nodeConnectD[gn2] = set([gn1])
+            else:
+                nodeConnectD[gn2].add(gn1)
+
+        return nodeConnectD
+
+    def getConnectedComponent(visitedS,clusterS,nodeConnectD,gene):
+        '''Get all the genes connected to gene in nodeConnectD'''
+        visitedS.add(gene)
+        clusterS.add(gene) 
+
+        # Repeat for all vertices adjacent to this gene
+        neighborsL= nodeConnectD[gene]
+        for neighbGene in neighborsL: 
+            if neighbGene not in visitedS:     
+                # Update the list 
+                clusterS = getConnectedComponent(visitedS,clusterS,nodeConnectD,neighbGene) 
+
+        return clusterS
+
+    ## buildClusterLFromConnecT main
+    nodeConnectD = getNodeConnectD(connecT)
+    
+    splitClusterL = [] # for output
+    visitedS=set()
+    for gene in fullClusterS: 
+        if gene in nodeConnectD:
+            if gene not in visitedS: 
+                tempClusterS=set()
+                tempClusterS=getConnectedComponent(visitedS,tempClusterS,nodeConnectD,gene)
+                
+                splitClusterL.append(tempClusterS) 
+        else:
+            fam=set()
+            fam.add(gene)
+            splitClusterL.append(fam)
+        
+    # check if there is redundancy
+    L=[]
+    S=set()
+    for clusterS in splitClusterL:
+        L.extend(clusterS)
+        S.update(clusterS)
+
+    if len(L) != len(S):
+        print("inner---")
+        print(len(L))
+        print(len(S))
+
+    return splitClusterL
+
+
+def addGeneToSplitClusterL(splitClusterL,gn1,gn2):
+    '''Given a connection pair, gn1,gn2, add to connecL, creating a new
+set in connecL if none of the existing sets have either gene.
+
+    '''
+    for clusterS in splitClusterL:
+        if gn1 in clusterS:
+            clusterS.add(gn2)
+            return splitClusterL
+        if gn2 in clusterS:
+            clusterS.add(gn1)
+            return splitClusterL
+    # if we get here, must create new cluster
+    newClusterS = set([gn1,gn2])
+    splitClusterL.append(newClusterS)
+    return splitClusterL
+            
+## Initial family formation    
 def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF):
     ''''''
     blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
     aabrhHardCoreGeneTreeFileStem = paramD['aabrhHardCoreGeneTreeFileStem']
     geneFamilyTreesDir = paramD['geneFamilyTreesDir']
-    maxIfamSize = paramD['maxIfamSize']
+    maxInitialFamSize = int(paramD['maxInitialFamSizeMultiplier'] * speciesRtreeO.leafCount())
     forceSplitUtreeBalanceMultiplier = paramD['forceSplitUtreeBalanceMultiplier']
-    
+
     # load gene trees
     blastFamGeneTreeL = loadGeneTrees(paramD,blastFamGeneTreeFileStem)
 
@@ -335,9 +526,9 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
                 if aUtO.leafCount() == 1:
                     singleGeneTreeL.append((aUtO.leafCount(),blastFamNum,aUtO))
                 else:
-                    # failsafe to keep below maxIfamSize. If none too
+                    # failsafe to keep below maxInitialFamSize. If none too
                     # big, will pass back same list
-                    for bUtO in splitUtreeFailsafe([aUtO],maxIfamSize,forceSplitUtreeBalanceMultiplier):
+                    for bUtO in splitUtreeFailsafe([aUtO],maxInitialFamSize,forceSplitUtreeBalanceMultiplier):
                         geneTreeL.append((bUtO.leafCount(),blastFamNum,bUtO))
 
     geneTreeL.extend(singleGeneTreeL)
@@ -453,17 +644,17 @@ utreeL should not be single tip trees.
         completeL.extend(remainderSplitL)
         return completeL
 
-def splitUtreeFailsafe(utreeL,maxIfamSize,forceSplitUtreeBalanceMultiplier):
+def splitUtreeFailsafe(utreeL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier):
     '''Function for cutting tree size down in order to limit dtlor
 calculation time.  Given an input list containing Utree objects,
-recursively split these until all are below maxIfamSize. Trees in
+recursively split these until all are below maxInitialFamSize. Trees in
 utreeL should not be single tip trees.
     '''
 
     def getIndFirstTooBig(utreeL):
         i=-1 # for empty list case
         for i in range(len(utreeL)):
-            if utreeL[i].leafCount() > maxIfamSize:
+            if utreeL[i].leafCount() > maxInitialFamSize:
                 return i
         return i+1 # none too big
         
@@ -494,7 +685,7 @@ utreeL should not be single tip trees.
             
         # put the rest of utreeL in the to do list and recurse
         remainderL.extend(utreeL[tooBigInd+1:])
-        remainderSplitL = splitUtreeFailsafe(remainderL,maxIfamSize,forceSplitUtreeBalanceMultiplier)
+        remainderSplitL = splitUtreeFailsafe(remainderL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier)
         completeL.extend(remainderSplitL)
         return completeL
 
@@ -678,7 +869,7 @@ def divideInitialFamilyIntoLocusFamilies(familyS, genesO, scoresO, paramD,synThr
                     geneNeighborsD[gene2].append(gene1)
 
     # find connected components
-    def stronglyConnected(tempFamL, gene, visitedS,geneNeighborsD):
+    def getConnectedComponent(tempFamL, gene, visitedS,geneNeighborsD):
         '''Find components connected to gene and put in tempFamL.'''
         visitedS.add(gene)
         tempFamL.append(gene)
@@ -687,7 +878,7 @@ def divideInitialFamilyIntoLocusFamilies(familyS, genesO, scoresO, paramD,synThr
             for neighbGene in neighborsL: 
                 if neighbGene not in visitedS:     
                     # Update the list 
-                    tempFamL = stronglyConnected(tempFamL, neighbGene, visitedS, geneNeighborsD) 
+                    tempFamL = getConnectedComponent(tempFamL, neighbGene, visitedS, geneNeighborsD) 
         return tempFamL 
 
     locusFamLL=[]
@@ -695,7 +886,7 @@ def divideInitialFamilyIntoLocusFamilies(familyS, genesO, scoresO, paramD,synThr
     for gene in genesL: 
         if gene not in visitedS: 
             tempFamL =[]
-            newFamL=stronglyConnected(tempFamL, gene, visitedS, geneNeighborsD)
+            newFamL=getConnectedComponent(tempFamL, gene, visitedS, geneNeighborsD)
             locusFamLL.append(newFamL) 
 
     return locusFamLL
@@ -752,7 +943,9 @@ outputSummaryF.
     multipleLfFams = 0
     singleStrainFams = 0
     multipleStrainFams = 0
+    famLenL = []
     for fam in familiesO.iterFamilies():
+        famLenL.append(fam.geneCount())
         # locus families
         if len(fam.getLocusFamilies()) == 1:
             singleLfFams += 1
@@ -764,6 +957,9 @@ outputSummaryF.
         else:
             multipleStrainFams += 1
 
+    sizeDistSummaryL = [numpy.quantile(famLenL,0),numpy.quantile(famLenL,.25),numpy.quantile(famLenL,.5),numpy.quantile(famLenL,.75),numpy.quantile(famLenL,1)]
+    summaryL.append(["Family size dist [min,q1,q2,q3,max]",str(sizeDistSummaryL)])
+    
     summaryL.append(["Number of families with one LocusFamily",str(singleLfFams)])
     summaryL.append(["Number of families with multiple LocusFamilies",str(multipleLfFams)])
     summaryL.append(["Number of families with gene(s) in only one strain",str(singleStrainFams)])
@@ -788,8 +984,6 @@ def reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD
     for ifam in initialFamiliesO.iterFamilies():
         initFamNum = ifam.famNum
         geneUtreeO = ifam.geneTreeO
-
-        assert(ifam.geneCount() == geneUtreeO.leafCount()) # temp
 
         # skip single gene and multifurcating families
         if ifam.geneCount() == 1 or len(geneUtreeO.multifurcatingNodes()) > 0:
