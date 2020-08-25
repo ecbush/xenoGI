@@ -1,6 +1,7 @@
 import sys
 from . import trees,new_DTLOR_DP
 
+
 class LocusFamily:
     def __init__(self, famNum, locusFamNum, lfMrca,locusNum=None,reconRootKey=None):
         '''Initialize a LocusFamily object with a family number, a LocusFamily
