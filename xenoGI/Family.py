@@ -219,15 +219,14 @@ optimal cost?
         '''
         return new_DTLOR_DP.count_MPRs(self.reconD)[(new_DTLOR_DP.NodeType.ROOT,)]
         
-    def getMedianMprReconD(self,speciesPreOrderT,paramD,rand):
-        '''From the reconciliation graph (dtlor output), get a median mpr,
-convert to our node based format and return as a dict. If rand is
-False, this will be arbitrarily chosen (and the same each time if done
-repeatedly). If rand is True, it will be randomly chosen.
-
+    def getMprReconD(self,speciesPreOrderT,paramD,isMedian,rand):
+        '''From the reconciliation graph (dtlor output), get an mpr, convert
+to our node based format and return as a dict. If isMedian is True,
+select a median MPR. If rand is True, this will be randomly chosen. If
+rand is False, this will be arbitrarily chosen (and the same each time
+if done repeatedly).
         '''
         ## support funcs
-
         def getEventTypeStr(eventTypeO):
             '''Convert from the object representation (from dtlor) of an event to
 a string.
@@ -277,8 +276,12 @@ a string.
         speciesPostOrderT = speciesPreOrderT[::-1]
         
         # get event list
-        eventG = new_DTLOR_DP.build_event_median_graph(self.reconD)
-        mpr = new_DTLOR_DP.find_MPR(eventG,rand) # one median mpr
+        if isMedian:
+            eventG = new_DTLOR_DP.build_event_median_graph(self.reconD)
+        else:
+            eventG = new_DTLOR_DP.build_event_graph(self.reconD)
+            
+        mpr = new_DTLOR_DP.find_MPR(eventG,rand) # one mpr
         eventL = new_DTLOR_DP.get_events(mpr)
 
         # create dict with keys (geneTreeLoc,'n/b')

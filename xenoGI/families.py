@@ -1079,7 +1079,7 @@ def createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO):
             # add in families from reconciliation
             sourceFam = initFamO.famNum
              # get arbitrarily chosen median mpr
-            reconD = initFamO.getMedianMprReconD(speciesRtreeO.preorder(),paramD,False)
+            reconD = initFamO.getMprReconD(speciesRtreeO.preorder(),paramD,True,False)
             originFamiliesO = addOriginFamilyFromReconciliation(initFamO.geneTreeO,reconD,originFamiliesO,sourceFam,genesO)
 
     return originFamiliesO

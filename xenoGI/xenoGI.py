@@ -12,7 +12,7 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug', 'simValidation'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug'])
     
     except:
         print(
@@ -381,35 +381,6 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
-    aabrhHardCoreGeneTreeFileStem = paramD['aabrhHardCoreGeneTreeFileStem']
-
-    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-    
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
-
-    L=[]
-    for ifam in initialFamiliesO.iterFamilies():
-        if ifam.reconD != None:
-            L.append(ifam.geneCount())
-
-    print([numpy.quantile(L,0),numpy.quantile(L,.25),numpy.quantile(L,.5),numpy.quantile(L,.75),numpy.quantile(L,1)])
-    print("Num trees reconciled",len(L))
 
     
     code.interact(local=locals())
-
-    
-def simValidationWrapper(paramD):
-    '''Take us into interactive mode for running validation with
-simulations. This is not really intended for the end user...'''
-
-    ## Set up the modules a bit differently for interactive mode
-    import sys
-    from .xenoGI import parameters,trees,genomes,families,islands,analysis
-    sys.path.insert(0,'/data/bushlab/htrans/dupDelProj/simCode')
-    import validationSim
-
-    moduleT=(parameters,trees,genomes,families,islands,analysis)
-    
-    xgiIslandGeneSetByNodeL,simIslandGeneSetByNodeL=validationSim.runValidation(moduleT,'simParams.py','params.py')
