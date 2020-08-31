@@ -98,6 +98,15 @@ fileStr method for description of format.
             node=entryL[0]
             connecT=tuple(entryL[1:])
             self.nodeConnectD[node] = connecT
+
+        # preorderT
+        if isinstance(self, Rtree):
+            self.preOrderT = self.__traversePreOrder__(self.rootNode)
+        else:
+            # Utree
+            self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
+
+        # other attributes
         self.__updateSecondaryAttributes__()
 
         # branch lens

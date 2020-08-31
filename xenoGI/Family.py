@@ -73,7 +73,7 @@ occurs.'''
             
             return orig
 
-    def printReconByGeneTree(self,familiesO,fileF=sys.stdout):
+    def printReconByGeneTree(self,familiesO,genesO,fileF=sys.stdout):
         '''Print a text summary of the reconciliation corresponding to this
 locus family.'''
         if self.reconRootKey == None:
@@ -81,8 +81,8 @@ locus family.'''
         else:
             fam = familiesO.getFamily(self.famNum)
             rootOfLfSubtree = self.reconRootKey[0]
-            lfSubtree = trees.subtree(fam.geneRtree,rootOfLfSubtree)
-            fam.printReconByGeneTreeHelper(lfSubtree,0,fileF)
+            lfSubtreeO = fam.geneRtreeO.subtree(rootOfLfSubtree)
+            fam.printReconByGeneTreeHelper(lfSubtreeO,genesO,0,fileF)
     
     def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
@@ -227,6 +227,11 @@ select a median MPR. If rand is True, this will be randomly chosen. If
 rand is False, this will be arbitrarily chosen (and the same each time
 if done repeatedly).
         '''
+        return self.__getMprReconDHelper__(self.reconD,speciesPreOrderT,paramD,isMedian,rand)
+        
+    def __getMprReconDHelper__(self,dtlorGraphD,speciesPreOrderT,paramD,isMedian,rand):
+        '''Actual function to do the conversion.'''
+        
         ## support funcs
         def getEventTypeStr(eventTypeO):
             '''Convert from the object representation (from dtlor) of an event to
@@ -278,9 +283,9 @@ a string.
         
         # get event list
         if isMedian:
-            eventG = new_DTLOR_DP.build_event_median_graph(self.reconD)
+            eventG = new_DTLOR_DP.build_event_median_graph(dtlorGraphD)
         else:
-            eventG = new_DTLOR_DP.build_event_graph(self.reconD)
+            eventG = new_DTLOR_DP.build_event_graph(dtlorGraphD)
             
         mpr = new_DTLOR_DP.find_MPR(eventG,rand) # one mpr
         eventL = new_DTLOR_DP.get_events(mpr)
@@ -467,11 +472,11 @@ no reconciliation, return empty string.
 
         return orig
         
-    def printReconByGeneTree(self,fileF=sys.stdout):
+    def printReconByGeneTree(self,genesO,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''
-        self.printReconByGeneTreeHelper(self.geneTreeO,self.geneTreeO.rootNode,0,fileF)
+        self.printReconByGeneTreeHelper(self.reconD,self.geneTreeO,genesO,self.geneTreeO.rootNode,0,fileF)
 
-    def printReconByGeneTreeHelper(self,geneRtreeO,node,level,fileF=sys.stdout):
+    def printReconByGeneTreeHelper(self,reconD,geneRtreeO,genesO,node,level,fileF=sys.stdout):
         '''Actual recursive function to print reconciliation. Single letter
 codes for events are as follows:
 
@@ -487,7 +492,7 @@ codes for events are as follows:
                 for eventT in reconD[nbKey]:
                     gt,gtNB = nbKey
                     event,stLoc,stNB,locus = eventT
-                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") "+"("+str(stLoc)+" "+stNB+")"
+                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") --> "+"("+str(stLoc)+" "+stNB+")"
                     if locus != None:
                         outStr+=" synReg:"+str(locus)
                     print(outStr,file=fileF)
@@ -495,20 +500,19 @@ codes for events are as follows:
         # recurse over tree, printing out for each branch and node
         levelSpace = "   "*level
         if geneRtreeO.isLeaf(node):
-            print(levelSpace+"- "+node,file=fileF)
-            printOneKey(levelSpace+"  ",self.reconD,(node,'b'))
-            printOneKey(levelSpace+"  ",self.reconD,(node,'n'))
+            print(levelSpace+"- "+node+" ["+genesO.numToStrainName(int(node))+"]",file=fileF)
+            printOneKey(levelSpace+"  ",reconD,(node,'b'))
+            printOneKey(levelSpace+"  ",reconD,(node,'n'))
             return
         else:
             childL = []
             for child in geneRtreeO.children(node):
                 childL.append(child)
-            childStr = " (children:"+",".join(childL)+")"
-            print(levelSpace+"- "+node+childStr,file=fileF)
-            printOneKey(levelSpace+"  ",self.reconD,(node,'b'))
-            printOneKey(levelSpace+"  ",self.reconD,(node,'n'))
+            print(levelSpace+"- "+node,file=fileF)
+            printOneKey(levelSpace+"  ",reconD,(node,'b'))
+            printOneKey(levelSpace+"  ",reconD,(node,'n'))
             for child in childL:
-                self.printReconByGeneTreeHelper(geneRtreeO,child,level+1,fileF)
+                self.printReconByGeneTreeHelper(reconD,geneRtreeO,genesO,child,level+1,fileF)
     
 class Families:
 
