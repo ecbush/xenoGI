@@ -382,35 +382,18 @@ def debugWrapper(paramD):
     from Bio import Phylo
     import glob,random
     
-    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    #strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     #speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
     # test case
-    speciesRtreeO = Rtree()
-    speciesRtreeO.fromString('s4|s4  s3 S_bongori,s3 s4 S_enterica_LT2 S_enterica_AZ,S_enterica_LT2 s3,S_enterica_AZ s3,S_bongori s4|None')
+    outGroup = 'GCF_000236925.1_ASM23692v1_genomic'    
+    utreeO = Utree()
+    utreeO.fromNewickFile("astral.tre")
 
-    geneRtreeO = Rtree()
-    geneRtreeO.fromString('g11|g11  5541 g12,5541 g11,g12 g11 45390 50053,45390 g12,50053 g12|None')
+    parent = utreeO.getParent(outGroup)
 
-    tipMapD = families.getTipMapping(geneRtreeO, genesO)
+    #rtreeO = utreeO.rootIncludeBranchLen((parent,outGroup))
 
-    gtLocusMapD = {'5541':4763, '45390':4763,'50053':4763}
-
-    D = 2
-    T = 5
-    L = 1
-    O = 5
-    R = 6
-
-    speciesTreeD = speciesRtreeO.createDtlorD(True)
-    geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
-    cost, G = new_DTLOR_DP.compute_dtlor_graph(speciesTreeD,geneTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
-
-    ifam = initialFamily(0,'s4',geneRtreeO,G,cost)
     
-    reconD = ifam.getMprReconD(speciesRtreeO.preorder(),paramD,False,True)
-
-    ofam = originFamily(0,'s4')
-    ofam.printReconByGeneTreeHelper(reconD,geneRtreeO,genesO,geneRtreeO.rootNode,0)
     
     code.interact(local=locals())

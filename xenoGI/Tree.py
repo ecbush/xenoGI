@@ -21,7 +21,7 @@ we still hold it as a string.
         self.leafNodeT = None
         self.internalNodeT = None
         self.preOrderT = None
-        self.branchLenD = None # for now, only Utree can have a non-None value here
+        self.branchLenD = None
         
         if self.nodeConnectD != None:
             self.__updateSecondaryAttributes__()
@@ -153,6 +153,15 @@ than 3 branches).'''
                 multifurcL.append(node)
         return multifurcL
 
+    def getParent(self,node):
+        '''For rooted trees, give parent. For unrooted trees, this simply
+gives a node leading to this node. We have this method also for
+unrooted trees since it can be useful for finding what leads to a
+tip.
+        '''
+        connecT = self.nodeConnectD[node]
+        return connecT[0] # parent is first element
+        
     def __contains__(self,node):
         return node in self.nodeConnectD
         
@@ -322,10 +331,6 @@ preparation such as naming internal nodes).
 
         return tuple(traverse(self.nodeConnectD,node))
 
-    def getParent(self,node):
-        connecT = self.nodeConnectD[node]
-        return connecT[0] # in rooted tree, parent is first element
-        
     def getNearestNeighborL(self,leaf):
         '''Given a leaf, return a list containing the other leaf or
     leaves which are most closely related to leaf.'''
@@ -466,8 +471,7 @@ named interal nodes (we will create those).
         self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
         self.branchPairT = self.__createBranchPairT__()
 
-        # insert branch lengths dict keyed by branch pair. For now,
-        # branch lengths are only defined for unrooted trees.
+        # insert branch lengths dict keyed by branch pair.
         branchLenD = {}
         for parent,child,brLen in branchLenL:
             if parent != ROOT_PARENT_NAME:
@@ -479,7 +483,7 @@ named interal nodes (we will create those).
                 branchLenD[key] = brLen
         if not all(brLen==None for brLen in branchLenD.values()):
             self.branchLenD = branchLenD
-        
+
     def toNewickStr(self):
         '''Output a newick string.'''
         if self.nodeCount() == 1:
@@ -509,8 +513,8 @@ corresponding branchPair tuple and the length.
         L.sort(key=lambda x: x[1])
         return L[-1]
         
-    def root(self,branchPair):
-        '''Root using the tuple branchPair and return an Rtree object.'''
+    def root(self,branchToRootPair):
+        '''Root using the tuple branchToRootPair and return an Rtree object.'''
 
         def updateChildOfRoot(newD,nodeToWorkOn,nodeToReplace):
             '''Adjust child of root to say root is parent.'''
@@ -523,19 +527,49 @@ corresponding branchPair tuple and the length.
             
         # make new nodeConnectD
         newD = {}
-        self.__splitNodeConnectD__(self.nodeConnectD,newD,branchPair[0],branchPair[1])
-        self.__splitNodeConnectD__(self.nodeConnectD,newD,branchPair[1],branchPair[0])
+        self.__splitNodeConnectD__(self.nodeConnectD,newD,branchToRootPair[0],branchToRootPair[1])
+        self.__splitNodeConnectD__(self.nodeConnectD,newD,branchToRootPair[1],branchToRootPair[0])
 
         # must add the root
         rootNode = "root"
-        newD[rootNode] = (ROOT_PARENT_NAME,branchPair[0],branchPair[1])
+        newD[rootNode] = (ROOT_PARENT_NAME,branchToRootPair[0],branchToRootPair[1])
 
         # adjust children of root to say root is parent
-        newD = updateChildOfRoot(newD,branchPair[0],branchPair[1])
-        newD = updateChildOfRoot(newD,branchPair[1],branchPair[0])
+        newD = updateChildOfRoot(newD,branchToRootPair[0],branchToRootPair[1])
+        newD = updateChildOfRoot(newD,branchToRootPair[1],branchToRootPair[0])
         
         return Rtree(newD,rootNode)
 
+    def rootIncludeBranchLen(self,branchToRootPair):
+        '''Root using the tuple branchToRootPair and return an Rtree object that
+includes branch lengths.'''
+
+        # output tree
+        rtreeO = self.root(branchToRootPair)
+
+        # get all branch lengths besides those involving the root
+        branchLenD = {}
+        for utreeBranchPair in self.branchPairT:
+
+            if utreeBranchPair == branchToRootPair or utreeBranchPair == (branchToRootPair[1],branchToRootPair[0]):
+                # this is the branch to be rooted, skip
+                continue
+            else:
+                # make sure its in preorder as defined for rtreeO
+                rtreeBranchPair = tuple((nd for nd in rtreeO.preorder() if nd in utreeBranchPair))
+
+                branchLenD[rtreeBranchPair] = self.branchLenD[utreeBranchPair]
+
+        # now get branch lens involving root. Arbitrarily split 50:50.
+        utreeBranchToRootLen = self.branchLenD[branchToRootPair]
+        branchLenD[("root",branchToRootPair[0])] = 0.5 * utreeBranchToRootLen
+        branchLenD[("root",branchToRootPair[1])] = 0.5 * utreeBranchToRootLen
+        
+        # add to tree
+        rtreeO.branchLenD = branchLenD
+
+        return rtreeO
+        
     def iterAllRootedTrees(self):
         '''Iterator yielding all possible rooted trees from this unrooted tree.'''
         for branchPair in self.branchPairT:
@@ -688,38 +722,63 @@ tip.
             # parentNodeStr will never be ROOT_PARENT_NAME in this case
             nodeConnectD[bpClade.name] = (parentNodeStr,)
             branchLenL = [(parentNodeStr,bpClade.name,bpClade.branch_length)]
-        elif parentNodeStr == ROOT_PARENT_NAME and bpClade.count_terminals() == 2:
-            # special case where entire tree only has 2 tips. Don't
-            # create a new internal node
-            self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
-            self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
 
-            if bpClade[0].branch_length == None or bpClade[1].branch_length == None:
-                brLen = None
-            else:
-                brLen = bpClade[0].branch_length + bpClade[1].branch_length
-            branchLenL = [(bpClade[0].name,bpClade[1].name,brLen)]
-        
         elif parentNodeStr == ROOT_PARENT_NAME and len(bpClade) == 2:
-            # biopython has put 2 branches only at the base. Our
-            # structure requires 3 or more. We'll collect all tips at
-            # this level or at the child level and attch them to one
-            # internal node.
-            def getBaseBpClades(bpClade,level):
-                if level > 2:
-                    return []
-                elif bpClade.is_terminal():
-                    return [bpClade]
-                else:
-                    outL = []
-                    for childClade in bpClade:
-                        outL.extend(getBaseBpClades(childClade,level+1))
-                    return outL
+            # biopython has put 2 branches only at the base. We will
+            # operate over this branch, joining the two nodes with no
+            # node in between.
 
-            baseCladeL = getBaseBpClades(bpClade,0) # usually, but not always length 3
-            iNodeNum,nodeConnectD,branchLenL = generalCase(baseCladeL,parentNodeStr,nodeConnectD,iNodeNum)
-            
+            if bpClade[0].is_terminal() and bpClade[1].is_terminal():
+                # both terminal
+                iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
+                iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
+                
+                # get branches
+                if bpClade[0].branch_length == None or bpClade[1].branch_length == None:
+                    brLen = None
+                else:
+                    brLen = bpClade[0].branch_length + bpClade[1].branch_length
+                branchLenL = [(bpClade[0].name,bpClade[1].name,brLen)]
+                
+            elif bpClade[0].is_terminal():
+                # 0 is terminal, 1 not
+                # parent node for 0 will be based on current iNodeNum
+                iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[0],"g"+str(iNodeNum),nodeConnectD,iNodeNum)
+                iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
+
+            elif bpClade[1].is_terminal():
+                # 1 is terminal, 0 not
+                # parent node for 1 will be based on current iNodeNum
+                iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[1],"g"+str(iNodeNum),nodeConnectD,iNodeNum)
+                iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
+
+            else:
+                # neither is terminal
+
+                # get the iNodeNum for the first internal node in 0
+                iNodeNumAtBaseOf0 = iNodeNum
+                
+                # figure out what the parent for 0 will be by making a
+                # dummy call. iNodeNum afterward will be the first
+                # internal node in 1.
+                iNodeNumAtBaseOf1,_,_ = self.__bioPhyloToNodeConnectD__(bpClade[0],"dummy",{},iNodeNum)
+
+                # now make real calls
+                branchLenL = []
+                iNodeNum,nodeConnectD,tempBranchLenL = self.__bioPhyloToNodeConnectD__(bpClade[0],"g"+str(iNodeNumAtBaseOf1),nodeConnectD,iNodeNum)
+                branchLenL.extend(tempBranchLenL)
+
+                iNodeNum,nodeConnectD,tempBranchLenL = self.__bioPhyloToNodeConnectD__(bpClade[1],"g"+str(iNodeNumAtBaseOf0),nodeConnectD,iNodeNum)
+
+                # there is a redundant entry in tempBranchLenL. Don't
+                # include in branchLenL. The entry that has
+                # ("g"+str(iNodeNumAtBaseOf0),"g"+str(iNodeNumAtBaseOf1),brLen)
+                for brLenT in tempBranchLenL:
+                    if brLenT[0] != "g"+str(iNodeNumAtBaseOf0) or brLenT[1] != "g"+str(iNodeNumAtBaseOf1):
+                        branchLenL.append(brLenT)
         else:
+            
+            # general case
             iNodeNum,nodeConnectD,branchLenL = generalCase(bpClade,parentNodeStr,nodeConnectD,iNodeNum)
             
         return iNodeNum,nodeConnectD,branchLenL
@@ -733,9 +792,11 @@ the two nodes on either end.
         for node,connecT in self.nodeConnectD.items():
             for otherNode in connecT:
                 # put them in preorder
-                edgeL=[(node,self.preOrderT.index(node)),(otherNode,self.preOrderT.index(otherNode))]                
-                edgeL.sort(key=lambda x: x[1])
-                edgeT = tuple(x[0] for x in edgeL)
+                edgeT = tuple((nd for nd in self.preorder() if nd in [node,otherNode]))
+                
+                #edgeL=[(node,self.preOrderT.index(node)),(otherNode,self.preOrderT.index(otherNode))]                
+                #edgeL.sort(key=lambda x: x[1])
+                #edgeT = tuple(x[0] for x in edgeL)
                 S.add(edgeT)
         return tuple(sorted(S))
         
