@@ -678,46 +678,6 @@ named internal nodes, and we name them here: g0, g1 etc.
 
         '''
 
-        def generalCase(bpCladeL,parentNodeStr,nodeConnectD,iNodeNum):
-            '''Helper function for the general cases. bpCladeL can be a list of bp
-clades we put together, or else a bpClade object which is not a
-tip.
-            '''
-            connecL = []
-            branchLenL = []
-            if parentNodeStr != ROOT_PARENT_NAME:
-                connecL.append(parentNodeStr)
-            # if we're just starting, it's ROOT_PARENT_NAME, and we
-            # don't want to put that in the list of connections
-            thisNodeStr = "g"+str(iNodeNum)
-            iNodeNum += 1
-            for childClade in bpCladeL:
-
-                # collect connection
-                if childClade.is_terminal():
-                    connecL.append(childClade.name)
-                else:
-                    # the connecting node will be the next one (iNodeNum)
-                    connecL.append("g"+str(iNodeNum))
-
-                # recurse
-                iNodeNum,nodeConnectD,tempBranchLenL = self.__bioPhyloToNodeConnectD__(childClade,thisNodeStr,nodeConnectD,iNodeNum)
-                branchLenL.extend(tempBranchLenL)
-                
-            # add in this connection for this node
-            nodeConnectD[thisNodeStr] = tuple(connecL)
-
-            # get branch len
-            if hasattr(bpCladeL,'branch_length'):
-                brLen = bpCladeL.branch_length
-            else:
-                brLen = None
-            branchLenL.append((parentNodeStr,thisNodeStr,brLen))
-            
-            return iNodeNum,nodeConnectD,branchLenL
-
-        
-        # main body of __bioPhyloToNodeConnectD__
         if bpClade.is_terminal():
             # parentNodeStr will never be ROOT_PARENT_NAME in this case
             nodeConnectD[bpClade.name] = (parentNodeStr,)
@@ -777,9 +737,38 @@ tip.
                     if brLenT[0] != "g"+str(iNodeNumAtBaseOf0) or brLenT[1] != "g"+str(iNodeNumAtBaseOf1):
                         branchLenL.append(brLenT)
         else:
-            
             # general case
-            iNodeNum,nodeConnectD,branchLenL = generalCase(bpClade,parentNodeStr,nodeConnectD,iNodeNum)
+            connecL = []
+            branchLenL = []
+            if parentNodeStr != ROOT_PARENT_NAME:
+                connecL.append(parentNodeStr)
+            # if we're just starting, it's ROOT_PARENT_NAME, and we
+            # don't want to put that in the list of connections
+            thisNodeStr = "g"+str(iNodeNum)
+            iNodeNum += 1
+            for childClade in bpClade:
+
+                # collect connection
+                if childClade.is_terminal():
+                    connecL.append(childClade.name)
+                else:
+                    # the connecting node will be the next one (iNodeNum)
+                    connecL.append("g"+str(iNodeNum))
+
+                # recurse
+                iNodeNum,nodeConnectD,tempBranchLenL = self.__bioPhyloToNodeConnectD__(childClade,thisNodeStr,nodeConnectD,iNodeNum)
+                branchLenL.extend(tempBranchLenL)
+                
+            # add in this connection for this node
+            nodeConnectD[thisNodeStr] = tuple(connecL)
+
+            # get branch len
+            if hasattr(bpClade,'branch_length'):
+                brLen = bpClade.branch_length
+            else:
+                brLen = None
+            branchLenL.append((parentNodeStr,thisNodeStr,brLen))
+
             
         return iNodeNum,nodeConnectD,branchLenL
     
