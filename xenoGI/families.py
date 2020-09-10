@@ -41,7 +41,7 @@ originFamilies object.
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # create blast families, output is directory of gene trees
-    createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF)
+    createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF) # TEMP
     print("Finished making gene trees",file=sys.stderr)
 
     initialFamiliesO,locusMapD = createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF)
@@ -51,24 +51,18 @@ originFamilies object.
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
     
     # reconcile
-    import time
-    st=time.time()
     initialFamiliesO = reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD)
-    end = time.time()
-    print("DTLOR time in sec",end-st,file=sys.stderr)
-
-    writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
-    print("Initial families updated with reconciliations",file=sys.stderr)    
 
     # create origin families
-    originFamiliesO = createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO)
-
-    # write origin familes to file
-    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
+    initialFamiliesO,originFamiliesO = createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO)
     print("Origin families:",file=outputSummaryF)
     writeFamilyFormationSummary(originFamiliesO,outputSummaryF)
 
-    return originFamiliesO
+    # write familes to file
+    writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD) # update with recons
+    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
+
+    return initialFamiliesO,originFamiliesO
 
 ## Support functions
     
@@ -807,7 +801,7 @@ in that family, add the family to the object.
     speciesL=list(set([genesO.numToStrainName(gene) for gene in familyS]))
     mrca=speciesRtreeO.findMrca(speciesL)
     # add each initial family as a Family object (still empty)
-    initialFamiliesO.initializeFamily(famNumCounter,mrca,"initial",geneUtreeO,None,sourceFam)
+    initialFamiliesO.initializeFamily(famNumCounter,mrca,"initial",geneTreeO=geneUtreeO,sourceFam=sourceFam)
     for locusFamilyL in locusFamLL: #locusFamilyL contains all the genes in that lf
         speciesL=[]
         for gene in locusFamilyL:
@@ -1006,7 +1000,7 @@ def reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD
             # store
             ifam = initialFamiliesO.getFamily(initFamNum)
             ifam.addGeneTree(optGeneRtreeO)
-            ifam.addReconciliation(optG)
+            ifam.addGraphD(optG)
             ifam.dtlorCost = minCost
 
     return initialFamiliesO
@@ -1058,9 +1052,6 @@ def reconcile(argT):
     #sample one G from the Gs for this specific unrooted tree
     optGeneRtreeO,optG,minCost=random.choice(bestRootingsL) 
 
-    #MPR = new_DTLOR_DP.find_MPR(G)
-    #print("G,MPR",sys.getsizeof(G),sys.getsizeof(MPR))
-
     return initFamNum,optGeneRtreeO,optG,minCost
     
 def createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO):
@@ -1076,13 +1067,10 @@ def createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO):
         elif len(initFamO.geneTreeO.multifurcatingNodes()) > 0:
             originFamiliesO = addOriginFamilyFromInitialFamiliesO(initFamO,True,originFamiliesO,genesO)
         else:
-            # add in families from reconciliation
-            sourceFam = initFamO.famNum
-             # get arbitrarily chosen median mpr
-            reconD = initFamO.getMprReconD(speciesRtreeO.preorder(),paramD,True,False)
-            originFamiliesO = addOriginFamilyFromReconciliation(initFamO.geneTreeO,reconD,originFamiliesO,sourceFam,genesO)
-
-    return originFamiliesO
+            initFamO,originFamiliesO = addOriginFamilyFromReconciliation(initFamO,originFamiliesO,paramD,genesO)
+            initialFamiliesO.familiesD[initFamO.famNum] = initFamO # must stick back in here. LocusFams unchanged.
+            
+    return initialFamiliesO,originFamiliesO
         
 def addOriginFamilyFromInitialFamiliesO(initFamO,isMultiFurc,originFamiliesO,genesO):
     '''For cases where there is no reconciliation, base origin family on
@@ -1091,13 +1079,11 @@ corresponding initial family.
     initFamNum = initFamO.famNum
     famNum=originFamiliesO.getNumFamilies() # num for new family
     if isMultiFurc:
-        originFamiliesO.initializeFamily(famNum,initFamO.mrca,"origin")
+        originFamiliesO.initializeFamily(famNum,initFamO.mrca,"origin",sourceFam=initFamNum)
     else:
         # single gene family
         geneRtreeO,reconD = createSingleGeneFamilyGeneTreeRecon(initFamO,genesO)
-        originFamiliesO.initializeFamily(famNum,initFamO.mrca,"origin",geneRtreeO,reconD)
-
-    originFamiliesO.getFamily(famNum).sourceFam = initFamNum
+        originFamiliesO.initializeFamily(famNum,initFamO.mrca,"origin",geneTreeO=geneRtreeO,dtlorMprD=reconD,sourceFam=initFamNum)
 
     for initLocFamO in initFamO.getLocusFamilies():
         locFamNum = originFamiliesO.getNumLocusFamilies() # num for new loc fam
@@ -1128,36 +1114,44 @@ def createSingleGeneFamilyGeneTreeRecon(initFamO,genesO):
 
     return geneRtreeO,reconD
     
-def addOriginFamilyFromReconciliation(geneRtreeO,reconD,originFamiliesO,sourceFam,genesO):
+def addOriginFamilyFromReconciliation(initFamO,originFamiliesO,paramD,genesO):
     '''Given a rooted gene tree and a reconciliation, add origin
 families. One origin family for each origin event.
 
     '''
+    # get arbitrarily chosen median mpr
+    mprOrigFormatD,mprNodeFormatD = initFamO.getMprReconD(originFamiliesO.speciesRtreeO.preorder(),paramD,True,False)
+
     # get origin defined trees
-    branchOriginL = getBranchesWithSpecifiedEvents(reconD,"O")
-    originTreeL = splitTreeByOrigin(geneRtreeO,branchOriginL)
+    branchOriginL = getBranchesWithSpecifiedEvents(mprNodeFormatD,"O")
+    originTreeL = splitTreeByOrigin(initFamO.geneTreeO,branchOriginL)
     
-    # extract parts of reconD corresponding to each tree
-    for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,reconD):
+    # extract parts of mprNodeFormatD corresponding to each tree
+    productFamL = [] # to keep ofams that come from this ifam
+    for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,mprNodeFormatD):
         famNum = originFamiliesO.getNumFamilies()
         keyNB = (geneRtreeO.rootNode,'n')
 
         if geneRtreeO.isLeaf(geneRtreeO.rootNode):
             speciesMrca = geneRtreeO.rootNode
         else:
-            speciesMrca = splitReconD[keyNB][0][1] # remember, the value in reconD is a list of events
+            speciesMrca = splitReconD[keyNB][0][1] # remember, the value in mprNodeFormatD is a list of events
             
-        originFamiliesO.initializeFamily(famNum,speciesMrca,"origin",geneRtreeO,splitReconD)
-        originFamiliesO.getFamily(famNum).sourceFam = sourceFam
+        originFamiliesO.initializeFamily(famNum,speciesMrca,"origin",geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=initFamO.famNum)
         originFamiliesO = getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO)
+        productFamL.append(famNum)
+        
+    # update ifam
+    initFamO.addMprD(mprOrigFormatD) # keep the mpr used for future reference
+    initFamO.productFamT = tuple(productFamL)
+    
+    return initFamO,originFamiliesO
 
-    return originFamiliesO
-
-def getBranchesWithSpecifiedEvents(reconD,event):
-    '''Given a reconD keyed by (geneTreeLoc,geneTreeNB) tuples, extract
+def getBranchesWithSpecifiedEvents(mprNodeFormatD,event):
+    '''Given a mprNodeFormatD keyed by (geneTreeLoc,geneTreeNB) tuples, extract
 the branches (geneTreeLoc's) where an O even occurred.'''
     outL = []
-    for key,value in reconD.items():
+    for key,value in mprNodeFormatD.items():
         geneTreeLoc,geneTreeNB = key
         eventsInEntryL = []
         for eventT in value:
@@ -1179,20 +1173,20 @@ gene tree are not included.
         originTreeL.append(geneRtreeO.subtree(branch))
     return originTreeL
 
-def getGeneTreeReconPairs(originTreeL,reconD):
+def getGeneTreeReconPairs(originTreeL,mprNodeFormatD):
     '''Given a list of geneTrees (new origin families), extract the
-corresponding parts from the reconD for each.'''
+corresponding parts from the mprNodeFormatD for each.'''
 
     geneTreeReconPairL = []
     for geneRtreeO in originTreeL:
         splitReconD = {}
         for geneTreeLoc in geneRtreeO.preorder():
             nbKey = (geneTreeLoc,'b')
-            if nbKey in reconD:
-                splitReconD[nbKey] = reconD[nbKey]
+            if nbKey in mprNodeFormatD:
+                splitReconD[nbKey] = mprNodeFormatD[nbKey]
             nbKey = (geneTreeLoc,'n')
-            if nbKey in reconD:
-                splitReconD[nbKey] = reconD[nbKey]
+            if nbKey in mprNodeFormatD:
+                splitReconD[nbKey] = mprNodeFormatD[nbKey]
         geneTreeReconPairL.append((geneRtreeO,splitReconD))
     return geneTreeReconPairL
         
@@ -1280,18 +1274,49 @@ def readFamilies(familyFN,speciesRtreeO,genesO,famType):
         famNum=int(L[0])
         mrca = L[1]
 
+        # tree
         if L[2] == "None":
             geneRtreeO = None
         else:
-            geneRtreeO = Rtree()
+            geneRtreeO = Rtree() # currently always rooted
             geneRtreeO.fromString(L[2])
+
+        # dtlor cost
+        if L[3] == "None":
+            dtlorCost = None
+        else:
+            dtlorCost = int(L[3])
+
+        # dtlorGraphD
+        if L[4] == "None":
+            dtlorGraphD = None
+        else:
+            dtlorGraphD = eval(L[4])
+
+        # dtlorMprD
+        if L[5] == "None":
+            dtlorMprD = None
+        else:
+            dtlorMprD = eval(L[5])
         
-        recon = eval(L[3].replace('inf', "float('inf')")) # a hack!
-        # eval didn't like the string inf.
-        sourceFam = eval(L[4])
-        familiesO.initializeFamily(famNum,mrca,famType,geneRtreeO,recon,sourceFam)
-        
-        lfL = L[5:]
+        # sourceFam
+        if L[6] == "None":
+            sourceFam = None
+        else:
+            sourceFam = int(L[6])
+
+        # productFamT
+        if L[7] == "None":
+            productFamT = None
+        else:
+            productFamT = eval(L[7])
+
+
+        # make it
+        familiesO.initializeFamily(famNum,mrca,famType,geneTreeO=geneRtreeO,dtlorCost=dtlorCost,dtlorGraphD=dtlorGraphD,dtlorMprD=dtlorMprD,sourceFam=sourceFam,productFamT=productFamT)
+
+        # add locus families
+        lfL = L[8:]
         for lfStr in lfL:
             lfSplitL = lfStr.rstrip().split(',')
             locusFamNum=int(lfSplitL[0])

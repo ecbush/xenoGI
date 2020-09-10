@@ -60,7 +60,7 @@ occurs.'''
         else:
             fam = familiesO.getFamily(self.famNum)
             eventTypeL=[]
-            for eventValue in fam.reconD[self.reconRootKey]:
+            for eventValue in fam.dtlorMprD[self.reconRootKey]:
                 eventType = eventValue[0]
                 if eventType == 'R' or eventType == 'O':
                     eventTypeL.append(eventType)
@@ -109,14 +109,15 @@ gene2...
         
         
 class Family:
-    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None):
+    def __init__(self,famNum,mrca,geneTreeO=None,dtlorMprD=None,sourceFam=None):
         '''Base class to be inherited by initialFamily and originFamily.'''
 
         self.famNum = famNum
         self.mrca = mrca
         self.locusFamiliesL = []   # will contain locusFamily objects for this family
         self.geneTreeO = geneTreeO # gene tree object
-        self.reconD = reconD       # dict with reconciliation graph
+        self.dtlorMprD = dtlorMprD # mpr dict
+        self.sourceFam = sourceFam # specifies the corresponding fource fam (blast or ifam)
         
     def addLocusFamily(self,lfO):
         self.locusFamiliesL.append(lfO)
@@ -156,11 +157,10 @@ connections to this family.'''
         '''Given tree object geneTreeO, store as attribute.'''
         self.geneTreeO = geneTreeO
 
-    def addReconciliation(self,rD):
-        '''Given a dictionary rD storing reconciliation values, store as
-attribute.
+    def addMprD(self,mprD):
+        '''Given a dictionary mprD with an mpr, store as attribute.
         '''
-        self.reconD = rD 
+        self.dtlorMprD = mprD 
 
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum
@@ -179,20 +179,33 @@ attribute.
         else:
             outL.append("None")
 
-        # reconciliation
-        if self.reconD != None:
-            outL.append(str(self.reconD))
+        # dtlorCost
+        if self.dtlorCost != None:
+            outL.append(str(self.dtlorCost))
         else:
             outL.append("None")
 
-        # dtlorCost or sourceFam
-        if hasattr(self,"dtlorCost"):
-            val = self.dtlorCost
+        # dtlorGraphD
+        if self.dtlorGraphD != None:
+            outL.append(str(self.dtlorGraphD))
         else:
-            val = self.sourceFam
-        
-        if val != None:
-            outL.append(str(val))
+            outL.append("None")
+
+        # dtlorMprD
+        if self.dtlorMprD != None:
+            outL.append(str(self.dtlorMprD))
+        else:
+            outL.append("None")
+
+        # sourceFam
+        if self.sourceFam != None:
+            outL.append(str(self.sourceFam))
+        else:
+            outL.append("None")
+
+        # productFamT
+        if self.productFamT != None:
+            outL.append(str(self.productFamT))
         else:
             outL.append("None")
             
@@ -201,33 +214,49 @@ attribute.
             outL.append(lfO.fileStr(genesO))
 
         return "\t".join(outL)
-    
+
 class initialFamily(Family):
 
-    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None,dtlorCost=None):
+    def __init__(self,famNum,mrca,geneTreeO=None,dtlorCost=None,dtlorGraphD=None,dtlorMprD=None,sourceFam=None,productFamT=None):
         '''Initialize an object of class initialFamily.'''
-        super().__init__(famNum,mrca,geneTreeO,reconD)
+        super().__init__(famNum,mrca,geneTreeO,dtlorMprD,sourceFam)
         self.dtlorCost = dtlorCost # cost from dtlor alg
+        self.dtlorGraphD = dtlorGraphD
+        self.productFamT = productFamT # origin families made from this initial family
         
         # for initial families:
         # geneTreeO is presently a rooted tree. Perhaps in future unrooted.
-        # reconD is the raw DTLOR output, a graph dict.
+        # dtlorGraphD is the raw DTLOR output, a graph dict.
+        # dtlorMprD is the particular MPR subsequently used
+        # sourceFam will be the blast family we came from
 
+    def addGraphD(self,graphD):
+        '''Given a dictionary graphD with a dtlor graph, store as attribute.
+        '''
+        self.dtlorGraphD = graphD 
+        
+    def productOfams(self):
+        '''Return a tuple of the origin families that were made from this
+initial family. If that hasn't been done yet, returns None.'''
+        return self.productFamT
+        
     def countMPRs(self):
         '''How many most parsimonious reconcilations are there with the same
 optimal cost?
 
         '''
-        return new_DTLOR_DP.count_MPRs(self.reconD)[(new_DTLOR_DP.NodeType.ROOT,)]
+        return new_DTLOR_DP.count_MPRs(self.dtlorGraphD)[(new_DTLOR_DP.NodeType.ROOT,)]
         
     def getMprReconD(self,speciesPreOrderT,paramD,isMedian,rand):
         '''From the reconciliation graph (dtlor output), get an mpr, convert
-to our node based format and return as a dict. If isMedian is True,
-select a median MPR. If rand is True, this will be randomly chosen. If
-rand is False, this will be arbitrarily chosen (and the same each time
-if done repeatedly).
+to our node based format. Then return the mpr in original dtlor
+format, and also our node based format (both dicts). If isMedian is
+True, select a median MPR. If rand is True, this will be randomly
+chosen. If rand is False, this will be arbitrarily chosen (and the
+same each time if done repeatedly).
+
         '''
-        return self.__getMprReconDHelper__(self.reconD,speciesPreOrderT,paramD,isMedian,rand)
+        return self.__getMprReconDHelper__(self.dtlorGraphD,speciesPreOrderT,paramD,isMedian,rand)
         
     def __getMprReconDHelper__(self,dtlorGraphD,speciesPreOrderT,paramD,isMedian,rand):
         '''Actual function to do the conversion.'''
@@ -287,11 +316,11 @@ a string.
         else:
             eventG = new_DTLOR_DP.build_event_graph(dtlorGraphD)
             
-        mpr = new_DTLOR_DP.find_MPR(eventG,rand) # one mpr
-        eventL = new_DTLOR_DP.get_events(mpr)
+        mprOrigFormatD = new_DTLOR_DP.find_MPR(eventG,rand) # one mpr
+        eventL = new_DTLOR_DP.get_events(mprOrigFormatD)
 
         # create dict with keys (geneTreeLoc,'n/b')
-        reconD = {}
+        mprNodeFormatD = {}
         for eventT in eventL:
             if eventT[0] in (new_DTLOR_DP.NodeType.ORIGIN,new_DTLOR_DP.NodeType.REARRANGEMENT):
                 (eventTypeO, geneTreeLoc, location, speciesTreeLocL) = eventT
@@ -307,32 +336,32 @@ a string.
                 eventValue = (eventType,speciesTreeLoc,speciesTreeNB,None)
                 
             # add it
-            if eventKey in reconD:
-                reconD[eventKey].append(eventValue)
+            if eventKey in mprNodeFormatD:
+                mprNodeFormatD[eventKey].append(eventValue)
             else:
-                reconD[eventKey] = [eventValue]
+                mprNodeFormatD[eventKey] = [eventValue]
 
-        # make sure the costs implied by reconD correspond to what
+        # make sure the costs implied by mprNodeFormatD correspond to what
         # dtlor alg gave
-        self.__costCheck__(reconD,paramD)
+        self.__costCheck__(mprNodeFormatD,paramD)
         
-        return reconD
+        return mprOrigFormatD,mprNodeFormatD
 
-    def __costCheck__(self,reconD,paramD):
-        '''Sanity check to ensure the events in reconD sum to dtlorCost.'''
+    def __costCheck__(self,mprNodeFormatD,paramD):
+        '''Sanity check to ensure the events in mprNodeFormatD sum to dtlorCost.'''
         D=int(paramD["duplicationCost"])
         T=int(paramD["transferCost"])
         L=int(paramD["lossCost"])
         O=int(paramD["originCost"])
         R=int(paramD["rearrangeCost"])
 
-        sm = self.__costSum__(reconD,D,T,L,O,R)
+        sm = self.__costSum__(mprNodeFormatD,D,T,L,O,R)
         assert round(sm,3) == round(self.dtlorCost,3), "Events in this reconcilation don't sum to minCost."
 
-    def __costSum__(self,reconD,D,T,L,O,R):
-        '''Sum the costs implied by the recon in reconD.'''
+    def __costSum__(self,mprNodeFormatD,D,T,L,O,R):
+        '''Sum the costs implied by the recon in mprNodeFormatD.'''
         sm = 0
-        for valL in reconD.values():
+        for valL in mprNodeFormatD.values():
             for eventType,_,_,_ in valL:
                 if eventType == 'D':
                     sm+=D
@@ -352,16 +381,22 @@ a string.
 
 class originFamily(Family):
 
-    def __init__(self,famNum,mrca,geneTreeO=None,reconD=None,sourceFam=None):
+    def __init__(self,famNum,mrca,geneTreeO=None,dtlorMprD=None,sourceFam=None):
         '''Initialize an object of class originFamily.'''
-        super().__init__(famNum,mrca,geneTreeO,reconD)
+        super().__init__(famNum,mrca,geneTreeO,dtlorMprD,sourceFam)
 
         # for origin families:
         # geneTreeO is a rooted tree.
-        # reconD is a converted version of a single DTLOR MPR
+        # dtlorMprD is a converted version of a single DTLOR MPR
+        # sourceFam will hold the source ifam for an originFamily
 
         self.sourceFam = sourceFam # ifam num that originFam came from
 
+        # set to None
+        self.dtlorCost = None
+        self.dtlorGraphD = None
+        self.productFamT = None
+        
         # attributes not saved to file and must be recreated when needed
         self.geneHistoryD = None
 
@@ -384,8 +419,8 @@ histories. Returns a list of tuples. Each tuple contains
             # get sequence for this branch and node
             hisStr = ""
             for nbKey in [(node,'b'),(node,'n')]:
-                if nbKey in self.reconD:
-                    for event,stLoc,stNB,synLocus in self.reconD[nbKey]:
+                if nbKey in self.dtlorMprD:
+                    for event,stLoc,stNB,synLocus in self.dtlorMprD[nbKey]:
                         if event in 'LM':
                             pass
                         else:
@@ -433,7 +468,7 @@ histories. Returns a list of tuples. Each tuple contains
         if self.geneHistoryD != None:
             # geneHistoryD already made
             return self.geneHistoryD[geneNum]    
-        elif self.reconD != None:
+        elif self.dtlorMprD != None:
             # geneHistoryD not created yet and reconciliation is present
             self.createGeneHistoryD()
             return self.geneHistoryD[geneNum]    
@@ -448,19 +483,19 @@ not at the base of the rootFocalClade of the species tree. If there is
 no reconciliation, return empty string.
 
         '''
-        if self.reconD == None:
+        if self.dtlorMprD == None:
             return ""
 
         # get the origin event out. There should only be one. If more,
         # this is probably an intial family.
         Ocount = 0
-        for valL in self.reconD.values():
+        for valL in self.dtlorMprD.values():
             for eventType,stLoc,stNB,synLocus in valL:
                 if eventType == 'O':
                     OstLoc = stLoc
                     Ocount+=1
         if Ocount != 1:
-            raise ValueError("There should be exactly one origin event in reconD.")
+            raise ValueError("There should be exactly one origin event in dtlorMprD.")
 
         # it is C if originated in rfclade branch or ancestors of it
         rfAncT = speciesRtree.ancestors(rootFocalClade) + (rootFocalClade,)
@@ -474,9 +509,9 @@ no reconciliation, return empty string.
         
     def printReconByGeneTree(self,genesO,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''
-        self.printReconByGeneTreeHelper(self.reconD,self.geneTreeO,genesO,self.geneTreeO.rootNode,0,fileF)
+        self.printReconByGeneTreeHelper(self.dtlorMprD,self.geneTreeO,genesO,self.geneTreeO.rootNode,0,fileF)
 
-    def printReconByGeneTreeHelper(self,reconD,geneRtreeO,genesO,node,level,fileF=sys.stdout):
+    def printReconByGeneTreeHelper(self,dtlorMprD,geneRtreeO,genesO,node,level,fileF=sys.stdout):
         '''Actual recursive function to print reconciliation. Single letter
 codes for events are as follows:
 
@@ -487,9 +522,9 @@ codes for events are as follows:
         R - rearrangment event
         '''
 
-        def printOneKey(printPrefix,reconD,nbKey):
-            if nbKey in reconD:
-                for eventT in reconD[nbKey]:
+        def printOneKey(printPrefix,dtlorMprD,nbKey):
+            if nbKey in dtlorMprD:
+                for eventT in dtlorMprD[nbKey]:
                     gt,gtNB = nbKey
                     event,stLoc,stNB,locus = eventT
                     outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") --> "+"("+str(stLoc)+" "+stNB+")"
@@ -501,19 +536,24 @@ codes for events are as follows:
         levelSpace = "   "*level
         if geneRtreeO.isLeaf(node):
             print(levelSpace+"- "+node+" ["+genesO.numToStrainName(int(node))+"]",file=fileF)
-            printOneKey(levelSpace+"  ",reconD,(node,'b'))
-            printOneKey(levelSpace+"  ",reconD,(node,'n'))
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'b'))
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'n'))
             return
         else:
             childL = []
             for child in geneRtreeO.children(node):
                 childL.append(child)
             print(levelSpace+"- "+node,file=fileF)
-            printOneKey(levelSpace+"  ",reconD,(node,'b'))
-            printOneKey(levelSpace+"  ",reconD,(node,'n'))
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'b'))
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'n'))
             for child in childL:
-                self.printReconByGeneTreeHelper(reconD,geneRtreeO,genesO,child,level+1,fileF)
-    
+                self.printReconByGeneTreeHelper(dtlorMprD,geneRtreeO,genesO,child,level+1,fileF)
+
+    def sourceIfam(self):
+        '''Return the initial family this origin family came from.'''
+        return self.sourceFam
+
+        
 class Families:
 
     def __init__(self,speciesRtreeO):
@@ -527,14 +567,13 @@ class Families:
         ## object. familiesD has key famNum and value
         ## a Family object.
         
-    def initializeFamily(self,famNum,mrca,famType,geneTreeO=None,reconD=None,sourceFam=None):
+    def initializeFamily(self,famNum,mrca,famType,geneTreeO=None,dtlorCost=None,dtlorGraphD=None,dtlorMprD=None,sourceFam=None,productFamT=None):
         '''Set up an entry for family famNum.'''
 
         if famType == "initial":
-            # sourcFam is really dtlorCost in this case
-            self.familiesD[famNum] = initialFamily(famNum,mrca,geneTreeO,reconD,sourceFam)
+            self.familiesD[famNum] = initialFamily(famNum,mrca,geneTreeO=geneTreeO,dtlorCost=dtlorCost,dtlorGraphD=dtlorGraphD,dtlorMprD=dtlorMprD,sourceFam=sourceFam,productFamT=productFamT)
         else:
-            self.familiesD[famNum] = originFamily(famNum,mrca,geneTreeO,reconD,sourceFam)
+            self.familiesD[famNum] = originFamily(famNum,mrca,geneTreeO=geneTreeO,dtlorMprD=dtlorMprD,sourceFam=sourceFam)
 
     def addLocusFamily(self, lfO):
         '''Add a LocusFamily. Assumes initializeFamily has already been called
@@ -552,9 +591,9 @@ to create the corresponding family.
     def addGeneTreeToFamily(self,famNum,geneTreeO):
         self.familiesD[famNum].addGeneTree(geneTreeO)
 
-    def addReconciliationToFamily(self,famNum,reconD):
-        self.familiesD[famNum].addReconciliation(reconD)
-        
+    def addMprToFamily(self,famNum,dtlorMprD):
+        self.familiesD[famNum].addMprD(dtlorMprD)
+
     def iterLocusFamilies(self):
         '''Iterate over all LocusFamilies in order of locusFamNum.
         '''

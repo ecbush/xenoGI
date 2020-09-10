@@ -179,11 +179,12 @@ forceSplitUtreeBalanceMultiplier = 10
 
 # DTLOR
 # Should be integers. duplicationCost <= transferCost
-duplicationCost = 1
-transferCost = 1
+duplicationCost = 2
+transferCost = 6
 lossCost = 1
-originCost = 2
-rearrangeCost = 2
+originCost = 6
+rearrangeCost = 7
+
 
 #### Visualization and analysis output files ####
 
