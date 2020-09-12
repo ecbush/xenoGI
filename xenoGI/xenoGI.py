@@ -382,8 +382,7 @@ def debugWrapper(paramD):
     from Bio import Phylo
     import glob,random
     
-    #strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    #speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-    
     code.interact(local=locals())
