@@ -196,7 +196,7 @@ def makeFamiliesWrapper(paramD):
 
     ## make gene families
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        originFamiliesO = families.createFamiliesO(speciesRtreeO,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
+        initialFamiliesO,originFamiliesO = families.createFamiliesO(speciesRtreeO,strainNamesT,scoresO,genesO,aabrhHardCoreL,paramD,familyFormationSummaryF)
         
 def makeIslandsWrapper(paramD):
     """Wrapper to create islands"""
@@ -291,9 +291,9 @@ def interactiveAnalysisWrapper(paramD):
         for lfO in fam.getLocusFamilies():
             print("    LocusFamily",lfO.getStr(genesO," "),file=fileF)
 
-        if hasattr(fam,"sourceFam"):
+        if hasattr(fam,"sourceIfam"):
             print(file=fileF)
-            print("    Source family",fam.sourceFam,file=fileF)
+            print("    Source family",fam.sourceIfam(),file=fileF)
             print(file=fileF)
             
         # print("Family error score (count of possibly misassigned genes):",familiesO[familyNum].possibleErrorCt,file=fileF)
@@ -382,18 +382,7 @@ def debugWrapper(paramD):
     from Bio import Phylo
     import glob,random
     
-    #strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    #speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-    # test case
-    outGroup = 'GCF_000236925.1_ASM23692v1_genomic'    
-    utreeO = Utree()
-    utreeO.fromNewickFile("astral.tre")
-
-    parent = utreeO.getParent(outGroup)
-
-    #rtreeO = utreeO.rootIncludeBranchLen((parent,outGroup))
-
-    
-    
     code.interact(local=locals())

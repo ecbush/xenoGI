@@ -110,7 +110,8 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     aabrhHardCoreGeneTreesFN = paramD['aabrhHardCoreGeneTreesFN']
     outSpeciesTreeFN = paramD['speciesTreeFN'] # for main output
     outGroupTaxaL = [paramD['outGroup']]
-
+    deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
+    
     # if tree file already exists, throw error
     if os.path.isfile(outSpeciesTreeFN):
         raise IOError("The tree file " + outSpeciesTreeFN + " already exists.")

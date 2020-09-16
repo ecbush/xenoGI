@@ -74,51 +74,66 @@ we still hold it as a string.
             outL.append(branchLenStr)
             
         return "|".join(outL)
+
+    def populateAttributes(self,nodeConnectD,rootArbNode=None,branchLenD=None):
+        '''Populate the attributes of an empty tree object.'''
+
+        if self.nodeConnectD != None or self.branchLenD != None:
+            raise ValueError("Attempting to populate attributes of a non-empty tree.")    
+
+        self.nodeConnectD = nodeConnectD
+        self.__updateSecondaryAttributes__()
+        self.preOrderT = self.__traversePreOrder__(rootArbNode)
+        
+        # root/arbitraryNode
+        if isinstance(self, Rtree):
+            self.rootNode = rootArbNode
+        else:
+            self.arbitraryNode = rootArbNode
             
+        # branches
+        if branchLenD == None:
+            self.branchLenD = branchLenD
+        else:
+            self.branchPairT = self.__createBranchPairT__()
+            self.branchLenD = {}
+            for branchPair in self.branchPairT:
+                if branchPair in branchLenD:
+                    self.branchLenD[branchPair] = branchLenD[branchPair]
+                else:
+                    # flip order
+                    self.branchLenD[branchPair] = branchLenD[(branchPair[1],branchPair[0])]
+        
     def fromString(self,treeStr):
         '''Populate attributes by parsing the string treeStr (which has likely
 been read from a file). This method allows multifurcating trees. See
 fileStr method for description of format.
 
         '''
-
         rootArbNode,nodeConnecStr,branchLenStr = treeStr.split("|")
-
-        # root/arbitraryNode
-        if isinstance(self, Rtree):
-            self.rootNode = rootArbNode
-        else:
-            self.arbitraryNode = rootArbNode
 
         # nodeConnectD
         L = nodeConnecStr.split(",")
-        self.nodeConnectD = {}
+        nodeConnectD = {}
         for entryStr in L:
             entryL = entryStr.split(" ")
             node=entryL[0]
             connecT=tuple(entryL[1:])
-            self.nodeConnectD[node] = connecT
+            nodeConnectD[node] = connecT
 
-        # preorderT
-        if isinstance(self, Rtree):
-            self.preOrderT = self.__traversePreOrder__(self.rootNode)
-        else:
-            # Utree
-            self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
-
-        # other attributes
-        self.__updateSecondaryAttributes__()
-
-        # branch lens
+        # branchLenD
         if branchLenStr == "None":
-            self.branchLenD = None
+            branchLenD = None
         else:
             L = branchLenStr.split(",")
-            self.branchLenD = {}
+            branchLenD = {}
             for entryStr in L:
                 br0,br1,brLen = entryStr.split(" ")
-                self.branchLenD[(br0,br1)] = float(brLen)
-            
+                branchLenD[(br0,br1)] = float(brLen)
+
+        # put in these attributes
+        self.populateAttributes(nodeConnectD,rootArbNode,branchLenD)
+                
     def isLeaf(self,node):
         '''Return boolean if node is a leaf'''
         if len(self.nodeConnectD[node]) < 3:
@@ -167,16 +182,48 @@ tip.
         
     def __updateSecondaryAttributes__(self):
         '''Create leafNodeT and internalNodeT.'''
+        leafNodeT,internalNodeT = self.__updateSecondaryAttributesHelper__(self.nodeConnectD)
+        self.leafNodeT = leafNodeT
+        self.internalNodeT = internalNodeT
+
+    def __updateSecondaryAttributesHelper__(self,nodeConnectD):
+        '''Actually does the work of getting internals and leaves..'''
         leafNodeL = []
         internalNodeL = []
-        for node,connecT in self.nodeConnectD.items():
+        for node,connecT in nodeConnectD.items():
             if len(connecT) < 3:
                 # it's a tip
                 leafNodeL.append(node)
             else:
                 internalNodeL.append(node)
-        self.leafNodeT = tuple(leafNodeL)
-        self.internalNodeT = tuple(internalNodeL)
+        return tuple(leafNodeL),tuple(internalNodeL)
+        
+    def iterBranches(self):
+        '''Iterate over all branches, returning branchPair tuple and branch
+length.'''
+        if self.branchLenD == None:
+            raise ValueError("This unrooted tree object does not have branch lengths defined.")
+            
+        for branchPair in self.branchPairT:
+            branchLen = self.branchLenD[branchPair]
+            yield branchPair,branchLen
+
+    def maxBranchLen(self):
+        '''Find the maximum branch length present, and return the
+corresponding branchPair tuple and the length.
+
+        '''
+        L=list(self.branchLenD.items())
+        L.sort(key=lambda x: x[1])
+        return L[-1]
+        
+    def __traversePreOrder__(self,node):
+        '''Traverse in preorder starting at node'''
+        if self.nodeCount() == 2:
+            # two tip tree is a special case            
+            return self.leafNodeT
+        else:
+            return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,node,ROOT_PARENT_NAME))
 
     def __traversePreOrderNodeConnectD__(self,D,node,parentNode):
         '''Traverse nodeConnectD starting at node. Do not recurse along
@@ -205,6 +252,19 @@ parentNode.
                     outL = outL + [newickStr]
             return "("+ ",".join(outL)+")"+node
 
+    def __createBranchPairT__(self):
+        '''Make the branchPairT attribute to represent the branches. This is a
+tuple of tuples, where the subtuples represent edges and consist of
+the two nodes on either end.
+        '''
+        S = set()
+        for node,connecT in self.nodeConnectD.items():
+            for otherNode in connecT:
+                # put them in preorder
+                edgeT = tuple((nd for nd in self.preorder() if nd in [node,otherNode]))
+                S.add(edgeT)
+        return tuple(sorted(S))
+        
     def __eq__(self,other):
         '''See if two trees are equivalent.'''
         if hasattr(self,"rootNode") and  hasattr(other,"rootNode"):
@@ -272,10 +332,8 @@ preparation such as naming internal nodes).
             
         self.__checkSpeciesTree__(bpTree)
         
-        self.nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree)
-        self.rootNode = bpTree.root.name
-        self.__updateSecondaryAttributes__()
-        self.preOrderT = self.__traversePreOrder__(self.rootNode)
+        nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree)
+        self.populateAttributes(nodeConnectD,bpTree.root.name)
 
     def toNewickStr(self):
         '''Output a newick string.'''
@@ -386,8 +444,6 @@ tree.
                     dtlorD[node] = (parent, node, child1, child2)
                     
         return dtlorD
-        
-    ## methods not for end users
     
     def __checkSpeciesTree__(self,bpTree):
         '''Check that a biopython tree is rooted, bifurcating, and has named
@@ -433,9 +489,6 @@ tree.
                 nodeConnectD = self.__bioPhyloCladeToNodeConnectD__(iterClade,nodeConnectD,clade.name)
             return nodeConnectD
 
-    def __traversePreOrder__(self,node):
-        '''Traverse in preorder starting at rootNode'''
-        return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.rootNode,ROOT_PARENT_NAME))
     def __repr__(self):
         return "Rtree: "+self.toNewickStr()
 
@@ -465,28 +518,23 @@ named interal nodes (we will create those).
             branchLenL=[('','',None)]
         else:
             iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpTree.clade,ROOT_PARENT_NAME,{},0)
-        self.nodeConnectD = nodeConnectD
-        self.__updateSecondaryAttributes__()
-        self.arbitraryNode = self.internals()[0] if len(self.internals())>0 else self.leaves()[0]
-        self.preOrderT = self.__traversePreOrder__(self.arbitraryNode)
-        self.branchPairT = self.__createBranchPairT__()
 
-        # insert branch lengths dict keyed by branch pair.
+        # get arbitrary node
+        tempLeavesT,tempInternalsT = self.__updateSecondaryAttributesHelper__(nodeConnectD)
+        arbitraryNode = tempInternalsT[0] if len(tempInternalsT)>0 else tempLeavesT[0]
+
+        # branchLenD
         branchLenD = {}
         for parent,child,brLen in branchLenL:
             if parent != ROOT_PARENT_NAME:
-                # put key in same order as in branchPairT
-                if (parent,child) in self.branchPairT:
-                    key = (parent,child)
-                else:
-                    key = (child,parent)
-                branchLenD[key] = brLen
-        if not all(brLen==None for brLen in branchLenD.values()):
-            self.branchLenD = branchLenD
-        for key, value in self.branchLenD.items():
-            if self.branchLenD[key] == None:
-                self.branchLenD[key] = 1
-            
+                branchLenD[(parent,child)] = brLen
+        if all(brLen==None for brLen in branchLenD.values()):
+            # if all branches None, don't bother with dict
+            branchLenD = None
+        
+        # put in these attributes
+        self.populateAttributes(nodeConnectD,arbitraryNode,branchLenD)
+
     def toNewickStr(self):
         '''Output a newick string.'''
         if self.nodeCount() == 1:
@@ -497,25 +545,6 @@ named interal nodes (we will create those).
         else:
             return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
 
-    def iterBranches(self):
-        '''Iterate over all branches, returning branchPair tuple and branch
-length.'''
-        if self.branchLenD == None:
-            raise ValueError("This unrooted tree object does not have branch lengths defined.")
-            
-        for branchPair in self.branchPairT:
-            branchLen = self.branchLenD[branchPair]
-            yield branchPair,branchLen
-
-    def maxBranchLen(self):
-        '''Find the maximum branch length present, and return the
-corresponding branchPair tuple and the length.
-
-        '''
-        L=list(self.branchLenD.items())
-        L.sort(key=lambda x: x[1])
-        return L[-1]
-        
     def root(self,branchToRootPair):
         '''Root using the tuple branchToRootPair and return an Rtree object.'''
 
@@ -775,32 +804,6 @@ named internal nodes, and we name them here: g0, g1 etc.
             
         return iNodeNum,nodeConnectD,branchLenL
     
-    def __createBranchPairT__(self):
-        '''Make the branchPairT attribute to represent the branches. This is a
-tuple of tuples, where the subtuples represent edges and consist of
-the two nodes on either end.
-        '''
-        S = set()
-        for node,connecT in self.nodeConnectD.items():
-            for otherNode in connecT:
-                # put them in preorder
-                edgeT = tuple((nd for nd in self.preorder() if nd in [node,otherNode]))
-                
-                #edgeL=[(node,self.preOrderT.index(node)),(otherNode,self.preOrderT.index(otherNode))]                
-                #edgeL.sort(key=lambda x: x[1])
-                #edgeT = tuple(x[0] for x in edgeL)
-                S.add(edgeT)
-        return tuple(sorted(S))
-        
-    def __traversePreOrder__(self,node):
-        '''Traverse in preorder starting at arbitraryNode'''
-
-        if self.nodeCount() == 2:
-            # two tip tree is a special case            
-            return self.leafNodeT
-        else:
-            return tuple(self.__traversePreOrderNodeConnectD__(self.nodeConnectD,self.arbitraryNode,ROOT_PARENT_NAME))
-
     def __splitNodeConnectD__(self,D,newD,node,parentNode):
         '''Get nodeConnectD for the part of the tree defined by node, and in
 the oposite direction from parentNode. Put in newD. Returns None.
