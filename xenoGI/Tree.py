@@ -483,7 +483,10 @@ named interal nodes (we will create those).
                 branchLenD[key] = brLen
         if not all(brLen==None for brLen in branchLenD.values()):
             self.branchLenD = branchLenD
-
+        for key, value in self.branchLenD.items():
+            if self.branchLenD[key] == None:
+                self.branchLenD[key] = 1
+            
     def toNewickStr(self):
         '''Output a newick string.'''
         if self.nodeCount() == 1:
