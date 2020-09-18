@@ -131,6 +131,15 @@ class Family:
             for gene in lfO.iterGenes():
                 yield gene
 
+    def getAllGenes(self):
+        '''Collect all the genes present in the LocusFamily objects belonging
+to this family. Return as a set.
+        '''
+        allGenesS=set()
+        for lfO in self.getLocusFamilies():
+            allGenesS.update(set(lfO.iterGenes()))
+        return allGenesS
+
     def geneCount(self):
         return len(list(self.iterGenes()))
         
@@ -222,7 +231,7 @@ class initialFamily(Family):
         super().__init__(famNum,mrca,geneTreeO,dtlorMprD,sourceFam)
         self.dtlorCost = dtlorCost # cost from dtlor alg
         self.dtlorGraphD = dtlorGraphD
-        self.productFamT = productFamT # origin families made from this initial family
+        self.productFamT = productFamT # ids of origin families made from this ifam
         
         # for initial families:
         # geneTreeO is presently a rooted tree. Perhaps in future unrooted.

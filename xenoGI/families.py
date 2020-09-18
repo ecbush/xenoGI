@@ -1053,7 +1053,9 @@ def reconcile(argT):
     optGeneRtreeO,optG,minCost=random.choice(bestRootingsL) 
 
     return initFamNum,optGeneRtreeO,optG,minCost
-    
+
+#### Origin families
+
 def createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO):
     '''Create and return an originFamilies object, based on the initial families and recocniliations.'''
 
@@ -1244,21 +1246,99 @@ the genes in outFreeGeneL, make into a tuple, and add to outLocFamTL.
             return [],[outLocFamT]+childLocFamTL
         else:
             return childFreeGeneL,childLocFamTL
-        
+
+#### Refine families
+
+def refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,familyFormationSummaryF):
+    '''Refine origin families by considering alternate
+reconciliations. Modifies both originFamiliesO and
+initialFamiliesO.'''
+
+    refineFamIslandLenThreshold = paramD['refineFamIslandLenThreshold']
+    geneProximityRange = paramD['geneProximityRange'] # for now using same param as for island formation
+    
+    ## get candidates
+
+    # get all ofams from locus islands of size
+    # refineFamIslandLenThreshold or smaller. Then get the ifams which
+    # these come from. The ones among these with multiple MPRS we will
+    # call refineCandidateIfams
+    numIfams1_2_famIslands=0
+    refineCandidateIfamS = set()
+    for islandsAtNodeL in islandByNodeD.values():
+        for locusIslandO in islandsAtNodeL:
+            if len(locusIslandO) <= refineFamIslandLenThreshold:
+                for origLfO in locusIslandO.iterLocusFamilies(originFamiliesO):
+                    origFamO = originFamiliesO.getFamily(origLfO.famNum)
+                    # get sourceIfam
+                    sourceIfamO = initialFamiliesO.getFamily(origFamO.sourceIfam())
+                    # we can only consider those with reconciliations
+                    # (single gene families lack them, and for now so
+                    # do families with multifurcating nodes)
+                    if sourceIfamO.dtlorGraphD != None:
+                        numIfams1_2_famIslands+=1
+                        if sourceIfamO.countMPRs() > 1:
+                            refineCandidateIfamS.add(sourceIfamO)
+
+
+    # create geneToOfamD
+    geneToOfamD = {}
+    for origFamO in originFamiliesO.iterFamilies():
+        for geneNum in origFamO.iterGenes():
+            geneToOfamD[geneNum] = origFamO.famNum
+                            
+    ## Refine
+
+    for candIfamO in refineCandidateIfamS:
+        targetOfamS = set((originFamiliesO.getFamily(ofnum) for ofnum in candIfamO.productOfams()))
+        nearbyOfamS = getNearbyOfams(targetOfamS,geneOrderD,geneProximityRange,geneToOfamD,originFamiliesO)
+
+    print("total ofams from 1,2 fam islands",numIfams1_2_famIslands)
+    print("those with multiple mprs",len(refineCandidateIfamS))
+    return refineCandidateIfamS,9
+
+def getNearbyOfams(targetOfamS,geneOrderD,geneProximityRange,geneToOfamD,originFamiliesO):
+    '''Given a list of target ofams whose placement we're reconsidering,
+get a collection of other ofams that are nearby to these.'''
+
+    # get genes in target ofams
+    targetGenesS = set()
+    targetOfamNumS = set()
+    for tofamO in targetOfamS:
+        targetGenesS.update(tofamO.getAllGenes())
+        targetOfamNumS.add(tofamO.famNum)
+
+    # get nearby ofams
+    nearbyOfamNumS = set()
+    for contigT in geneOrderD.values():
+        for geneNumT in contigT:
+            for i in range(len(geneNumT)):
+                if geneNumT[i] in targetGenesS:
+                    # found a target gene, slice out genes around it
+                    for nearbyGene in geneNumT[i-geneProximityRange:i+geneProximityRange+1]:
+                        ofamNum = geneToOfamD[nearbyGene]
+                        nearbyOfamNumS.add(ofamNum)
+    # remove target fams themselves
+    nearbyWithoutTargetNumS = nearbyOfamNumS - targetOfamNumS
+    nearbyWithoutTargetS = set()
+    for ofamNum in nearbyWithoutTargetNumS:
+        nearbyWithoutTargetS.add(originFamiliesO.getFamily(ofamNum))
+
+    return nearbyWithoutTargetS
+
 #### Input/output
 
 def writeFamilies(familiesO,familyFN,genesO,strainNamesT,paramD):
-    '''Write all gene families to fileName, one family per line.'''
+    '''Write all gene families to familyFN, one family per line.'''
 
     geneInfoFN = paramD['geneInfoFN']
 
     # get the num to name dict, only for strains we're looking at.
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT))
     
-    f=open(familyFN,'w')
-    for fam in familiesO.iterFamilies():
-        f.write(fam.fileStr(genesO)+'\n')
-    f.close()
+    with open(familyFN,'w') as f:
+        for fam in familiesO.iterFamilies():
+            f.write(fam.fileStr(genesO)+'\n')
 
 def readFamilies(familyFN,speciesRtreeO,genesO,famType):
     '''Read the family file named familyFN, creating a Families object.
