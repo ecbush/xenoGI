@@ -103,8 +103,6 @@ we still hold it as a string.
                 else:
                     # flip order
                     self.branchLenD[branchPair] = branchLenD[(branchPair[1],branchPair[0])]
-                if self.branchLenD[branchPair] == None:
-                        self.branchLenD[branchPair] = 1 # fix astral None branch lengths
         
     def fromString(self,treeStr):
         '''Populate attributes by parsing the string treeStr (which has likely
