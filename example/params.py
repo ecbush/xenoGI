@@ -169,7 +169,7 @@ maxInitialFamSizeMultiplier = 4
 quantileForObtainingSplitThresholds = .99
 multiplierForObtainingSplitThresholds = 1.5
 
-# If some families still to large after splitting based on threshold,
+# If some families still too large after splitting based on threshold,
 # we force them to be split on a large internal branch. The choice of
 # branch is based on branch length, and on achieving balance between
 # the number of nodes on each side. This parameter affects how much
@@ -185,6 +185,9 @@ lossCost = 1
 originCost = 6
 rearrangeCost = 7
 
+# In family refinement, we consider all origin families in islands
+# this size or smaller
+refineFamIslandLenThreshold = 2
 
 #### Visualization and analysis output files ####
 

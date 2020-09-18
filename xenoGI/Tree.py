@@ -75,7 +75,7 @@ we still hold it as a string.
             
         return "|".join(outL)
 
-    def populateAttributes(self,nodeConnectD,rootArbNode=None,branchLenD=None):
+    def populateAttributes(self,nodeConnectD,rootArbNode,branchLenD=None):
         '''Populate the attributes of an empty tree object.'''
 
         if self.nodeConnectD != None or self.branchLenD != None:
