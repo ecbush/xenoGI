@@ -3,8 +3,9 @@ sys.setrecursionlimit(100000)
 from scipy.signal import find_peaks
 from Bio import Phylo
 from multiprocessing import Pool
-from . import trees,scores,DTLOR_DP,new_DTLOR_DP
+from . import genomes,trees,scores,DTLOR_DP,new_DTLOR_DP,islands
 from .Family import *
+from .Island import *
 from .Tree import *
 from .analysis import printTable
 
@@ -1119,26 +1120,14 @@ def createSingleGeneFamilyGeneTreeRecon(initFamO,genesO):
 def addOriginFamilyFromReconciliation(initFamO,originFamiliesO,paramD,genesO):
     '''Given a rooted gene tree and a reconciliation, add origin
 families. One origin family for each origin event.
-
     '''
     # get arbitrarily chosen median mpr
     mprOrigFormatD,mprNodeFormatD = initFamO.getMprReconD(originFamiliesO.speciesRtreeO.preorder(),paramD,True,False)
 
-    # get origin defined trees
-    branchOriginL = getBranchesWithSpecifiedEvents(mprNodeFormatD,"O")
-    originTreeL = splitTreeByOrigin(initFamO.geneTreeO,branchOriginL)
-    
-    # extract parts of mprNodeFormatD corresponding to each tree
-    productFamL = [] # to keep ofams that come from this ifam
-    for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,mprNodeFormatD):
-        famNum = originFamiliesO.getNumFamilies()
-        keyNB = (geneRtreeO.rootNode,'n')
-
-        if geneRtreeO.isLeaf(geneRtreeO.rootNode):
-            speciesMrca = geneRtreeO.rootNode
-        else:
-            speciesMrca = splitReconD[keyNB][0][1] # remember, the value in mprNodeFormatD is a list of events
+    # add origin families according to this MPR
+    for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,initFamO):
             
+        famNum = originFamiliesO.getNumFamilies()            
         originFamiliesO.initializeFamily(famNum,speciesMrca,"origin",geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=initFamO.famNum)
         originFamiliesO = getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO)
         productFamL.append(famNum)
@@ -1148,6 +1137,27 @@ families. One origin family for each origin event.
     initFamO.productFamT = tuple(productFamL)
     
     return initFamO,originFamiliesO
+
+def iterSplitOfamData(mprNodeFormatD,initFamO):
+    '''Helper that splits mprNodeFormatD according to origin events
+yielding various bits of data needed to make an origin family.'''
+    
+    # get origin defined trees
+    branchOriginL = getBranchesWithSpecifiedEvents(mprNodeFormatD,"O")
+    originTreeL = splitTreeByOrigin(initFamO.geneTreeO,branchOriginL)
+    
+    # extract parts of mprNodeFormatD corresponding to each tree
+    productFamL = [] # to keep ofams that come from this ifam
+    for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,mprNodeFormatD):
+
+        keyNB = (geneRtreeO.rootNode,'n')
+
+        if geneRtreeO.isLeaf(geneRtreeO.rootNode):
+            speciesMrca = geneRtreeO.rootNode
+        else:
+            speciesMrca = splitReconD[keyNB][0][1] # remember, the value in mprNodeFormatD is a list of events
+
+        yield speciesMrca,geneRtreeO,splitReconD
 
 def getBranchesWithSpecifiedEvents(mprNodeFormatD,event):
     '''Given a mprNodeFormatD keyed by (geneTreeLoc,geneTreeNB) tuples, extract
@@ -1250,12 +1260,20 @@ the genes in outFreeGeneL, make into a tuple, and add to outLocFamTL.
 #### Refine families
 
 def refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,familyFormationSummaryF):
-    '''Refine origin families by considering alternate
-reconciliations. Modifies both originFamiliesO and
-initialFamiliesO.'''
+    '''Refine origin families by considering alternate reconciliations. We
+determine what the best MPR to use is, and update initialFamiliesO
+with this. We then re-run origin family formation from scratch and
+create a new origin families object. Returns both initialFamiliesO and
+originFamiliesO.
+    '''
+    upperNumMprThreshold = paramD ['upperNumMprThreshold']
+    islandLenThresholdRefineFamilies = paramD['islandLenThresholdRefineFamilies']
+    geneProximityRangeRefineFamilies = paramD['geneProximityRangeRefineFamilies']
+    proximityThreshold = paramD['proximityThresholdMerge2'] # larger than initial
+    rscThreshold = paramD['rscThresholdMerge1']
+    geneProximityRange = paramD['geneProximityRange'] # standard one for island merging
 
-    refineFamIslandLenThreshold = paramD['refineFamIslandLenThreshold']
-    geneProximityRange = paramD['geneProximityRange'] # for now using same param as for island formation
+    speciesRtreeO = originFamiliesO.speciesRtreeO
     
     ## get candidates
 
@@ -1267,7 +1285,7 @@ initialFamiliesO.'''
     refineCandidateIfamS = set()
     for islandsAtNodeL in islandByNodeD.values():
         for locusIslandO in islandsAtNodeL:
-            if len(locusIslandO) <= refineFamIslandLenThreshold:
+            if len(locusIslandO) <= islandLenThresholdRefineFamilies:
                 for origLfO in locusIslandO.iterLocusFamilies(originFamiliesO):
                     origFamO = originFamiliesO.getFamily(origLfO.famNum)
                     # get sourceIfam
@@ -1280,6 +1298,9 @@ initialFamiliesO.'''
                         if sourceIfamO.countMPRs() > 1:
                             refineCandidateIfamS.add(sourceIfamO)
 
+    # TEMP
+    print("total ofams from 1,2 fam islands",numIfams1_2_famIslands)
+    print("those with multiple mprs",len(refineCandidateIfamS))
 
     # create geneToOfamD
     geneToOfamD = {}
@@ -1288,19 +1309,25 @@ initialFamiliesO.'''
             geneToOfamD[geneNum] = origFamO.famNum
                             
     ## Refine
-
+    geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange)
+    
     for candIfamO in refineCandidateIfamS:
-        targetOfamS = set((originFamiliesO.getFamily(ofnum) for ofnum in candIfamO.productOfams()))
-        nearbyOfamS = getNearbyOfams(targetOfamS,geneOrderD,geneProximityRange,geneToOfamD,originFamiliesO)
+        
+        nearbyOfamL = getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO)
+        
+        bestMprOrigFormatD,bestOfamL = getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,max(originFamiliesO.familiesD.keys()),nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold)
 
-    print("total ofams from 1,2 fam islands",numIfams1_2_famIslands)
-    print("those with multiple mprs",len(refineCandidateIfamS))
-    return refineCandidateIfamS,9
+        candIfamO.addMprD(bestMprOrigFormatD)
+        
+    return initialFamiliesO,originFamiliesO
 
-def getNearbyOfams(targetOfamS,geneOrderD,geneProximityRange,geneToOfamD,originFamiliesO):
+def getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO):
     '''Given a list of target ofams whose placement we're reconsidering,
 get a collection of other ofams that are nearby to these.'''
 
+    # get target Ofams
+    targetOfamS = set((originFamiliesO.getFamily(ofnum) for ofnum in candIfamO.productOfams()))
+    
     # get genes in target ofams
     targetGenesS = set()
     targetOfamNumS = set()
@@ -1315,17 +1342,82 @@ get a collection of other ofams that are nearby to these.'''
             for i in range(len(geneNumT)):
                 if geneNumT[i] in targetGenesS:
                     # found a target gene, slice out genes around it
-                    for nearbyGene in geneNumT[i-geneProximityRange:i+geneProximityRange+1]:
+                    for nearbyGene in geneNumT[i-geneProximityRangeRefineFamilies:i+geneProximityRangeRefineFamilies+1]:
                         ofamNum = geneToOfamD[nearbyGene]
                         nearbyOfamNumS.add(ofamNum)
     # remove target fams themselves
     nearbyWithoutTargetNumS = nearbyOfamNumS - targetOfamNumS
-    nearbyWithoutTargetS = set()
+    nearbyWithoutTargetL = []
     for ofamNum in nearbyWithoutTargetNumS:
-        nearbyWithoutTargetS.add(originFamiliesO.getFamily(ofamNum))
+        nearbyWithoutTargetL.append(originFamiliesO.getFamily(ofamNum))
 
-    return nearbyWithoutTargetS
+    return nearbyWithoutTargetL
 
+def getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold):
+    '''Given an inital families object with multiple MPRs, determine the
+best MPR by running island formation with nearby ofams. In the case
+that there are more MPRs than upperNumMprThreshold, we randomly sample
+from the space of MPRs.
+    '''
+
+    bestNumIslands = float('inf')
+    bestCandMprOfamL = []
+    bestMprOrigFormatD = {}
+    for mprOrigFormatD,candMprOfamL in iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum):
+
+        testFamiliesO = createFamiliesOFromListOfFamilies(nearbyOfamL+candMprOfamL,speciesRtreeO)
+        locIslByNodeD = islands.createLocIslByNodeD(testFamiliesO,speciesRtreeO)
+
+        testAllLocIslandsL = []
+        for node in locIslByNodeD:
+            if locIslByNodeD[node] != []:
+                subRtreeO = speciesRtreeO.subtree(node)
+                argT = (locIslByNodeD[node],geneProximityD,proximityThreshold,rscThreshold,subRtreeO,testFamiliesO)
+                testAllLocIslandsL.extend(islands.mergeLocIslandsAtNode(argT))
+
+        if len(testAllLocIslandsL) < bestNumIslands:
+            bestNumIslands = len(testAllLocIslandsL)
+            bestCandMprOfamL = candMprOfamL
+            bestMprOrigFormatD = mprOrigFormatD
+
+    return bestMprOrigFormatD,bestCandMprOfamL
+
+def iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum):
+    '''Given an ifam object, iterate through MPRs, yielding the origin
+families associated with each MPR. maxOfamNum specifies where to
+start the numbering for famNum in these ofams. (so as not to clash
+with what is present in other families we will merge with).
+    '''
+
+    ofamNum = maxOfamNum
+
+    if False: #candIfamO.countMPRs() < upperNumMprThreshold:
+        # should iterate, sample for now. FIX THIS.
+        pass
+    else:
+        for i in range(upperNumMprThreshold):
+            # take upperNumMprThreshold samples
+            # randomly choose, do not restrict to median mprs
+            mprOrigFormatD,mprNodeFormatD = candIfamO.getMprReconD(speciesRtreeO.preorder(),paramD,False,True)
+            candMprOfamL = []
+            for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,candIfamO):
+                ofamO = originFamily(ofamNum,speciesMrca,geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=candIfamO.famNum)
+                ofamNum += 1
+                candMprOfamL.append(ofamO)
+
+            yield mprOrigFormatD,candMprOfamL
+                
+def createFamiliesOFromListOfFamilies(ofamL,speciesRtreeO):
+    '''Create an familiesO object with the origin families in the input list.'''
+    testFamiliesO = Families(speciesRtreeO)
+    for ofamO in ofamL:
+        # add family
+        testFamiliesO.initializeFamily(ofamO.famNum,ofamO.mrca,"origin",geneTreeO=ofamO.geneTreeO,dtlorMprD=ofamO.dtlorMprD,sourceFam=ofamO.sourceFam)
+        # add locus families
+        for lfO in ofamO.getLocusFamilies():
+            testFamiliesO.addLocusFamily(lfO)
+    return testFamiliesO
+    
 #### Input/output
 
 def writeFamilies(familiesO,familyFN,genesO,strainNamesT,paramD):

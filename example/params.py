@@ -43,7 +43,7 @@ speciesTreeFN='example.tre'
 # The node and the branch leading to it define the focal clade where
 # islands will be reconstructed. Everything outside of this will be
 # treated as ougroups (e.g. won't merge islands there).
-rootFocalClade = 's2'
+rootFocalClade = 's1'
 
 ## Parameters for optionally making a species tree
 
@@ -184,10 +184,6 @@ transferCost = 6
 lossCost = 1
 originCost = 6
 rearrangeCost = 7
-
-# In family refinement, we consider all origin families in islands
-# this size or smaller
-refineFamIslandLenThreshold = 2
 
 #### Visualization and analysis output files ####
 

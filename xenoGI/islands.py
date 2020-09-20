@@ -39,10 +39,6 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,familiesO,rootFoca
     # update locIslByNodeD with the merged nodes
     locIslByNodeD = updateIslandByNodeLEntries(locIslByNodeD,focalNodesL,mergedL)
 
-    ## Family improvement
-
-    # not currently doing this
-    
     ##  Merge at mrca nodes
     argumentL = []
     for mrcaNode in focalNodesL:

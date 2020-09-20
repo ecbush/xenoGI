@@ -98,6 +98,7 @@ geneProximityRange = 2
 # the proximity of their genes. proximityThreshold defines what
 # proximity is. A proximityThreshold of 1 means adjacent genes
 proximityThresholdMerge1 = 1
+proximityThresholdMerge2 = 2
 
 # rscThreshold of 0 means that we merge islands if their rscore is 0
 # or above
@@ -106,6 +107,26 @@ rscThresholdMerge1 = 0
 # maxClusterSize is the maximum size that we make clusters of islands
 # in the first step of the merging process
 maxClusterSize = 50
+
+
+#### Family Refinement ####
+
+# In family refinement, we consider alternate most parsimonious
+# reconcilations. In some cases, the number of MPRs for a single
+# family may be prohibitively large. upperNumMprThreshold specifies a
+# limit beyond which we will randomly sample from the
+# possibilities. This parameter also specifies the number of samples
+# to be taken in that case.
+upperNumMprThreshold = 20
+
+# In order to test alternate MPRs, we must obtain nearby
+# families. This parameter specifies how far to travel in each
+# direction (in genes) in various genomes to collect those families.
+geneProximityRangeRefineFamilies = 4
+
+# In family refinement, we consider all origin families in islands
+# this size or smaller
+islandLenThresholdRefineFamilies = 2
 
 
 #### Visualization and analysis ####
