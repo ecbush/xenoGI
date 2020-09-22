@@ -1125,6 +1125,7 @@ families. One origin family for each origin event.
     mprOrigFormatD,mprNodeFormatD = initFamO.getMprReconD(originFamiliesO.speciesRtreeO.preorder(),paramD,True,False)
 
     # add origin families according to this MPR
+    productFamL = [] # to keep ofams that come from this ifam
     for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,initFamO):
             
         famNum = originFamiliesO.getNumFamilies()            
@@ -1147,7 +1148,6 @@ yielding various bits of data needed to make an origin family.'''
     originTreeL = splitTreeByOrigin(initFamO.geneTreeO,branchOriginL)
     
     # extract parts of mprNodeFormatD corresponding to each tree
-    productFamL = [] # to keep ofams that come from this ifam
     for geneRtreeO,splitReconD in getGeneTreeReconPairs(originTreeL,mprNodeFormatD):
 
         keyNB = (geneRtreeO.rootNode,'n')
@@ -1312,6 +1312,7 @@ originFamiliesO.
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange)
     
     for candIfamO in refineCandidateIfamS:
+        print("num mprs",candIfamO.countMPRs())
         
         nearbyOfamL = getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO)
         
@@ -1375,11 +1376,12 @@ from the space of MPRs.
                 argT = (locIslByNodeD[node],geneProximityD,proximityThreshold,rscThreshold,subRtreeO,testFamiliesO)
                 testAllLocIslandsL.extend(islands.mergeLocIslandsAtNode(argT))
 
+        print("len(testAllLocIslandsL))",len(testAllLocIslandsL))
         if len(testAllLocIslandsL) < bestNumIslands:
             bestNumIslands = len(testAllLocIslandsL)
             bestCandMprOfamL = candMprOfamL
             bestMprOrigFormatD = mprOrigFormatD
-
+    print("---")
     return bestMprOrigFormatD,bestCandMprOfamL
 
 def iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum):
