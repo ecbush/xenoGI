@@ -12,14 +12,14 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands','refineFamilies', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands','refine', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, refineFamilies, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll, makeGeneFamilyTrees or version.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, refine, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll, makeGeneFamilyTrees or version.
 
    For example: 
       xenoGI params.py parseGenbank
@@ -57,8 +57,8 @@ def main():
         makeIslandsWrapper(paramD)
 
     #### refineFamilies
-    elif task == 'refineFamilies':
-        refineFamiliesWrapper(paramD)
+    elif task == 'refine':
+        refineWrapper(paramD)
         
     #### printAnalysis
     elif task == 'printAnalysis':
@@ -84,6 +84,7 @@ def main():
         calcScoresWrapper(paramD,blastFnL)
         makeFamiliesWrapper(paramD)
         makeIslandsWrapper(paramD)
+        refineWrapper(paramD)
         printAnalysisWrapper(paramD,paramD['speciesTreeFN'],paramD['rootFocalClade'])
         createIslandBedWrapper(paramD)
 
@@ -215,8 +216,8 @@ def makeIslandsWrapper(paramD):
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
         locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,originFamiliesO,paramD['rootFocalClade'],islandFormationSummaryF)
 
-def refineFamiliesWrapper(paramD):
-    """Wrapper to refine families by considering alternate reconcilitions."""
+def refineWrapper(paramD):
+    """Wrapper to refine families and islands by considering alternate reconcilitions."""
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
@@ -226,8 +227,13 @@ def refineFamiliesWrapper(paramD):
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
     islandByNodeD=islands.readIslands(paramD['islandOutFN'],speciesRtreeO)
 
+    ## refine families
     with open(paramD['familyFormationSummaryFN'],'a') as familyFormationSummaryF:
-        initialFamiliesO,originFamiliesO = families.refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,familyFormationSummaryF)
+        initialFamiliesO,originFamiliesO = families.refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,genesO,familyFormationSummaryF,strainNamesT)
+
+    ## redo islands with new originFamilies and less stringent proximity threshold
+    with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
+        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,originFamiliesO,paramD['rootFocalClade'],islandFormationSummaryF)
         
 def printAnalysisWrapper(paramD,speciesTreeFN,rootFocalClade):
     """Wrapper to run analysis. We take speciesTreeFN and rootFocalClade as

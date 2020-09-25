@@ -255,8 +255,8 @@ optimal cost?
 
         '''
         return new_DTLOR_DP.count_MPRs(self.dtlorGraphD)[(new_DTLOR_DP.NodeType.ROOT,)]
-        
-    def getMprReconD(self,speciesPreOrderT,paramD,isMedian,rand):
+
+    def getMprReconDFromGraph(self,speciesPreOrderT,paramD,isMedian,rand):
         '''From the reconciliation graph (dtlor output), get an mpr, convert
 to our node based format. Then return the mpr in original dtlor
 format, and also our node based format (both dicts). If isMedian is
@@ -265,11 +265,28 @@ chosen. If rand is False, this will be arbitrarily chosen (and the
 same each time if done repeatedly).
 
         '''
-        return self.__getMprReconDHelper__(self.dtlorGraphD,speciesPreOrderT,paramD,isMedian,rand)
+
+        # get event list
+        if isMedian:
+            eventG = new_DTLOR_DP.build_event_median_graph(self.dtlorGraphD)
+        else:
+            eventG = new_DTLOR_DP.build_event_graph(self.dtlorGraphD)
+
+        mprOrigFormatD = new_DTLOR_DP.find_MPR(eventG,rand) # one mpr
+        mprNodeFormatD = self.__getMprReconDHelper__(mprOrigFormatD,speciesPreOrderT,paramD)
         
-    def __getMprReconDHelper__(self,dtlorGraphD,speciesPreOrderT,paramD,isMedian,rand):
-        '''Actual function to do the conversion.'''
+        return mprOrigFormatD,mprNodeFormatD
+
+    def getMprReconDFromMpr(self,speciesPreOrderT,paramD):
+        '''Converts the MPR in self.dtlorMprD to node based format and
+returns.
+        '''
+        return self.__getMprReconDHelper__(self.dtlorMprD,speciesPreOrderT,paramD)
         
+    def __getMprReconDHelper__(self,mprOrigFormatD,speciesPreOrderT,paramD):
+        '''Takes an MPR in the original format of dtlor and converts to our
+node based format.
+        '''
         ## support funcs
         def getEventTypeStr(eventTypeO):
             '''Convert from the object representation (from dtlor) of an event to
@@ -318,14 +335,7 @@ a string.
         
         ## main code
         speciesPostOrderT = speciesPreOrderT[::-1]
-        
-        # get event list
-        if isMedian:
-            eventG = new_DTLOR_DP.build_event_median_graph(dtlorGraphD)
-        else:
-            eventG = new_DTLOR_DP.build_event_graph(dtlorGraphD)
-            
-        mprOrigFormatD = new_DTLOR_DP.find_MPR(eventG,rand) # one mpr
+                    
         eventL = new_DTLOR_DP.get_events(mprOrigFormatD)
 
         # create dict with keys (geneTreeLoc,'n/b')
@@ -354,7 +364,7 @@ a string.
         # dtlor alg gave
         self.__costCheck__(mprNodeFormatD,paramD)
         
-        return mprOrigFormatD,mprNodeFormatD
+        return mprNodeFormatD
 
     def __costCheck__(self,mprNodeFormatD,paramD):
         '''Sanity check to ensure the events in mprNodeFormatD sum to dtlorCost.'''

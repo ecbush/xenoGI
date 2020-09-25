@@ -97,12 +97,11 @@ geneProximityRange = 2
 # In deciding whether to merge two islands, we judge partly based on
 # the proximity of their genes. proximityThreshold defines what
 # proximity is. A proximityThreshold of 1 means adjacent genes
-proximityThresholdMerge1 = 1
-proximityThresholdMerge2 = 2
+proximityThresholdMerge = 1
 
 # rscThreshold of 0 means that we merge islands if their rscore is 0
 # or above
-rscThresholdMerge1 = 0
+rscThresholdMerge = 0
 
 # maxClusterSize is the maximum size that we make clusters of islands
 # in the first step of the merging process

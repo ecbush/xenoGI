@@ -17,8 +17,8 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,familiesO,rootFoca
     numProcesses = paramD['numProcesses']
     islandOutFN = paramD['islandOutFN']
     geneProximityRange = paramD['geneProximityRange']
-    proximityThresholdMerge1 = paramD['proximityThresholdMerge1']
-    rscThresholdMerge1 = paramD['rscThresholdMerge1']
+    proximityThresholdMerge = paramD['proximityThresholdMerge']
+    rscThresholdMerge = paramD['rscThresholdMerge']
     maxClusterSize = paramD['maxClusterSize']
     
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange)
@@ -32,7 +32,7 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,familiesO,rootFoca
     # create argumentL to be passed to p.map and mergeLocIslandsAtNode
     argumentL = []
     for clusterL in locusIslandClusterL:
-        argumentL.append((clusterL,geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeD[clusterL[0].mrca],familiesO))
+        argumentL.append((clusterL,geneProximityD,proximityThresholdMerge,rscThresholdMerge,subtreeD[clusterL[0].mrca],familiesO))
     p=Pool(numProcesses)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 
@@ -42,7 +42,7 @@ def makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,familiesO,rootFoca
     ##  Merge at mrca nodes
     argumentL = []
     for mrcaNode in focalNodesL:
-        argumentL.append((locIslByNodeD[mrcaNode],geneProximityD,proximityThresholdMerge1,rscThresholdMerge1,subtreeD[mrcaNode],familiesO))
+        argumentL.append((locIslByNodeD[mrcaNode],geneProximityD,proximityThresholdMerge,rscThresholdMerge,subtreeD[mrcaNode],familiesO))
     p=Pool(numProcesses)
     mergedL = p.map(mergeLocIslandsAtNode, argumentL) # run it
 

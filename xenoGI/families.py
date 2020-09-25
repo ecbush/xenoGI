@@ -42,8 +42,7 @@ originFamilies object.
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # create blast families, output is directory of gene trees
-    createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF) # TEMP
-    print("Finished making gene trees",file=sys.stderr)
+    createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF)
 
     initialFamiliesO,locusMapD = createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF)
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
@@ -282,11 +281,15 @@ def createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize):
             fam.add(gene)
             connecComponentSetL.append(fam)
 
-    print("  Num initial connected components:",len(connecComponentSetL),file=outputSummaryF)
   
     # filter out largest
-    blastFamilySetL = connecComponentSizeThreshold(connecComponentSetL,maxBlastFamSize,scoresO,outputSummaryF)
+    blastFamilySetL,numAboveThresh = connecComponentSizeThreshold(connecComponentSetL,maxBlastFamSize,scoresO,outputSummaryF)
 
+    summaryL = []
+    summaryL.append(["Num initial connected components",str(len(connecComponentSetL))])
+    summaryL.append(["Num components to split (have more than %d genes)"%maxBlastFamSize,str(numAboveThresh)])
+    printTable(summaryL,indent=2,fileF=outputSummaryF)
+    
     return blastFamilySetL
 
 def connecComponentSizeThreshold(connecComponentSetL,maxBlastFamSize,scoresO,outputSummaryF):
@@ -304,8 +307,6 @@ neighbor joining tree using raw scores.'''
         else:
             blastFamilySetL.append((len(clusterS),clusterS))
             
-    print("  Num components to split (have more than %d genes):"%maxBlastFamSize,numAboveThresh,file=outputSummaryF)
-
     # split the big ones
     tooBigL.sort(reverse=True,key=lambda x: x[0])
     for _,fullClusterS in tooBigL:
@@ -318,7 +319,7 @@ neighbor joining tree using raw scores.'''
     blastFamilySetL.sort(reverse=True,key=lambda x: x[0])
 
     # strip out length and return
-    return [clusterS for _,clusterS in blastFamilySetL]
+    return [clusterS for _,clusterS in blastFamilySetL],numAboveThresh
 
 def splitClusterFailsafe(fullClusterS,scoresO,maxBlastFamSize):
     '''Split fullClusterS by setting higher and higher thresholds for
@@ -1121,20 +1122,34 @@ def addOriginFamilyFromReconciliation(initFamO,originFamiliesO,paramD,genesO):
     '''Given a rooted gene tree and a reconciliation, add origin
 families. One origin family for each origin event.
     '''
-    # get arbitrarily chosen median mpr
-    mprOrigFormatD,mprNodeFormatD = initFamO.getMprReconD(originFamiliesO.speciesRtreeO.preorder(),paramD,True,False)
 
+    # in the first pass at originFamily formation, dtlorMprD will be
+    # none (and we chould arbirarily choose one). In the second pass,
+    # it will have the MPR we want to use in it.
+
+    if initFamO.dtlorMprD == None:
+        # if initFamO has dtlorMprD equals None, then arbitrarily choose
+        # a median MPR from the graph object.
+        mprOrigFormatD,mprNodeFormatD = initFamO.getMprReconDFromGraph(originFamiliesO.speciesRtreeO.preorder(),paramD,True,False)
+        initFamO.addMprD(mprOrigFormatD) # keep the mpr used for future reference
+    else:
+        # If it has a value in dtlorMprD, then use that MPR.
+        mprNodeFormatD = initFamO.getMprReconDFromMpr(originFamiliesO.speciesRtreeO.preorder(),paramD)
+        
     # add origin families according to this MPR
     productFamL = [] # to keep ofams that come from this ifam
     for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,initFamO):
             
-        famNum = originFamiliesO.getNumFamilies()            
+        famNum = originFamiliesO.getNumFamilies()
+        locusFamNum = originFamiliesO.getNumLocusFamilies()
         originFamiliesO.initializeFamily(famNum,speciesMrca,"origin",geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=initFamO.famNum)
-        originFamiliesO = getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO)
+        
+        for lfO in iterLocusFamiliesInOrigin(splitReconD,geneRtreeO,famNum,locusFamNum,genesO):
+            originFamiliesO.addLocusFamily(lfO)
+        
         productFamL.append(famNum)
         
     # update ifam
-    initFamO.addMprD(mprOrigFormatD) # keep the mpr used for future reference
     initFamO.productFamT = tuple(productFamL)
     
     return initFamO,originFamiliesO
@@ -1202,11 +1217,11 @@ corresponding parts from the mprNodeFormatD for each.'''
         geneTreeReconPairL.append((geneRtreeO,splitReconD))
     return geneTreeReconPairL
         
-def getLocusFamiliesInOrigin(splitReconD,geneRtreeO,originFamiliesO,famNum,genesO):
-    '''Given a geneRtreeO for an origin family, and the corresponding
-splitReconD, divide up further into locusFamilies. Each locus family
-is defined by the most recent R event (or O) in its history.
-
+def iterLocusFamiliesInOrigin(splitReconD,geneRtreeO,famNum,locusFamNum,genesO):
+    '''Iterator yielding locus families. Given a geneRtreeO for an origin
+family, and the corresponding splitReconD, divide up further into
+locusFamilies. Each locus family is defined by the most recent R event
+(or O) in its history. famNum is the family number all these locus families will share. locusFamNum is the place to start the locus family numbers.
     '''
     branchRL = getBranchesWithSpecifiedEvents(splitReconD,"R")
     freeGeneL,locFamTL = splitTreeIntoLocusFamilies(geneRtreeO,geneRtreeO.rootNode,branchRL)
@@ -1218,11 +1233,12 @@ is defined by the most recent R event (or O) in its history.
         lfReconRootKey = (geneRtreeORBranch,'b')
         # pull out the R or O event to get mrca
         _,lfSpeciesMrca,_,locusAtBottom = [val for val in splitReconD[lfReconRootKey] if val[0] in 'OR'][0]
-        newLocusNum=originFamiliesO.getNumLocusFamilies()
-        lf=LocusFamily(famNum,newLocusNum,lfSpeciesMrca,int(locusAtBottom),lfReconRootKey)
-        lf.addGenes(locFamGenesT,genesO)
-        originFamiliesO.addLocusFamily(lf)
-    return originFamiliesO
+        
+        lfO=LocusFamily(famNum,locusFamNum,lfSpeciesMrca,int(locusAtBottom),lfReconRootKey)
+        lfO.addGenes(locFamGenesT,genesO)
+        locusFamNum += 1
+        yield lfO
+
 
 def splitTreeIntoLocusFamilies(geneRtreeO,node,branchRL):
     '''Split tips in geneRtreeO into locus families. Each gene is put into
@@ -1259,7 +1275,7 @@ the genes in outFreeGeneL, make into a tuple, and add to outLocFamTL.
 
 #### Refine families
 
-def refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,familyFormationSummaryF):
+def refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,genesO,outputSummaryF,strainNamesT):
     '''Refine origin families by considering alternate reconciliations. We
 determine what the best MPR to use is, and update initialFamiliesO
 with this. We then re-run origin family formation from scratch and
@@ -1269,9 +1285,11 @@ originFamiliesO.
     upperNumMprThreshold = paramD ['upperNumMprThreshold']
     islandLenThresholdRefineFamilies = paramD['islandLenThresholdRefineFamilies']
     geneProximityRangeRefineFamilies = paramD['geneProximityRangeRefineFamilies']
-    proximityThreshold = paramD['proximityThresholdMerge2'] # larger than initial
-    rscThreshold = paramD['rscThresholdMerge1']
+    proximityThreshold = paramD['proximityThresholdMerge'] # larger than initial
+    rscThreshold = paramD['rscThresholdMerge']
     geneProximityRange = paramD['geneProximityRange'] # standard one for island merging
+    initFamilyFN = paramD['initFamilyFN']
+    originFamilyFN =  paramD['originFamilyFN']
 
     speciesRtreeO = originFamiliesO.speciesRtreeO
     
@@ -1298,10 +1316,6 @@ originFamiliesO.
                         if sourceIfamO.countMPRs() > 1:
                             refineCandidateIfamS.add(sourceIfamO)
 
-    # TEMP
-    print("total ofams from 1,2 fam islands",numIfams1_2_famIslands)
-    print("those with multiple mprs",len(refineCandidateIfamS))
-
     # create geneToOfamD
     geneToOfamD = {}
     for origFamO in originFamiliesO.iterFamilies():
@@ -1312,14 +1326,37 @@ originFamiliesO.
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange)
     
     for candIfamO in refineCandidateIfamS:
-        print("num mprs",candIfamO.countMPRs())
-        
+
+        #if candIfamO.famNum == 473:
+            
         nearbyOfamL = getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO)
-        
-        bestMprOrigFormatD,bestOfamL = getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,max(originFamiliesO.familiesD.keys()),nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold)
+
+        bestMprOrigFormatD,bestOfamL = getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,max(originFamiliesO.familiesD.keys()),genesO,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold)
+
+        newMprS = str(bestMprOrigFormatD)
 
         candIfamO.addMprD(bestMprOrigFormatD)
-        
+
+            
+    ## make origin families again
+    initialFamiliesO,originFamiliesO = createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO)
+
+    ## update summary file
+    print("Family refinement:",file=outputSummaryF)
+    summaryL = []
+    summaryL.append(["Number of origin families in small islands",str(numIfams1_2_famIslands)])
+    summaryL.append(["Number of these with multiple MPRs",str(len(refineCandidateIfamS))])
+    printTable(summaryL,indent=2,fileF=outputSummaryF)
+    
+    print("Origin families after refinement:",file=outputSummaryF)
+    writeFamilyFormationSummary(originFamiliesO,outputSummaryF)
+
+    # write familes to file
+    writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD) # update with different mprs
+    writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
+    #writeFamilies(initialFamiliesO,"ifamRefine.out",genesO,strainNamesT,paramD) # update with different mprs
+    #writeFamilies(originFamiliesO,"ofamRefine.out",genesO,strainNamesT,paramD)
+
     return initialFamiliesO,originFamiliesO
 
 def getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO):
@@ -1354,17 +1391,24 @@ get a collection of other ofams that are nearby to these.'''
 
     return nearbyWithoutTargetL
 
-def getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold):
+def getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum,genesO,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold):
     '''Given an inital families object with multiple MPRs, determine the
 best MPR by running island formation with nearby ofams. In the case
 that there are more MPRs than upperNumMprThreshold, we randomly sample
 from the space of MPRs.
     '''
-
+    # get place to start numbering locus fams (so no collisions)
+    maxLocFamNum = 0
+    for ofamO in nearbyOfamL:
+        for lfO in ofamO.getLocusFamilies():
+            if lfO.locusFamNum > maxLocFamNum:
+                maxLocFamNum = lfO.locusFamNum
+    
     bestNumIslands = float('inf')
     bestCandMprOfamL = []
     bestMprOrigFormatD = {}
-    for mprOrigFormatD,candMprOfamL in iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum):
+    testS = set()
+    for mprOrigFormatD,candMprOfamL in iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum,maxLocFamNum,genesO):
 
         testFamiliesO = createFamiliesOFromListOfFamilies(nearbyOfamL+candMprOfamL,speciesRtreeO)
         locIslByNodeD = islands.createLocIslByNodeD(testFamiliesO,speciesRtreeO)
@@ -1376,15 +1420,14 @@ from the space of MPRs.
                 argT = (locIslByNodeD[node],geneProximityD,proximityThreshold,rscThreshold,subRtreeO,testFamiliesO)
                 testAllLocIslandsL.extend(islands.mergeLocIslandsAtNode(argT))
 
-        print("len(testAllLocIslandsL))",len(testAllLocIslandsL))
         if len(testAllLocIslandsL) < bestNumIslands:
             bestNumIslands = len(testAllLocIslandsL)
             bestCandMprOfamL = candMprOfamL
             bestMprOrigFormatD = mprOrigFormatD
-    print("---")
+
     return bestMprOrigFormatD,bestCandMprOfamL
 
-def iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum):
+def iterCandidateMprOfams(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,maxOfamNum,maxLocFamNum,genesO):
     '''Given an ifam object, iterate through MPRs, yielding the origin
 families associated with each MPR. maxOfamNum specifies where to
 start the numbering for famNum in these ofams. (so as not to clash
@@ -1392,6 +1435,7 @@ with what is present in other families we will merge with).
     '''
 
     ofamNum = maxOfamNum
+    locusFamNum = maxLocFamNum
 
     if False: #candIfamO.countMPRs() < upperNumMprThreshold:
         # should iterate, sample for now. FIX THIS.
@@ -1400,17 +1444,23 @@ with what is present in other families we will merge with).
         for i in range(upperNumMprThreshold):
             # take upperNumMprThreshold samples
             # randomly choose, do not restrict to median mprs
-            mprOrigFormatD,mprNodeFormatD = candIfamO.getMprReconD(speciesRtreeO.preorder(),paramD,False,True)
+            mprOrigFormatD,mprNodeFormatD = candIfamO.getMprReconDFromGraph(speciesRtreeO.preorder(),paramD,False,True)
             candMprOfamL = []
             for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,candIfamO):
                 ofamO = originFamily(ofamNum,speciesMrca,geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=candIfamO.famNum)
-                ofamNum += 1
+                # add locus families
+                for lfO in iterLocusFamiliesInOrigin(splitReconD,geneRtreeO,ofamNum,locusFamNum,genesO):
+                    ofamO.addLocusFamily(lfO)
+                    locusFamNum += 1
+
                 candMprOfamL.append(ofamO)
 
+                ofamNum += 1
+                
             yield mprOrigFormatD,candMprOfamL
                 
 def createFamiliesOFromListOfFamilies(ofamL,speciesRtreeO):
-    '''Create an familiesO object with the origin families in the input list.'''
+    '''Create a familiesO object with the origin families in the input list.'''
     testFamiliesO = Families(speciesRtreeO)
     for ofamO in ofamL:
         # add family
@@ -1484,7 +1534,6 @@ def readFamilies(familyFN,speciesRtreeO,genesO,famType):
             productFamT = None
         else:
             productFamT = eval(L[7])
-
 
         # make it
         familiesO.initializeFamily(famNum,mrca,famType,geneTreeO=geneRtreeO,dtlorCost=dtlorCost,dtlorGraphD=dtlorGraphD,dtlorMprD=dtlorMprD,sourceFam=sourceFam,productFamT=productFamT)
