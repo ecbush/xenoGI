@@ -156,18 +156,18 @@ coreSynWsize = 20
 
 # Family formation
 
+# threshold of branch lengths for splitting unrooted gene trees from
+# blast families. obtained by examining this distribution of maximum
+# scores for aabrh hard core families.
+quantileForObtainingSplitThresholds = .99
+multiplierForObtainingSplitThresholds = 1.5
+
 # The maximum size for blast and initial families is a multiple of the
 # number of tips on the species tree. These parameters give the
 # multiplier used. We want larger blast families than initial
 # families, so the multiplier for blast should be larger.
 maxBlastFamSizeMultiplier = 8
 maxInitialFamSizeMultiplier = 4
-
-# threshold of branch lengths for splitting unrooted gene trees from
-# blast families. obtained by examining this distribution of maximum
-# scores for aabrh hard core families.
-quantileForObtainingSplitThresholds = .99
-multiplierForObtainingSplitThresholds = 1.5
 
 # If some families still too large after splitting based on threshold,
 # we force them to be split on a large internal branch. The choice of
@@ -176,6 +176,14 @@ multiplierForObtainingSplitThresholds = 1.5
 # weighting balance gets. Numbers > 1 mean we give more weight to
 # balance.
 forceSplitUtreeBalanceMultiplier = 10
+
+# Synteny threshold calculation. We determine synteny thresholds
+# between pairs of strains based on the distribution of
+# scores. quantileForObtainingSynThresholds gives the quantile we take
+# from this dist. We then multiply this by
+# multiplierForObtainingSynThresholds to get a threshold.
+quantileForObtainingSynThresholds = 0.1
+multiplierForObtainingSynThresholds = 0.5
 
 # DTLOR
 # Should be integers. duplicationCost <= transferCost

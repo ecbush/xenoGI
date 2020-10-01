@@ -315,9 +315,9 @@ def interactiveAnalysisWrapper(paramD):
         for lfO in fam.getLocusFamilies():
             print("    LocusFamily",lfO.getStr(genesO," "),file=fileF)
 
-        if hasattr(fam,"sourceIfam"):
+        if hasattr(fam,"sourceFam"):
             print(file=fileF)
-            print("    Source family",fam.sourceIfam(),file=fileF)
+            print("    Source family",fam.sourceFam,file=fileF)
             print(file=fileF)
             
         # print("Family error score (count of possibly misassigned genes):",familiesO[familyNum].possibleErrorCt,file=fileF)
@@ -409,8 +409,9 @@ def debugWrapper(paramD):
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
-
+    bpTree = Phylo.read('exampleBr.tre', 'newick', rooted=True)
     
+    rtree = Rtree()
+    rtree.fromNewickFileLoadSpeciesTree('exampleBr.tre',includeBrLen=True)
+            
     code.interact(local=locals())

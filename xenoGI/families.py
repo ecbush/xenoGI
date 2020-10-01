@@ -1307,7 +1307,7 @@ originFamiliesO.
                 for origLfO in locusIslandO.iterLocusFamilies(originFamiliesO):
                     origFamO = originFamiliesO.getFamily(origLfO.famNum)
                     # get sourceIfam
-                    sourceIfamO = initialFamiliesO.getFamily(origFamO.sourceIfam())
+                    sourceIfamO = initialFamiliesO.getFamily(origFamO.sourceFam)
                     # we can only consider those with reconciliations
                     # (single gene families lack them, and for now so
                     # do families with multifurcating nodes)

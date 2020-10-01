@@ -260,9 +260,11 @@ the two nodes on either end.
         S = set()
         for node,connecT in self.nodeConnectD.items():
             for otherNode in connecT:
-                # put them in preorder
-                edgeT = tuple((nd for nd in self.preorder() if nd in [node,otherNode]))
-                S.add(edgeT)
+                # don't include any edge with ROOT_PARENT_NAME
+                if otherNode != ROOT_PARENT_NAME:
+                    # put them in preorder
+                    edgeT = tuple((nd for nd in self.preorder() if nd in [node,otherNode]))
+                    S.add(edgeT)
         return tuple(sorted(S))
         
     def __eq__(self,other):
@@ -314,7 +316,7 @@ class Rtree(Tree):
         if self.nodeConnectD != None:
             self.preOrderT = self.__traversePreOrder__(self.rootNode)
         
-    def fromNewickFileLoadSpeciesTree(self,treeFN,outGroupTaxaL=None):
+    def fromNewickFileLoadSpeciesTree(self,treeFN,outGroupTaxaL=None,includeBrLen=False):
         '''Populate attributes based on newick file in treeFN. This method
 assumes we are working with a species tree. It must be rooted,
 bifurcating and have named internal nodes. An optional argument
@@ -331,9 +333,13 @@ preparation such as naming internal nodes).
             bpTree = trees.prepareTree(bpTree,outGroupTaxaL)
             
         self.__checkSpeciesTree__(bpTree)
-        
-        nodeConnectD = self.__bioPhyloToNodeConnectD__(bpTree)
-        self.populateAttributes(nodeConnectD,bpTree.root.name)
+
+        nodeConnectD,branchLenD = self.__bioPhyloToNodeConnectD__(bpTree)
+
+        if includeBrLen:
+            self.populateAttributes(nodeConnectD,bpTree.root.name,branchLenD)
+        else:
+            self.populateAttributes(nodeConnectD,bpTree.root.name)
 
     def toNewickStr(self):
         '''Output a newick string.'''
@@ -474,20 +480,25 @@ tree.
         '''Convert a biopython tree object to a node connection dict with keys
     that are nodes, and values that are (parent, child1, child2...).'''
         nodeConnectD = {}
+        branchLenD = {}
         # parent of root is ROOT_PARENT_NAME
-        return self.__bioPhyloCladeToNodeConnectD__(bpTree.root,nodeConnectD,ROOT_PARENT_NAME)
+        return self.__bioPhyloCladeToNodeConnectD__(bpTree.root,nodeConnectD,branchLenD,ROOT_PARENT_NAME)
 
-    def __bioPhyloCladeToNodeConnectD__(self,clade,nodeConnectD,parent):
+    def __bioPhyloCladeToNodeConnectD__(self,clade,nodeConnectD,branchLenD,parent):
         '''Recursive helper to convert a biopython clade object.
         '''
+        # get branch, but only if its not branch leading to root
+        if parent != ROOT_PARENT_NAME: branchLenD[(parent,clade.name)] = clade.branch_length
+
+        # fill nodeConnectD
         if clade.is_terminal():
             nodeConnectD[clade.name] = (parent,)
-            return nodeConnectD
+            return nodeConnectD,branchLenD
         else:
             nodeConnectD[clade.name] = (parent,clade[0].name,clade[1].name)
             for iterClade in clade:
-                nodeConnectD = self.__bioPhyloCladeToNodeConnectD__(iterClade,nodeConnectD,clade.name)
-            return nodeConnectD
+                nodeConnectD,branchLenD = self.__bioPhyloCladeToNodeConnectD__(iterClade,nodeConnectD,branchLenD,clade.name)
+            return nodeConnectD,branchLenD
 
     def __repr__(self):
         return "Rtree: "+self.toNewickStr()
@@ -688,7 +699,7 @@ node.'''
 
         # main part of split
         if self.isLeaf(branchPair[0]) and self.isLeaf(branchPair[1]):
-            return Utree({branchPair[0]:()}),Utree({branchPair[1]:()}) # brLenD None by default
+            return Utree({branchPair[0]:()}),Utree({branchPair[1]:()}) # branchLenD None by default
         elif self.isLeaf(branchPair[0]):
             # one side is leaf
             restUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[1],branchPair[0])

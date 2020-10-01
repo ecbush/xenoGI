@@ -568,10 +568,6 @@ codes for events are as follows:
             for child in childL:
                 self.printReconByGeneTreeHelper(dtlorMprD,geneRtreeO,genesO,child,level+1,fileF)
 
-    def sourceIfam(self):
-        '''Return the initial family this origin family came from.'''
-        return self.sourceFam
-
         
 class Families:
 

@@ -61,28 +61,6 @@ nonHomologPeakProminence = 1
 nonHomologLeftPeakLimit = 0
 nonHomologRightPeakLimit = 0.6
 
-## Thresholds
-
-# quantiles for synteny threshold calculation
-quantileForObtainingSynThresholds = 0.1
-multiplierForObtainingSynThresholds = 0.5
-
-# We use syntenty scores to adjust similarity scores in family
-# finding. In particular, if synteny is very good, we give the raw
-# similarity score a little bump to increase the chances of the gene
-# under consideration being added to the family. This parameter
-# specifies the amount we multiply a rawScore by during this
-# adjustment.
-synAdjustExtent = 1.05
-
-# When forming gene families within a single strain, we need a raw
-# score threshold to determine which genes are similar enough to get
-# in the same family. To get this threshold, we identify the nearest
-# neighbors of the strain in question, and get the average score in
-# core genes across these. We then multiply by this adjustment
-# parameter to get the value we use as a threshold.
-singleStrainFamilyThresholdAdjust = 0.5
-
 ## Other
 
 aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
