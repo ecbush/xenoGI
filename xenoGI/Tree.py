@@ -208,6 +208,15 @@ length.'''
             branchLen = self.branchLenD[branchPair]
             yield branchPair,branchLen
 
+    def getBranchesByLengthL(self):
+        '''Returns a list of tuples (branchPair,branchLen) sorted by branch length. Largest first.'''
+        if self.branchLenD == None:
+            raise ValueError("This unrooted tree object does not have branch lengths defined.")
+            
+        L=list(self.branchLenD.items())
+        L.sort(key=lambda x: x[1],reverse=True)
+        return L
+            
     def maxBranchLen(self):
         '''Find the maximum branch length present, and return the
 corresponding branchPair tuple and the length.

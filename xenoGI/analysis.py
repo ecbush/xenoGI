@@ -270,6 +270,13 @@ function.
 def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF):
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
+    def printCoordinates(labelText,genesO,firstGene,lastGene,fileF):
+        chrom = genesO.numToGeneInfo(firstGene)[4]
+        startPos = genesO.numToGeneInfo(firstGene)[5]
+        endPos = genesO.numToGeneInfo(lastGene)[6]
+        print("    "+labelText,chrom+":"+str(startPos)+"-"+str(endPos),file=fileF)
+
+
     print("  LocusIsland:",islandNum,file=fileF)
     
     genesInEitherDirec = int(synWSize/2)
@@ -287,7 +294,7 @@ def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,g
 
     for strainName in subtreeD[mrca].leaves():
 
-        print("  In",strainName,end=' ',file=fileF)
+        print("  In",strainName,file=fileF)
 
         islandGenesInStrainL = getIslandGenesInStrain(island,strainName,familiesO)
 
@@ -297,15 +304,12 @@ def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,g
 
             neighbGenesL,firstIslandGene,lastIslandGene=getNeighborhoodGenes(strainName,geneOrderD,islandGenesInStrainL,genesInEitherDirec)
 
-            # print coordinates of island in this strain
-            chrom = genesO.numToGeneInfo(islandGenesInStrainL[0])[4]
-            startPos = genesO.numToGeneInfo(firstIslandGene)[5]
-            endPos = genesO.numToGeneInfo(lastIslandGene)[6]
-            
-            print("(Coordinates",chrom+":"+str(startPos)+"-"+str(endPos)+")",file=fileF)
+            printCoordinates("Coordinates of locus island",genesO,firstIslandGene,lastIslandGene,fileF)
+            printCoordinates("Coordinates of region shown",genesO,neighbGenesL[0],neighbGenesL[-1],fileF)
+
             printGenesVerbose(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF)
-
-
+  
+            
 def getIslandGenesInStrain(island,strainName,familiesO):
     '''Given an island, a strain number, and our families object, return
 all the genes in the island for that strain.'''

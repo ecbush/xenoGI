@@ -43,8 +43,9 @@ originFamilies object.
 
     # create blast families, output is directory of gene trees
     createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF)
-
+    
     initialFamiliesO,locusMapD = createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF)
+
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
@@ -293,8 +294,8 @@ def createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize):
     return blastFamilySetL
 
 def connecComponentSizeThreshold(connecComponentSetL,maxBlastFamSize,scoresO,outputSummaryF):
-    '''For family sets larger than maxBlastFamSize, split by making a
-neighbor joining tree using raw scores.'''
+    '''For family sets larger than maxBlastFamSize, split by raising the
+threshold for homology and reclustering.'''
 
     blastFamilySetL = []
     tooBigL = []
@@ -483,13 +484,14 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
     maxInitialFamSize = int(paramD['maxInitialFamSizeMultiplier'] * speciesRtreeO.leafCount())
     forceSplitUtreeBalanceMultiplier = paramD['forceSplitUtreeBalanceMultiplier']
 
-    # load gene trees
+    ## load gene trees
     blastFamGeneTreeL = loadGeneTrees(paramD,blastFamGeneTreeFileStem)
 
     # delete any aabrh gene trees
     # aside: for aabrh trees made for species tree calculation, the
     # headers are wrong, containing the species rather than the
     # gene. These should be in a different directory anyway...
+
 
     aabrhGtFilePath = os.path.join(geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem+'*.tre')
     aabrhGtFileNameL=list(glob.glob(aabrhGtFilePath))
@@ -501,37 +503,49 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
         newAabrhHardCoreL.append((orthoNum,orthoT))
         orthoNum += 1
     trees.makeGeneTrees(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
-
+    
     aabrhHardCoreGeneTreeL = loadGeneTrees(paramD,aabrhHardCoreGeneTreeFileStem)
 
     # remove alignments
     for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
         os.remove(fn)
 
-    # obtain threshold for utree splitting
+    ## split blast family trees
+
+    # see how many in blastFamGeneTreeL match aabrhHardCoreGeneSet
+    # get sets of aabrh genes so we can avoid splits in these families
+    aabrhHardCoreGeneSetL = [set(aabrhUtreO.leaves()) for famNum,aabrhUtreO in aabrhHardCoreGeneTreeL]
+    
+    # obtain threshold. Will split on branches larger than splitThresh
     splitThresh = calculateTreeSplitThreshold(paramD,aabrhHardCoreGeneTreeL)
 
-    # split on branches larger than splitThresh
     singleGeneTreeL = [] # need this since splitting funcs don't like single tip trees
     geneTreeL = []
     for blastFamNum,blastFamUtreeO in blastFamGeneTreeL:
         if blastFamUtreeO.leafCount() == 1:
             singleGeneTreeL.append((blastFamUtreeO.leafCount(),blastFamNum,blastFamUtreeO))
         else:
-            for aUtO in splitUtreeThreshold([blastFamUtreeO],splitThresh)           :
+
+            # pull out aabrh sets that are subsets of this tree. We
+            # will split so as to ensure that the genes of the aabrh
+            # set are not separated.
+            subsetAabrhL = getSubsetAabrhL(set(blastFamUtreeO.leaves()),aabrhHardCoreGeneSetL)
+            
+            for aUtO in splitUtreeThreshold([blastFamUtreeO],splitThresh,subsetAabrhL,set()):
                 if aUtO.leafCount() == 1:
                     singleGeneTreeL.append((aUtO.leafCount(),blastFamNum,aUtO))
                 else:
                     # failsafe to keep below maxInitialFamSize. If none too
                     # big, will pass back same list
-                    for bUtO in splitUtreeFailsafe([aUtO],maxInitialFamSize,forceSplitUtreeBalanceMultiplier):
+
+                    for bUtO in splitUtreeFailsafe([aUtO],maxInitialFamSize,forceSplitUtreeBalanceMultiplier,subsetAabrhL):
                         geneTreeL.append((bUtO.leafCount(),blastFamNum,bUtO))
 
     geneTreeL.extend(singleGeneTreeL)
     del singleGeneTreeL
     geneTreeL.sort(reverse=True,key=lambda x: x[0]) # big families first
     
-    # make initial families object
+    ## make initial families object
     
     # create output objects
     locusMapD={}
@@ -575,6 +589,16 @@ def loadGeneTrees(paramD,geneTreeFileStem):
 
     return geneTreeL
 
+def getSubsetAabrhL(famS,aabrhHardCoreGeneSetL):
+    '''Identify aabrh sets that are subsets of famS. Return list of sets.
+    '''
+    subsetAabrhL = []
+    for aabrhS in aabrhHardCoreGeneSetL:
+        if aabrhS.issubset(famS):
+            subsetAabrhL.append(aabrhS)
+
+    return subsetAabrhL
+
 def calculateTreeSplitThreshold(paramD,aabrhHardCoreGeneTreeL):
     '''Given a list of aabrh hard core gene trees, calculate a threshold
 for splitting gene trees. For each aabrh tree, we get the maximum
@@ -594,53 +618,78 @@ threshold.
 
     return splitThresh
 
-def splitUtreeThreshold(utreeL,splitThresh):
+def splitUtreeThreshold(utreeL,splitThresh,subsetAabrhL,doNotSplitBranchPairS):
     '''Given an input list containing Utree objects, recursively split
 these until there are no branches longer than splitThresh. Trees in
 utreeL should not be single tip trees.
     '''
 
-    def getIndFirstAboveThresh(utreeL):
+    def getBranchToSpit(utreeL,doNotSplitBranchPairS):
         i=-1 # for empty list case
         for i in range(len(utreeL)):
-            maxBranchPair,maxBrLen = utreeL[i].maxBranchLen()
-            if maxBrLen > splitThresh:
-                return i
-        return i+1 # none above thresh
+            for splitBranchPair,splitBrLen in utreeL[i].getBranchesByLengthL():
+                if splitBrLen > splitThresh and splitBranchPair not in doNotSplitBranchPairS:
+                    return i,splitBranchPair,splitBrLen
+                elif splitBrLen < splitThresh:
+                    # advance to next tree, all remaining branches in this one below thresh
+                    break
+        return i+1,None,None # none above thresh
         
-    # main splitUtree
-    aboveThreshInd = getIndFirstAboveThresh(utreeL)
+    ## main splitUtree
 
-    if aboveThreshInd == len(utreeL): # done
+    # get tree index in utreeL and branch to split
+    aboveThreshInd,splitBranchPair,splitBrLen = getBranchToSpit(utreeL,doNotSplitBranchPairS)
+
+    if splitBranchPair == None: # done
         return utreeL
     else:
         completeL = utreeL[:aboveThreshInd] # these are done
-        
-        # split the branch we found that was too large
-        maxBranchPair,maxBrLen = utreeL[aboveThreshInd].maxBranchLen()
+
+        # split the branch we found that was too large. aboveThreshInd
+        # was chosen to avoid stuff in doNotSplitBranchPairS
 
         remainderL = []
-        aUtreeO,bUtreeO = utreeL[aboveThreshInd].split(maxBranchPair)
+        aUtreeO,bUtreeO = utreeL[aboveThreshInd].split(splitBranchPair)
 
-        # if these split products have one tip, put in completeL,
-        # otherwise in remainderL
-        if aUtreeO.leafCount() == 1:
-            completeL.append(aUtreeO)
+        # check that this split preserves aabrh sets
+        if dividesAabrhSets(aUtreeO,bUtreeO,subsetAabrhL):
+            doNotSplitBranchPairS.add(splitBranchPair)
+            remainderL.append(utreeL[aboveThreshInd])
         else:
-            remainderL.append(aUtreeO)
+            # did not divide aabrh sets. Let's go with it.
+            # if these split products have one tip, put in completeL,
+            # otherwise in remainderL
+            if aUtreeO.leafCount() == 1:
+                completeL.append(aUtreeO)
+            else:
+                remainderL.append(aUtreeO)
 
-        if bUtreeO.leafCount() == 1:
-            completeL.append(bUtreeO)
-        else:
-            remainderL.append(bUtreeO)
+            if bUtreeO.leafCount() == 1:
+                completeL.append(bUtreeO)
+            else:
+                remainderL.append(bUtreeO)
             
         # put the results back in the todo list and recurse
         remainderL.extend(utreeL[aboveThreshInd+1:])
-        remainderSplitL = splitUtreeThreshold(remainderL,splitThresh)
+        remainderSplitL = splitUtreeThreshold(remainderL,splitThresh,subsetAabrhL,doNotSplitBranchPairS)
         completeL.extend(remainderSplitL)
         return completeL
 
-def splitUtreeFailsafe(utreeL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier):
+def dividesAabrhSets(aUtreeO,bUtreeO,subsetAabrhL):
+    '''Returns True if one or more of the sets in subsetAabrhL are split
+accross aUtreeO and bUtreeO. Returns False otherwise. In this case the
+sets are a subset of aUtreeO, a subset of bUtreeO or a subset of
+neither.
+    '''
+    aS = set(aUtreeO.leaves())
+    bS = set(bUtreeO.leaves())
+    for aabrhS in subsetAabrhL:
+        if aabrhS.intersection(aS) and aabrhS.intersection(bS):
+            # overlap with both. aabrh has been divided.
+            return True
+    return False
+    
+def splitUtreeFailsafe(utreeL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier,subsetAabrhL):
     '''Function for cutting tree size down in order to limit dtlor
 calculation time.  Given an input list containing Utree objects,
 recursively split these until all are below maxInitialFamSize. Trees in
@@ -663,7 +712,7 @@ utreeL should not be single tip trees.
         completeL = utreeL[:tooBigInd] # these are done
         
         # split the tree that was too large
-        aUtreeO,bUtreeO = forceSplitUtree(utreeL[tooBigInd],forceSplitUtreeBalanceMultiplier)
+        aUtreeO,bUtreeO = forceSplitUtree(utreeL[tooBigInd],forceSplitUtreeBalanceMultiplier,subsetAabrhL)
         
         remainderL = []
 
@@ -681,11 +730,11 @@ utreeL should not be single tip trees.
             
         # put the rest of utreeL in the to do list and recurse
         remainderL.extend(utreeL[tooBigInd+1:])
-        remainderSplitL = splitUtreeFailsafe(remainderL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier)
+        remainderSplitL = splitUtreeFailsafe(remainderL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier,subsetAabrhL)
         completeL.extend(remainderSplitL)
         return completeL
 
-def forceSplitUtree(geneUtreeO,forceSplitUtreeBalanceMultiplier):
+def forceSplitUtree(geneUtreeO,forceSplitUtreeBalanceMultiplier,subsetAabrhL):
     '''Helper function for splitting excessively large trees (in order to
 cut dtlor calculation time). Given a large unrooted gene tree, split
 on an internal branch and return the two resulting subtrees. We use
@@ -697,8 +746,7 @@ two lists.
 
     '''
     # get branches sorted by branchLen, high to low
-    branchLenL = list(geneUtreeO.branchLenD.items())
-    branchLenL.sort(reverse=True,key=lambda x: x[1])
+    branchLenL = geneUtreeO.getBranchesByLengthL()
     branchIndD = {}
     i=0
     for branchPair,brLen in branchLenL:
@@ -724,11 +772,14 @@ two lists.
         comboL.append((branchPair,comboVal))
     comboL.sort(key=lambda x: x[1]) # lower comboVals better
 
-    # split
-    splitBranch = comboL[0][0]
-    #print(splitBranch,geneUtreeO.branchLenD[splitBranch])
-    aO,bO = geneUtreeO.split(splitBranch)
-    return aO,bO
+    # split. We assume there is always some branch where we can split and not divide aabrh's.
+    for splitBranchPair,_ in comboL:
+        aUtreeO,bUtreeO = geneUtreeO.split(splitBranchPair)
+        if not dividesAabrhSets(aUtreeO,bUtreeO,subsetAabrhL):
+            # these two trees do not divide aabrh's
+            break
+
+    return aUtreeO,bUtreeO
 
 def branchBalanceCalc(branchPair,geneUtreeO):
     '''Calculate the number of leaves to the left of branchPair (l) and to

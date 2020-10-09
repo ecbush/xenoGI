@@ -139,9 +139,13 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
         for fn in sorted(glob.glob(allGtFilePath)):
             with open(fn) as infile:
                 aabrhHardCoreGeneTreesF.write(infile.read())
-    
-    subprocess.call([javaPath, '-jar',astralPath, '-i', aabrhHardCoreGeneTreesFN, '-o',astralTreeFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
+    # run astral
+    try:
+        subprocess.check_call([javaPath, '-jar',astralPath, '-i', aabrhHardCoreGeneTreesFN, '-o',astralTreeFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    except:
+        raise Exception("Astral is giving an error on the file "+aabrhHardCoreGeneTreesFN)
+        
     ## load and root the tree.
     speciesRtreeO = Rtree()
     speciesRtreeO.fromNewickFileLoadSpeciesTree(astralTreeFN,outGroupTaxaL)
@@ -251,10 +255,10 @@ def makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD
     geneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
     if dnaSeqD == {}:
         # using protein
-        subprocess.call([fastTreePath, '-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        subprocess.check_call([fastTreePath, '-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     else:
         # using dna
-        subprocess.call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        subprocess.check_call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
     '''Given genes in a single ortholog set, align them with muscle. If
@@ -267,7 +271,7 @@ dnaSeqD is empty, uses protein only.'''
     retCode = subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     if retCode != 0:
-        raise OSError("Alignment failed for "+inProtFN)
+        raise Exception("Alignment failed for "+inProtFN)
     
     if dnaSeqD != {}:
         # back align to get dna alignment, overwriting protein alignment.
