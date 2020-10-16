@@ -9,23 +9,118 @@ import os
 baseParamStr = """
 
 #### Genbank ####
+# output from parsing genbank files
 
+# gene order
+geneOrderFN = 'geneOrder.txt'
+
+# list of protein names found to be redundant in genbank files (will not
+# be used)
+redundProtsFN = 'redundProts.txt'
+
+# gene descriptions (for use in analysis)
+geneInfoFN = 'geneInfo.txt'
+
+# strain numbers and names
+strainInfoFN = 'strainInfo.txt'
+
+# unix style file path to fasta files
+fastaFilePath = 'fasta/*.fa'
+
+# listing of files with problems
 problemGenbankFN = 'problemGenbankFiles.txt'
 
+
 #### Blast ####
+
+# unix style file path to blast output files
+blastFilePath = 'blast/*.out'
 
 # blast command line (except for value for evalue as well as db,query
 # and outfiles)
 blastCLine = 'blastp -matrix BLOSUM62 -gapopen 11 -gapextend 1 -seg yes -outfmt "6 qseqid sseqid evalue qlen qstart qend slen sstart send pident score" -evalue '
 
-#### Scores calculation ####
+# Blast e-value threshold
+evalueThresh = 1e-8
+
+# alignCoverThresh is a threshold for the length of the blast alignment
+# relative to query and subject length (ranges between 0 and 1)
+alignCoverThresh = 0.65
+
+# threshold for the percent identity in a hit
+percIdentThresh = 0.35
+
+#### Scores ####
+
+# Note: for scores output files, if the extension we use here is
+# .bout, the output will be saved in binary format. Otherwise it will
+# be a less compact text based format
+scoresFN = 'scores.bout'
+
+# alignment parameters for making scores
+# note, since parasail doesn't charge extend on the first base its
+# like emboss, and not like ncbi blast. NCBI blast uses existance 11,
+# extend 1 for blosum 62, thus we should use open 12 gapExtend 1 here.
+gapOpen = 12
+gapExtend = 1
+matrix = 'parasail.blosum62'
+
+# Synteny window size, that is the size of the neighborhood of each
+# gene to consider when calculating synteny scores. (measured in
+# number of genes). We go half this distance in either direction.
+synWSize = 8
+
+# When calculating synteny score between two genes, the number of
+# pairs of scores to take (and average) from the neighborhoods of
+# those two genes
+numSynToTake = 3
+
+# Core synteny window size, that is the number of core genes from the
+# neighborhood of each gene to consider when calculating core synteny
+# scores. (measured in number of genes). We go half this distance in
+# each direction.
+coreSynWsize = 20
 
 # This helps determine the size of the arrays for our hash table of
 # scores. It should be a value >= to 1. If one, it means the hash
 # arrays have as many entries as there are score pairs.
 hashArrayScaleFactor = 2
 
+#### Making species trees ####
+
+makeSpeciesTreeWorkingDir = 'makeSpeciesTreeWorkDir'
+deleteSpeciesTreeWorkingDir = False # if True, we delete when done
+
+# where to put gene trees for the aabrh hard core families
+aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'
+
+# where to keep ASTRAL output. The final tree (which has been rooted,
+# stripped of branch lengths and had internal nodes named) will be put
+# in speciesTreeFN given above.
+astralTreeFN = 'astralTree.tre'
+
+#### Making gene trees ####
+
+# directory to store trees for gene families
+geneFamilyTreesDir = 'geneFamilyTrees'
+
+# file stems
+aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
+blastFamGeneTreeFileStem = 'blastFam'
+
+
 #### Family formation ####
+
+# Hard core all around best reciprocal hit gene families
+aabrhFN = 'aabrhHardCore.out'
+
+# Other families
+blastFamilyFN = 'blastFam.out'
+initFamilyFN = 'initFam.out'
+originFamilyFN = 'originFam.out'
+
+# summary info about family formation
+familyFormationSummaryFN = 'familyFormationSummary.out'
 
 # Family formation involves several thresholds. We determine these by
 # looking at histograms of scores.
@@ -61,12 +156,45 @@ nonHomologPeakProminence = 1
 nonHomologLeftPeakLimit = 0
 nonHomologRightPeakLimit = 0.6
 
-## Other
+## Splitting blast and initial families
 
-aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
-blastFamGeneTreeFileStem = 'blastFam'
+# threshold of branch lengths for splitting unrooted gene trees from
+# blast families. obtained by examining this distribution of maximum
+# scores for aabrh hard core families.
+quantileForObtainingSplitThresholds = .95
+multiplierForObtainingSplitThresholds = 1.1
+
+# The maximum size for blast and initial families is a multiple of the
+# number of tips on the species tree. These parameters give the
+# multiplier used. We want larger blast families than initial
+# families, so the multiplier for blast should be larger.
+maxBlastFamSizeMultiplier = 8
+maxInitialFamSizeMultiplier = 4
+
+# If some families still too large after splitting based on threshold,
+# we force them to be split on a large internal branch. The choice of
+# branch is based on branch length, and on achieving balance between
+# the number of nodes on each side. This parameter affects how much
+# weighting balance gets. Numbers > 1 mean we give more weight to
+# balance.
+forceSplitUtreeBalanceMultiplier = 10
+
+## Synteny thresholds
+
+# We determine synteny thresholds between pairs of strains based on
+# the distribution of scores. quantileForObtainingSynThresholds gives
+# the quantile we take from this dist. We then multiply this by
+# multiplierForObtainingSynThresholds to get a threshold.
+quantileForObtainingSynThresholds = 0.1
+multiplierForObtainingSynThresholds = 0.5
 
 #### LocusIsland formation ####
+
+# island file
+islandOutFN = 'islands.out'
+
+# Summary info about island formation
+islandFormationSummaryFN = 'islandFormationSummary.out'
 
 # geneProximityRange tells us how far out we want to go from each gene
 # in recording proximity for geneProximityD
@@ -108,6 +236,13 @@ islandLenThresholdRefineFamilies = 2
 
 #### Visualization and analysis ####
 
+# analysis output
+analysisDir = 'analysis'
+islandsFNStem = 'islands'
+genesFNstem = 'genes'
+
+# output for browsers
+bedFilePath = 'bed/*-island.bed' # unix style file path to bed output files
 
 bedNumTries = 100 # number of random tries to find best coloring for islands
 

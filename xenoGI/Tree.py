@@ -249,7 +249,7 @@ parentNode.
                     outL = outL + tempL
             return outL
 
-    def __traverseForNewickStr__(self,node,parentNode):
+    def __traverseForNewickStrOLD__(self,node,parentNode):
         connecT=self.nodeConnectD[node]
         if len(connecT)==1: # tip
             return node
@@ -261,6 +261,37 @@ parentNode.
                     outL = outL + [newickStr]
             return "("+ ",".join(outL)+")"+node
 
+    def __traverseForNewickStr__(self,node,parentNode,includeBrLength,nodeLabelD):
+        '''Produce newick representation of self starting at node. If
+includeBrLength is True, include branch lengths. nodeLabelD is a
+dictionary containing labels to be added to the nodes. If not to be
+used, these should be set to None.
+        '''
+        connecT=self.nodeConnectD[node]
+
+        # construct node label
+        if nodeLabelD == None:
+            nodeLab = node
+        else:
+            nodeLab = node+"["+nodeLabelD[node]+"]"
+            
+        # construct branch label
+        if includeBrLength and parentNode != ROOT_PARENT_NAME:
+            brLab = ":"+str(self.branchLenD[(parentNode,node)])
+        else:
+            brLab = ""
+        
+        # construct newick    
+        if len(connecT)==1: # tip
+            return nodeLab+brLab
+        else:
+            outL = []
+            for child in connecT:
+                if child != parentNode:
+                    newickStr = self.__traverseForNewickStr__(child,node,includeBrLength,nodeLabelD)
+                    outL.append(newickStr)
+            return "("+ ",".join(outL)+")"+nodeLab+brLab
+        
     def __createBranchPairT__(self):
         '''Make the branchPairT attribute to represent the branches. This is a
 tuple of tuples, where the subtuples represent edges and consist of
@@ -350,9 +381,9 @@ preparation such as naming internal nodes).
         else:
             self.populateAttributes(nodeConnectD,bpTree.root.name)
 
-    def toNewickStr(self):
+    def toNewickStr(self,includeBrLength=False,nodeLabelD=None):
         '''Output a newick string.'''
-        return self.__traverseForNewickStr__(self.rootNode,ROOT_PARENT_NAME)
+        return self.__traverseForNewickStr__(self.rootNode,ROOT_PARENT_NAME,includeBrLength,nodeLabelD)
         
     def subtree(self,node):
         '''Return a new Rtree object with the subtree rooted at node.'''
@@ -555,7 +586,7 @@ named interal nodes (we will create those).
         # put in these attributes
         self.populateAttributes(nodeConnectD,arbitraryNode,branchLenD)
 
-    def toNewickStr(self):
+    def toNewickStr(self,includeBrLength=False,nodeLabelD=None):
         '''Output a newick string.'''
         if self.nodeCount() == 1:
             return "("+self.leafNodeT[0]+")"
@@ -563,7 +594,7 @@ named interal nodes (we will create those).
             # two tip tree is a special case            
             return "("+self.leafNodeT[0]+","+self.leafNodeT[1]+")"
         else:
-            return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME)
+            return self.__traverseForNewickStr__(self.arbitraryNode,ROOT_PARENT_NAME,includeBrLength,nodeLabelD)
 
     def root(self,branchToRootPair):
         '''Root using the tuple branchToRootPair and return an Rtree object.'''

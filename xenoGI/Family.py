@@ -517,7 +517,7 @@ no reconciliation, return empty string.
             raise ValueError("There should be exactly one origin event in dtlorMprD.")
 
         # it is C if originated in rfclade branch or ancestors of it
-        rfAncT = speciesRtree.ancestors(rootFocalClade) + (rootFocalClade,)
+        rfAncT = speciesRtree.ancestors(rootFocalClade)
         if OstLoc in rfAncT:
             # core gene
             orig = 'C'
@@ -568,6 +568,35 @@ codes for events are as follows:
             for child in childL:
                 self.printReconByGeneTreeHelper(dtlorMprD,geneRtreeO,genesO,child,level+1,fileF)
 
+    def getNewickGeneTreeWithReconLabels(self,genesO):
+        '''Print out a Newick string where the nodes are labeled with
+events. Format for annotations are [branch events | node events ]. For
+tips on the gene tree, the "node event" is the species it ends up
+in.
+        '''
+        
+        # construct nodeLabelD
+        nodeLabelD = {}
+        for node in self.geneTreeO.preorder():
+            nodeStr=""
+            # branch events
+            if (node,'b') in self.dtlorMprD:
+                for eventT in self.dtlorMprD[(node,'b')]:
+                    nodeStr += eventT[0]
+
+            # node events
+            nodeStr+="|"
+            if (node,'n') in self.dtlorMprD:
+                for eventT in self.dtlorMprD[(node,'n')]:
+                    nodeStr += eventT[0]
+                    
+            if self.geneTreeO.isLeaf(node):
+                nodeStr += genesO.numToStrainName(int(node))
+                    
+            nodeLabelD[node] = nodeStr
+
+        # put in newick string
+        return self.geneTreeO.toNewickStr(nodeLabelD=nodeLabelD)
         
 class Families:
 

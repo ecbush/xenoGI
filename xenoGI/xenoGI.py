@@ -1,6 +1,6 @@
 """Provides the entry point to xenoGI's functionality."""
 __version__ = "3.0.0"
-import sys, glob, os
+import sys, glob, os, readline, rlcompleter
 from . import parameters,genbank,blast,trees,genomes,Score,scores,families,islands,analysis,islandBed
 from .Tree import *
 from .Family import *
@@ -12,14 +12,14 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands','refine', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll','makeGeneFamilyTrees', 'version', 'debug'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands','refine', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'version', 'debug'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, refine, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll, makeGeneFamilyTrees or version.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, refine, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll or version.
 
    For example: 
       xenoGI params.py parseGenbank
@@ -88,10 +88,6 @@ def main():
         printAnalysisWrapper(paramD,paramD['speciesTreeFN'],paramD['rootFocalClade'])
         createIslandBedWrapper(paramD)
 
-    #### makeGeneFamilyTrees
-    elif task == 'makeGeneFamilyTrees':
-        makeGeneFamilyTreesWrapper(paramD)
-        
     #### version
     elif task == 'version':
         print("xenoGI",__version__)
@@ -344,7 +340,10 @@ def interactiveAnalysisWrapper(paramD):
 
         if hasattr(fam,"printReconByGeneTree"):
             print("Gene tree",file=fileF)
-            print(fam.geneTreeO,file=fileF)
+            print(fam.geneTreeO.toNewickStr(),file=fileF)
+            print()
+            print("Gene tree annotated with reconciliation [branch events | node events]",file=fileF)
+            print(fam.getNewickGeneTreeWithReconLabels(genesO),file=fileF)
             print(file=fileF)
             print("Reconciliation of gene tree onto species tree",file=fileF)       
             fam.printReconByGeneTree(genesO,fileF)
@@ -386,16 +385,13 @@ def interactiveAnalysisWrapper(paramD):
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
     scoresO.createNodeConnectD() # make nodeConnectD attribute
     
-    code.interact(local=locals())
+    # set up interactive console
+    vars = globals()
+    vars.update(locals())
+    readline.set_completer(rlcompleter.Completer(vars).complete)
+    readline.parse_and_bind("tab: complete")
+    code.InteractiveConsole(vars).interact()
 
-def makeGeneFamilyTreesWrapper(paramD):
-    '''Create a gene tree for each family.'''
-
-    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
-    speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
-    trees.makeGeneFamilyTrees(paramD,genesO,originFamiliesO)
-    
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
 
@@ -409,9 +405,9 @@ def debugWrapper(paramD):
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
-    bpTree = Phylo.read('exampleBr.tre', 'newick', rooted=True)
-    
-    rtree = Rtree()
-    rtree.fromNewickFileLoadSpeciesTree('exampleBr.tre',includeBrLen=True)
-            
-    code.interact(local=locals())
+    # set up interactive console
+    vars = globals()
+    vars.update(locals())
+    readline.set_completer(rlcompleter.Completer(vars).complete)
+    readline.parse_and_bind("tab: complete")
+    code.InteractiveConsole(vars).interact()

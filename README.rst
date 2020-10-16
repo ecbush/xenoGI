@@ -17,7 +17,7 @@ Requirements
 
 * Python 3
 
-* Package dependencies
+* Python package dependencies
 
   - Biopython (http://biopython.org/). This is for parsing genbank files and can be installed using pip:
       ``pip3 install biopython``
@@ -35,9 +35,13 @@ Requirements
 
 * Additional dependencies
 
-  If you make use of the ``makeSpeciesTree`` flag, you will also need the following
+  If you make use of the ``makeSpeciesTree`` flag or ``xlMode.py``, you will also need the following
 
   - ASTRAL (https://github.com/smirarab/ASTRAL/).
+
+* Comments on platforms.
+
+  xenoGI is developed on Linux, but has also been tested on Mac and Windows.
 
 Installation
 ------------
@@ -46,6 +50,8 @@ The easiest way to install is using pip::
 
   pip3 install xenoGI
 
+(You will separately need to install blast+, MUSCLE, FastTree and optionally ASTRAL.)
+  
 Citation
 --------
 
@@ -67,7 +73,7 @@ The working directory must contain:
 
 * A parameter file. In the provided ``example/`` directory this is called ``params.py``. The ``blastExecutDirPath`` parameter in this file should be edited to point to the directory where the blastp and makeblastdb executables are. Similarly, ``musclePath`` should give the path to the MUSCLE executable, and ``fastTreePath`` should give the path to the FastTree executable.
 
-* A newick format tree representing the relationships of the strains. In the example this is called ``example.tre``. Note that branch lengths are not used in xenoGI, and ``example.tre`` does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them i0, i1 etc. The parameter ``speciesTreeFN`` in ``params.py`` has the path to this tree file. If a strain tree is not available, xenoGI has some accessory methods, described below, to help obtain one.
+* A newick format tree representing the relationships of the strains. In the example this is called ``example.tre``. Note that branch lengths are not used in xenoGI, and ``example.tre`` does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them s0, s1 etc. The parameter ``speciesTreeFN`` in ``params.py`` has the path to this tree file. If a strain tree is not available, xenoGI has some accessory methods, described below, to help obtain one.
 
 * A subdirectory of sequence files. In the example, this is called ``ncbi/``. Contained in this subdirectory will be genbank (gbff) files for the species. The parameter ``genbankFilePath`` in ``params.py`` has the path to these files.
 
@@ -76,7 +82,7 @@ Naming of genbank files
 
 The system needs a way to connect the sequence files to the names used in the tree.
 
-In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ``ncbiHumanMap.txt``. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes ("-"). In ``params.py`` the parameter ``fileNameMapFN`` is set to point to this file.
+In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ``ncbiHumanMap.txt``. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes, spaces, commas or special characters. In ``params.py`` the parameter ``fileNameMapFN`` is set to point to this file.
 
 Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set ``fileNameMapFN = None`` in ``params.py``. (This is not necessary in the example, which is already set to run the other way).
 
@@ -85,7 +91,7 @@ Running the code
 
 If you install via pip, then you should have an executable script in your path called xenoGI.
 
-You run the code from within the working directory. To run the example, you would cd into the ``example/`` directory. You will need to ensure that the ``params.py`` parameters file contains the  correct path to the directory with the blastp and makeblastdb executables in it, as well as the MUSCLE and FastTree executables. Then, the various steps of xenoGI can be run all at once like this::
+You run the code from within the working directory. To run the example, you would cd into the ``example/`` directory. You will need to ensure that the ``params.py`` parameters file contains the correct path to the directory with the blastp and makeblastdb executables in it, as well as the MUSCLE and FastTree executables. Then, the various steps of xenoGI can be run all at once like this::
 
   xenoGI params.py runAll
 
@@ -96,6 +102,7 @@ They can also be run individually::
   xenoGI params.py calcScores
   xenoGI params.py makeFamilies
   xenoGI params.py makeIslands
+  xenoGI params.py refine
   xenoGI params.py printAnalysis
   xenoGI params.py createIslandBed
 
@@ -103,22 +110,24 @@ If for some reason you don't want to install via pip, then you can download the 
 
   python3 path-to-xenoGI-github-repository/xenoGI-runner.py params.py runAll
 
-(In this case you will have to make sure all the package dependencies are satisfied.)
+(In this case you will have to make sure all the python package dependencies are satisfied.)
 
 What the steps do
 ~~~~~~~~~~~~~~~~~
 
 * ``parseGenbank`` runs through the genbank files and produces input files that are used by subsequent code.
   
-* ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the numProcesses parameter in the parameter file. Before running a particular comparison, runBlast checks to see if the output file for that comparison already exists (e.g. from a previous run). If so it skips the comparison.
+* ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the ``numProcesses`` parameter in the parameter file. Before running a particular comparison, runBlast checks to see if the output file for that comparison already exists (e.g. from a previous run). If so it skips the comparison.
   
 * ``calcScores`` calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
   
-* ``makeFamilies`` calculates gene families in a tree aware way, also taking account of synteny.
+* ``makeFamilies`` calculates gene families using blast, FastTree, and a customized variant of the DTL reconciliation algorithm called DTLOR. This approach considers synteny in the family formation process.
 
 * ``makeIslands`` groups families according to their origin, putting families with a common origin together as islands. It is partly parallelized.
 
-* ``printAnalysis`` produces a number of analysis files.
+* ``refine`` reconsiders certain families in light of the output of makeIslands. In particular, this step looks at cases where there are multiple most parsimonious reconciliations, and chooses the reconciliation that is most consistent with neighboring families. It then re-runs makeIslands.
+  
+* ``printAnalysis`` produces a number of analysis/output files intended for the end user.
 
 * ``createIslandBed`` produces bed files for each genome.
   
@@ -129,6 +138,7 @@ Notes on several parameters
 
 * ``numProcesses`` determines how many separate processes to run in parts of the code that are parallel. If you have a machine with 32 processors, you would typically set this to 32 or less.
 
+* ``dnaBasedGeneTrees`` specifies what will be used to make gene trees. If this is set to True, the method will use DNA based alignments, otherwise it will use protein alignments.
 
 A note on the output
 ~~~~~~~~~~~~~~~~~~~~
@@ -148,7 +158,7 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
 
 * ``printAnalysis``
 
-  - This script produces a set of species specific genome files. These files all have the name genes in their stem, followed by the strain name, and the extension .tsv. In the example/ data set, ``genes-E_coli_K12.tsv`` is one such. These files contain all the genes in a strain laid out in the order they occur on the contigs. Each line corresponds to one gene and contains:
+  - This script produces a set of species specific genome files. These files all have the name ``genes`` in their stem, followed by the strain name, and the extension .tsv. In the example/ data set, ``genes-E_coli_K12.tsv`` is one such. These files contain all the genes in a strain laid out in the order they occur on the contigs. Each line corresponds to one gene and contains:
     + gene name
     + origin of the gene, specified by a single character: a C indicating core gene, or an X indicating xeno horizontal transfer. This field is an interpretation of the O event from the DTLOR reconcilation based on its placement in the species tree.
     + gene history, specified by a string. This gives the history of the gene from its origin until the tip of the gene tree, and consists of single letters corresponding to the operations in the reconcilation model. D, duplication; T, transfer (within the species tree); O, origin; R, rearrangement.
@@ -220,10 +230,15 @@ You can then run ``makeSpeciesTree``::
 
   xenoGI params.py makeSpeciesTree
 
-The ``params.py`` file found in the example directory contains a number of parameters related to ``makeSpeciesTree``. Among these is ``dnaBasedGeneTrees``. If this is True, the method will use DNA based alignments, otherwise it will use protein alignments. Once ``makeSpeciesTree`` has completed, you can proceed with the rest of xenoGI::
+In the ``params.py`` file, the parameter ``dnaBasedGeneTrees`` determines whether DNA or protein are used to make genes trees. (If True DNA is used).
+
+In order to use ``makeSpeciesTree``, you will also need to add one parameter to ``params.py``. There should be a parameter outGroup which specifies a single outgroup species to be used in rooting the species tree.
+
+Once ``makeSpeciesTree`` has completed, you can proceed with the rest of xenoGI::
 
   xenoGI params.py makeFamilies
   xenoGI params.py makeIslands
+  xenoGI params.py refine
   xenoGI params.py printAnalysis
   xenoGI params.py createIslandBed
   
@@ -234,12 +249,6 @@ Print the version number::
    
   xenoGI params.py version
 
-Produce a directory containing a gene tree for every family::
-
-  xenoGI params.py makeGeneFamilyTrees
-
-This uses the same methods as the makeSpeciesTree flag (but doesn't call ASTRAL).
-  
 Produce a set of pdf files showing histograms of scores between all possible strains::
 
   xenoGI params.py plotScoreHists
