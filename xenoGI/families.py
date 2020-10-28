@@ -42,7 +42,7 @@ originFamilies object.
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
 
     # create blast families, output is directory of gene trees
-    createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF)
+    createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputSummaryF)
     
     initialFamiliesO,locusMapD = createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF)
 
@@ -193,7 +193,7 @@ score.
 
 ## Create blast families object
 
-def createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF):
+def createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputSummaryF):
     '''Given a scoresO object, create gene families based on blast
     connectivity, then make gene trees with these.
 
@@ -205,7 +205,7 @@ def createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF):
     
     ## get blast families as list of sets
     print("Blast families:",file=outputSummaryF)
-    blastFamilySetL = createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize)
+    blastFamilySetL = createBlastFamilySetL(scoresO,genesO,strainNamesT,outputSummaryF,maxBlastFamSize)
 
     # save and add numbering so elements are (num,blastFamS)
     with open(blastFamilyFN,'w') as f:
@@ -234,7 +234,7 @@ def createBlastFamilies(paramD,speciesRtreeO,scoresO,genesO,outputSummaryF):
     for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
         os.remove(fn)
     
-def createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize):
+def createBlastFamilySetL(scoresO,genesO,strainNamesT,outputSummaryF,maxBlastFamSize):
     '''
     Input
     ------------------------------------------------
@@ -265,7 +265,10 @@ def createBlastFamilySetL(scoresO,genesO,outputSummaryF,maxBlastFamSize):
         return temp
 
     # main for createBlastFamilySetL
-    allGenesL=list(genesO.iterGenes())
+    if strainNamesT == None:
+        allGenesL=list(genesO.iterGenes())
+    else:
+        allGenesL=list(genesO.iterGenes(strainNamesT))
     scoresO.createNodeConnectD() 
     connectedGenes=list(scoresO.nodeConnectD.keys())
     connecComponentSetL=[]
