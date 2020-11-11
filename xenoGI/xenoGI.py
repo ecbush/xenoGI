@@ -404,7 +404,13 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-
+    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
+    
+    ifam=initialFamiliesO.getFamily(2)
+    s=ifam.geneTreeO.subtree('g11')
+    
+    #originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
+    
     # set up interactive console
     vars = globals()
     vars.update(locals())

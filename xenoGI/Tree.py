@@ -249,18 +249,6 @@ parentNode.
                     outL = outL + tempL
             return outL
 
-    def __traverseForNewickStrOLD__(self,node,parentNode):
-        connecT=self.nodeConnectD[node]
-        if len(connecT)==1: # tip
-            return node
-        else:
-            outL = []
-            for child in connecT:
-                if child != parentNode:
-                    newickStr = self.__traverseForNewickStr__(child,node)
-                    outL = outL + [newickStr]
-            return "("+ ",".join(outL)+")"+node
-
     def __traverseForNewickStr__(self,node,parentNode,includeBrLength,nodeLabelD):
         '''Produce newick representation of self starting at node. If
 includeBrLength is True, include branch lengths. nodeLabelD is a
@@ -406,8 +394,24 @@ preparation such as naming internal nodes).
         oldConnecT = subD[node]
         newConnecT = (ROOT_PARENT_NAME,)+oldConnecT[1:]
         subD[node] = newConnecT
-        
-        return Rtree(subD,node)
+
+        # make tree
+        outTreeO = Rtree()
+
+        # if we have branch lens, include these
+        if self.branchLenD == None or len(subD)<2:
+            # if self has no branch lengths, or if subtree is a tip, then branchLenD will be None
+            outTreeO.populateAttributes(subD,node)
+        else:
+            subBranchLenD = {}
+            for tempNode,connecT in subD.items():
+                parentNode = connecT[0]
+                if parentNode != ROOT_PARENT_NAME:
+                    subBranchLenD[(parentNode,tempNode)] = self.branchLenD[(parentNode,tempNode)]
+
+            outTreeO.populateAttributes(subD,node,subBranchLenD)
+
+        return outTreeO
         
     def createSubtreeD(self):
         '''Get all subtrees and put them in a dict keyed by node name.'''
@@ -439,8 +443,8 @@ preparation such as naming internal nodes).
         '''Given a leaf, return a list containing the other leaf or
     leaves which are most closely related to leaf.'''
         parent = self.getParent(leaf) # assume leaf is in tree
-        subRtree = self.subtree(parent)
-        leafL = list(subRtree.leaves())
+        subRtreeO = self.subtree(parent)
+        leafL = list(subRtreeO.leaves())
         leafL.remove(leaf)
         return leafL
 
@@ -461,7 +465,77 @@ preparation such as naming internal nodes).
         for node in nodeL[1:]:
             mrca = self.findMrcaPair(mrca,node)
         return mrca
+
+    def prune(self,leafL):
+        '''Prune down to a tree with only the leaves in leafL, combining
+branches and removing nodes as needed. Returns a new Rtree.
+        '''
+
+        # funcs
+        def traverseBlD(subTreeO,activeNodeS,blD,pruneParent,previousBrLen,node):
+            '''Traverse subtree, keeping only nodes in activeNodeS and adjusting
+            branch lengths (add to blD).
+            '''
+            if subTreeO.isLeaf(node):
+                if pruneParent != ROOT_PARENT_NAME:
+                    blD[(pruneParent,node)] = previousBrLen + subTreeO.branchLenD[(subRtreeO.getParent(node),node)]
+                return blD
+            else:
+                activeChildrenL = [child for child in subTreeO.children(node) if child in activeNodeS]
+                if len(activeChildrenL) > 1:
+                    # we don't need to remove this node
+                    if pruneParent != ROOT_PARENT_NAME:
+                        # here we really want to pass in subRtreeO.getParent(node)
+                        # which is the immediate last one, even if its not included in the pruned tree
+                        blD[(pruneParent,node)] = previousBrLen + subTreeO.branchLenD[(subRtreeO.getParent(node),node)]
+                    # recurse
+                    for child in activeChildrenL:
+                        blD = traverseBlD(subTreeO,activeNodeS,blD,node,0,child)
+                else:
+                    # there is only one active child, and we should remove this node
+                    child = activeChildrenL[0]
+                    brLenToPassAlong = previousBrLen + subTreeO.branchLenD[(subRtreeO.getParent(node),node)]
+                    blD = traverseBlD(subTreeO,activeNodeS,blD,pruneParent,brLenToPassAlong,child)
+                    
+                return blD
             
+        def buildNcD(blD,ncD,parent,node):
+            '''Fillout ncD (nodeConnectD) based on the branches and lengths in blD.'''
+            # get children of node and put in connecT
+            childL = []
+            for branchPair in blD:
+                if branchPair[0] == node:
+                    childL.append(branchPair[1])
+
+            connecT = tuple([parent] + childL)
+            ncD[node] = connecT
+
+            # recurse. childL will be empty if node a tip.
+            for child in childL:
+                ncD = buildNcD(blD,ncD,node,child)
+
+            return ncD
+                
+        # main section
+        mrcaNode = self.findMrca(leafL)
+        subRtreeO = self.subtree(mrcaNode)
+
+        activeNodeS = set() # leafL + all ancestors
+        for leaf in leafL:
+            activeNodeS.add(leaf)
+            for node in subRtreeO.ancestors(leaf):
+                activeNodeS.add(node)
+
+        blD = {}
+        blD = traverseBlD(subRtreeO,activeNodeS,blD,subRtreeO.getParent(mrcaNode),0,mrcaNode)
+        ncD = {}
+        ncD = buildNcD(blD,ncD,ROOT_PARENT_NAME,mrcaNode)
+        
+        outRtreeO = Rtree()
+        outRtreeO.populateAttributes(ncD,mrcaNode,blD)
+
+        return outRtreeO
+        
     def createDtlorD(self,spTreeB):
         '''Return a dict in the format expected by the dtlor reconciliation
 code. Key is a node, value is (parent, node, child1, child2). For now
@@ -657,6 +731,11 @@ includes branch lengths.'''
         '''Iterator yielding all possible rooted trees from this unrooted tree.'''
         for branchPair in self.branchPairT:
             yield self.root(branchPair)
+
+    def iterAllRootedTreesIncludeBranchLen(self):
+        '''Iterator yielding all possible rooted trees from this unrooted tree.'''
+        for branchPair in self.branchPairT:
+            yield self.rootIncludeBranchLen(branchPair)
 
     def split(self,branchPair):
         '''Split on the branch specified by branchPair into two new Utree

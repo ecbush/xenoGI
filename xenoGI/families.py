@@ -1091,7 +1091,7 @@ def reconcile(argT):
     # solutions with the best scores
     minCost=float('inf')
     bestRootingsL=[]
-    for geneRtreeO in geneUtreeO.iterAllRootedTrees():
+    for geneRtreeO in geneUtreeO.iterAllRootedTreesIncludeBranchLen():
 
         geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
         cost, G = new_DTLOR_DP.compute_dtlor_graph(speciesTreeD,geneTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
@@ -1381,8 +1381,6 @@ originFamiliesO.
     
     for candIfamO in refineCandidateIfamS:
 
-        #if candIfamO.famNum == 473:
-            
         nearbyOfamL = getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO)
 
         bestMprOrigFormatD,bestOfamL = getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,max(originFamiliesO.familiesD.keys()),genesO,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold)
