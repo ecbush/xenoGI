@@ -176,6 +176,81 @@ tip.
         '''
         connecT = self.nodeConnectD[node]
         return connecT[0] # parent is first element
+
+    def binarize(self):
+        '''Arbitarily convert a tree with multifurcating nodes into one with
+binary nodes. Newly introduced nodes have a "b" in their naming to
+mark them off. If tree has branch lengths, then newly introduced
+branches are given 0 length.
+        '''
+        # funcs
+        def getNewNodes(newNodeCtr,parent,node,childL,updateParentD):
+            ''''''
+            if len(childL) == 2:
+                connecT = (parent,childL[0],childL[1])
+                return newNodeCtr,updateParentD,[(node,connecT)],
+            else:
+                newNode = "b"+str(newNodeCtr)
+                newNodeCtr+=1
+                connecT = (parent,childL[0],newNode)
+                # put rest of children in updateParentD
+                for child in childL[1:]:
+                    updateParentD[child] = newNode # for now they descent from newNode
+                # recurse
+                newNodeCtr,updateParentD,L=getNewNodes(newNodeCtr,node,newNode,childL[1:],updateParentD)
+                return newNodeCtr,updateParentD,[(node,connecT)]+L
+                
+        # main part of binarize
+
+        # get node connections
+        newNodeConnectD = {}
+        updateParentD = {}
+        newNodeCtr = 0
+        for node,connecT in self.nodeConnectD.items():
+            if len(connecT) <= 3:
+                # not multifurcating
+                newNodeConnectD[node] = connecT
+            else:
+                # multifurcating        
+                parent = connecT[0]
+                childT = connecT[1:]
+                newNodeCtr,updateParentD,newNodeL = getNewNodes(newNodeCtr,parent,node,childT,updateParentD)
+                for nNode,nConnecT in newNodeL:
+                    newNodeConnectD[nNode] = nConnecT
+
+        # fix newNodeConnectD using updateParentD
+        for node in updateParentD.keys():
+            connecT = newNodeConnectD[node]
+            newConnecT = (updateParentD[node],) + connecT[1:] # new parent
+            newNodeConnectD[node] = newConnecT
+            
+        # get branch lens
+        if self.branchLenD == None:
+            newBranchLenD = None
+        else:
+            newBranchLenD = {}
+            for nNode,nConnecT in newNodeConnectD.items():
+                for otherEndOfBranch in nConnecT:
+                    if (nNode,otherEndOfBranch) in self.branchLenD:
+                        newBranchLenD[(nNode,otherEndOfBranch)] = self.branchLenD[(nNode,otherEndOfBranch)]
+                    elif (otherEndOfBranch,nNode) in self.branchLenD:
+                        # it could be either order
+                        newBranchLenD[(otherEndOfBranch,nNode)] = self.branchLenD[(otherEndOfBranch,nNode)]
+                    else:
+                        newBranchLenD[(nNode,otherEndOfBranch)] = 0
+            
+                                
+        # create output tree
+        if hasattr(self,"rootNode"):      
+            # we're a rooted tree
+            outTreeO = Rtree()
+            rootArbNode = self.rootNode
+        else:
+            outTreeO = Utree()
+            rootArbNode = self.arbitraryNode
+
+        outTreeO.populateAttributes(newNodeConnectD,rootArbNode,newBranchLenD)
+        return outTreeO
         
     def __contains__(self,node):
         return node in self.nodeConnectD

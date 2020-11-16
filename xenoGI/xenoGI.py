@@ -405,12 +405,29 @@ def debugWrapper(paramD):
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
-    
-    ifam=initialFamiliesO.getFamily(2)
-    s=ifam.geneTreeO.subtree('g11')
-    
-    #originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
-    
+
+
+    blastFamGeneTreeL = families.loadGeneTrees(paramD,paramD['blastFamGeneTreeFileStem'])
+    multifL = []
+    for blastFamNum,blastFamUtreeO in blastFamGeneTreeL:
+        if len(blastFamUtreeO.multifurcatingNodes()) > 0:
+            multifL.append((blastFamNum,blastFamUtreeO))
+
+    for blastFamNum,geneUtreeO in multifL:
+        print(blastFamNum)
+        binTreeO = geneUtreeO.binarize()
+        for geneRtreeO in binTreeO.iterAllRootedTreesIncludeBranchLen():
+            print(geneRtreeO)
+    """
+
+    geneUtreeO = Utree()
+    geneUtreeO.fromNewickFile("geneFamilyTrees/blastFam000051.tre")
+    binTreeO = geneUtreeO.binarize()
+
+    print("num nodes",len(binTreeO.preorder()))
+    print("num branches",len(binTreeO.branchLenD))
+    """    
+
     # set up interactive console
     vars = globals()
     vars.update(locals())

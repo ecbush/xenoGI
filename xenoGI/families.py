@@ -1035,9 +1035,14 @@ def reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD
         initFamNum = ifam.famNum
         geneUtreeO = ifam.geneTreeO
 
-        # skip single gene and multifurcating families
-        if ifam.geneCount() == 1 or len(geneUtreeO.multifurcatingNodes()) > 0:
+        # skip single gene
+        if ifam.geneCount() == 1:
             continue
+
+        if len(geneUtreeO.multifurcatingNodes()) > 0:
+            # it's multifurcating, arbitrarily binarize
+            # In future, we can implement dtlor for multifurcating nodes
+            geneUtreeO = geneUtreeO.binarize()
         
         # in loop
         tipMapD=getTipMapping(geneUtreeO,genesO)
