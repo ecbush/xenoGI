@@ -1,4 +1,4 @@
-import sys
+import sys,statistics
 from .Family import *
 from .Island import *
 from . import trees
@@ -108,6 +108,41 @@ scoresO.
     print("Printing all scores with non-family members",file=fileF)
     printTable(rowL,indent=2,fileF=fileF)
 
+def getEventCountD(originFamiliesO,eventType):
+    '''Produce a dict keyed by species node with value a list of counts of
+eventType for every locus family at that node.
+
+    '''
+    eventCountD = {node:[] for node in originFamiliesO.speciesRtreeO.preorder()}
+    for lfO in originFamiliesO.iterLocusFamilies():
+        ct = lfO.countEvents(originFamiliesO,eventType)
+        if ct != None:
+            eventCountD[lfO.lfMrca].append(ct)
+    return eventCountD
+
+def getDtlorScoreSummaryD(originFamiliesO,paramD):
+    '''Produce a dict keyed by species node with value a list of dtlor
+scores for every locus family at that node.
+
+    '''
+    dtlorSummaryD = {node:[] for node in originFamiliesO.speciesRtreeO.preorder()}
+    for lfO in originFamiliesO.iterLocusFamilies():
+        dtlorScore = lfO.dtlorScore(originFamiliesO,paramD)
+        if dtlorScore != None and lfO.aabrhHardCore != []:
+            dtlorSummaryD[lfO.lfMrca].append(dtlorScore)
+    return dtlorSummaryD 
+        
+def printSummaryD(speciesRtreeO,summaryD):
+    '''Print summary stats of values of entries in summaryD (which is
+keyed by species node).'''
+    for node in speciesRtreeO.preorder():
+        L = summaryD[node]
+        if L == []:
+            print(node,None,None)
+        elif len(L) == 1:
+            print(node,L[0],None)
+        else:
+            print(node,round(statistics.mean(L),3),round(statistics.stdev(L),3))
     
 ## Print all islands at node
 

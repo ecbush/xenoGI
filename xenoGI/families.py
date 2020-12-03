@@ -1396,6 +1396,7 @@ originFamiliesO.
 
             
     ## make origin families again
+    # the mprs in some families in initialFamiliesO have been changed, so we'll get a different result here
     initialFamiliesO,originFamiliesO = createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO)
 
     ## update summary file
@@ -1494,28 +1495,34 @@ with what is present in other families we will merge with).
     ofamNum = maxOfamNum
     locusFamNum = maxLocFamNum
 
-    if False: #candIfamO.countMPRs() < upperNumMprThreshold:
-        # should iterate, sample for now. FIX THIS.
-        pass
+    if candIfamO.countMPRs() < upperNumMprThreshold:
+        # iterate though all. Do not restrict to median mprs
+        for mprOrigFormatD,mprNodeFormatD in candIfamO.iterMprReconDFromGraph(speciesRtreeO.preorder(),paramD,False):
+            candMprOfamL = getCandMprOfamL(mprNodeFormatD,candIfamO,ofamNum,locusFamNum,genesO)
+            yield mprOrigFormatD,candMprOfamL
     else:
         for i in range(upperNumMprThreshold):
             # take upperNumMprThreshold samples
             # randomly choose, do not restrict to median mprs
             mprOrigFormatD,mprNodeFormatD = candIfamO.getMprReconDFromGraph(speciesRtreeO.preorder(),paramD,False,True)
-            candMprOfamL = []
-            for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,candIfamO):
-                ofamO = originFamily(ofamNum,speciesMrca,geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=candIfamO.famNum)
-                # add locus families
-                for lfO in iterLocusFamiliesInOrigin(splitReconD,geneRtreeO,ofamNum,locusFamNum,genesO):
-                    ofamO.addLocusFamily(lfO)
-                    locusFamNum += 1
-
-                candMprOfamL.append(ofamO)
-
-                ofamNum += 1
-                
+            candMprOfamL = getCandMprOfamL(mprNodeFormatD,candIfamO,ofamNum,locusFamNum,genesO)
             yield mprOrigFormatD,candMprOfamL
-                
+
+def getCandMprOfamL(mprNodeFormatD,candIfamO,ofamNum,locusFamNum,genesO):
+    '''Get origin families associated with a particular candidate MPR.'''
+    candMprOfamL = []
+    for speciesMrca,geneRtreeO,splitReconD in iterSplitOfamData(mprNodeFormatD,candIfamO):
+        ofamO = originFamily(ofamNum,speciesMrca,geneTreeO=geneRtreeO,dtlorMprD=splitReconD,sourceFam=candIfamO.famNum)
+        # add locus families
+        for lfO in iterLocusFamiliesInOrigin(splitReconD,geneRtreeO,ofamNum,locusFamNum,genesO):
+            ofamO.addLocusFamily(lfO)
+            locusFamNum += 1
+
+        candMprOfamL.append(ofamO)
+
+        ofamNum += 1
+    return candMprOfamL
+            
 def createFamiliesOFromListOfFamilies(ofamL,speciesRtreeO):
     '''Create a familiesO object with the origin families in the input list.'''
     testFamiliesO = Families(speciesRtreeO)

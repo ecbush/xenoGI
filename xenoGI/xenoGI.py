@@ -397,37 +397,23 @@ def debugWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys,numpy
-    from .xenoGI import parameters,trees,genomes,families,islands,analysis,Score,scores
-    from . import DTLOR_DP,new_DTLOR_DP
-    from Bio import Phylo
-    import glob,random
+    from .xenoGI import analysis,parameters,trees,genomes,families,islands,analysis,Score,scores
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
+    
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
-    blastFamGeneTreeL = families.loadGeneTrees(paramD,paramD['blastFamGeneTreeFileStem'])
-    multifL = []
-    for blastFamNum,blastFamUtreeO in blastFamGeneTreeL:
-        if len(blastFamUtreeO.multifurcatingNodes()) > 0:
-            multifL.append((blastFamNum,blastFamUtreeO))
+    originFamiliesO.labelHardCore(aabrhHardCoreL,'locusFamily')
 
-    for blastFamNum,geneUtreeO in multifL:
-        print(blastFamNum)
-        binTreeO = geneUtreeO.binarize()
-        for geneRtreeO in binTreeO.iterAllRootedTreesIncludeBranchLen():
-            print(geneRtreeO)
-    """
+    dtlorScoreSummaryD = analysis.getDtlorScoreSummaryD(originFamiliesO,paramD)
+    #analysis.printSummaryD(speciesRtreeO,dtlorScoreSummaryD)
 
-    geneUtreeO = Utree()
-    geneUtreeO.fromNewickFile("geneFamilyTrees/blastFam000051.tre")
-    binTreeO = geneUtreeO.binarize()
-
-    print("num nodes",len(binTreeO.preorder()))
-    print("num branches",len(binTreeO.branchLenD))
-    """    
-
+    lf=originFamiliesO.getLocusFamily(1)
+    lf.printReconByGeneTree(originFamiliesO,genesO)
+    
     # set up interactive console
     vars = globals()
     vars.update(locals())

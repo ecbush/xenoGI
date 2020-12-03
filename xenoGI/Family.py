@@ -73,6 +73,39 @@ occurs.'''
             
             return orig
 
+    def countEvents(self,familiesO,eventType):
+        '''Count the losses in reconciliation associated with this locus family.'''
+        fam = familiesO.getFamily(self.famNum)
+        # will take reconRootKey as node in counting, since it makes
+        # sense to treat O and R events as having happened at very top
+        # of their branch.
+        if self.reconRootKey == None:
+            return None
+        else:
+            return fam.countEventsBelowNode(self.reconRootKey[0],eventType)
+
+    def dtlorScore(self,familiesO,paramD):
+        '''Get dtlor score from reconciliation associated with this locus family.'''
+        fam = familiesO.getFamily(self.famNum)
+        # will take reconRootKey as node here, since it makes
+        # sense to treat O and R events as having happened at very top
+        # of their branch.
+        if self.reconRootKey == None:
+            return None
+        else:
+            # we need to include the cost for the originating even
+            # here because dtlorScoreBelowNode does not include that
+            dtlorScore = 0
+            if self.origin(familiesO,paramD['rootFocalClade']) in "CX":
+                dtlorScore += paramD['originCost']
+            elif self.origin(familiesO,paramD['rootFocalClade']) == "R":
+                dtlorScore += paramD['rearrangeCost']
+
+            # get scores below
+            dtlorScore += fam.dtlorScoreBelowNode(paramD,self.reconRootKey[0])
+            
+            return dtlorScore
+        
     def printReconByGeneTree(self,familiesO,genesO,fileF=sys.stdout):
         '''Print a text summary of the reconciliation corresponding to this
 locus family.'''
@@ -81,9 +114,9 @@ locus family.'''
         else:
             fam = familiesO.getFamily(self.famNum)
             rootOfLfSubtree = self.reconRootKey[0]
-            lfSubtreeO = fam.geneRtreeO.subtree(rootOfLfSubtree)
-            fam.printReconByGeneTreeHelper(lfSubtreeO,genesO,0,fileF)
-    
+            lfSubtreeO = fam.geneTreeO.subtree(rootOfLfSubtree)
+            fam.printReconByGeneTreeHelper(fam.dtlorMprD,lfSubtreeO,genesO,self.reconRootKey[0],0,fileF)
+        #self,dtlorMprD,geneRtreeO,genesO,node,level,fileF=sys.stdout    
     def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1
@@ -277,6 +310,23 @@ same each time if done repeatedly).
         
         return mprOrigFormatD,mprNodeFormatD
 
+    def iterMprReconDFromGraph(self,speciesPreOrderT,paramD,isMedian):
+        '''Same as getMprReconDFromGraph, but iterates over all MPRs.'''
+
+        # get event list
+        if isMedian:
+            eventG = new_DTLOR_DP.build_event_median_graph(self.dtlorGraphD)
+        else:
+            eventG = new_DTLOR_DP.build_event_graph(self.dtlorGraphD)
+
+        for mprOrigFormatD in new_DTLOR_DP.iter_MPRs(eventG):
+            # iterate over all
+            mprNodeFormatD = self.__getMprReconDHelper__(mprOrigFormatD,speciesPreOrderT,paramD)
+        
+            yield mprOrigFormatD,mprNodeFormatD
+
+
+        
     def getMprReconDFromMpr(self,speciesPreOrderT,paramD):
         '''Converts the MPR in self.dtlorMprD to node based format and
 returns.
@@ -568,6 +618,47 @@ codes for events are as follows:
             for child in childL:
                 self.printReconByGeneTreeHelper(dtlorMprD,geneRtreeO,genesO,child,level+1,fileF)
 
+    def countEventsBelowNode(self,geneTreeNode,eventType):
+        '''Count how many events of eventType occur in the reconcilation below
+geneTreeNode. eventType is a string, D T L O R.'''
+
+        if self.geneTreeO.isLeaf(geneTreeNode):
+            return 0
+        else:
+            eventCtr = 0
+            for child in self.geneTreeO.children(geneTreeNode):
+                # count on child branch, then recurse
+                if (child,'b') in self.dtlorMprD:
+                    for eventValue in self.dtlorMprD[(child,'b')]:
+                        if eventValue[0] == eventType:
+                            eventCtr += 1
+                eventCtr += self.countEventsBelowNode(child,eventType)
+            return eventCtr
+
+    def dtlorScoreBelowNode(self,paramD,geneTreeNode):
+        '''Compile dtlor score in the reconcilation below geneTreeNode.
+        '''
+        if self.geneTreeO.isLeaf(geneTreeNode):
+            return 0
+        else:
+            dtlorScore = 0
+            for child in self.geneTreeO.children(geneTreeNode):
+                # count on child branch, then recurse
+                if (child,'b') in self.dtlorMprD:
+                    for eventValue in self.dtlorMprD[(child,'b')]:
+                        if eventValue[0] == 'D':
+                            dtlorScore += paramD['duplicationCost']
+                        elif  eventValue[0] == 'T':
+                            dtlorScore += paramD['transferCost']
+                        elif  eventValue[0] == 'L':
+                            dtlorScore += paramD['lossCost']
+                        elif  eventValue[0] == 'O':
+                            dtlorScore += paramD['originCost']
+                        elif  eventValue[0] == 'R':
+                            dtlorScore += paramD['rearrangeCost']
+                dtlorScore += self.dtlorScoreBelowNode(paramD,child)
+            return dtlorScore
+        
     def getNewickGeneTreeWithReconLabels(self,genesO):
         '''Print out a Newick string where the nodes are labeled with
 events. Format for annotations are [branch events | node events ]. For
@@ -597,7 +688,7 @@ in.
 
         # put in newick string
         return self.geneTreeO.toNewickStr(nodeLabelD=nodeLabelD)
-        
+
 class Families:
 
     def __init__(self,speciesRtreeO):
@@ -667,6 +758,38 @@ to this instance of the Families class. Return as a set.
     
     def getNumLocusFamilies(self):
         return len(self.locusFamiliesD)
-    
+
+    def labelHardCore(self,aabrhHardCoreL,typeToLabel):
+        ''''''
+        # funcs
+        def matchOneAabrh(aabrhInd,aabrhS,flfItr):
+            '''Match single aabrh to objects in flfItr. If match, set atribute of
+               that object to True. Return True if match, False if none.
+            '''
+            for flfO in flfItr():
+                S = set(flfO.iterGenes())
+                I = S.intersection(aabrhS)
+                if len(I) == len(aabrhS):
+                    flfO.aabrhHardCore.append(aabrhInd)
+                    return True
+            return False
+        
+        # labelHardCore main
+        if typeToLabel == 'locusFamily':
+            flfItr = self.iterLocusFamilies
+        elif typeToLabel == 'Family':
+            flfItr = self.iterFamilies
+
+        # create aabrhHardCoreB attribute, and set to None
+        for flfO in flfItr():
+            flfO.aabrhHardCore = []
+
+        # now match
+        for i,aabrhT in enumerate(aabrhHardCoreL):
+            aabrhS = set(aabrhT)
+            matchOneAabrh(i,aabrhS,flfItr) # records in object attribute aabrhHardCoreB
+            #if not matchOneAabrh(i,aabrhS,flfItr):
+            #    print("aabrhS",i,"has no match")
+                    
     def __repr__(self):
         return "<Families object--"+str(len(self.familiesD))+" Families, "+str(len(self.locusFamiliesD))+" LocusFamilies>"

@@ -439,6 +439,41 @@ def find_MPR(G, rand=False):
             MPR[node] = []
     return MPR
 
+def iter_MPRs(G):
+    """
+    Iterate over all MPRs in G
+    """
+    node = (NodeType.ROOT,)
+    return iter_MPRs_helper(node, G)
+
+def iter_MPRs_helper(node, G):
+    """
+    Recursively yield all sub-MPRs in G rooted at node
+    """
+    children = G[node]
+    if len(children) > 0:
+        if node[0].graph_type is GraphType.CHOOSE:
+            for child in children:
+                # Yield a different sub-MPR for each choice of child
+                for sub_mpr in iter_MPRs_helper(child, G):
+                    mpr = {node: [child]}
+                    mpr.update(sub_mpr)
+                    yield mpr
+        elif node[0].graph_type is GraphType.ALL:
+            # Iterator over all possible combinations of MPRs for children
+            # Use * operator to unpack list comprehension
+            for subcombo in product(*[iter_MPRs_helper(child, G) for child in children]):
+                mpr = {node: children}
+                # The sub-MPR for each child
+                for child_mpr in subcombo:
+                    mpr.update(child_mpr)
+                yield mpr
+        else:
+            assert False, "Bad GraphType"
+    # Base case: no children
+    else:
+        yield {node: []}
+
 def graph_search_order(G):
     """
     Iterator over the nodes of G in BFS order (parents before children)
