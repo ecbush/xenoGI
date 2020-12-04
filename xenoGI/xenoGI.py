@@ -227,7 +227,7 @@ def refineWrapper(paramD):
     with open(paramD['familyFormationSummaryFN'],'a') as familyFormationSummaryF:
         initialFamiliesO,originFamiliesO = families.refineFamilies(paramD,islandByNodeD,initialFamiliesO,originFamiliesO,geneOrderD,genesO,familyFormationSummaryF,strainNamesT)
 
-    ## redo islands with new originFamilies and less stringent proximity threshold
+    ## redo islands with new originFamilies
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
         locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,speciesRtreeO,paramD,originFamiliesO,paramD['rootFocalClade'],islandFormationSummaryF)
         

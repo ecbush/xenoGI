@@ -1383,18 +1383,19 @@ originFamiliesO.
                             
     ## Refine
     geneProximityD = genomes.createGeneProximityD(geneOrderD,geneProximityRange)
-    
+
+    # make argument list
+    argumentL = []
     for candIfamO in refineCandidateIfamS:
+        argumentL.append((candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO,upperNumMprThreshold,speciesRtreeO,paramD,genesO,geneProximityD,proximityThreshold,rscThreshold))
 
-        nearbyOfamL = getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO)
+    # run on multiple processors
+    with Pool(processes=paramD['numProcesses']) as p:
+        for ifamNum,bestMprOrigFormatD in p.imap_unordered(getBestMprOrigForamatD, argumentL):
+            # put output bestMprs back in ifam objects
+            ifam = initialFamiliesO.getFamily(ifamNum)
+            ifam.addMprD(bestMprOrigFormatD)
 
-        bestMprOrigFormatD,bestOfamL = getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,max(originFamiliesO.familiesD.keys()),genesO,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold)
-
-        newMprS = str(bestMprOrigFormatD)
-
-        candIfamO.addMprD(bestMprOrigFormatD)
-
-            
     ## make origin families again
     # the mprs in some families in initialFamiliesO have been changed, so we'll get a different result here
     initialFamiliesO,originFamiliesO = createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO)
@@ -1417,6 +1418,19 @@ originFamiliesO.
 
     return initialFamiliesO,originFamiliesO
 
+def getBestMprOrigForamatD(argumentL):
+    '''Given a candidate ifam, find the best MPR given nearbyOfamL.'''
+
+    # Note: passing the largish objects in argumentL could become a problem with large datasets
+
+    candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO,upperNumMprThreshold,speciesRtreeO,paramD,genesO,geneProximityD,proximityThreshold,rscThreshold = argumentL
+
+    nearbyOfamL = getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO)
+
+    bestMprOrigFormatD,bestOfamL = getBestOfamsFromCandIfam(candIfamO,upperNumMprThreshold,speciesRtreeO,paramD,max(originFamiliesO.familiesD.keys()),genesO,nearbyOfamL,geneProximityD,proximityThreshold,rscThreshold)
+
+    return candIfamO.famNum,bestMprOrigFormatD
+        
 def getNearbyOfamL(candIfamO,geneOrderD,geneProximityRangeRefineFamilies,geneToOfamD,originFamiliesO):
     '''Given a list of target ofams whose placement we're reconsidering,
 get a collection of other ofams that are nearby to these.'''
