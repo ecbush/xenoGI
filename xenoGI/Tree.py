@@ -610,6 +610,54 @@ branches and removing nodes as needed. Returns a new Rtree.
         outRtreeO.populateAttributes(ncD,mrcaNode,blD)
 
         return outRtreeO
+
+    def unroot(self):
+        '''Return an Utree object corresponding to self. We assume self has at
+least two tips.'''
+        # funcs
+        def traverse(nodeConnectD,branchLenD,parent,node):
+            '''Copy entries into nodeConnecteD, starting with node.'''
+            if self.isLeaf(node):
+                nodeConnectD[node] = (parent,)
+            else:
+                childT = self.children(node)
+                nodeConnectD[node] = (parent,) + childT
+                for child in childT:
+                    # get branch to child
+                    if branchLenD != None:
+                        branchLenD[(node,child)] = self.branchLenD[(node,child)]
+                    
+                    nodeConnectD,branchLenD = traverse(nodeConnectD,branchLenD,node,child)
+                
+            return nodeConnectD,branchLenD
+                
+        # unroot main
+        nodeConnectD={}
+        if self.branchLenD == None:
+            branchLenD = None
+        else:
+            branchLenD = {}
+
+        childT = self.children(self.rootNode)
+        if len(childT) < 2:
+            raise ValueError("Trying to unroot a single tip tree.")
+        elif len(childT) == 2:
+            # handle this first branch
+            if branchLenD != None:
+                branchLenD[(childT[0],childT[1])] = self.branchLenD[(self.rootNode,childT[0])] + self.branchLenD[(self.rootNode,childT[1])]
+            # recurse
+            nodeConnectD,branchLenD = traverse(nodeConnectD,branchLenD,childT[0],childT[1])
+            nodeConnectD,branchLenD = traverse(nodeConnectD,branchLenD,childT[1],childT[0])
+            arbitraryNode = childT[0]
+        else:
+            # Multifurcation at root. Not clear this will ever come up.
+            for child in childT:
+                nodeConnectD,branchLenD = traverse(nodeConnectD,branchLenD,node,child)
+            arbitraryNode = self.rootNode
+            
+        utreeO = Utree()
+        utreeO.populateAttributes(nodeConnectD,arbitraryNode,branchLenD)
+        return utreeO
         
     def createDtlorD(self,spTreeB):
         '''Return a dict in the format expected by the dtlor reconciliation

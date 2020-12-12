@@ -1085,7 +1085,7 @@ def reduceLocusMap(geneUtreeO,locusMapD):
     return gtLocusMapD
         
 def reconcile(argT):
-    '''Reconcile a single gene tree.'''
+    '''Reconcile a single unrooted gene tree. (Iterates over all rooted versions of this).'''
 
     initFamNum,speciesRtreeO,geneUtreeO,tipMapD,gtLocusMapD,D,T,L,O,R = argT
     
@@ -1098,9 +1098,8 @@ def reconcile(argT):
     bestRootingsL=[]
     for geneRtreeO in geneUtreeO.iterAllRootedTreesIncludeBranchLen():
 
-        geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
-        cost, G = new_DTLOR_DP.compute_dtlor_graph(speciesTreeD,geneTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
-
+        cost,G = reconcileRooted(geneRtreeO,speciesTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
+        
         if cost<minCost: 
             #if the score is better than current best
             #update best score, clear record and add new record
@@ -1115,6 +1114,12 @@ def reconcile(argT):
 
     return initFamNum,optGeneRtreeO,optG,minCost
 
+def reconcileRooted(geneRtreeO,speciesTreeD,tipMapD,gtLocusMapD,D,T,L,O,R):
+    '''Reconcile a single rooted gene tree.'''
+    geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
+    cost, G = new_DTLOR_DP.compute_dtlor_graph(speciesTreeD,geneTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
+    return cost,G
+    
 #### Origin families
 
 def createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO):

@@ -442,7 +442,7 @@ a string.
                     sm+=O
                 elif eventType == 'R':
                     sm+=R
-                # S, C events have no cost
+                # S events have no cost
         return sm
     
     def __repr__(self):
@@ -760,7 +760,10 @@ to this instance of the Families class. Return as a set.
         return len(self.locusFamiliesD)
 
     def labelHardCore(self,aabrhHardCoreL,typeToLabel):
-        ''''''
+        '''Run through all families or locusFamiles (specified by typeToLabel)
+and create aabrhHardCore attributes in each, indicating which if any
+correspond to aabrh hard core families. This attribute can be [], or a
+list containing aabrh family numbers.'''
         # funcs
         def matchOneAabrh(aabrhInd,aabrhS,flfItr):
             '''Match single aabrh to objects in flfItr. If match, set atribute of
@@ -780,7 +783,7 @@ to this instance of the Families class. Return as a set.
         elif typeToLabel == 'Family':
             flfItr = self.iterFamilies
 
-        # create aabrhHardCoreB attribute, and set to None
+        # create aabrhHardCore attribute, and set to None
         for flfO in flfItr():
             flfO.aabrhHardCore = []
 

@@ -282,7 +282,7 @@ LocusIsland, Family and LocusFamily for each gene.'''
 
 ## Print species files with all the genes, grouped by contig
 
-def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,familiesO,rootFocalClade,strainNamesT):
+def printSpeciesContigs(geneOrderD,fileStemStr,fileExtensionStr,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,strainNamesT):
     '''This function produces a set of species specific genome
 files. These contain all the genes in a strain laid out in the order
 they occur on the contigs. Each gene entry includes LocusIsland and
@@ -293,11 +293,11 @@ function.
         if strainName in geneOrderD:
             contigT = geneOrderD[strainName]
             with open(fileStemStr+'-'+strainName+fileExtensionStr,'w') as fileF:
-                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> family origin <tab> gene history string <tab> locusIsland <tab> family <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
+                headerStr = """# Lines not beginning with # have the following format: Gene name <tab> family origin <tab> gene history string <tab> locusIsland <tab> initialFamily <tab> originFamily <tab> locusFamily <tab> locFamMRCA <tab> gene description."""
                 print(headerStr,file=fileF)
                 for contig in contigT:
                     print("########### Begin contig",file=fileF)
-                    printGenesTsv(contig,genesO,gene2FamIslandD,familiesO,rootFocalClade,fileF)
+                    printGenesTsv(contig,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,fileF)
     return
     
 ## Print neighborhood of an island
@@ -354,7 +354,9 @@ all the genes in the island for that strain.'''
     return genesL
 
 def getNeighborhoodGenes(strainName,geneOrderD,islandGenesInStrainL,genesInEitherDirec):
-    ''''''
+    '''Find and return genes in the neighborhood of those given in
+islandGenesInStrainL. firstGene and lastGene are the first and last
+genes in the island itself.'''
     neighbGenesL=[]
     for contig in geneOrderD[strainName]:
         try:
@@ -403,13 +405,13 @@ that are in islandGenesInStrainL.'''
 
     printTable(rowsL,indent=4,fileF=fileF)
 
-def printGenesTsv(neighbGenesL,genesO,gene2FamIslandD,familiesO,rootFocalClade,fileF):
+def printGenesTsv(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,fileF):
     '''Given a list of contiguous genes, print them out in a tsv
 format. Gene name,geneHisStr,locusIsland, family, locusFamily, locFamMRCA, gene
 description.'''
 
     # get strains in focal clade
-    focalSubRtreeO = familiesO.speciesRtreeO.subtree(rootFocalClade)
+    focalSubRtreeO = originFamiliesO.speciesRtreeO.subtree(rootFocalClade)
     focalCladeStrainsS = set(focalSubRtreeO.leaves())
     for geneNum in neighbGenesL:
         strainName = genesO.numToStrainName(geneNum)
@@ -417,19 +419,20 @@ description.'''
         geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
         
         locIslNum,famNum,locFamNum = gene2FamIslandD[geneNum]
-        famO = familiesO.getFamily(famNum)
-
+        famO = originFamiliesO.getFamily(famNum)
+        ifamNum = famO.sourceFam
+        
         # only print geneHistory,orign if gene is in focal clade
         if strainName in focalCladeStrainsS:
             geneHisStr = famO.getGeneHistoryStr(str(geneNum)) # geneHistoryD has string keys
-            geneOrigin = famO.origin(familiesO.speciesRtreeO,rootFocalClade)
+            geneOrigin = famO.origin(originFamiliesO.speciesRtreeO,rootFocalClade)
         else:
             geneHisStr = ""
             geneOrigin = ""
             
-        lfMrca = familiesO.getLocusFamily(locFamNum).lfMrca
+        lfMrca = originFamiliesO.getLocusFamily(locFamNum).lfMrca
 
-        infoL = [geneName,geneOrigin,geneHisStr,str(locIslNum),str(famNum),str(locFamNum),lfMrca,descrip]
+        infoL = [geneName,geneOrigin,geneHisStr,str(locIslNum),str(ifamNum),str(famNum),str(locFamNum),lfMrca,descrip]
 
         print("\t".join(infoL),file=fileF)
         
