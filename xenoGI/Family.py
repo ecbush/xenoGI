@@ -262,7 +262,10 @@ class initialFamily(Family):
     def __init__(self,famNum,mrca,geneTreeO=None,dtlorCost=None,dtlorGraphD=None,dtlorMprD=None,sourceFam=None,productFamT=None):
         '''Initialize an object of class initialFamily.'''
         super().__init__(famNum,mrca,geneTreeO,dtlorMprD,sourceFam)
-        self.dtlorCost = dtlorCost # cost from dtlor alg
+        #  dtlorCost is cost from dtlor alg. A positive integer. In
+        #  the case where a family was re-run with permissive origin
+        #  costs, we make this value negative.
+        self.dtlorCost = dtlorCost
         self.dtlorGraphD = dtlorGraphD
         self.productFamT = productFamT # ids of origin families made from this ifam
         
@@ -418,14 +421,28 @@ a string.
 
     def __costCheck__(self,mprNodeFormatD,paramD):
         '''Sanity check to ensure the events in mprNodeFormatD sum to dtlorCost.'''
-        D=int(paramD["duplicationCost"])
-        T=int(paramD["transferCost"])
-        L=int(paramD["lossCost"])
-        O=int(paramD["originCost"])
-        R=int(paramD["rearrangeCost"])
 
+        # get costs
+        if self.dtlorCost > 0:
+            # use normal costs
+            D=int(paramD["duplicationCost"])
+            T=int(paramD["transferCost"])
+            L=int(paramD["lossCost"])
+            O=int(paramD["originCost"])
+            R=int(paramD["rearrangeCost"])
+            dtlorCost = self.dtlorCost
+            
+        else:
+            # neg dtlorCost means we used permissive costs
+            D=int(paramD["DTLRcostPermissiveOrigin"])
+            T=int(paramD["DTLRcostPermissiveOrigin"])
+            L=int(paramD["DTLRcostPermissiveOrigin"])
+            O=int(paramD["originCostPermissiveOrigin"])
+            R=int(paramD["DTLRcostPermissiveOrigin"])
+            dtlorCost = -self.dtlorCost # remove the negative
+            
         sm = self.__costSum__(mprNodeFormatD,D,T,L,O,R)
-        assert round(sm,3) == round(self.dtlorCost,3), "Events in this reconcilation don't sum to minCost."
+        assert round(sm,3) == round(dtlorCost,3), "Events in this reconcilation don't sum to minCost."
 
     def __costSum__(self,mprNodeFormatD,D,T,L,O,R):
         '''Sum the costs implied by the recon in mprNodeFormatD.'''

@@ -149,7 +149,9 @@ Consider a clade of three species: (A,B),C. In this group, A and B are most clos
 
 When a genomic island inserts as a part of a horizontal transfer event, it typically brings in multiple locus families at the same time. xenoGI will attempt to group these into a *locus island*. In the a/b case, if there were several other locus families nearby that also inserted on the branch leading to the A,B clade, we would group them together into a single locus island. At present, locus islands and locus families are the basic units of output.
 
-Let us define one last bit of terminology. Consider another clade of three species: (X,Y),Z. Genes x1 and y1 represent a locus family in the X,Y clade. They are orthologs sharing high synteny. (And they have no ortholog species Z). Imagine that there is also a set of paralogs x2 and y2 which resulted from a gene duplication in the lineage leading to the X,Y clade. These occur in a different syntenic location. In this case, x2 and y2 constitute another locus family. Because these two locus families descended from a common ancestor gene within the species tree, we place them in the same *family*. In general, a family consists of one or more locus families.
+Let us define one last bit of terminology. Consider another clade of three species: (X,Y),Z. Genes x1 and y1 represent a locus family in the X,Y clade. They are orthologs sharing high synteny. (And they have no ortholog species Z). Imagine that there is also a set of paralogs x2 and y2 which resulted from a gene duplication in the lineage leading to the X,Y clade. These occur in a different syntenic location. In this case, x2 and y2 constitute another locus family. Because these two locus families descended from a common ancestor gene within the species tree, we place them in the same *origin family*. In general, an origin family consists of one or more locus families.
+
+It is also worth mentioning that in the process of creating origin families, xenoGI produces an initial grouping of genes called initial families. In general, users will be more interested in the origin families. However the class representing initial families does contain some information (the raw reconciliation output) which isn't present in the origin families, and may occasionally be of interest.
 
 Output files
 ~~~~~~~~~~~~
@@ -163,7 +165,8 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
     + origin of the gene, specified by a single character: a C indicating core gene, or an X indicating xeno horizontal transfer. This field is an interpretation of the O event from the DTLOR reconcilation based on its placement in the species tree.
     + gene history, specified by a string. This gives the history of the gene from its origin until the tip of the gene tree, and consists of single letters corresponding to the operations in the reconcilation model. D, duplication; T, transfer (within the species tree); O, origin; R, rearrangement.
     + locus island number
-    + family number
+    + initial family number
+    + origin family number
     + locus family number
     + gene description
 

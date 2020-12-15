@@ -69,3 +69,13 @@ Run it like this::
   python3 path-to-xenoGI-github-repository/misc/reconcileOneGeneTree.py example.tre geneFamilyTrees/initFam001699.tre params.py 1 1 1 1 1
 
 As output it produces a rooted gene tree (determined by trying all possible rootings and picking the one with the best reconcilation) and a representation of the reconcilation given by traversing the gene tree.
+
+
+Identify proteins with similarity to provided multifasta
+--------------------------------------------------------
+
+The getProteinsWithBlastHitsVsMultifasta.py script in misc/ identifies xenoGI proteins with significant similarity to a provided protein multifasta, printing their xenoGI gene names to standard out, one per line. It expects to be run in a xenoGI working directory.
+
+Run it like this::
+  
+  python3 path-to-xenoGI-github-repository/misc/getProteinsWithBlastHitsVsMultifasta.py params.py fasta/multiFastaWithProtsToSearch.fa > listOfHits.txt

@@ -76,6 +76,17 @@ lossCost = 1
 originCost = 6
 rearrangeCost = 7
 
+# reconciliation with costs permissive to origin events
+# reconcilePermissiveOriginGeneListPath specifies a file giving a list
+# of xenoGI genes (one per line, string form) which we should use
+# pemissive-origin reconciliation on. For each of these genes, we
+# identify the initial family it belongs to, and then do
+# reconciliation with permissive costs. By default, we set to None
+# (and don't do this type of reconciliation). Users can override by
+# uncommenting the line below, and creating the corresponding file
+#reconcilePermissiveOriginGeneListPath = 'reconcilePermissiveOriginGeneList.txt'
+
+
 #### Parallelization ####
 
 # in parallel code, how many threads to use

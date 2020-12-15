@@ -50,6 +50,9 @@ alignCoverThresh = 0.65
 # threshold for the percent identity in a hit
 percIdentThresh = 0.35
 
+# string to join the two strains compared in filename for blast
+blastFileJoinStr = '_-VS-_'
+
 #### Scores ####
 
 # Note: for scores output files, if the extension we use here is
@@ -213,6 +216,22 @@ rscThresholdMerge = 0
 # in the first step of the merging process
 maxClusterSize = 50
 
+#### Reconciliation ####
+
+## reconciliation with costs permissive to origin events (for families
+## that repeatedly insert in same syntenic location).
+
+# File giving a list of xenoGI genes (one per line, string form) which
+# we should use pemissive-origin reconciliation on. For each of these
+# genes, we identify the initial family it belongs to, and then do
+# reconciliation with permissive costs. By default, we set to None
+# (and don't do this type of reconciliation). Users can override in
+# the param.py file.
+reconcilePermissiveOriginGeneListPath = None
+
+# Costs to be used when we want to be permissive to origin events
+DTLRcostPermissiveOrigin = 100
+originCostPermissiveOrigin = 1
 
 #### Family Refinement ####
 

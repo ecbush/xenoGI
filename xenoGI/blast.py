@@ -57,7 +57,8 @@ needed to run blastp on a pair of databases.'''
     fastaFilePath = paramD['fastaFilePath']
     blastFilePath = paramD['blastFilePath']
     blastExecutDirPath = paramD['blastExecutDirPath']
-
+    blastFileJoinStr = paramD['blastFileJoinStr']
+    
     # catch blast clines from old params files which don't have
     # trailing whitespace (can get rid of this eventually).
     if paramD['blastCLine'][-1] != ' ':
@@ -80,7 +81,7 @@ needed to run blastp on a pair of databases.'''
     blastFiles = glob.glob(blastFilePath)
 
     # check if fasta files modified more recently than blast files
-    shouldBlast = determineShouldBlast(dbFileL_1[0],dbFileL_2[0],blastFilePath)
+    shouldBlast = determineShouldBlast(dbFileL_1[0],dbFileL_2[0],blastFilePath,blastFileJoinStr)
 
     clineL=[]
     for query in dbFileL_1:
@@ -99,7 +100,7 @@ needed to run blastp on a pair of databases.'''
             elif ".fa" in dbstem:
                 dbstem = dbstem.split(".fa")[0]
                 
-            outFN = os.path.join( blastDir, qstem + '_-VS-_' + dbstem + blastExtension )
+            outFN = os.path.join( blastDir, qstem + blastFileJoinStr + dbstem + blastExtension )
                 
             # only add to list if this blast file doesn't already exist
             if not os.path.isfile(outFN) or shouldBlast:
@@ -116,7 +117,7 @@ section can be passed in to subprocess as a unit.
     L = cline.split('"') # " make emacs happy.
     return L[0].split() + [L[1]] + L[2].split()
     
-def determineShouldBlast(dbFile1,dbFile2,blastFilePath):
+def determineShouldBlast(dbFile1,dbFile2,blastFilePath,blastFileJoinStr):
     '''Compare a blast and a fasta file. If the fasta file was edited
     more recently, return True, otherwise False.
     '''
@@ -132,7 +133,7 @@ def determineShouldBlast(dbFile1,dbFile2,blastFilePath):
     blastExtension = rest.split("*")[-1]
 
     fastaFN = dbFile1
-    blastFN = os.path.join(blastDir, dbStem1 + '_-VS-_' + dbStem2 + blastExtension )
+    blastFN = os.path.join(blastDir, dbStem1 + blastFileJoinStr + dbStem2 + blastExtension )
 
     if not os.path.isfile(blastFN):
         # hasn't been run, return True
@@ -166,8 +167,20 @@ qend slen sstart send.
         s = f.readline()
         while s:
             blastLine = s.split()
-            queryGene = int(blastLine[0].split('_')[0])
-            subjectGene = int(blastLine[1].split('_')[0])
+
+            # get numeric gene from front, if not present get whole name
+            queryStr = blastLine[0].split('_')[0]
+            if queryStr.isdigit():
+                queryGene = int(queryStr)
+            else:
+                queryGene = queryStr
+
+            subjectStr = blastLine[1].split('_')[0]
+            if subjectStr.isdigit():
+                subjectGene = int(subjectStr)
+            else:
+                subjectGene = subjectStr
+
             evalue = float(blastLine[2])
             if evalue < evalueThresh:
                 qlen = int(blastLine[3])

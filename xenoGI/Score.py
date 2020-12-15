@@ -35,8 +35,9 @@ strainPairScoreLocationD.
         evalueThresh = paramD['evalueThresh']
         alignCoverThresh = paramD['alignCoverThresh']
         percIdentThresh =  paramD['percIdentThresh']
+        blastFileJoinStr = paramD['blastFileJoinStr']
         
-        blastFnByPairD = self.getBlastFnByPairD(blastFnL)
+        blastFnByPairD = self.getBlastFnByPairD(blastFnL,blastFileJoinStr)
 
         edgeNum=0
         for strainPair in blastFnByPairD:
@@ -75,7 +76,7 @@ strainPairScoreLocationD.
             self.strainPairScoreLocationD[strainPair] = (strainPairSt,strainPairEnd)
             
 
-    def getBlastFnByPairD(self,blastFnL):
+    def getBlastFnByPairD(self,blastFnL,blastFileJoinStr):
         '''Get the set of blast files and organize by the pair of strains
 compared. Returns a dict keyed by tuple of strain number
 (e.g. (1,2)). The value is a list with all the blast files comparing
@@ -87,7 +88,7 @@ compared against itself then we have only one file name in the list.
         blastFnByPairD ={}
         
         for fileStr in blastFnL:
-            strainName1,strainName2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split('_-VS-_')
+            strainName1,strainName2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split(blastFileJoinStr)
             key = tuple(sorted([strainName1,strainName2]))
             if key in blastFnByPairD:
                 # we've already looked at the one that had them in the other order

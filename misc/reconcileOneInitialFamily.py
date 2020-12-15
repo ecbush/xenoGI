@@ -24,7 +24,7 @@ formation state (to obtain an initialFamiliesO object).'''
 if __name__ == "__main__":
     
     speciesTreeFN = sys.argv[1]
-    paramFN =  sys.argv[2]
+    paramFN = sys.argv[2]
     ifamNum = int(sys.argv[3])
     D =  int(sys.argv[4])
     T =  int(sys.argv[5])

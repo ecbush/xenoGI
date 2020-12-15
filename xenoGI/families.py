@@ -3,7 +3,7 @@ sys.setrecursionlimit(100000)
 from scipy.signal import find_peaks
 from Bio import Phylo
 from multiprocessing import Pool
-from . import genomes,trees,scores,DTLOR_DP,new_DTLOR_DP,islands
+from . import blast,genomes,trees,scores,DTLOR_DP,new_DTLOR_DP,islands
 from .Family import *
 from .Island import *
 from .Tree import *
@@ -37,6 +37,12 @@ originFamilies object.
     initFamilyFN = paramD['initFamilyFN']
     originFamilyFN =  paramD['originFamilyFN']
     geneInfoFN = paramD['geneInfoFN']
+    numProcesses = paramD['numProcesses']
+    D=int(paramD["duplicationCost"])
+    T=int(paramD["transferCost"])
+    L=int(paramD["lossCost"])
+    O=int(paramD["originCost"])
+    R=int(paramD["rearrangeCost"])
 
     # checks
     homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD)
@@ -52,8 +58,12 @@ originFamilies object.
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
     
     # reconcile
-    initialFamiliesO = reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD)
+    initialFamiliesO = reconcileGeneTrees(initialFamiliesO.iterFamilies(),speciesRtreeO,initialFamiliesO,locusMapD,genesO,numProcesses,D,T,L,O,R)
 
+    # reconcile for cases where family inserts repeatedly in same place
+    if paramD['reconcilePermissiveOriginGeneListPath'] != None:
+        initialFamiliesO = reconcilePermissiveOrigin(paramD,initialFamiliesO,speciesRtreeO,locusMapD,genesO)
+    
     # create origin families
     initialFamiliesO,originFamiliesO = createOriginFamiliesO(speciesRtreeO,initialFamiliesO,paramD,genesO)
     print("Origin families:",file=outputSummaryF)
@@ -1021,22 +1031,19 @@ outputSummaryF.
 
 #### Reconciliation
 
-def reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD):
-    '''Reconcile gene family trees to the species tree using the DTLOR algorithm.'''
-
-    D=int(paramD["duplicationCost"])
-    T=int(paramD["transferCost"])
-    L=int(paramD["lossCost"])
-    O=int(paramD["originCost"])
-    R=int(paramD["rearrangeCost"])
+def reconcileGeneTrees(ifamIter,speciesRtreeO,initialFamiliesO,locusMapD,genesO,numProcesses,D,T,L,O,R):
+    '''Reconcile gene family trees to the species tree using the DTLOR
+algorithm. ifamIter is an iterator (or list) of initial families to
+work on. D,T,L,O,R are the DTLOR costs.
+    '''
 
     argumentL = []
-    for ifam in initialFamiliesO.iterFamilies():
-        initFamNum = ifam.famNum
-        geneUtreeO = ifam.geneTreeO
+    for iFamO in ifamIter:
+        initFamNum = iFamO.famNum
+        geneUtreeO = iFamO.geneTreeO
 
         # skip single gene
-        if ifam.geneCount() == 1:
+        if iFamO.geneCount() == 1:
             continue
 
         if len(geneUtreeO.multifurcatingNodes()) > 0:
@@ -1055,8 +1062,8 @@ def reconcileAllGeneTrees(speciesRtreeO,initialFamiliesO,locusMapD,genesO,paramD
         argumentL.append(argT)
 
     # run on multiple processors
-    with Pool(processes=paramD['numProcesses']) as p:
-        for initFamNum,optGeneRtreeO,optG,minCost in p.imap_unordered(reconcile, argumentL):
+    with Pool(processes=numProcesses) as p:
+        for initFamNum,optGeneRtreeO,optG,minCost in p.imap_unordered(reconcileOneUnRootedGeneTree, argumentL):
             
             # store
             ifam = initialFamiliesO.getFamily(initFamNum)
@@ -1084,7 +1091,7 @@ def reduceLocusMap(geneUtreeO,locusMapD):
         gtLocusMapD[leaf] = locusMapD[int(leaf)]
     return gtLocusMapD
         
-def reconcile(argT):
+def reconcileOneUnRootedGeneTree(argT):
     '''Reconcile a single unrooted gene tree. (Iterates over all rooted versions of this).'''
 
     initFamNum,speciesRtreeO,geneUtreeO,tipMapD,gtLocusMapD,D,T,L,O,R = argT
@@ -1098,7 +1105,7 @@ def reconcile(argT):
     bestRootingsL=[]
     for geneRtreeO in geneUtreeO.iterAllRootedTreesIncludeBranchLen():
 
-        cost,G = reconcileRooted(geneRtreeO,speciesTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
+        cost,G = reconcileOneRootedGeneTree(geneRtreeO,speciesTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
         
         if cost<minCost: 
             #if the score is better than current best
@@ -1114,11 +1121,71 @@ def reconcile(argT):
 
     return initFamNum,optGeneRtreeO,optG,minCost
 
-def reconcileRooted(geneRtreeO,speciesTreeD,tipMapD,gtLocusMapD,D,T,L,O,R):
+def reconcileOneRootedGeneTree(geneRtreeO,speciesTreeD,tipMapD,gtLocusMapD,D,T,L,O,R):
     '''Reconcile a single rooted gene tree.'''
     geneTreeD = geneRtreeO.createDtlorD(False) # put in dp format
     cost, G = new_DTLOR_DP.compute_dtlor_graph(speciesTreeD,geneTreeD,tipMapD,gtLocusMapD,D,T,L,O,R)
     return cost,G
+
+def reconcilePermissiveOrigin(paramD,initialFamiliesO,speciesRtreeO,locusMapD,genesO):
+    '''Identifies initialFamilies where there is a tendency to insert
+repeatedly in the same syntenic location. Re-runs reconciliation on
+these families, with a new set of parameters which are permissive
+to origin events.
+    '''
+    numProcesses = paramD['numProcesses']
+    D=int(paramD["DTLRcostPermissiveOrigin"])
+    T=int(paramD["DTLRcostPermissiveOrigin"])
+    L=int(paramD["DTLRcostPermissiveOrigin"])
+    O=int(paramD["originCostPermissiveOrigin"])
+    R=int(paramD["DTLRcostPermissiveOrigin"])
+    
+    ## find families to redo
+    iFamsToReconcileS = getIfamsToReconcilePermissiveOrigin(paramD,speciesRtreeO.leaves(),initialFamiliesO)
+
+    ## Reconcile with permissive origin cost
+
+    # geneTreeO in these families is rooted (having been run once
+    # through dtlor). Unroot it. If only 1 tip, leave it as rooted
+    for iFamO in iFamsToReconcileS:
+        if type(iFamO.geneTreeO).__name__ == 'Rtree' and iFamO.geneTreeO.leafCount()>1:
+            geneUtreeO = iFamO.geneTreeO.unroot()
+            iFamO.geneTreeO = geneUtreeO
+        
+    initialFamiliesO = reconcileGeneTrees(iFamsToReconcileS,speciesRtreeO,initialFamiliesO,locusMapD,genesO,numProcesses,D,T,L,O,R)
+    # make dtlorCost attribute negative, as indicator these were done permissively
+    for iFamO in iFamsToReconcileS:
+        if iFamO.dtlorCost != None:
+            iFamO.dtlorCost = -iFamO.dtlorCost
+    
+    return initialFamiliesO
+
+def getIfamsToReconcilePermissiveOrigin(paramD,strainNamesT,initialFamiliesO):
+    '''Identify initial families that we should reconcile with costs
+permissive to origin events. We do this by blasting our sequences
+against a file of model seqs. Anything with similarity, should be done
+with permissive-origin dtlor costs.
+    '''
+
+    reconcilePermissiveOriginGeneListPath = paramD['reconcilePermissiveOriginGeneListPath']
+
+    # get geneToIfam dict
+    gene2IfamD = {}
+    for iFamO in initialFamiliesO.iterFamilies():
+        for geneNum in iFamO.iterGenes():
+            gene2IfamD[geneNum] = iFamO.famNum
+            
+    # identify ifams which these genes belong to
+    with open(reconcilePermissiveOriginGeneListPath,'r') as f:
+        S = f.read()
+        geneL = S.rstrip().split()
+    
+    iFamsToReconcileS = set()
+    for geneStr in geneL:
+        geneNum = int(geneStr.split('_')[0])
+        iFamsToReconcileS.add(initialFamiliesO.getFamily(gene2IfamD[geneNum]))
+
+    return iFamsToReconcileS
     
 #### Origin families
 
