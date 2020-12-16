@@ -156,7 +156,7 @@ def calcScoresWrapper(paramD,blastFnL):
     
     # object for storing scores
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(blastFnL,paramD)
+    scoresO.initializeDataAttributes(blastFnL,paramD,strainNamesT)
 
     ## similarity scores
     scoresO = scores.calcRawScores(paramD,scoresO)

@@ -28,17 +28,26 @@ if __name__ == "__main__":
     allStrainsFileNamesL = []
     for strain in strainNamesT:
         allStrainsFileNamesL.append(os.path.join(fastaDir,strain+"_prot.fa"))
-    
+
+    if proteinMultiFastaPath[-8:] != "_prot.fa":
+        # make sure ending is consistent with other dbs
+        proteinMultiFastaPath+="_prot.fa"
+        
     blast.runBlast([proteinMultiFastaPath],allStrainsFileNamesL,paramD)
     
     # parse blast to identify ifams with similarity to model seqs
     blastDir = os.path.split(blastFilePath)[0]
 
+    proteinMultiFastaFN = os.path.split(proteinMultiFastaPath)[-1]
+    # remove _prot.fa
+    proteinMultiFastaFN = proteinMultiFastaFN.split("_prot.fa")[0]
+
+    # if additional extension
+    proteinMultiFastaStem = os.path.splitext(proteinMultiFastaFN)[0]
+    
     outS = set()
     for strainName in strainNamesT:
         # remove dir (if any) from proteinMultiFastaPath
-        proteinMultiFastaFN = os.path.split(proteinMultiFastaPath)[-1]
-        proteinMultiFastaStem = os.path.splitext(proteinMultiFastaFN)[0]
         fileStr = proteinMultiFastaStem+blastFileJoinStr+strainName+'.out'
         fn = os.path.join(blastDir,fileStr)
         for g1,g2,evalue,alCov,pident,score in blast.parseBlastFile(fn,evalueThresh,alignCoverThresh,percIdentThresh):    

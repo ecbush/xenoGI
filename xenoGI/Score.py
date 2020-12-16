@@ -12,7 +12,7 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFnL,paramD):
+    def initializeDataAttributes(self,blastFnL,paramD,strainNamesT):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
@@ -20,11 +20,11 @@ edges. Also creates the array for storing raw scores, initialized to
 included here depend on what is found in the blast files in blastFnL.
 
         '''
-        self.fillEndNodesToEdgeD(blastFnL,paramD)
+        self.fillEndNodesToEdgeD(blastFnL,paramD,strainNamesT)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFnL,paramD):
+    def fillEndNodesToEdgeD(self,blastFnL,paramD,strainNamesT):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -37,7 +37,7 @@ strainPairScoreLocationD.
         percIdentThresh =  paramD['percIdentThresh']
         blastFileJoinStr = paramD['blastFileJoinStr']
         
-        blastFnByPairD = self.getBlastFnByPairD(blastFnL,blastFileJoinStr)
+        blastFnByPairD = self.getBlastFnByPairD(blastFnL,blastFileJoinStr,strainNamesT)
 
         edgeNum=0
         for strainPair in blastFnByPairD:
@@ -76,7 +76,7 @@ strainPairScoreLocationD.
             self.strainPairScoreLocationD[strainPair] = (strainPairSt,strainPairEnd)
             
 
-    def getBlastFnByPairD(self,blastFnL,blastFileJoinStr):
+    def getBlastFnByPairD(self,blastFnL,blastFileJoinStr,strainNamesT):
         '''Get the set of blast files and organize by the pair of strains
 compared. Returns a dict keyed by tuple of strain number
 (e.g. (1,2)). The value is a list with all the blast files comparing
@@ -89,6 +89,11 @@ compared against itself then we have only one file name in the list.
         
         for fileStr in blastFnL:
             strainName1,strainName2 = os.path.splitext(os.path.split(fileStr)[-1])[0].split(blastFileJoinStr)
+
+            if strainName1 not in strainNamesT or strainName2 not in strainNamesT:
+                # not a blast file we want, since it has someithing else besides our strains
+                continue
+            
             key = tuple(sorted([strainName1,strainName2]))
             if key in blastFnByPairD:
                 # we've already looked at the one that had them in the other order
