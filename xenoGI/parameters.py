@@ -14,10 +14,6 @@ baseParamStr = """
 # gene order
 geneOrderFN = 'geneOrder.txt'
 
-# list of protein names found to be redundant in genbank files (will not
-# be used)
-redundProtsFN = 'redundProts.txt'
-
 # gene descriptions (for use in analysis)
 geneInfoFN = 'geneInfo.txt'
 

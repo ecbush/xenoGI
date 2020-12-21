@@ -401,13 +401,6 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    #initialFamiliesO = families.readFamilies(paramD['initFamilyFN'],speciesRtreeO,genesO,"initial")
-    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
-    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
-
-    initialFamiliesO,locusMapD = families.createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,open('temp.txt,','w'))
-    
-    initialFamiliesO = families.reconcilePermissiveOrigin(paramD,initialFamiliesO,speciesRtreeO,locusMapD,genesO)
     
     # set up interactive console
     vars = globals()

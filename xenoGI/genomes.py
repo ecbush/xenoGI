@@ -71,7 +71,7 @@ giving the range of gene numbers in the strain.'''
                 enteringNewSpecies = True
                 
             else:
-                geneNum,geneName,commonName,locusTag,descrip,chrom,start,end,strand=s.rstrip().split('\t')
+                geneNum,geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=s.rstrip().split('\t')
                 geneNum = int(geneNum)
                 if enteringNewSpecies == True:
                     strainRangeStart = geneNum
@@ -96,7 +96,6 @@ strain ranges. This method intializes that.'''
 geneName. If strainNamesL is provided, only load from those strains
 present in it. This is an optional part of this data structure, which
 isn't loaded by default.
-
         '''
         self.geneNumToNameD = self.loadDictFromGeneInfoFile(geneInfoFN,strainNamesL,True)
 
@@ -124,13 +123,13 @@ other fields.'''
                 else:
                     keepGenes = False
             else:
-                geneNum,geneName,commonName,locusTag,descrip,chrom,start,end,strand=s.rstrip().split('\t')
+                geneNum,geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=s.rstrip().split('\t')
                 if keepGenes == True:
                     geneNum = int(geneNum)
                     if onlyNames:
                         D[geneNum] = geneName
                     else:
-                        D[geneNum] = geneName,commonName,locusTag,descrip,chrom,start,end,strand
+                        D[geneNum] = geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand
                         
         f.close()
         return D

@@ -10,7 +10,6 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     dnaBasedGeneTrees = paramD['dnaBasedGeneTrees']
     
     geneInfoFile = open(paramD['geneInfoFN'], 'w')
-    redundFile = open(paramD['redundProtsFN'], 'w')
     geneOrderOutFile = open(paramD['geneOrderFN'], 'w')
     
     problemGenbankFileL = []
@@ -19,10 +18,9 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     geneNum =  0 # xenoGI internal gene numbering
     for fileName in genbankFileList:
 
-        geneNum,problemGenbankFileL = parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL)
+        geneNum,problemGenbankFileL = parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL)
         
     geneInfoFile.close()
-    redundFile.close()
     geneOrderOutFile.close()
 
     # If there are any files in problemGenbankFileL, throw error
@@ -33,7 +31,7 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     
         raise ValueError('Some genbank files lack protein annotations. They are listed in ' + paramD['problemGenbankFN'] + '. Please remove and run again.\n')
     
-def parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,redundFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
+def parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
     '''Parse a single genbank file. We pass through twice. Once to
 identify redundant genes, so we can avoid them. And another time to
 get the stuff we want.
@@ -42,21 +40,13 @@ get the stuff we want.
     genbankName = os.path.split(fileName)[-1]
     speciesName = fileNameMapD[genbankName]
 
-    # start a block for this species in geneInfoFile
-    geneInfoFile.write("# "+speciesName+"\n")
-
-    uniqueS,redundS=getUniqueRedundSets(fileName,speciesName)
-
-    # Check if we've been passed a .gbff file with no protein
-    # annotations, and if so tell user
-    if len(uniqueS) == 0 and len(redundS) == 0:
+    if not verifyProteinAnnotations(fileName):
         problemGenbankFileL.append(fileName)
         return geneNum,problemGenbankFileL 
-
-    # write the redundant ones for this species to our redund file
-    for gene in redundS:
-        redundFile.write(gene + "\n")
-
+    
+    # start a block for this species in geneInfoFile
+    geneInfoFile.write("# "+speciesName+"\n")
+    
     inFile = open(fileName, 'rU')
     protFastaOutName = fastaOutFileDir + speciesName + "_prot.fa"
     protFastaOutFile = open(protFastaOutName, 'w')
@@ -76,54 +66,62 @@ get the stuff we want.
         for feature in record.features:
             # choose only the features that are protein coding genes
             if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
-                speciesProtName = speciesName + '-' + feature.qualifiers['protein_id'][0]
-                # verify not in set of genes that appear more than once
-                if speciesProtName in uniqueS:
-                    start = int(feature.location.start)
-                    end = int(feature.location.end)
-                    # strand
-                    if feature.location.strand == 1:
-                        strand = "+"
-                    elif feature.location.strand == -1:
-                        strand = "-"
-                    else:
-                        strand = "?"
 
-                    aaSeq = feature.qualifiers['translation'][0]
-                    if dnaBasedGeneTrees:
-                        dnaSeq = str(feature.extract(record.seq))
+                start = int(feature.location.start)
+                end = int(feature.location.end)
+                # strand
+                if feature.location.strand == 1:
+                    strand = "+"
+                elif feature.location.strand == -1:
+                    strand = "-"
+                else:
+                    strand = "?"
 
-                    # get common name
-                    commonName=''
-                    if 'gene' in feature.qualifiers:
-                        commonName=feature.qualifiers['gene'][0]
+                aaSeq = feature.qualifiers['translation'][0]
+                if dnaBasedGeneTrees:
+                    dnaSeq = str(feature.extract(record.seq))
 
-                    locusTag=''
-                    if 'locus_tag' in feature.qualifiers:
-                        locusTag = feature.qualifiers['locus_tag'][0]
+                # common name
+                commonName=''
+                if 'gene' in feature.qualifiers:
+                    commonName=feature.qualifiers['gene'][0]
 
-                    # get description
-                    descrip=''
-                    if 'gene' in feature.qualifiers:
-                        descrip += feature.qualifiers['gene'][0]+' - '
-                    if 'product' in feature.qualifiers:
-                        descrip += feature.qualifiers['product'][0]
+                # locus tag
+                locusTag=''
+                if 'locus_tag' in feature.qualifiers:
+                    locusTag = feature.qualifiers['locus_tag'][0]
 
-                    # write to fastaOutFile
-                    geneName = str(geneNum) + "_" + speciesProtName
+                # protein ID
+                proteinId=''
+                if 'protein_id' in feature.qualifiers:
+                    proteinId = feature.qualifiers['protein_id'][0]
+
+                # get description
+                descrip=''
+                if 'gene' in feature.qualifiers:
+                    descrip += feature.qualifiers['gene'][0]+' - '
+                if 'product' in feature.qualifiers:
+                    descrip += feature.qualifiers['product'][0]
+
+                # get xenoGI gene name
+                if locusTag != '':
+                    geneName = str(geneNum) + "_" + speciesName + '-' + locusTag
+                else:
+                    # if locus tag missing, base name on start and end coordinates
+                    geneName = str(geneNum) + "_" + speciesName + '-' + str(start)+"_"+str(end)
                     
+                # write to fastaOutFile
+                protFastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
+                if dnaBasedGeneTrees:
+                    dnaFastaOutFile.write(">" + geneName + "\n" + dnaSeq + "\n")
 
-                    protFastaOutFile.write(">" + geneName + "\n" + aaSeq + "\n")
-                    if dnaBasedGeneTrees:
-                        dnaFastaOutFile.write(">" + geneName + "\n" + dnaSeq + "\n")
 
-                    
-                    # write to gene information file
-                    geneInfoFile.write("\t".join([str(geneNum),geneName,commonName,locusTag,descrip,chrom,str(start),str(end),strand]) + "\n")
-                    genesOnChromL.append(str(geneNum))
+                # write to gene information file
+                geneInfoFile.write("\t".join([str(geneNum),geneName,commonName,locusTag,proteinId,descrip,chrom,str(start),str(end),strand]) + "\n")
+                genesOnChromL.append(str(geneNum))
 
-                    geneNum += 1 # increment every time we write a line to geneInfoFile
-                    
+                geneNum += 1 # increment every time we write a line to geneInfoFile
+
 
         if genesOnChromL != []:
             # if not empty, write this chromosome to geneOrderFile                    
@@ -138,26 +136,17 @@ get the stuff we want.
 
     return geneNum,problemGenbankFileL 
 
-def getUniqueRedundSets(fileName,speciesName):
-    '''Run through genbank file fileName, get set of unique genes (with no
-redundancies), and set with redundancies.'''
-    f = open(fileName, 'rU')
-    geneL=[]
-    for record in SeqIO.parse(f, "genbank"):
-        # iterate through the genes on the chromosome
-        for feature in record.features:
-            # choose only the features that are protein coding genes
-            if feature.type == "CDS" and 'protein_id' in feature.qualifiers:
-                speciesProtName = speciesName + '-' + feature.qualifiers['protein_id'][0]
-                geneL.append(speciesProtName)
-    f.close()
-
-    # now figure out which ones are unique
-    uniqueS = set()
-    redundS = set()
-    for gene in geneL:
-        if geneL.count(gene)>1:
-            redundS.add(gene)
-        else:
-            uniqueS.add(gene)
-    return uniqueS,redundS
+def verifyProteinAnnotations(fileName):
+    '''Run through genbank file fileName verifying that it contains
+protein annotations. Return True if it does, False if not.'''
+    with open(fileName, 'rU') as f:
+        for record in SeqIO.parse(f, "genbank"):
+            # iterate through the genes on the chromosome
+            for feature in record.features:
+                # choose only the features that are protein coding genes
+                if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
+                    # at least one annotation
+                    return True
+    # made it all the way through with no annotations
+    return False
+    

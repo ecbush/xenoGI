@@ -197,7 +197,7 @@ def vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF):
             entryL = []
             for geneNum in locusFamO.iterGenesByStrain(node):
                 infoT=genesO.numToGeneInfo(geneNum)
-                geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
+                geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=infoT
                 commonGeneName = "("+commonName+")" if commonName != '' else ''
                 entryL.append(geneName + commonGeneName)
                 
@@ -218,7 +218,7 @@ def vPrintLocusIsland(island,rootFocalClade,subtreeD,familiesO,genesO,fileF):
         printL = []
         for geneNum in locusFamO.iterGenes():
             infoT=genesO.numToGeneInfo(geneNum)
-            geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
+            geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=infoT
             printL.append([geneName,descrip])
 
         printTable(printL,indent=4,fileF=fileF)
@@ -262,7 +262,7 @@ def printAllLocusIslandsTsv(islandByNodeD,speciesRtreeO,rootFocalClade,familiesO
                 lfamGeneL=[str(locusFamO.locusFamNum)]
                 for geneNum in locusFamO.iterGenes():
                     infoT=genesO.numToGeneInfo(geneNum)
-                    geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
+                    geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=infoT
                     lfamGeneL.append(geneName)
                 printL.append(",".join(lfamGeneL))
             print("\t".join(printL),file=fileF)
@@ -306,9 +306,9 @@ def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,g
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
     def printCoordinates(labelText,genesO,firstGene,lastGene,fileF):
-        chrom = genesO.numToGeneInfo(firstGene)[4]
-        startPos = genesO.numToGeneInfo(firstGene)[5]
-        endPos = genesO.numToGeneInfo(lastGene)[6]
+        chrom = genesO.numToGeneInfo(firstGene)[5]
+        startPos = genesO.numToGeneInfo(firstGene)[6]
+        endPos = genesO.numToGeneInfo(lastGene)[7]
         print("    "+labelText,chrom+":"+str(startPos)+"-"+str(endPos),file=fileF)
 
 
@@ -387,7 +387,7 @@ that are in islandGenesInStrainL.'''
     for geneNum in neighbGenesL:
 
         infoT=genesO.numToGeneInfo(geneNum)
-        geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
+        geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=infoT
 
         
         locIslNum,famNum,locFamNum = gene2FamIslandD[geneNum]
@@ -416,7 +416,7 @@ description.'''
     for geneNum in neighbGenesL:
         strainName = genesO.numToStrainName(geneNum)
         infoT=genesO.numToGeneInfo(geneNum)
-        geneName,commonName,locusTag,descrip,chrom,start,end,strand=infoT
+        geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=infoT
         
         locIslNum,famNum,locFamNum = gene2FamIslandD[geneNum]
         famO = originFamiliesO.getFamily(famNum)

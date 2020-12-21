@@ -61,7 +61,7 @@ return its chrom,start,end.
     geneMidpointL=[]
     for locFam,geneL in locFamilyL:
         for geneNum,geneName in geneL:
-            geneName,commonName,locusTag,descrip,chrom,start,end,strand=genesO.numToGeneInfo(geneNum)
+            geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=genesO.numToGeneInfo(geneNum)
             chromL.append(chrom)
             start = int(start)
             end = int(end)
@@ -114,7 +114,7 @@ we've done already.
         famOrig = famO.origin(speciesRtreeO,rootFocalClade)
         
         for geneNum,geneName in geneL:
-            geneName,commonName,locusTag,descrip,chrom,start,end,strand=genesO.numToGeneInfo(geneNum)
+            geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=genesO.numToGeneInfo(geneNum)
             if commonName != '':
                 Name=commonName
             else:
