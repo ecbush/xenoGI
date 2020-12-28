@@ -3,14 +3,16 @@ Change Log
 ==========
 
 -------------------
-3.0.0_ - 2020-09-01
+3.0.0_ - 2021-01-04
 -------------------
 
 - Now reconstruct the history of gene families by reconciling the gene tree for a family against the species tree. We use FastTree to make the gene trees, and a custom reconciliation algorithm called DTLOR (duplication, transfer, loss, origin, rearrangement) to do the reconciliation. The analysis output now includes a history of evolutionary events for each gene, as well as an explicit call as to its origin (either core gene, C, or xeno hgt event, X).
+- Added a refine step which comes after makeIslands. This step focuses on cases where there are multiple most parsimonious reconciliations, and chooses the one most consistent with nearby families.
 - Added rooted and unrooted tree classes to make working with gene trees more convenient.
 - printAnalysis now produces a tab delimited (islands.tsv) file in addition to the more human readable islandsSummary.txt.
 - Added some additional fields to blast output files.
-
+- xenoGI gene names now encorporate locus tag rather than protein ID.
+  
 -------------------
 2.2.0_ - 2019-07-29
 -------------------

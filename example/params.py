@@ -84,7 +84,7 @@ rearrangeCost = 7
 # reconciliation with permissive costs. By default, we set to None
 # (and don't do this type of reconciliation). Users can override by
 # uncommenting the line below, and creating the corresponding file
-#reconcilePermissiveOriginGeneListPath = 'reconcilePermissiveOriginGeneList.txt'
+#reconcilePermissiveOriginGeneListPath = 'permissiveOriginGeneList.txt'
 
 
 #### Parallelization ####

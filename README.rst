@@ -130,15 +130,6 @@ What the steps do
 * ``printAnalysis`` produces a number of analysis/output files intended for the end user.
 
 * ``createIslandBed`` produces bed files for each genome.
-  
-Notes on several parameters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ``rootFocalClade`` defines the focal clade where we will do the reconstruction. It is specified by giving the name of an internal node. It should be chosen such that there are one or more outgroups outside the focal clade. These outgroups help us to better recognize core genes given the possibility of deletion in some lineages. 
-
-* ``numProcesses`` determines how many separate processes to run in parts of the code that are parallel. If you have a machine with 32 processors, you would typically set this to 32 or less.
-
-* ``dnaBasedGeneTrees`` specifies what will be used to make gene trees. If this is set to True, the method will use DNA based alignments, otherwise it will use protein alignments.
 
 Locus families and locus islands
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,9 +145,9 @@ Initial families, origin families and the DTLOR model
 
 In fact, a locus family has several possible origins. It may be due to a horizontal transfer event coming from some other genome. Alternatively, it may reflect a rearrangement event within a genome, moving genes to a new syntenic location (for example in conjunction with a duplication event). A final possibility is that it is a core family and originated in the common ancestor of the strains under consideration. One of xenoGI's goals is to distinguish between these possibilities for each locus family (and also for the locus islands that contain them).
 
-xenoGI does this during the process of family formation. It begins by forming large gene groupings using single linkage clustering and sequence similarity as determined by blast. It then takes these "blast families", breaks up the larger ones (which must be done for reasons of time efficiency in later steps), and uses them as a basis for making a set of families which we call initial families. For each initial family, xenoGI creates a gene tree using MUSCLE and FastTree (the user can determine whether this should be done with DNA or protein by setting the input parameter dnaBasedGeneTrees either True or False). It then reconciles each resulting gene tree to the species tree using the DTLOR model.
+xenoGI does this during the process of family formation. It begins by forming large gene groupings using single linkage clustering and sequence similarity as determined by blast. It then takes these "blast families", breaks up the larger ones (which must be done for reasons of time efficiency in later steps), and uses them as a basis for making a set of families which we call initial families. For each initial family, xenoGI creates a gene tree using MUSCLE and FastTree (the user can determine whether this should be done with DNA or protein by setting the input parameter dnaBasedGeneTrees). It then reconciles each resulting gene tree to the species tree using the DTLOR model.
 
-DTLOR is an extension of the DTL (duplication-transfer-loss) reconciliation model which we have developed. It is especially suited to reconciliation in clades of closely related microbes because it allows some of the evolution of a gene family to occur outside of the given species tree. In particular, it allows multiple entry events into the species tree (where DTL allows only one). To facilitate the recognition of such entry events, the model also keeps track of *syntenic region* of each gene as it evolves in the species tree. Two genes are said to be in the same syntenic region if they share a substantial fraction of core genes in a relatively large window around them and, second, they share a certain amount of similarity among all genes in a smaller window around them. Thus, in addition to duplication, transfer, and loss events, the DTLOR model adds *origin* events to indicate that a gene is transferred from outside of the species tree and *rearrangement* events that account for changes in the syntenic regions of genes within the same the genome.
+DTLOR is an extension we have developed to the DTL (duplication-transfer-loss) reconciliation model. It is especially suited to reconciliation in clades of closely related microbes because it allows some of the evolution of a gene family to occur outside of the given species tree. In particular, it allows multiple entry events into the species tree (where DTL allows only one). To facilitate the recognition of such entry events, the model also keeps track of *syntenic region* of each gene as it evolves in the species tree. Two genes are said to be in the same syntenic region if they share a substantial fraction of core genes in a relatively large window around them and, second, they share a certain amount of similarity among all genes in a smaller window around them. Thus, in addition to duplication, transfer, and loss events, the DTLOR model adds *origin* events to indicate that a gene is transferred from outside of the species tree and *rearrangement* events that account for changes in the syntenic regions of genes within the same the genome.
 
 xenoGI obtains a reconciliation for each initial family, and then uses these to break the initial families up according to origin events. The new families that result from this are called *origin families* because each one has an origin event at its base. For families whose origin is placed below the root of the species tree, the possible origins are horizontal transfer from outside or rearrangement. In general, users will be more interested in origin families than initial families. However the class representing initial families does contain some information (the raw reconciliation output) which isn't present in the origin families, and may occasionally be of interest.
 
@@ -173,6 +164,19 @@ It may be helpful to give an example of the sort of thing one might find in an o
 We've labeled the internal nodes on this tree s0,s1, and s2.
 
 Imagine that genes w1 and x1 represent a locus family in the W,X clade. They are orthologs sharing high synteny. (And they have no ortholog in species Y or Z). Imagine that there is also a paralog x2 that occurs in a different syntenic region (and that there is no w2, y2 or z2, ie W, Y and Z have no paralogs in this syntenic region). This situation could arise if there had been a horizontal transfer from outside the clade on the lineage leading to s2, and then a subsequent duplication and rearrangement after s2 on the lineage leading to X. If this were the case, xenoGI would place x1, y1, and x2 into a single origin family. w1 and x1 would be put in one locus family, and x2 in another. (In general, an origin family consists of one or more locus families.)
+  
+Notes on several input parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``rootFocalClade`` defines the focal clade where we will do the reconstruction. It is specified by giving the name of an internal node in the species tree. It should be chosen such that there are one or more outgroups outside the focal clade. These outgroups help us to better recognize core genes given the possibility of deletion in some lineages. 
+
+* ``numProcesses`` determines how many separate processes to run in parts of the code that are parallel. If you have a machine with 32 processors, you would typically set this to 32 or less.
+
+* ``dnaBasedGeneTrees`` specifies what will be used to make gene trees. If this is set to True, the method will use DNA based alignments, otherwise it will use protein alignments.
+
+* The DTLOR cost parameters: ``duplicationCost``, ``transferCost``, ``lossCost``, ``originCost``, ``rearrangeCost``. The parsimony based reconciliation algorithm finds the minimum cost mapping of a gene tree onto the species tree. These parameters specify the costs for each of the DTLOR operations. The params.py file included in the example directory contains a set of costs we have found to work reasonably well, however users may potentially want to adjust these. The same parameters are used for all reconciliations, with one exception (see next bullet).
+
+* ``reconcilePermissiveOriginGeneListPath``. This parameter is commented out by default, and will only be useful in certain situations. There are some genomic islands that insert repeatedly in the same syntenic region. An example is the SCCmec element in *Staphylococcus aureus*. In such cases, it is desirable to do the reconciliation with cost parameters that are permissive to origin events. xenoGI allows users to identify families that should be handled in this way. The first step is to create a file of xenoGI genes belonging to such families (one gene per line). We then set the ``reconcilePermissiveOriginGeneListPath`` to point to this file. The script ``getProteinsWithBlastHitsVsMultifasta.py`` in the misc/ directory may be useful in producing this file. The documentaiton for the misc directory has some further information.
 
 Output files
 ~~~~~~~~~~~~
@@ -254,7 +258,7 @@ You can then run ``makeSpeciesTree``::
 
   xenoGI params.py makeSpeciesTree
 
-In the ``params.py`` file, the parameter ``dnaBasedGeneTrees`` determines whether DNA or protein are used to make genes trees. (If True DNA is used).
+In the ``params.py`` file, the parameter ``dnaBasedGeneTrees`` determines whether DNA or protein are used to make genes trees. (If True, DNA is used).
 
 In order to use ``makeSpeciesTree``, you will also need to add one parameter to ``params.py``. There should be a parameter outGroup which specifies a single outgroup species to be used in rooting the species tree.
 
