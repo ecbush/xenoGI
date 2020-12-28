@@ -140,18 +140,39 @@ Notes on several parameters
 
 * ``dnaBasedGeneTrees`` specifies what will be used to make gene trees. If this is set to True, the method will use DNA based alignments, otherwise it will use protein alignments.
 
-A note on the output
-~~~~~~~~~~~~~~~~~~~~
+Locus families and locus islands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A brief illustration will allow us to define some terminology used in xenoGI's output. The basic goal of xenoGI is to group genes with a common origin and map them onto a phylogenetic tree.
 
 Consider a clade of three species: (A,B),C. In this group, A and B are most closely related, and C is the outgroup. Gene a in species A has an ortholog b in species B. These two genes have high synteny, but have no ortholog in C. We call a and b a *locus family* because they are descended from a common ancestor, and occur in the same syntenic location.
 
-When a genomic island inserts as a part of a horizontal transfer event, it typically brings in multiple locus families at the same time. xenoGI will attempt to group these into a *locus island*. In the a/b case, if there were several other locus families nearby that also inserted on the branch leading to the A,B clade, we would group them together into a single locus island. At present, locus islands and locus families are the basic units of output.
+When a genomic island inserts as a part of a horizontal transfer event, it typically brings in multiple locus families at the same time. xenoGI will attempt to group these into a *locus island*. In the a/b case, if there were several other locus families nearby that also inserted on the branch leading to the A,B clade, we would group them together into a single locus island.
 
-Let us define one last bit of terminology. Consider another clade of three species: (X,Y),Z. Genes x1 and y1 represent a locus family in the X,Y clade. They are orthologs sharing high synteny. (And they have no ortholog species Z). Imagine that there is also a set of paralogs x2 and y2 which resulted from a gene duplication in the lineage leading to the X,Y clade. These occur in a different syntenic location. In this case, x2 and y2 constitute another locus family. Because these two locus families descended from a common ancestor gene within the species tree, we place them in the same *origin family*. In general, an origin family consists of one or more locus families.
+Initial families, origin families and the DTLOR model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is also worth mentioning that in the process of creating origin families, xenoGI produces an initial grouping of genes called initial families. In general, users will be more interested in the origin families. However the class representing initial families does contain some information (the raw reconciliation output) which isn't present in the origin families, and may occasionally be of interest.
+In fact, a locus family has several possible origins. It may be due to a horizontal transfer event coming from some other genome. Alternatively, it may reflect a rearrangement event within a genome, moving genes to a new syntenic location (for example in conjunction with a duplication event). A final possibility is that it is a core family and originated in the common ancestor of the strains under consideration. One of xenoGI's goals is to distinguish between these possibilities for each locus family (and also for the locus islands that contain them).
+
+xenoGI does this during the process of family formation. It begins by forming large gene groupings using single linkage clustering and sequence similarity as determined by blast. It then takes these "blast families", breaks up the larger ones (which must be done for reasons of time efficiency in later steps), and uses them as a basis for making a set of families which we call initial families. For each initial family, xenoGI creates a gene tree using MUSCLE and FastTree (the user can determine whether this should be done with DNA or protein by setting the input parameter dnaBasedGeneTrees either True or False). It then reconciles each resulting gene tree to the species tree using the DTLOR model.
+
+DTLOR is an extension of the DTL (duplication-transfer-loss) reconciliation model which we have developed. It is especially suited to reconciliation in clades of closely related microbes because it allows some of the evolution of a gene family to occur outside of the given species tree. In particular, it allows multiple entry events into the species tree (where DTL allows only one). To facilitate the recognition of such entry events, the model also keeps track of *syntenic region* of each gene as it evolves in the species tree. Two genes are said to be in the same syntenic region if they share a substantial fraction of core genes in a relatively large window around them and, second, they share a certain amount of similarity among all genes in a smaller window around them. Thus, in addition to duplication, transfer, and loss events, the DTLOR model adds *origin* events to indicate that a gene is transferred from outside of the species tree and *rearrangement* events that account for changes in the syntenic regions of genes within the same the genome.
+
+xenoGI obtains a reconciliation for each initial family, and then uses these to break the initial families up according to origin events. The new families that result from this are called *origin families* because each one has an origin event at its base. For families whose origin is placed below the root of the species tree, the possible origins are horizontal transfer from outside or rearrangement. In general, users will be more interested in origin families than initial families. However the class representing initial families does contain some information (the raw reconciliation output) which isn't present in the origin families, and may occasionally be of interest.
+
+It may be helpful to give an example of the sort of thing one might find in an origin family. Consider a clade of four species: ((W,X),Y),Z.
+
+            _____ W
+       ____|s2
+  ____|s1  |_____ X
+ |    |
+_|s0  |__________ Y
+ |
+ |_______________ Z
+ 
+We've labeled the internal nodes on this tree s0,s1, and s2.
+
+Imagine that genes w1 and x1 represent a locus family in the W,X clade. They are orthologs sharing high synteny. (And they have no ortholog in species Y or Z). Imagine that there is also a paralog x2 that occurs in a different syntenic region (and that there is no w2, y2 or z2, ie W, Y and Z have no paralogs in this syntenic region). This situation could arise if there had been a horizontal transfer from outside the clade on the lineage leading to s2, and then a subsequent duplication and rearrangement after s2 on the lineage leading to X. If this were the case, xenoGI would place x1, y1, and x2 into a single origin family. w1 and x1 would be put in one locus family, and x2 in another. (In general, an origin family consists of one or more locus families.)
 
 Output files
 ~~~~~~~~~~~~
