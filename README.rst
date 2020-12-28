@@ -160,16 +160,16 @@ DTLOR is an extension of the DTL (duplication-transfer-loss) reconciliation mode
 
 xenoGI obtains a reconciliation for each initial family, and then uses these to break the initial families up according to origin events. The new families that result from this are called *origin families* because each one has an origin event at its base. For families whose origin is placed below the root of the species tree, the possible origins are horizontal transfer from outside or rearrangement. In general, users will be more interested in origin families than initial families. However the class representing initial families does contain some information (the raw reconciliation output) which isn't present in the origin families, and may occasionally be of interest.
 
-It may be helpful to give an example of the sort of thing one might find in an origin family. Consider a clade of four species: ((W,X),Y),Z.
+It may be helpful to give an example of the sort of thing one might find in an origin family. Consider a clade of four species: ((W,X),Y),Z::
 
-            _____ W
-       ____|s2
-  ____|s1  |_____ X
- |    |
-_|s0  |__________ Y
- |
- |_______________ Z
- 
+              _____ W
+         ____|s2
+    ____|s1  |_____ X
+   |    |
+  _|s0  |__________ Y
+   |
+   |_______________ Z
+
 We've labeled the internal nodes on this tree s0,s1, and s2.
 
 Imagine that genes w1 and x1 represent a locus family in the W,X clade. They are orthologs sharing high synteny. (And they have no ortholog in species Y or Z). Imagine that there is also a paralog x2 that occurs in a different syntenic region (and that there is no w2, y2 or z2, ie W, Y and Z have no paralogs in this syntenic region). This situation could arise if there had been a horizontal transfer from outside the clade on the lineage leading to s2, and then a subsequent duplication and rearrangement after s2 on the lineage leading to X. If this were the case, xenoGI would place x1, y1, and x2 into a single origin family. w1 and x1 would be put in one locus family, and x2 in another. (In general, an origin family consists of one or more locus families.)
