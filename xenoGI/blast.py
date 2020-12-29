@@ -54,7 +54,6 @@ def makeBlastClineList(dbFileL_1, dbFileL_2,paramD):
     '''Create a list of lists, where the sublists have the command line
 needed to run blastp on a pair of databases.'''
 
-    fastaFilePath = paramD['fastaFilePath']
     blastFilePath = paramD['blastFilePath']
     blastExecutDirPath = paramD['blastExecutDirPath']
     blastFileJoinStr = paramD['blastFileJoinStr']
@@ -76,10 +75,6 @@ needed to run blastp on a pair of databases.'''
     blastDir,rest = splitT
     blastExtension = rest.split("*")[-1]
 
-    # get list of blast and fasta files currently
-    fastaFiles = glob.glob(fastaFilePath)
-    blastFiles = glob.glob(blastFilePath)
-
     # check if fasta files modified more recently than blast files
     shouldBlast = determineShouldBlast(dbFileL_1[0],dbFileL_2[0],blastFilePath,blastFileJoinStr)
 
@@ -91,14 +86,15 @@ needed to run blastp on a pair of databases.'''
             qstem = os.path.split(query)[-1]
             if "_prot.fa" in qstem:
                 qstem = qstem.split("_prot.fa")[0]
-            elif ".fa" in qstem:
-                qstem = qstem.split(".fa")[0]
+            else:
+                # just remove extension
+                qstem = os.path.splitext(qstem)[0]
                 
             dbstem = os.path.split(db)[-1]
             if "_prot.fa" in dbstem:
                 dbstem = dbstem.split("_prot.fa")[0]
-            elif ".fa" in dbstem:
-                dbstem = dbstem.split(".fa")[0]
+            else:
+                dbstem = os.path.splitext(dbstem)[0]
                 
             outFN = os.path.join( blastDir, qstem + blastFileJoinStr + dbstem + blastExtension )
                 

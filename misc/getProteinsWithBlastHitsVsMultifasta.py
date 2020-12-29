@@ -29,10 +29,6 @@ if __name__ == "__main__":
     for strain in strainNamesT:
         allStrainsFileNamesL.append(os.path.join(fastaDir,strain+"_prot.fa"))
 
-    if proteinMultiFastaPath[-8:] != "_prot.fa":
-        # make sure ending is consistent with other dbs
-        proteinMultiFastaPath+="_prot.fa"
-        
     blast.runBlast([proteinMultiFastaPath],allStrainsFileNamesL,paramD)
     
     # parse blast to identify ifams with similarity to model seqs
