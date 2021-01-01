@@ -21,8 +21,10 @@ representative scaffold tree.
 def printAnalysisXLWrapper(paramD):
     '''Wrapper to run analysis.
     '''
-    scaffoldTree = trees.readTree(paramD['scaffoldTreeFN'])
-    rootFocalClade = trees.getRootFocalCladeFromOutgroup(scaffoldTree,paramD['outGroup'])
+    scaffoldTree = trees.Rtree()
+    scaffoldTree.fromNewickFileLoadSpeciesTree(paramD['scaffoldTreeFN'])
+    outGroupL = [paramD['outGroup']]
+    rootFocalClade = "".join([x for x in scaffoldTree.children(scaffoldTree.rootNode) if x != outGroupL[0]]) # get child that is not outgroup
     # because xenoGI.printAnalysisWrapper is also used by regular
     # xenoGI, we pass in tree file rather than tree here
     xenoGI.printAnalysisWrapper(paramD,paramD['scaffoldTreeFN'],rootFocalClade)

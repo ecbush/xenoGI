@@ -161,7 +161,7 @@ nonHomologRightPeakLimit = 0.6
 # blast families. obtained by examining this distribution of maximum
 # scores for aabrh hard core families.
 quantileForObtainingSplitThresholds = .95
-multiplierForObtainingSplitThresholds = 1.1
+multiplierForObtainingSplitThresholds = 1.5
 
 # The maximum size for blast and initial families is a multiple of the
 # number of tips on the species tree. These parameters give the

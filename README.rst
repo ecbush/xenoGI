@@ -71,7 +71,7 @@ Required files
 
 The working directory must contain:
 
-* A parameter file. In the provided ``example/`` directory this is called ``params.py``. The ``blastExecutDirPath`` parameter in this file should be edited to point to the directory where the blastp and makeblastdb executables are. Similarly, ``musclePath`` should give the path to the MUSCLE executable, and ``fastTreePath`` should give the path to the FastTree executable.
+* A parameter file. In the provided ``example/`` directory this is called ``params.py``.
 
 * A newick format tree representing the relationships of the strains. In the example this is called ``example.tre``. Note that branch lengths are not used in xenoGI, and ``example.tre`` does not contain branch lengths. Also note that internal nodes should be given names in this tree. In the example.tre we label them s0, s1 etc. The parameter ``speciesTreeFN`` in ``params.py`` has the path to this tree file. If a strain tree is not available, xenoGI has some accessory methods, described below, to help obtain one.
 
@@ -85,6 +85,17 @@ The system needs a way to connect the sequence files to the names used in the tr
 In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ``ncbiHumanMap.txt``. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes, spaces, commas or special characters. In ``params.py`` the parameter ``fileNameMapFN`` is set to point to this file.
 
 Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set ``fileNameMapFN = None`` in ``params.py``. (This is not necessary in the example, which is already set to run the other way).
+
+Pointing xenoGI to various executables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before running xenoGI you'll have to ensure that it knows where various executables are. Edit ``params.py`` using a text editor such as emacs, vim, nano, Visual Studio Code etc. You should edit the following to give the absolute (full) path to the directory where the ``blastp`` and ``makeblastdb`` executables reside::
+
+  blastExecutDirPath = '/usr/bin/'
+
+(Change '/usr/bin/' to correspond to the right location on your system).
+
+Also make sure that the absolute paths to MUSCLE and FastTree are correct in ``params.py`` (the parameters ``musclePath`` and ``fastTreePath``). If you will be using the makeSpeciesTree functionality, then you will also need to specify ``astralPath`` and ``javaPath``.
 
 Running the code
 ~~~~~~~~~~~~~~~~
