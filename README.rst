@@ -64,7 +64,9 @@ How to use
 
 An ``example/`` directory is included in this repository.
 
-The basic method works on a set of species with known phylogenetic relationships. In the example, these species are: E. coli K12, E. coli ATCC 11775, E. fergusonii and S. bongori.
+The sections below give some instructions about how to run xenoGI on this example. You can use this to make sure you've installed it properly and so forth. The github repository also contains a TUTORIAL which you can run through after completing the README.
+
+The basic method works on a set of species with known phylogenetic relationships. In the example, these species are: E. coli K12, E. coli ATCC 11775, E. fergusonii and S. bongori. In cases where you don't know the species tree, xenoGI has methods to help you reconstruct it.
 
 Required files
 ~~~~~~~~~~~~~~

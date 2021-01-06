@@ -10,12 +10,13 @@ from xenoGI import parameters,blast,genomes,xenoGI
 if __name__ == "__main__":
 
     paramFN = sys.argv[1]
-    proteinMultiFastaPath = sys.argv[2]
+    strainInfoFN = sys.argv[2] # include as argument so can pass in scaffold only set in xlMode case
+    proteinMultiFastaPath = sys.argv[3]
 
     paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
     genesO = genomes.genes(paramD['geneInfoFN'])
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'])
-    strainNamesT = xenoGI.readStrainInfoFN(paramD['strainInfoFN'])
+    strainNamesT = xenoGI.readStrainInfoFN(strainInfoFN)
     
     evalueThresh = paramD['evalueThresh']
     alignCoverThresh = paramD['alignCoverThresh']

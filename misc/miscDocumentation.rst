@@ -78,8 +78,10 @@ The ``getProteinsWithBlastHitsVsMultifasta.py`` script in misc/ identifies xenoG
 
 Run it like this::
   
-  python3 path-to-xenoGI-github-repository/misc/getProteinsWithBlastHitsVsMultifasta.py params.py fasta/multiFastaWithProtsToSearch.fa > listOfHits.txt
+  python3 path-to-xenoGI-github-repository/misc/getProteinsWithBlastHitsVsMultifasta.py params.py strainInfo.txt fasta/multiFastaWithProtsToSearch.fa > listOfHits.txt
 
+In a typical xenoGI working directory, ``strainInfo.txt`` is a file that should already exist listing all the strains. If you wish to run this script in an xlMode directory, and only run on strains in the scaffold, then you would first need to produce a strainInfo.txt-like file with only the scaffold strains. This could be done by running ``listTreeStrains.py`` (described below) on the scaffold tree.
+  
 Here's an example of how this script might be used.
 
 As described in the README, it is possible to provide xenoGI with a list of genes on which we should use DTLOR parameters that are permissive to origin events. A case where one might want to do this would be the SCCmec element in *Staphylococcus aureus*. Say we're running xenoGI on a set of *S. aureus* genomes. We could do as follows. First, we collect a set of protein sequences from known SCCmec elements (e.g. from NCBI). Put these in a file (``fasta/multiFastaWithProtsToSearch.fa``. Then run the ``getProteinsWithBlastHitsVsMultifasta.py`` script on it from the top level of the xenoGI working directory. If we run it as described above, the output will go in to a file ``listOfHits.txt`` at the top level of the xenoGI working directory. We can now add the following line to ``params.py``::
@@ -87,3 +89,10 @@ As described in the README, it is possible to provide xenoGI with a list of gene
   reconcilePermissiveOriginGeneListPath = 'listOfHits.txt'
 
 Now when we run xenoGI DTLOR will use permissive origin costs for all families with genes in the hit list.
+
+Get a list of the strains in a tree file
+----------------------------------------
+
+The ``listTreeStrains.py`` script in misc/ takes a parameter file and a tree as input, and produces a listing of the strains in that tree::
+
+  python3 path-to-xenoGI-github-repository/misc/listTreeStrains.py xlParams.py scaffold.tre > scaffoldStrains.txt
