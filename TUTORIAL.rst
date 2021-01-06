@@ -237,8 +237,8 @@ We can now create a set of output files which we'll use in subsequent analysis::
 
 This step is very quick, taking just a few seconds on this data set.
 
-Examining those output files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Examining the genes files
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The above command creates a subdirectory called analysis. Let's have a look at it::
 
@@ -253,7 +253,9 @@ The genes files contain all the genes in a strain laid out in the order they occ
 
 The -S tells the text viewer less not to wrap lines, which makes it a little easier to read. You may want to maximize your window, or make it wider so that more of each line displays. At the right of each line is included a description of each gene.
 
-You can now search within less by entering the locus tag for the first gene STM2865.
+FYI, when you want to exit ``less``, type ``q``.
+
+You can now search within ``less`` by typing forward slash (``/``) and entering the terms you want to search with. Here let's search using locus tag STM2865 which is at the beginning of SPI1.
 
 Here's a truncated bit of what you should see::
   
@@ -298,12 +300,168 @@ Here's a truncated bit of what you should see::
   21125_S_enterica_LT2-STM2901    X       O       4591    3864    4614    4680    S_enterica_LT2  hypothetical protei
   21126_S_enterica_LT2-STM2902    X       O       4591    3802    4525    4591    S_enterica_LT2  putative cytoplasmi
 
-The first column consists of genes listed by their xenoGI name (the locus tag is the last part of this). xenoGI has identified a locus island that corresponds to SPI1. The number for this locus island is given in column 4, and is 3646 here. (It is possible that the numbering will be different on other machines). This locus island extends from 21089_S_enterica_LT2-STM2865 to 21124_S_enterica_LT2-STM2900 as expected. Note that in the display above, we've included a few genes on either end of the locus island.
+The first column consists of genes listed by their xenoGI name (the locus tag is the last part of this). xenoGI has identified a locus island that corresponds to SPI1. The number for this locus island is given in column 4, and is 3646 here. (It is possible that the numbering will be different on your machine). This locus island extends from 21089_S_enterica_LT2-STM2865 to 21124_S_enterica_LT2-STM2900 as expected. Note that in the display above, we've included a few genes on either end of the locus island.
 
 As discussed in the README, a locus island represents a set of gene families with a common origin. In this case, it corresponds to a genomic island which is inferred to have inserted on the branch leading to s2 (the branch inserted on is given in the 8th column).
 
-Every gene in a particular clade is either a core gene, or arose by xeno horizontal transfer (horizontal transfer from outside the clade). One of the goals of xenoGI is to determine this origin for each gene. The second column in the genes file contains this information. C stands for core, and X for xeno horizontal transfer. You can note that for SPI1, all the genes are marked X.
+Every gene in a particular clade is either a core gene, or arose by xeno horizontal transfer (horizontal transfer from outside the clade). One of the goals of xenoGI is to determine this origin for each gene. The second column in the genes file contains this information. C stands for core, and X for xeno horizontal transfer. Note that for SPI1, all the genes are marked X.
 
-The third column contains a gene history string. Taking the gene 21124_S_enterica_LT2-STM290 for example (invH) the string is OSS. This reflects the history of the gene after insertion, as reconstructed by the DTLOR reconciliation. O stands for origin (in this case the xeno hgt event). And S stands for co-speciation--what happens when a speciation event occurs and both descendent lineages inherit a gene. invH is inferred to have inserted on branch s2. It then underwent co-speciation events at node s2 and node s3.
+The third column contains a gene history string. Taking the gene 21124_S_enterica_LT2-STM290 for example (invH) the string is OSS. This reflects the history of the gene after insertion, as reconstructed by the DTLOR reconciliation. O stands for origin (in this case the xeno hgt event). And S stands for co-speciation--what happens when a speciation event occurs and both descendent lineages inherit a gene. invH is inferred to have inserted on branch s2. It then underwent co-speciation events at node s2 and node s3. (Other possible characters that could appear in the gene history string are  D, duplication; T, transfer (within the species tree); R, rearrangement).
 
 As we noted, the 4th column gives the locus island. The 5th gives the initial family number, the 6th the origin family number, and the 7th the locus family number. We'll use some of these in the examples below.
+
+Quit out of ``less`` by typing ``q``.
+
+A second pathogenicity island in Salmonella, SPI2 is known to have two parts with different evolutionary origins. The type III secretion system (t3ss) is shared by Salmonella enterica strains, but is lacking outside that group. On our enterics tree, this means it inserted on the s3 branch. There is also a portion of SPI2 that is called the tetrathionate reductase gene cluster (trgc). This portion is present in other species in the Salmonella genus. On our enterics tree it inserted on the s2 branch. The following locus tags define the beginning and end of these regions in SPI2 in S_enterica_AZ.
+
+==== ========== ==========
+       From         To
+---- ---------- ----------
+t3ss SARI_01560 SARI_01590
+trgc SARI_01591 SARI_01600
+==== ========== ==========
+
+You can search for these as we did above, and see what xenoGI says about the origins of these genes::
+
+  less -S genes-S_enterica_LT2.tsv
+
+Examining island summary filess
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Let's now take a look at a second file::
+
+  less islandsSummary.txt
+
+This file provides a human readable listing of locus islands, organized by the branch where they inserted. If you search for "LocusIsland 3646" it will bring you to the entry for the SPI1 island. Each entry has two parts. First is a listing of families, written out by row. Then below that is a listing of the genes that includes the description of the gene.
+
+This file is especially useful if you are browsing for interesting novel islands.
+
+Note that there is a tab delimited version of this information contained in the file ``islands.tsv`` (which will be more useful if you want to read it in to some subsequent analysis program).
+
+Interactive analysis
+~~~~~~~~~~~~~~~~~~~~
+
+Above we asked you to look SPI2 yourself. In the tetrathionate reductase gene cluster portion, one of the genes was this one::
+
+  1534_S_enterica_AZ-SARI_01595   X       OSS     2010    3506    4154    4220    s2      hypothetical protein
+
+We'll now examine this in a little more detail. Back at the unix prompt, cd up to the main enterics directory::
+
+  cd ..
+
+(You should now be in ``xgiTutorial/enterics``).
+
+From here type::
+
+    python3 ../xenoGI/xenoGI-runner.py params.py interactiveAnalysis
+
+Then at the python prompt type::
+
+  printFam(4154,originFamiliesO)
+
+We are printing origin family 4154 (the number for which we got from the genes file entry printed above). This produces the following::
+
+    Family 4154
+        LocusFamily 4220 s2 4189 root_b 1534_S_enterica_AZ-SARI_01595 19655_S_enterica_LT2-STM1387 14955_S_bongori-A464_1417
+
+        Source family 3506
+
+
+    Matrix of raw similarity scores [0,1] between genes in the family
+                                    | 1534_S_enterica_AZ-SARI_01595 | 19655_S_enterica_LT2-STM1387 | 14955_S_bongori-A464_1417
+      1534_S_enterica_AZ-SARI_01595 | 1.000                         | 0.944                        | 0.896
+      19655_S_enterica_LT2-STM1387  | 0.944                         | 1.000                        | 0.919
+      14955_S_bongori-A464_1417     | 0.896                         | 0.919                        | 1.000
+
+
+    Matrix of core synteny scores [0,1] between genes in the family
+                                    | 1534_S_enterica_AZ-SARI_01595 | 19655_S_enterica_LT2-STM1387 | 14955_S_bongori-A464_1417
+      1534_S_enterica_AZ-SARI_01595 | 1.000                         | 1.000                        | 1.000
+      19655_S_enterica_LT2-STM1387  | 1.000                         | 1.000                        | 1.000
+      14955_S_bongori-A464_1417     | 1.000                         | 1.000                        | 1.000
+
+
+    Matrix of synteny scores [0,1] between genes in the family
+                                    | 1534_S_enterica_AZ-SARI_01595 | 19655_S_enterica_LT2-STM1387 | 14955_S_bongori-A464_1417
+      1534_S_enterica_AZ-SARI_01595 | 1.000                         | 0.972                        | 0.940
+      19655_S_enterica_LT2-STM1387  | 0.972                         | 1.000                        | 0.958
+      14955_S_bongori-A464_1417     | 0.940                         | 0.958                        | 1.000
+
+
+    Printing all scores with non-family members
+      Inside fam                    | Outside fam                   | Raw   | Syn   | CoreSyn
+      ----------                    | -----------                   | ---   | ---   | -------
+      19655_S_enterica_LT2-STM1387  | 12484_C_rodentium-ROD_RS20160 | 0.398 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 12484_C_rodentium-ROD_RS20160 | 0.396 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 7970_E_coli_K12-b3669         | 0.396 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 7970_E_coli_K12-b3669         | 0.395 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 19659_S_enterica_LT2-STM1391  | 0.394 | 1.000 | 0.950
+      14955_S_bongori-A464_1417     | 7970_E_coli_K12-b3669         | 0.394 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 12484_C_rodentium-ROD_RS20160 | 0.394 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 5657_E_coli_K12-b1221         | 0.391 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 21014_S_enterica_LT2-STM2785  | 0.390 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 21992_S_enterica_LT2-STM3790  | 0.389 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 17399_S_bongori-A464_3863     | 0.389 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 1529_S_enterica_AZ-SARI_01590 | 0.389 | 0.638 | 0.950
+      14955_S_bongori-A464_1417     | 182_S_enterica_AZ-SARI_00190  | 0.389 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 19659_S_enterica_LT2-STM1391  | 0.389 | 0.307 | 0.950
+      14955_S_bongori-A464_1417     | 10345_C_rodentium-ROD_RS08835 | 0.389 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 20203_S_enterica_LT2-STM1947  | 0.389 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 21992_S_enterica_LT2-STM3790  | 0.388 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 20026_S_enterica_LT2-STM1767  | 0.388 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 19659_S_enterica_LT2-STM1391  | 0.387 | 0.928 | 0.950
+      14955_S_bongori-A464_1417     | 10520_C_rodentium-ROD_RS09755 | 0.387 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 15401_S_bongori-A464_1864     | 0.387 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 946_S_enterica_AZ-SARI_00990  | 0.387 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 21992_S_enterica_LT2-STM3790  | 0.387 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 1136_S_enterica_AZ-SARI_01186 | 0.387 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 17399_S_bongori-A464_3863     | 0.385 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 15634_S_bongori-A464_2097     | 0.385 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 17399_S_bongori-A464_3863     | 0.385 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 1529_S_enterica_AZ-SARI_01590 | 0.384 | 1.000 | 0.950
+      14955_S_bongori-A464_1417     | 1529_S_enterica_AZ-SARI_01590 | 0.384 | 0.000 | 0.950
+      1534_S_enterica_AZ-SARI_01595 | 5657_E_coli_K12-b1221         | 0.381 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 15401_S_bongori-A464_1864     | 0.381 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 20026_S_enterica_LT2-STM1767  | 0.381 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 1136_S_enterica_AZ-SARI_01186 | 0.381 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 5657_E_coli_K12-b1221         | 0.381 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 15401_S_bongori-A464_1864     | 0.381 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 10345_C_rodentium-ROD_RS08835 | 0.381 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 6328_E_coli_K12-b1914         | 0.381 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 20026_S_enterica_LT2-STM1767  | 0.380 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 1136_S_enterica_AZ-SARI_01186 | 0.380 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 20203_S_enterica_LT2-STM1947  | 0.379 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 10520_C_rodentium-ROD_RS09755 | 0.379 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 10345_C_rodentium-ROD_RS08835 | 0.378 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 10520_C_rodentium-ROD_RS09755 | 0.377 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 946_S_enterica_AZ-SARI_00990  | 0.377 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 20203_S_enterica_LT2-STM1947  | 0.376 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 7352_E_coli_K12-b3025         | 0.376 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 16744_S_bongori-A464_3208     | 0.376 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 15634_S_bongori-A464_2097     | 0.375 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 946_S_enterica_AZ-SARI_00990  | 0.375 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 7352_E_coli_K12-b3025         | 0.374 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 6328_E_coli_K12-b1914         | 0.373 | 0.000 | 0.000
+      19655_S_enterica_LT2-STM1387  | 3698_S_enterica_AZ-SARI_03859 | 0.364 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 3698_S_enterica_AZ-SARI_03859 | 0.363 | 0.000 | 0.000
+      1534_S_enterica_AZ-SARI_01595 | 3698_S_enterica_AZ-SARI_03859 | 0.362 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 10860_C_rodentium-ROD_RS11510 | 0.360 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 18847_S_enterica_LT2-STM0549  | 0.354 | 0.000 | 0.000
+      14955_S_bongori-A464_1417     | 6749_E_coli_K12-b2369         | 0.354 | 0.000 | 0.000
+
+
+    Gene tree
+    ((1534,19655)g0,14955)root
+
+    Gene tree annotated with reconciliation [branch events | node events]
+    ((1534[|S_enterica_AZ],19655[|S_enterica_LT2])g0[|S],14955[|S_bongori])root[O|S]
+
+    Reconciliation of gene tree onto species tree
+    - root
+      O (root b) --> (s2 b) synReg:4189
+      S (root n) --> (s2 n)
+       - g0
+         S (g0 n) --> (s3 n)
+          - 1534 [S_enterica_AZ]
+          - 19655 [S_enterica_LT2]
+       - 14955 [S_bongori]

@@ -201,7 +201,7 @@ The last two steps, printAnalysis and createIslandBed make the output files rele
   - This script produces a set of species specific genome files. These files all have the name ``genes`` in their stem, followed by the strain name, and the extension .tsv. In the example/ data set, ``genes-E_coli_K12.tsv`` is one such. These files contain all the genes in a strain laid out in the order they occur on the contigs. Each line corresponds to one gene and contains:
     + gene name
     + origin of the gene, specified by a single character: a C indicating core gene, or an X indicating xeno horizontal transfer. This field is an interpretation of the O event from the DTLOR reconcilation based on its placement in the species tree.
-    + gene history, specified by a string. This gives the history of the gene from its origin until the tip of the gene tree, and consists of single letters corresponding to the operations in the reconcilation model. D, duplication; T, transfer (within the species tree); O, origin; R, rearrangement.
+    + gene history, specified by a string. This gives the history of the gene from its origin until the tip of the gene tree, and consists of single letters corresponding to the operations in the reconcilation model. D, duplication; T, transfer (within the species tree); O, origin; R, rearrangement; S, cospeciation.
     + locus island number
     + initial family number
     + origin family number
