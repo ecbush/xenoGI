@@ -465,3 +465,12 @@ We are printing origin family 4154 (the number for which we got from the genes f
           - 1534 [S_enterica_AZ]
           - 19655 [S_enterica_LT2]
        - 14955 [S_bongori]
+
+Note that if you want to save this output directly to a file you can do like this::
+
+    printFam(4154,originFamiliesO,open("ofam4154.txt","w"))
+
+The third argument is optional, and is an open file handle. Doing this can be useful if you have a large family, and you want to view it without lines wrapping. (e.g. with ``less -S``).
+
+
+Notes: explain the annotated trees.

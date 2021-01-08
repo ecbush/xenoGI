@@ -51,7 +51,7 @@ originFamilies object.
     createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputSummaryF)
     
     initialFamiliesO,locusMapD = createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF)
-
+    
     genesO.initializeGeneNumToNameD(geneInfoFN,set(strainNamesT)) # needed for writeFamilies
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
@@ -1046,17 +1046,18 @@ work on. D,T,L,O,R are the DTLOR costs.
         if iFamO.geneCount() == 1:
             continue
 
-        if len(geneUtreeO.multifurcatingNodes()) > 0:
-            # it's multifurcating, arbitrarily binarize
-            # In future, we can implement dtlor for multifurcating nodes
-            geneUtreeO = geneUtreeO.binarize()
-        
         # in loop
         tipMapD=getTipMapping(geneUtreeO,genesO)
 
         # Make new gtLocusMapD with only those genes in geneUtreeO
         gtLocusMapD = reduceLocusMap(geneUtreeO,locusMapD)
-        
+
+        # ensure tree is binary
+        if len(geneUtreeO.multifurcatingNodes()) > 0:
+            # it's multifurcating, arbitrarily binarize
+            # In future, we can implement dtlor for multifurcating nodes
+            geneUtreeO = geneUtreeO.binarize(gtLocusMapD)
+      
         # add to argumentL
         argT = (initFamNum,speciesRtreeO,geneUtreeO,tipMapD,gtLocusMapD,D,T,L,O,R)
         argumentL.append(argT)

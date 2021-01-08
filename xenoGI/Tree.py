@@ -177,15 +177,23 @@ tip.
         connecT = self.nodeConnectD[node]
         return connecT[0] # parent is first element
 
-    def binarize(self):
+    def binarize(self,gtLocusMapD=None):
         '''Arbitarily convert a tree with multifurcating nodes into one with
 binary nodes. Newly introduced nodes have a "b" in their naming to
 mark them off. If tree has branch lengths, then newly introduced
-branches are given 0 length.
+branches are given 0 length. gtLocusMapD gives the syntenic regions of
+genes. If this is not None, then we use it to help order the way we
+binarize multifurcating nodes.
         '''
+        
         # funcs
         def getNewNodes(newNodeCtr,parent,node,childL,updateParentD):
-            ''''''
+            '''Goes through a list of children from a multifurcating node, and
+creates a series of clades by having one group branch off at each
+step. First groups listed will be first to branch off. Returns a list
+of new nodes, and also an updateParentD which can later be used to
+make sure the parents are correct.
+            '''
             if len(childL) == 2:
                 connecT = (parent,childL[0],childL[1])
                 return newNodeCtr,updateParentD,[(node,connecT)],
@@ -199,7 +207,59 @@ branches are given 0 length.
                 # recurse
                 newNodeCtr,updateParentD,L=getNewNodes(newNodeCtr,node,newNode,childL[1:],updateParentD)
                 return newNodeCtr,updateParentD,[(node,connecT)]+L
+
+        def orderChildrenBySynteny(childT,gtLocusMapD):
+            '''Given a tuple of children from a multifurcating node, and a dict of
+ syntenic regions for these, reorder the children in a way that makes
+ use of synteny. When we construct the binary tree, the first listed
+ children in our output will branch off first. If there are branches
+ in childT where synteny is the same in all genes, and where this
+ syteny is not shared with other child branches, then we'd like to put
+ those first. This tweak is intented to make the binarization more
+ likely to reflect what really happened.
+            '''
+            childToSynRegTupleD = {}
+            for child in childT:
+                # get the synReg for this child
+                if self.isLeaf(child):
+                    synRegT = (gtLocusMapD[child],)
+                else:
+                    # internal node
+                    synRegS = set()
+                    for chLeaf in self.subtree(child).leaves():
+                        synRegS.add(gtLocusMapD[chLeaf])
+
+                    synRegT = tuple(sorted(synRegS))
+                    
+                childToSynRegTupleD[child] = synRegT
+
+            # create dict keyed by synReg
+            synRegToChildD = {}
+            for child in childToSynRegTupleD:
+                for synReg in childToSynRegTupleD[child]:
+                    if synReg in synRegToChildD:
+                        synRegToChildD[synReg].append(child)
+                    else:
+                        synRegToChildD[synReg] = [child]
+
+            # for each child, characterize the max num children its
+            # synRegs appear in
+            outChildL = []
+            for child in childT:
+
+                synRegT = childToSynRegTupleD[child]
+                maxAppearances = 0
+                for synReg in synRegT:
+                    if len(synRegToChildD[synReg]) > maxAppearances:
+                        maxAppearances = len(synRegToChildD[synReg])
                 
+                outChildL.append((maxAppearances,child))
+                
+            # sort by max appearances, so the ones with less (ie 1) come first
+            outChildL.sort(key = lambda x: x[0])
+
+            return tuple((child for _,child in outChildL))
+            
         # main part of binarize
 
         # get node connections
@@ -214,6 +274,10 @@ branches are given 0 length.
                 # multifurcating        
                 parent = connecT[0]
                 childT = connecT[1:]
+
+                if gtLocusMapD != None:
+                    childT = orderChildrenBySynteny(childT,gtLocusMapD)
+                
                 newNodeCtr,updateParentD,newNodeL = getNewNodes(newNodeCtr,parent,node,childT,updateParentD)
                 for nNode,nConnecT in newNodeL:
                     newNodeConnectD[nNode] = nConnecT

@@ -401,7 +401,7 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-    
+   
     # set up interactive console
     vars = globals()
     vars.update(locals())
