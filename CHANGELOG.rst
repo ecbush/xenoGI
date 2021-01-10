@@ -3,8 +3,10 @@ Change Log
 ==========
 
 -------------------
-3.0.0_ - 2021-01-04
+3.0.0_ - 2021-01-13
 -------------------
+
+This is a major release, meaning things like parameter files and output files have changed.
 
 - Now reconstruct the history of gene families by reconciling the gene tree for a family against the species tree. We use FastTree to make the gene trees, and a custom reconciliation algorithm called DTLOR (duplication, transfer, loss, origin, rearrangement) to do the reconciliation. The analysis output now includes a history of evolutionary events for each gene, as well as an explicit call as to its origin (either core gene, C, or xeno hgt event, X).
 - Added a refine step which comes after makeIslands. This step focuses on cases where there are multiple most parsimonious reconciliations, and chooses the one most consistent with nearby families.
@@ -12,6 +14,7 @@ Change Log
 - printAnalysis now produces a tab delimited (islands.tsv) file in addition to the more human readable islandsSummary.txt.
 - Added some additional fields to blast output files.
 - xenoGI gene names now encorporate locus tag rather than protein ID.
+- Added a tutorial (TUTORIAL.rst) to the repository.
   
 -------------------
 2.2.0_ - 2019-07-29
@@ -74,6 +77,7 @@ Hereafter, tagged releases correspond to pypi releases. The master branch will h
 
 Initial release, corresponding to our article: "xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria".
 
+.. _3.0.0:  https://github.com/ecbush/xenoGI/compare/v2.2.0...v3.0.0
 .. _2.2.0:  https://github.com/ecbush/xenoGI/compare/v2.1.0...v2.2.0
 .. _2.1.0:  https://github.com/ecbush/xenoGI/compare/v2.0.0...v2.1.0
 .. _2.0.0:  https://github.com/ecbush/xenoGI/compare/v1.1.2...v2.0.0

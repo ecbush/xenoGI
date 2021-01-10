@@ -361,7 +361,7 @@ def interactiveAnalysisWrapper(paramD):
         '''Print a LocusIsland and its genomic context in each species. We
         include synWSize/2 genes in either direction beyond the locus island.
         '''
-        printLocusIslandNeighb(locusIslandNum,synWSize,subtreeD,islandByNodeD,originFamiliesO,geneOrderD,gene2FamIslandD,genesO,fileF)
+        printLocusIslandNeighb(locusIslandNum,synWSize,subtreeD,islandByNodeD,originFamiliesO,geneOrderD,gene2FamIslandD,genesO,paramD['rootFocalClade'],fileF)
 
 
     def printLocusIslandsAtNode(node,fileF=sys.stdout):

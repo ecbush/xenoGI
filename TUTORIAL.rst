@@ -182,7 +182,7 @@ This should take a minute or so. It will produce a newick file called ``enterics
 
   ((E_coli_K12,(S_bongori,(S_enterica_LT2,S_enterica_AZ)s3)s2)s1,C_rodentium)s0;
 
-For your reference, here's an ascii drawing of the tree, with internal nodes labelled::
+For your reference, here's an ascii drawing of this tree, with internal nodes labelled::
 
          _____ E_coli_K12
     ____|
@@ -251,7 +251,7 @@ The genes files contain all the genes in a strain laid out in the order they occ
 
   less -S genes-S_enterica_LT2.tsv
 
-The -S tells the text viewer less not to wrap lines, which makes it a little easier to read. You may want to maximize your window, or make it wider so that more of each line displays. At the right of each line is included a description of each gene.
+The ``-S`` tells the text viewer less not to wrap lines, which makes it a little easier to read. You may want to maximize your window, or make it wider so that more of each line displays. At the right of each line is included a description of each gene.
 
 FYI, when you want to exit ``less``, type ``q``.
 
@@ -341,11 +341,13 @@ Note that there is a tab delimited version of this information contained in the 
 Interactive analysis
 ~~~~~~~~~~~~~~~~~~~~
 
-Above we asked you to look SPI2 yourself. In the tetrathionate reductase gene cluster portion, one of the genes was this one::
+Above we asked you to look SPI2 yourself. In the tetrathionate reductase gene cluster portion, one of the genes in S_enterica_AZ was this one::
 
-  1534_S_enterica_AZ-SARI_01595   X       OSS     2010    3506    4154    4220    s2      hypothetical protein
+  1534_S_enterica_AZ-SARI_01595   X       OSS     2006    3506    4143    4216   s2       hypothetical protein
 
-We'll now examine this in a little more detail. Back at the unix prompt, cd up to the main enterics directory::
+(This is an entry from ``genes-S_enterica_AZ.tsv``)
+  
+Say you were interested in knowing some more detail about the evolution of this family after it inserted. You can learn more, as follows. Back at the unix prompt, cd up to the main enterics directory::
 
   cd ..
 
@@ -355,14 +357,16 @@ From here type::
 
     python3 ../xenoGI/xenoGI-runner.py params.py interactiveAnalysis
 
+``printFam``
+^^^^^^^^^^^^
 Then at the python prompt type::
 
-  printFam(4154,originFamiliesO)
+  printFam(4143,originFamiliesO)
 
 We are printing origin family 4154 (the number for which we got from the genes file entry printed above). This produces the following::
 
-    Family 4154
-        LocusFamily 4220 s2 4189 root_b 1534_S_enterica_AZ-SARI_01595 19655_S_enterica_LT2-STM1387 14955_S_bongori-A464_1417
+    Family 4143
+        LocusFamily 4216 s2 4189 root_b 1534_S_enterica_AZ-SARI_01595 19655_S_enterica_LT2-STM1387 14955_S_bongori-A464_1417
 
         Source family 3506
 
@@ -468,9 +472,143 @@ We are printing origin family 4154 (the number for which we got from the genes f
 
 Note that if you want to save this output directly to a file you can do like this::
 
-    printFam(4154,originFamiliesO,open("ofam4154.txt","w"))
+    printFam(4143,originFamiliesO,open("ofam4143.txt","w"))
 
 The third argument is optional, and is an open file handle. Doing this can be useful if you have a large family, and you want to view it without lines wrapping. (e.g. with ``less -S``).
 
+Let's now go though the various parts of this output.
 
-Notes: explain the annotated trees.
+The family we've just printed is an origin family. Origin families represent the more refined stage of family analysis, and are what users are most likely to be interested in. An origin family has a gene tree associated with it, and also a reconciliation that places that gene tree onto the species tree. At the base of this reconciliation is an origin event. In this case, that is a xeno hgt event. (The other alternative is if a family is a core gene family).
+
+The first line of the output gives the family number.
+
+Next come some lines printing out the locus families that are part of this origin family. A locus family represents the genes in a family which occur in a single syntenic region. Every family has at least one locus family, but may have more. 
+
+In this case there is only one locus family, number 4216. This locus family originated on branch s2 of the species tree. It it found in syntenic region 4189, and it's origin point in the gene tree is the root branch of that tree. The remainder of this line consists of a listing of the genes in this locus family. In this case there are 3, one in each of the 2 S. enterica strains, and 1 in the S. bongori strain.
+
+The next element of the output is the source family. Because we're looking at an origin family, the source family for that will be what we call an initial family--initial family 3506 in this case. (This bit of information would be useful if you wanted to go back to the original initial family and look at how it was split up into origin families).
+
+The next elements are 3 score matricies, showing the raw, core synteny, and regular synteny scores for the genes in this origin family. All of these scores take on values ranging from 0 to 1.
+
+The raw score is a sequence similarity score. In this case, all 3 genes are fairly similar.
+
+The core synteny score reflects synteny as defined relative to core genes (large scale or long distance synteny). In this case, we can see that all 3 genes are in the same location given the very high scores.
+
+The regular synteny score represents more fine grained synteny, looking at a neighborhood of 20 genes around each family member. These synteny scores are also high.
+
+The high synteny between all family members is the reason that there is only a single locus family in this origin family.
+
+The next element of the output is a printout of scores between family members, and non-family members. (The non-family members represent all genes that have significant blast hits vs. family members.) You might be interested in this if you suspected that there were some genes left out of the family that should have been included.
+
+In this case, all non family members are very different in terms of their sequences (low raw scores). Most of them also reside in different syntenic regions. There is nothing in this list that looks like a gene which should have been included in this family.
+
+The next elements of the output are a gene tree in newick format, and also an "annotated" version of the gene tree. One way to view these is to cut and paste the newick string into a file, add a semicolon at the end, and then view this with a tree viewer such as FigTree.
+
+If you use FigTree in this way, it imports the annotation (called "label" by default) and then lets you display it on the nodes. For example, at the root of the species tree, there is this annotation::
+
+  root[O|S]
+
+Inside the bracket, we have two elements separated by a ``|``. The left one represents events that happened on the branch leading to root, and the right one represents events that happened on the node. Here, we have an origin event on the the branch leading to the root (in this case, a xeno hgt event). At the root node of the gene tree, we have a co-speciation event, where the species tree diverges, and each descendent lineage inherits a copy of the gene. On tips of the gene tree, the node part of this (part on the right) will simply give the strain name of the strain where the tip gene is found.
+
+The final element of the output is a text representation of the reconciliation. This representation is organized according to the gene tree. So it basically goes through the gene tree, and specifies events occuring on gene tree branches and nodes, and the placements onto the species tree.
+
+We begin with the root of the gene tree. There is a listing of events. An O (origin) event occurred on the root branch of the gene tree and the s2 branch on the species tree. Because s2 is in the focal clade, an O event here really represents xeno hgt. The text representing this event also tells us that the insertion occurred at syntenic region 4189. The second event listed is a S event (cospeciation). This involves the placement of the root node of the gene tree on the s2 node of the species tree. So there was a cospeciation at s2 where the gene was interited in each of the two species tree lineages descending from s2.
+
+Listed below this is what happened to the two children of the gene tree root node, g0 and gene 14955. Gene 14955 is a tip on the gene tree, and is found in S_bongori. At g0, there was another S event (cospeciation). g0 is placed on the species node s3. There is a cospeciation event there where the two descendent branches of the gene tree, genes 1534 and 19655, are inherited in S_enterica_AZ and S_enterica_LT2 respectively.
+
+``printLocusIsland``
+^^^^^^^^^^^^^^^^^^^^
+
+Sometimes you might be interested in looking at a particular locus island, and seeing it in each of the strains where it occurs. One way to do this is to look through all the genes files for those strains.
+
+However, interactive analysis provides a convenient way of printing a locus island in all the strains where it occurs.
+
+For example, the entry in ``genes-S_enterica_AZ.tsv`` shown above is part of locus island 2006. Let's view that locus island.
+
+At the python prompt (which you got by running the interactiveAnalysis command) type the following::
+
+  printLocusIsland(2006,20)
+
+This will print locus island 2006, showing 20 genes surrounding (10 in either direction). Those genes that are part of locus island 2006 are indicated with a star. The columns are the same as what is in the genes files, as described above. Also included are the genomic coordinates of the island and the region::
+
+  LocusIsland: 2006
+  mrca: s2
+  In S_bongori
+    Coordinates of locus island CP006608.1:1401420-1409685
+    Coordinates of region shown CP006608.1:1394919-1419664
+    geneName                    | orig | geneHist | locIsl | ifam | ofam | locFam | lfMrca    | descrip
+      14943_S_bongori-A464_1405 | C    | OSSS     | 2008   | 1573 | 1957 | 2008   | s0        | Iron-sulfur cluster assembly protein SufD
+      14944_S_bongori-A464_1406 | C    | OSSS     | 905    | 528  | 864  | 905    | s0        | Cysteine desulfurase subunit
+      14945_S_bongori-A464_1407 | C    | OSSS     | 1228   | 834  | 1186 | 1228   | s0        | Sulfur acceptor protein SufE for iron-sulfurcluster assembly
+      14946_S_bongori-A464_1408 | C    | OSSS     | 772    | 402  | 731  | 772    | s0        | LD-transpeptidase YnhG
+      14947_S_bongori-A464_1409 | C    | OSDS     | 414    | 88   | 381  | 414    | s0        | major outer membrane lipoprotein
+      14948_S_bongori-A464_1410 | X    |          | 9126   | 8204 | 9053 | 9126   | S_bongori | hypothetical protein
+      14949_S_bongori-A464_1411 | C    | OSSS     | 1184   | 791  | 1142 | 1184   | s0        | Pyruvate kinase
+    * 14950_S_bongori-A464_1412 | X    | OS       | 2006   | 3990 | 4761 | 4834   | s2        | Putative amino acid permease
+    * 14951_S_bongori-A464_1413 | X    | OS       | 2006   | 3374 | 3960 | 4032   | s2        | Tetrathionate reductase subunit A
+    * 14952_S_bongori-A464_1414 | X    | OS       | 2006   | 3373 | 3959 | 4031   | s2        | Tetrathionate reductase subunit C
+    * 14953_S_bongori-A464_1415 | X    | OS       | 2006   | 3037 | 3554 | 3620   | s2        | Tetrathionate reductase subunit B
+    * 14954_S_bongori-A464_1416 | X    | OS       | 2006   | 3372 | 3958 | 4030   | s2        | Tetrathionate reductase sensory transductionhistidine kinase
+    * 14955_S_bongori-A464_1417 | X    | OS       | 2006   | 3506 | 4143 | 4216   | s2        | Tetrathionate reductase two-component responseregulator
+    * 14956_S_bongori-A464_1418 | X    | OS       | 2006   | 1572 | 1955 | 2006   | s2        | hypothetical protein
+      14957_S_bongori-A464_1419 | X    |          | 3590   | 4326 | 5175 | 5248   | S_bongori | Transcriptional regulatory protein
+      14958_S_bongori-A464_1420 | X    | O        | 3590   | 3011 | 3525 | 3590   | S_bongori | Alcohol dehydrogenase
+      14959_S_bongori-A464_1421 | X    | ODS      | 3397   | 2860 | 3335 | 3397   | s2        | hypothetical protein
+      14960_S_bongori-A464_1422 | X    | OS       | 3397   | 3116 | 3646 | 3715   | s2        | Transcriptional regulator MerR familyassociated with photolyase
+      14961_S_bongori-A464_1423 | X    |          | 1557   | 5993 | 6842 | 6915   | S_bongori | hypothetical protein
+      14962_S_bongori-A464_1424 | X    |          | 1557   | 5995 | 6844 | 6917   | S_bongori | Uncharacterized protein ImpA
+      14963_S_bongori-A464_1425 | X    |          | 1557   | 8205 | 9054 | 9127   | S_bongori | IcmF-related protein
+  In S_enterica_LT2
+    Coordinates of locus island NC_003197.2:1466345-1474023
+    Coordinates of region shown NC_003197.2:1459047-1483078
+    geneName                       | orig | geneHist | locIsl | ifam | ofam | locFam | lfMrca         | descrip
+      19644_S_enterica_LT2-STM1376 | C    | OSDSS    | 414    | 88   | 381  | 414    | s0             | lppB - hypothetical protein
+      19645_S_enterica_LT2-STM1377 | C    | OSDS     | 414    | 88   | 381  | 414    | s0             | lpp - murein lipoprotein
+      19646_S_enterica_LT2-STM1378 | C    | OSSSS    | 1184   | 791  | 1142 | 1184   | s0             | pykF - pyruvate kinase
+      19647_S_enterica_LT2-STM1379 | X    |          | 5315   | 4898 | 5747 | 5820   | S_enterica_LT2 | orf48 - putative amino acid permease
+      19648_S_enterica_LT2-STM1380 | X    |          | 5315   | 8829 | 9678 | 9751   | S_enterica_LT2 | orf32 - hydrolase
+      19649_S_enterica_LT2-STM1381 | X    |          | 5315   | 5620 | 6469 | 6542   | S_enterica_LT2 | orf245 - hypothetical protein
+      19650_S_enterica_LT2-STM1382 | X    |          | 5315   | 4393 | 5242 | 5315   | S_enterica_LT2 | orf408 - hypothetical protein
+    * 19651_S_enterica_LT2-STM1383 | X    | OSS      | 2006   | 3374 | 3960 | 4032   | s2             | ttrA - tetrathionate reductase subunit A
+    * 19652_S_enterica_LT2-STM1384 | X    | OSS      | 2006   | 3373 | 3959 | 4031   | s2             | ttrC - tetrathionate reductase subunit C
+    * 19653_S_enterica_LT2-STM1385 | X    | OSS      | 2006   | 3037 | 3554 | 3620   | s2             | ttrB - tetrathionate reductase complex, subunit B
+    * 19654_S_enterica_LT2-STM1386 | X    | OSS      | 2006   | 3372 | 3958 | 4030   | s2             | ttrS - tetrathionate reductase complex: sensory transduction histidine kinase
+    * 19655_S_enterica_LT2-STM1387 | X    | OSS      | 2006   | 3506 | 4143 | 4216   | s2             | ttrR - DNA-binding response regulator
+    * 19656_S_enterica_LT2-STM1388 | X    | OSS      | 2006   | 1572 | 1955 | 2006   | s2             | orf70 - hypothetical protein
+      19657_S_enterica_LT2-STM1389 | X    | OD       | 3397   | 2860 | 3335 | 3397   | s2             | orf319 - hypothetical protein
+      19658_S_enterica_LT2-STM1390 | X    | OSS      | 3397   | 3116 | 3646 | 3715   | s2             | orf242 - helix-turn-helix-type transcriptional regulator
+      19659_S_enterica_LT2-STM1391 | X    | OS       | 4349   | 4210 | 5058 | 5131   | s3             | ssrB - DNA-binding response regulator
+      19660_S_enterica_LT2-STM1392 | X    | OS       | 4349   | 3989 | 4760 | 4833   | s3             | ssrA - hybrid sensor histidine kinase/response regulator
+      19661_S_enterica_LT2-STM1393 | X    | OS       | 4349   | 3988 | 4759 | 4832   | s3             | ssaB - pathogenicity island chaperone protein SpiC
+      19662_S_enterica_LT2-STM1394 | X    | OS       | 4349   | 3768 | 4468 | 4541   | s3             | ssaC - EscC/YscC/HrcC family type III secretion system outer membrane ring protein
+      19663_S_enterica_LT2-STM1395 | X    | OS       | 4349   | 3878 | 4619 | 4692   | s3             | ssaD - EscD/YscD/HrpQ family type III secretion system inner membrane ring protein
+  In S_enterica_AZ
+    Coordinates of locus island CP000880.1:1542713-1550949
+    Coordinates of region shown CP000880.1:1534729-1558172
+    geneName                        | orig | geneHist | locIsl | ifam | ofam | locFam | lfMrca        | descrip
+      1526_S_enterica_AZ-SARI_01587 | X    | OS       | 4349   | 3768 | 4468 | 4541   | s3            | hypothetical protein
+      1527_S_enterica_AZ-SARI_01588 | X    | OS       | 4349   | 3988 | 4759 | 4832   | s3            | hypothetical protein
+      1528_S_enterica_AZ-SARI_01589 | X    | OS       | 4349   | 3989 | 4760 | 4833   | s3            | hypothetical protein
+      1529_S_enterica_AZ-SARI_01590 | X    | OS       | 4349   | 4210 | 5058 | 5131   | s3            | hypothetical protein
+      1530_S_enterica_AZ-SARI_01591 | X    | OSS      | 3397   | 3116 | 3646 | 3715   | s2            | hypothetical protein
+      1531_S_enterica_AZ-SARI_01592 | X    | ODS      | 3397   | 2860 | 3335 | 3397   | s2            | hypothetical protein
+      1532_S_enterica_AZ-SARI_01593 | X    |          | 7309   | 6387 | 7236 | 7309   | S_enterica_AZ | hypothetical protein
+    * 1533_S_enterica_AZ-SARI_01594 | X    | OSS      | 2006   | 1572 | 1955 | 2006   | s2            | hypothetical protein
+    * 1534_S_enterica_AZ-SARI_01595 | X    | OSS      | 2006   | 3506 | 4143 | 4216   | s2            | hypothetical protein
+    * 1535_S_enterica_AZ-SARI_01596 | X    | OSS      | 2006   | 3372 | 3958 | 4030   | s2            | hypothetical protein
+    * 1536_S_enterica_AZ-SARI_01597 | X    | OSS      | 2006   | 3037 | 3554 | 3620   | s2            | hypothetical protein
+    * 1537_S_enterica_AZ-SARI_01598 | X    | OSS      | 2006   | 3373 | 3959 | 4031   | s2            | hypothetical protein
+    * 1538_S_enterica_AZ-SARI_01599 | X    | OSS      | 2006   | 3374 | 3960 | 4032   | s2            | hypothetical protein
+      1539_S_enterica_AZ-SARI_01601 | X    |          | 7310   | 6388 | 7237 | 7310   | S_enterica_AZ | hypothetical protein
+    * 1540_S_enterica_AZ-SARI_01600 | X    | OS       | 2006   | 3990 | 4761 | 4834   | s2            | hypothetical protein
+      1541_S_enterica_AZ-SARI_01602 | C    | OSSSS    | 1184   | 791  | 1142 | 1184   | s0            | hypothetical protein
+      1542_S_enterica_AZ-SARI_01603 | C    | OSDSS    | 414    | 88   | 381  | 414    | s0            | hypothetical protein
+      1543_S_enterica_AZ-SARI_01604 | C    | OSSSS    | 772    | 402  | 731  | 772    | s0            | hypothetical protein
+      1544_S_enterica_AZ-SARI_01605 | C    | OSSSS    | 1228   | 834  | 1186 | 1228   | s0            | hypothetical protein
+      1545_S_enterica_AZ-SARI_01606 | C    | OSSSS    | 905    | 528  | 864  | 905    | s0            | hypothetical protein
+      1546_S_enterica_AZ-SARI_01607 | C    | OSSSS    | 2008   | 1573 | 1957 | 2008   | s0            | hypothetical protein
+      1547_S_enterica_AZ-SARI_01608 | C    | OSSSS    | 3064   | 2580 | 3007 | 3064   | s0            | hypothetical protein
+
+Locus island 2006 corresponds to the tetrathionate reductase gene cluster. In fact, several additional locus families (3397,3715) probably should have been included in locus island 2006. They likely all had a common origin. They reason xenoGI did not include them is that several strain specific genes have been inserted between them and the rest of the island (genes 14957_S_bongori-A464_1419, and 14958_S_bongori-A464_1420 in S_bongori, and 1532_S_enterica_AZ-SARI_01593 in S_enterica_AZ). This illustrates a limitation: xenoGI tries to group everythig with a common origin, but sometimes the evolutionary history makes it hard to do that.
+
+Note that in the S_enterica species you can also see the nearby type III secretion system, which is island 4349 (not shown in its entirety).

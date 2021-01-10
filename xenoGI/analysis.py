@@ -297,12 +297,12 @@ function.
                 print(headerStr,file=fileF)
                 for contig in contigT:
                     print("########### Begin contig",file=fileF)
-                    printGenesTsv(contig,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,fileF)
+                    printGenes(contig,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,fileF=fileF)
     return
     
 ## Print neighborhood of an island
 
-def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,geneOrderD,gene2FamIslandD,genesO,fileF):
+def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,originFamiliesO,geneOrderD,gene2FamIslandD,genesO,rootFocalClade,fileF):
     '''Print the neighborhood of an island. We include the genes in the island and synWSize/2 genes in either direction.'''
 
     def printCoordinates(labelText,genesO,firstGene,lastGene,fileF):
@@ -331,7 +331,7 @@ def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,g
 
         print("  In",strainName,file=fileF)
 
-        islandGenesInStrainL = getIslandGenesInStrain(island,strainName,familiesO)
+        islandGenesInStrainL = getIslandGenesInStrain(island,strainName,originFamiliesO)
 
         if islandGenesInStrainL == []:
             print("the island is not found.",file=fileF)
@@ -342,8 +342,9 @@ def printLocusIslandNeighb(islandNum,synWSize,subtreeD,islandByNodeD,familiesO,g
             printCoordinates("Coordinates of locus island",genesO,firstIslandGene,lastIslandGene,fileF)
             printCoordinates("Coordinates of region shown",genesO,neighbGenesL[0],neighbGenesL[-1],fileF)
 
-            printGenesVerbose(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF)
-  
+            printGenes(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,islandGenesInStrainL,fileF)
+
+            
             
 def getIslandGenesInStrain(island,strainName,familiesO):
     '''Given an island, a strain number, and our families object, return
@@ -377,10 +378,9 @@ genes in the island itself.'''
         except ValueError:
             continue
 
-def printGenesVerbose(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF):
+def printGenesInteractive(neighbGenesL,genesO,gene2FamIslandD,islandGenesInStrainL,familiesO,fileF):
     '''Given a list of contiguous genes, print them out nicely with
-information on locus family and locus island etc. Put * next to any
-that are in islandGenesInStrainL.'''
+information on locus family and locus island etc.'''
 
     # now print the neighbors
     rowsL=[]
@@ -399,27 +399,45 @@ that are in islandGenesInStrainL.'''
         else:
             geneName = '  '+geneName
 
-        infoL = [geneName,"locIsl:"+str(locIslNum),"fam:"+str(famNum),"locFam:"+str(locFamNum),"locFamMRCA:"+lfMrca,descrip]
+        infoL = [geneName,"locIsl:"+str(locIslNum),"ofam:"+str(famNum),"locFam:"+str(locFamNum),"lfMrca:"+lfMrca,descrip]
 
         rowsL.append(infoL)
 
     printTable(rowsL,indent=4,fileF=fileF)
 
-def printGenesTsv(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,fileF):
-    '''Given a list of contiguous genes, print them out in a tsv
-format. Gene name,geneHisStr,locusIsland, family, locusFamily, locFamMRCA, gene
-description.'''
+def printGenes(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClade,islandGenesInStrainL=[],fileF=sys.stdout):
+    '''Given a list of contiguous genes, print them out including
 
+       Gene name,geneOrigin,geneHisStr,locusIsland,ifamNum,ofamNum,locFamNum,locFamMRCA,geneDescription.
+
+       If islandGenesInStrainL is passed in, we assume we're in
+       interactive mode, and print in a tabular way. In this case we
+       also put * next to any genes in that are in
+       islandGenesInStrainL. If this list is empty, we we're in print
+       analysis, and print tab delimited.
+    '''
     # get strains in focal clade
     focalSubRtreeO = originFamiliesO.speciesRtreeO.subtree(rootFocalClade)
     focalCladeStrainsS = set(focalSubRtreeO.leaves())
+    rowsL=[]
+
+    if islandGenesInStrainL != []:
+        rowsL.append(['geneName','orig','geneHist','locIsl','ifam','ofam','locFam','lfMrca','descrip'])
+        
     for geneNum in neighbGenesL:
         strainName = genesO.numToStrainName(geneNum)
         infoT=genesO.numToGeneInfo(geneNum)
         geneName,commonName,locusTag,proteinId,descrip,chrom,start,end,strand=infoT
-        
-        locIslNum,famNum,locFamNum = gene2FamIslandD[geneNum]
-        famO = originFamiliesO.getFamily(famNum)
+
+        # mark off genes in island (if interactive mode)
+        if geneNum in islandGenesInStrainL:
+            geneName = '* '+geneName
+        else:
+            geneName = '  '+geneName
+
+        # family info
+        locIslNum,ofamNum,locFamNum = gene2FamIslandD[geneNum]
+        famO = originFamiliesO.getFamily(ofamNum)
         ifamNum = famO.sourceFam
         
         # only print geneHistory,orign if gene is in focal clade
@@ -432,8 +450,17 @@ description.'''
             
         lfMrca = originFamiliesO.getLocusFamily(locFamNum).lfMrca
 
-        infoL = [geneName,geneOrigin,geneHisStr,str(locIslNum),str(ifamNum),str(famNum),str(locFamNum),lfMrca,descrip]
+        infoL = [geneName,geneOrigin,geneHisStr,str(locIslNum),str(ifamNum),str(ofamNum),str(locFamNum),lfMrca,descrip]
 
-        print("\t".join(infoL),file=fileF)
+        rowsL.append(infoL)
+        
+
+    # now print
+    if islandGenesInStrainL != []:
+        # interactive
+        printTable(rowsL,indent=4,fileF=fileF)
+    else:
+        for infoL in rowsL:
+            print("\t".join(infoL),file=fileF)
         
     return
