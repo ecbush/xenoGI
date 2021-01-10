@@ -66,7 +66,7 @@ If you are on linux (and have wget) you can obtain them at the command line by r
   wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/005/845/GCA_000005845.2_ASM584v2/GCA_000005845.2_ASM584v2_genomic.gbff.gz
   wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/085/GCF_000027085.1_ASM2708v1/GCF_000027085.1_ASM2708v1_genomic.gbff.gz
 
-Alternatively, you can go to NCBI's .. _assembly https://www.ncbi.nlm.nih.gov/assembly page and enter the assembly accessions above. After clicking on the resulting link to an assembly, you should see the main page for that assembly. On the right there will be a section entitled ``Download Assembly``. You will now click on a link to the ftp directory. For GCF_000006945.2 and GCF_000027085.1 click on the link to the RefSeq assembly. For the others the GenBank assembly. On the ftp page, download the file ending gbff.gz. Once you have all of these, move them into ``xgiTutorial/enterics/ncbi``.
+Alternatively, you can go to NCBI's assembly page (https://www.ncbi.nlm.nih.gov/assembly) and enter the assembly accessions above. After clicking on the resulting link to an assembly, you should see the main page for that assembly. On the right there will be a section entitled ``Download Assembly``. You will now click on a link to the ftp directory. For GCF_000006945.2 and GCF_000027085.1 click on the link to the RefSeq assembly. For the others the GenBank assembly. On the ftp page, download the file ending gbff.gz. Once you have all of these, move them into ``xgiTutorial/enterics/ncbi``.
 
 We next need to uncompress these assembly files, which can be done with::
 
@@ -258,47 +258,49 @@ FYI, when you want to exit ``less``, type ``q``.
 You can now search within ``less`` by typing forward slash (``/``) and entering the terms you want to search with. Here let's search using locus tag STM2865 which is at the beginning of SPI1.
 
 Here's a truncated bit of what you should see::
-  
-  21087_S_enterica_LT2-STM2863    C       OSSS    3229    2724    3173    3229    s0      sitC - iron ABC transporter
-  21088_S_enterica_LT2-STM2864    C       OSSS    3228    2723    3172    3228    s0      sitD - iron ABC transporter
-  21089_S_enterica_LT2-STM2865    X       OS      3646    4170    5007    5073    s2      avrA - putative inner membr
-  21090_S_enterica_LT2-STM2866    X       OSS     3646    3228    3799    3861    s2      sprB - transcriptional regu
-  21091_S_enterica_LT2-STM2867    X       OSS     3646    3053    3588    3649    s2      hilC - AraC family transcri
-  21092_S_enterica_LT2-STM2868    X       OSS     3646    3317    3912    3976    s2      type III secretion system e
-  21093_S_enterica_LT2-STM2869    X       OSS     3646    3316    3911    3975    s2      orgA - invasion protein Org
-  21094_S_enterica_LT2-STM2870    X       OSS     3646    3315    3910    3974    s2      putative inner membrane pro
-  21095_S_enterica_LT2-STM2871    X       OSS     3646    3209    3770    3832    s2      prgK - EscJ/YscJ/HrcJ famil
-  21096_S_enterica_LT2-STM2872    X       OSS     3646    3314    3909    3973    s2      prgJ - type III secretion s
-  21097_S_enterica_LT2-STM2873    X       OSS     3646    3313    3908    3972    s2      prgI - EscF/YscF/HrpA famil
-  21098_S_enterica_LT2-STM2874    X       OSS     3646    3312    3907    3971    s2      prgH - type III secretion s
-  21099_S_enterica_LT2-STM2875    X       OSS     3646    3051    3586    3646    s2      hilD - AraC family transcri
-  21100_S_enterica_LT2-STM2876    X       OSS     3646    3248    3827    3889    s2      hilA - transcriptional regu
-  21101_S_enterica_LT2-STM2877    X       OSS     3646    3188    3748    3810    s2      iagB - invasion protein Iag
-  21102_S_enterica_LT2-STM2878    X       OSS     3646    3311    3906    3970    s2      sptP - pathogenicity island
-  21103_S_enterica_LT2-STM2879    X       OSS     3646    3310    3905    3969    s2      sicP - chaperone protein Si
-  21104_S_enterica_LT2-STM2880    X       OS      4782    3941    4716    4782    s3      putative cytoplasmic protei
-  21105_S_enterica_LT2-STM2881    X       OSS     3646    3160    3712    3774    s2      iacP - putative acyl carrie
-  21106_S_enterica_LT2-STM2882    X       OSS     3646    3309    3904    3968    s2      sipA - pathogenicity island
-  21107_S_enterica_LT2-STM2883    X       OSS     3646    3308    3903    3967    s2      sipD - cell invasion protei
-  21108_S_enterica_LT2-STM2884    X       OSS     3646    3307    3902    3966    s2      sipC - pathogenicity island
-  21109_S_enterica_LT2-STM2885    X       OSS     3646    3306    3901    3965    s2      sipB - pathogenicity island
-  21110_S_enterica_LT2-STM2886    X       OSS     3646    3187    3747    3809    s2      sicA - CesD/SycD/LcrH famil
-  21111_S_enterica_LT2-STM2887    X       OSS     3646    3126    3668    3730    s2      spaS - EscU/YscU/HrcU famil
-  21112_S_enterica_LT2-STM2888    X       OSS     3646    3208    3769    3831    s2      spaR - EscT/YscT/HrcT famil
-  21113_S_enterica_LT2-STM2889    X       OSS     3646    3207    3768    3830    s2      spaQ - EscS/YscS/HrcS famil
-  21114_S_enterica_LT2-STM2890    X       OSS     3646    3125    3667    3729    s2      spaP - EscR/YscR/HrcR famil
-  21115_S_enterica_LT2-STM2891    X       OSS     3646    3305    3900    3964    s2      spaO - type III secretion s
-  21116_S_enterica_LT2-STM2892    X       OSS     3646    3304    3899    3963    s2      invJ - antigen presentation
-  21117_S_enterica_LT2-STM2893    X       OSS     3646    3303    3898    3962    s2      invI - type III secretion s
-  21118_S_enterica_LT2-STM2894    X       OSS     3646    3058    3593    3655    s2      invC - EscN/YscN/HrcN famil
-  21119_S_enterica_LT2-STM2895    X       OSS     3646    3302    3897    3961    s2      invB - type III secretion s
-  21120_S_enterica_LT2-STM2896    X       OSS     3646    3124    3666    3728    s2      invA - EscV/YscV/HrcV famil
-  21121_S_enterica_LT2-STM2897    X       OSS     3646    3301    3896    3960    s2      invE - SepL/TyeA/HrpJ famil
-  21122_S_enterica_LT2-STM2898    X       OSS     3646    3206    3767    3829    s2      invG - EscC/YscC/HrcC famil
-  21123_S_enterica_LT2-STM2899    X       OSS     3646    3300    3895    3959    s2      invF - invasion protein
-  21124_S_enterica_LT2-STM2900    X       OSS     3646    3299    3894    3958    s2      invH - invasion lipoprotei
-  21125_S_enterica_LT2-STM2901    X       O       4591    3864    4614    4680    S_enterica_LT2  hypothetical protei
-  21126_S_enterica_LT2-STM2902    X       O       4591    3802    4525    4591    S_enterica_LT2  putative cytoplasmi
+
+
+
+  21087_S_enterica_LT2-STM2863  C       OSSS    3225    2724    3166    3225    s0      sitC - iron ABC transporter
+  21088_S_enterica_LT2-STM2864  C       OSSS    3224    2723    3165    3224    s0      sitD - iron ABC transporter
+  21089_S_enterica_LT2-STM2865  X       OS      3642    4170    4996    5069    s2      avrA - putative inner membr
+  21090_S_enterica_LT2-STM2866  X       OSS     3642    3228    3788    3857    s2      sprB - transcriptional regu
+  21091_S_enterica_LT2-STM2867  X       OSS     3642    3053    3578    3645    s2      hilC - AraC family transcri
+  21092_S_enterica_LT2-STM2868  X       OSS     3642    3317    3901    3972    s2      type III secretion system e
+  21093_S_enterica_LT2-STM2869  X       OSS     3642    3316    3900    3971    s2      orgA - invasion protein Org
+  21094_S_enterica_LT2-STM2870  X       OSS     3642    3315    3899    3970    s2      putative inner membrane pro
+  21095_S_enterica_LT2-STM2871  X       OSS     3642    3209    3759    3828    s2      prgK - EscJ/YscJ/HrcJ famil
+  21096_S_enterica_LT2-STM2872  X       OSS     3642    3314    3898    3969    s2      prgJ - type III secretion s
+  21097_S_enterica_LT2-STM2873  X       OSS     3642    3313    3897    3968    s2      prgI - EscF/YscF/HrpA famil
+  21098_S_enterica_LT2-STM2874  X       OSS     3642    3312    3896    3967    s2      prgH - type III secretion s
+  21099_S_enterica_LT2-STM2875  X       OSS     3642    3051    3576    3642    s2      hilD - AraC family transcri
+  21100_S_enterica_LT2-STM2876  X       OSS     3642    3248    3816    3885    s2      hilA - transcriptional regu
+  21101_S_enterica_LT2-STM2877  X       OSS     3642    3188    3737    3806    s2      iagB - invasion protein Iag
+  21102_S_enterica_LT2-STM2878  X       OSS     3642    3311    3895    3966    s2      sptP - pathogenicity island
+  21103_S_enterica_LT2-STM2879  X       OSS     3642    3310    3894    3965    s2      sicP - chaperone protein Si
+  21104_S_enterica_LT2-STM2880  X       OS      4778    3941    4705    4778    s3      putative cytoplasmic protei
+  21105_S_enterica_LT2-STM2881  X       OSS     3642    3160    3701    3770    s2      iacP - putative acyl carrie
+  21106_S_enterica_LT2-STM2882  X       OSS     3642    3309    3893    3964    s2      sipA - pathogenicity island
+  21107_S_enterica_LT2-STM2883  X       OSS     3642    3308    3892    3963    s2      sipD - cell invasion protei
+  21108_S_enterica_LT2-STM2884  X       OSS     3642    3307    3891    3962    s2      sipC - pathogenicity island
+  21109_S_enterica_LT2-STM2885  X       OSS     3642    3306    3890    3961    s2      sipB - pathogenicity island
+  21110_S_enterica_LT2-STM2886  X       OSS     3642    3187    3736    3805    s2      sicA - CesD/SycD/LcrH famil
+  21111_S_enterica_LT2-STM2887  X       OSS     3642    3126    3657    3726    s2      spaS - EscU/YscU/HrcU famil
+  21112_S_enterica_LT2-STM2888  X       OSS     3642    3208    3758    3827    s2      spaR - EscT/YscT/HrcT famil
+  21113_S_enterica_LT2-STM2889  X       OSS     3642    3207    3757    3826    s2      spaQ - EscS/YscS/HrcS famil
+  21114_S_enterica_LT2-STM2890  X       OSS     3642    3125    3656    3725    s2      spaP - EscR/YscR/HrcR famil
+  21115_S_enterica_LT2-STM2891  X       OSS     3642    3305    3889    3960    s2      spaO - type III secretion s
+  21116_S_enterica_LT2-STM2892  X       OSS     3642    3304    3888    3959    s2      invJ - antigen presentation
+  21117_S_enterica_LT2-STM2893  X       OSS     3642    3303    3887    3958    s2      invI - type III secretion s
+  21118_S_enterica_LT2-STM2894  X       OSS     3642    3058    3583    3651    s2      invC - EscN/YscN/HrcN famil
+  21119_S_enterica_LT2-STM2895  X       OSS     3642    3302    3886    3957    s2      invB - type III secretion s
+  21120_S_enterica_LT2-STM2896  X       OSS     3642    3124    3655    3724    s2      invA - EscV/YscV/HrcV famil
+  21121_S_enterica_LT2-STM2897  X       OSS     3642    3301    3885    3956    s2      invE - SepL/TyeA/HrpJ famil
+  21122_S_enterica_LT2-STM2898  X       OSS     3642    3206    3756    3825    s2      invG - EscC/YscC/HrcC famil
+  21123_S_enterica_LT2-STM2899  X       OSS     3642    3300    3884    3955    s2      invF - invasion protein
+  21124_S_enterica_LT2-STM2900  X       OSS     3642    3299    3883    3954    s2      invH - invasion lipoprotein
+  21125_S_enterica_LT2-STM2901  X       O       4588    3864    4603    4676    S_enterica_LT2  hypothetical protei
+  21126_S_enterica_LT2-STM2902  X       O       4588    3802    4515    4588    S_enterica_LT2  putative cytoplasmi
 
 The first column consists of genes listed by their xenoGI name (the locus tag is the last part of this). xenoGI has identified a locus island that corresponds to SPI1. The number for this locus island is given in column 4, and is 3646 here. (It is possible that the numbering will be different on your machine). This locus island extends from 21089_S_enterica_LT2-STM2865 to 21124_S_enterica_LT2-STM2900 as expected. Note that in the display above, we've included a few genes on either end of the locus island.
 
@@ -341,7 +343,7 @@ Note that there is a tab delimited version of this information contained in the 
 Interactive analysis
 ~~~~~~~~~~~~~~~~~~~~
 
-Above we asked you to look SPI2 yourself. In the tetrathionate reductase gene cluster portion, one of the genes in S_enterica_AZ was this one::
+Above we asked you to look at SPI2 yourself. In the tetrathionate reductase gene cluster portion, one of the genes in S_enterica_AZ was this one::
 
   1534_S_enterica_AZ-SARI_01595   X       OSS     2006    3506    4143    4216   s2       hypothetical protein
 
@@ -355,7 +357,7 @@ Say you were interested in knowing some more detail about the evolution of this 
 
 From here type::
 
-    python3 ../xenoGI/xenoGI-runner.py params.py interactiveAnalysis
+  python3 ../xenoGI/xenoGI-runner.py params.py interactiveAnalysis
 
 ``printFam``
 ^^^^^^^^^^^^
@@ -612,3 +614,41 @@ This will print locus island 2006, showing 20 genes surrounding (10 in either di
 Locus island 2006 corresponds to the tetrathionate reductase gene cluster. In fact, several additional locus families (3397,3715) probably should have been included in locus island 2006. They likely all had a common origin. They reason xenoGI did not include them is that several strain specific genes have been inserted between them and the rest of the island (genes 14957_S_bongori-A464_1419, and 14958_S_bongori-A464_1420 in S_bongori, and 1532_S_enterica_AZ-SARI_01593 in S_enterica_AZ). This illustrates a limitation: xenoGI tries to group everythig with a common origin, but sometimes the evolutionary history makes it hard to do that.
 
 Note that in the S_enterica species you can also see the nearby type III secretion system, which is island 4349 (not shown in its entirety).
+
+
+Viewing in a genome browser
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can create bed files of the output and then view them in a genome browser. This makes possible a representation where locus islands are colorized. Create the beds::
+
+  python3 ../xenoGI/xenoGI-runner.py params.py createIslandBed
+
+This creates a ``bed`` subdirectory with a bed file for each strain.
+
+Such files can be viewed with a variety of browsers. Here we'll give an example using the Ingegrated Genome Browser (IGB).
+
+IGB can be downloaded here: https://bioviz.org/ .
+
+In this example we're using version 9.1.6 (other versions will likely work as well).
+
+We're going to view the S_enterica_LT2 genome. Therefore, move the ``S_enterica_LT2-island.bed`` file so that it's on the same machine where you're going to run IGB (ie if its on a remote machine, move it back to your local machine). Next go to the NCBI assembly page for this genome https://www.ncbi.nlm.nih.gov/assembly/GCF_000006945.2/ . Click on the link to the FTP directory for the refseq assembly (that happens to be the one we're using for LT2 in our example.) From the FTP directory, download GCF_000006945.2_ASM694v2_cds_from_genomic.fna.gz and GCF_000006945.2_ASM694v2_genomic.gff.gz.
+
+Move these to the same location as the bed file. Then unzip them::
+
+  gunzip GCF_000006945.2_ASM694v2_cds_from_genomic.fna.gz GCF_000006945.2_ASM694v2_genomic.gff.gz
+
+Now start the IGB broswer. From the File menu, select "Open Genome from File". Select the fna file you just downloaded and unpacked. Once that has complete, again go to the File meno. This time select "Open File", and select ``S_enterica_LT2-island.bed``.
+
+To get the genes to display, you may have to click "Load Data" in the upper right.
+
+To make the islands show up in color, right click (or control click with a single button mouse) the blue control box for the bed track (it's on the left). Select the "Color By" option. Then when a window pops up asking you what to yous for coloring, select RGB and hit OK.
+
+Now, let's go have a look at the SPI1 island. We can determine the coordinates for SPI1 from the printLocusIsland command in interactive mode. If you want, you can go back and do that now. Alternatively, here are the coordinates::
+
+  NC_003197.2:3009904-3044839
+
+You should paste this into the IGB coordinate window (upper left).
+
+This will take you to the exact region of the locus island xenoGI found which corresponds to SPI1. You may want to zoom out a bit so you can see it in context.
+
+
