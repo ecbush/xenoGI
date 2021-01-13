@@ -96,3 +96,75 @@ Get a list of the strains in a tree file
 The ``listTreeStrains.py`` script in misc/ takes a parameter file and a tree as input, and produces a listing of the strains in that tree::
 
   python3 path-to-xenoGI-github-repository/misc/listTreeStrains.py xlParams.py scaffold.tre > scaffoldStrains.txt
+
+xlMode: running on larger numbers of strains
+--------------------------------------------
+
+The ``runXlMode.py`` script allows you to run on many hundreds of strains. The basic strategy it follows is:
+
+- Create a species tree for the whole data set
+- Pick a subset of strains to carry out further analysis on. We call this the scaffold. The users specifies the number of strains that should be in the scaffold, and then these are chosen to maximize branch length (ie get he maximum amount of diversity). Alternatively the user can directly specify the scaffold strains.
+- Run regular xenoGI on the scaffold
+- Map genes for the full data set back onto the scaffold, and use this to assign them to families.
+
+In the end this produces a xenoGI analysis on the scaffold, and a mapping so that for any gene in the whole data set, you can see what scaffold family (if any) it has been assigned to.
+
+To run it, you would create a directory for this analysis. Inside set up an ncbi subdirectory with gbff files, just as in regular xenoGI. Copy ``xlParams.py`` from the ``misc/`` directory of the repository into this directory.
+
+You will need to edit a few parameters in this file.
+
+Set the ``outGroup`` parameter to specify the name of the assembly you will use as outgroup. (This makes it possible to root the species tree).
+
+Set ``trimLeafNum`` to specify the number of strains you want in the scaffold tree. If you want to directly specify the strains to be included in the scaffold, the set ``userSpecifiedStrainsFileName`` to point to a strain file. (This strain file should contain one strain per line, and the number of strains in it must be less than trimLeafNum).
+
+Scaffold formation involves an initial step to get a preliminary scaffold, followed by a second refinement step where some additional strains are added. The parameter ``numStrainsToAddToScaffold`` specifies how many strains to add to the scaffold for this second iteration.
+
+To run ``runXlMode.py`` first parse the genbank files::
+
+  python3 path-to-xenoGI-github-repository/misc/runXlMode.py xlParams.py parseGenbank
+
+Then create sets of orthologs from core genes (to be used in tree reconstruction)::
+  
+  python3 path-to-xenoGI-github-repository/misc/runXlMode.py xlParams.py obtainCoreOrthoSets
+
+Make the species tree (using MUSCLE, FastTree, and Astral)::
+  
+  python3 path-to-xenoGI-github-repository/misc/runXlMode.py xlParams.py makeSpeciesTree
+
+Create the scaffold tree::
+  
+  python3 path-to-xenoGI-github-repository/misc/runXlMode.py xlParams.py makeScaffold
+
+Map all genes onto the scaffold and create output files::
+  
+  python3 path-to-xenoGI-github-repository/misc/runXlMode.py xlParams.py printAnalysisXL
+
+Output files can be found in the analysis/ directory. There are the normal xenoGI output files, such as genes files, ``islandsSummary.txt``, ``islands.tsv``. The file ``xlAnalysisSummary.txt`` gives the number of all genes which map onto the scaffold, and the number which does not.
+
+If you want to know what locus family a particular gene has been assigned to (when the genes were mapped to the scaffold) then you can enter interactive more::
+
+  python3 path-to-xenoGI-github-repository/misc/runXlMode.py xlParams.py interactiveAnalysis
+
+Say you wanted to know the locus family number for gene 50343.
+At the python prompt, you would type::
+
+  >>> geneToLocFam(50343)
+  44
+
+If it is unmapped, this function will return None.
+
+If you subsequently want to know more about locus family 44, you could enter interactive mode for regular xenoGI (which will work on the scaffold)::
+
+  python3 path-to-xenoGI-github-repository/xenoGI-runner.py xlParams.py interactiveAnalysis
+
+Then get that locus family::
+
+  >>> lfO = originFamiliesO.getLocusFamily(44)
+
+Get the origin family it comes from::
+  >>> famNum = lfO.famNum
+
+And print info on this origin family::
+
+  >>> printFam(famNum,originFamiliesO)
+

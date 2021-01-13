@@ -1,6 +1,6 @@
-import sys, os, glob
-sys.path.insert(0,os.path.join(sys.path[0],'../xenoGI'))
-from xenoGI import xenoGI,trees, blast, scores, parameters, fasta, genomes
+import sys,os,glob
+sys.path.insert(0,os.path.join(sys.path[0],'..'))
+from xenoGI import xenoGI,trees,blast,scores,parameters,genomes
 import xlMode
 
 ## Wrappers
@@ -30,14 +30,44 @@ def printAnalysisXLWrapper(paramD):
     xenoGI.printAnalysisWrapper(paramD,paramD['scaffoldTreeFN'],rootFocalClade)
     xlMode.xlAnalysisSummary(paramD)
 
+def interactiveAnalysisWrapper(paramD):
+    """Enter interactive mode."""
+    import code,sys
+    
+    ## funcs
+    
+    def geneToLocFam(geneNum):
+        '''Given a gene number, return the locus family number that it was
+mapped to when genes were mapped to the scaffold.'''
+        lfNum = locFamNumAr[geneNum] 
+        if lfNum == unmappedVal:
+            return None
+        else: return lfNum
+        
+    ## interactive main
+    
+    # read array
+    locFamNumAr,unmappedVal = readAllGenesMapToScaffoldAr(paramD['allGenesMapToScaffoldFN'])
+    
+    # set up interactive console
+    vars = globals()
+    vars.update(locals())
+    readline.set_completer(rlcompleter.Completer(vars).complete)
+    readline.parse_and_bind("tab: complete")
+    code.InteractiveConsole(vars).interact()
+    
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
     
     import code,sys
     from xenoGI import trees,genomes,families,islands,analysis
-
     
-    code.interact(local=locals())
+    # set up interactive console
+    vars = globals()
+    vars.update(locals())
+    readline.set_completer(rlcompleter.Completer(vars).complete)
+    readline.parse_and_bind("tab: complete")
+    code.InteractiveConsole(vars).interact()
 
     
 if __name__ == "__main__":
@@ -47,17 +77,17 @@ if __name__ == "__main__":
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'obtainCoreOrthoSets','makeSpeciesTree', 'makeScaffold', 'printAnalysisXL', 'runAll', 'debug'])
+        assert(task in ['parseGenbank', 'obtainCoreOrthoSets','makeSpeciesTree', 'makeScaffold', 'printAnalysisXL', 'runAll','interactiveAnalysis','debug'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, obtainCoreOrthoSets, makeSpeciesTree, makeScaffold, printAnalysisXL or runAll.
+      2. The task to be run which must be one of: parseGenbank, obtainCoreOrthoSets, makeSpeciesTree, makeScaffold, printAnalysisXL, runAll or interactiveAnalysis.
 
    For example: 
-      python3.7 fastXenoGI.py params.py parseGenbank
+      python3 runXlMode.py xlParams.py parseGenbank
 """
             ,file=sys.stderr)
         sys.exit(1)
@@ -92,11 +122,15 @@ if __name__ == "__main__":
         xlMode.obtainCoreOrthoSetsWrapper(paramD)
         print("makeSpeciesTree",file=sys.stderr)
         makeSpeciesTreeWrapper(paramD)
-        print("makeRepTree",file=sys.stderr)
+        print("makeScaffold",file=sys.stderr)
         makeScaffoldWrapper(paramD)
         print("printAnalysisXL",file=sys.stderr)
         printAnalysisXLWrapper(paramD)
 
+    #### interactiveAnalysis
+    elif task == 'interactiveAnalysis':
+        interactiveAnalysisWrapper(paramD)
+        
     #### debug
     elif task == 'debug':
         debugWrapper(paramD)

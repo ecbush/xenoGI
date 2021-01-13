@@ -204,6 +204,44 @@ connections to this family.'''
         '''
         self.dtlorMprD = mprD 
 
+    def printReconByGeneTreeHelper(self,dtlorMprD,geneRtreeO,genesO,node,level,fileF=sys.stdout):
+        '''Actual recursive function to print reconciliation. Single letter
+codes for events are as follows:
+
+        D - duplication
+        T - transfer (hgt withing the species tree)
+        L - loss (deletion so that gene is lost on species tree lineage)
+        O - origin (either core or xeno hgt).
+        R - rearrangment event
+        '''
+
+        def printOneKey(printPrefix,dtlorMprD,nbKey):
+            if nbKey in dtlorMprD:
+                for eventT in dtlorMprD[nbKey]:
+                    gt,gtNB = nbKey
+                    event,stLoc,stNB,locus = eventT
+                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") --> "+"("+str(stLoc)+" "+stNB+")"
+                    if locus != None:
+                        outStr+=" synReg:"+str(locus)
+                    print(outStr,file=fileF)
+
+        # recurse over tree, printing out for each branch and node
+        levelSpace = "   "*level
+        if geneRtreeO.isLeaf(node):
+            print(levelSpace+"- "+node+" ["+genesO.numToStrainName(int(node))+"]",file=fileF)
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'b'))
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'n'))
+            return
+        else:
+            childL = []
+            for child in geneRtreeO.children(node):
+                childL.append(child)
+            print(levelSpace+"- "+node,file=fileF)
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'b'))
+            printOneKey(levelSpace+"  ",dtlorMprD,(node,'n'))
+            for child in childL:
+                self.printReconByGeneTreeHelper(dtlorMprD,geneRtreeO,genesO,child,level+1,fileF)
+
     def fileStr(self,genesO):
         '''Return string representation of single family. Format is: famNum
         <tab> geneTreeO <tab> reconciliation <tab> mrca <tab>
@@ -327,15 +365,22 @@ same each time if done repeatedly).
             mprNodeFormatD = self.__getMprReconDHelper__(mprOrigFormatD,speciesPreOrderT,paramD)
         
             yield mprOrigFormatD,mprNodeFormatD
-
-
         
     def getMprReconDFromMpr(self,speciesPreOrderT,paramD):
         '''Converts the MPR in self.dtlorMprD to node based format and
 returns.
         '''
         return self.__getMprReconDHelper__(self.dtlorMprD,speciesPreOrderT,paramD)
-        
+
+    def printAllPossibleReconsFromGraph(self,speciesPreOrderT,paramD,genesO,fileF=sys.stdout):
+        '''Iterate over all possible MPRs in the dtlorGraphD and print.'''
+
+        for mprOrigFormatD,mprNodeFormatD in self.iterMprReconDFromGraph(speciesPreOrderT,paramD,False):
+            # do all, not just median mprs
+            self.printReconByGeneTreeHelper(mprNodeFormatD,self.geneTreeO,genesO,self.geneTreeO.rootNode,0,fileF)
+            print("-------")
+            print()
+            
     def __getMprReconDHelper__(self,mprOrigFormatD,speciesPreOrderT,paramD):
         '''Takes an MPR in the original format of dtlor and converts to our
 node based format.
@@ -596,44 +641,6 @@ no reconciliation, return empty string.
     def printReconByGeneTree(self,genesO,fileF=sys.stdout):
         '''Print a text summary of the reconciliation.'''
         self.printReconByGeneTreeHelper(self.dtlorMprD,self.geneTreeO,genesO,self.geneTreeO.rootNode,0,fileF)
-
-    def printReconByGeneTreeHelper(self,dtlorMprD,geneRtreeO,genesO,node,level,fileF=sys.stdout):
-        '''Actual recursive function to print reconciliation. Single letter
-codes for events are as follows:
-
-        D - duplication
-        T - transfer (hgt withing the species tree)
-        L - loss (deletion so that gene is lost on species tree lineage)
-        O - origin (either core or xeno hgt).
-        R - rearrangment event
-        '''
-
-        def printOneKey(printPrefix,dtlorMprD,nbKey):
-            if nbKey in dtlorMprD:
-                for eventT in dtlorMprD[nbKey]:
-                    gt,gtNB = nbKey
-                    event,stLoc,stNB,locus = eventT
-                    outStr = printPrefix+event+" ("+str(gt)+" "+gtNB+") --> "+"("+str(stLoc)+" "+stNB+")"
-                    if locus != None:
-                        outStr+=" synReg:"+str(locus)
-                    print(outStr,file=fileF)
-
-        # recurse over tree, printing out for each branch and node
-        levelSpace = "   "*level
-        if geneRtreeO.isLeaf(node):
-            print(levelSpace+"- "+node+" ["+genesO.numToStrainName(int(node))+"]",file=fileF)
-            printOneKey(levelSpace+"  ",dtlorMprD,(node,'b'))
-            printOneKey(levelSpace+"  ",dtlorMprD,(node,'n'))
-            return
-        else:
-            childL = []
-            for child in geneRtreeO.children(node):
-                childL.append(child)
-            print(levelSpace+"- "+node,file=fileF)
-            printOneKey(levelSpace+"  ",dtlorMprD,(node,'b'))
-            printOneKey(levelSpace+"  ",dtlorMprD,(node,'n'))
-            for child in childL:
-                self.printReconByGeneTreeHelper(dtlorMprD,geneRtreeO,genesO,child,level+1,fileF)
 
     def countEventsBelowNode(self,geneTreeNode,eventType):
         '''Count how many events of eventType occur in the reconcilation below

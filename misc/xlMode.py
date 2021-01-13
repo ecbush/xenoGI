@@ -155,7 +155,16 @@ def trimTree(paramD):
     trimLeafNum = paramD['trimLeafNum']
     astralTreeFN = paramD['astralTreeFN']
     outGroupL = [paramD['outGroup']]
-    protectedList = outGroupL
+    userSpecifiedStrainsFileName = paramD['userSpecifiedStrainsFileName']
+    userSpecifiedStrainsL = []
+    if userSpecifiedStrainsFileName != None:
+        with open(userSpecifiedStrainsFileName,'r') as f:
+            while True:
+                s=f.readline()
+                if s=='':
+                    break
+                userSpecifiedStrainsL.append(s.rstrip())
+    protectedList = list(set(userSpecifiedStrainsL + outGroupL))
     scaffoldTreeFN = paramD['scaffoldTreeFN']
     
     # load tree
@@ -385,15 +394,13 @@ scaffold, and finally maps all genes again.'''
     ## Load a few useful data structues
     genesO = genomes.genes(paramD['geneInfoFN'])
     outGroupL = [paramD['outGroup']]
-    allStrainsTree = trees.Rtree()
-    allStrainsTree.fromNewickFileLoadSpeciesTree(allStrainsTreeFN,outGroupL,True)
-    prepareBL(allStrainsTree)
     scaffoldTree = trees.Rtree()
     scaffoldTree.fromNewickFileLoadSpeciesTree(scaffoldTreeFN)
     allStrainsT = xenoGI.readStrainInfoFN(strainInfoFN)
 
 
-    ## Add in the user specified strains
+    ## Add in the user specified strains (Consider adding functionality to specify strains without choosing all)
+    '''
     scaffoldStrainsL = list(scaffoldTree.leaves())
     userSpecifiedStrainsFileName = paramD['userSpecifiedStrainsFileName']
     userSpecifiedStrainsL = []
@@ -407,24 +414,23 @@ scaffold, and finally maps all genes again.'''
     
         
     newScaffoldStrainsL = list(set(scaffoldStrainsL) | set(userSpecifiedStrainsL))
+    allStrainsTree = trees.Rtree()
+    allStrainsTree.fromNewickFileLoadSpeciesTree(allStrainsTreeFN,outGroupL,True)
+    prepareBL(allStrainsTree)
     scaffoldTree = prune(allStrainsTree,newScaffoldStrainsL, scaffoldTreeFN)
-    # trees.writeTreeNoBrLen(scaffoldTree,paramD['scaffoldTreeFN'])
+    '''
     
     ## run xenoGI
     print("  xenoGI first run",file=sys.stderr)
-    familiesO = makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO)
-    originFams = familiesO[1]
-
-    # temp
-    #familiesO = families.readFamilies(paramD['familyFN'],scaffoldTree,genesO)
+    initialFamiliesO,originFamiliesO = makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO)
     
     ## blast representative genes from each family vs. all strains
     print("  blast rep vs. all",file=sys.stderr)
-    blastRepGenesVsScaffold(paramD,originFams,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
+    blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
 
     ## map genes using blast output
     print("  map all genes",file=sys.stderr)
-    locFamNumAr,unmappedVal = mapAllStrainsGenes(paramD,genesO.numGenes,originFams,allStrainsT,blastDir)
+    locFamNumAr,unmappedVal = mapAllStrainsGenes(paramD,genesO.numGenes,originFamiliesO,allStrainsT,blastDir)
     mappedCt,unmappedCt,mappedProp,unmappedProp = arrayCounts(locFamNumAr,unmappedVal)
 
     rowsL = [['mappedCt','unmappedCt','mappedProp','unmappedProp']]
@@ -445,6 +451,7 @@ scaffold, and finally maps all genes again.'''
     strainsToAddL = pickAdditionalStrains(allStrainsT,scaffoldStrainsL,blastDir,unMappedGenesFileL,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'],genesO,paramD['numStrainsToAddToScaffold'],paramD['percIdentThresh'])
     allStrainsTree = trees.Rtree()
     allStrainsTree.fromNewickFileLoadSpeciesTree(allStrainsTreeFN,outGroupL,True)
+    prepareBL(allStrainsTree)
     scaffoldTree = prune(allStrainsTree,scaffoldStrainsL+strainsToAddL, scaffoldTreeFN) # new scaffold
     scaffoldStrainsL = list(scaffoldTree.leaves())
     
@@ -454,18 +461,18 @@ scaffold, and finally maps all genes again.'''
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],scaffoldStrainsL)
     subtreeD=scaffoldTree.createSubtreeD()
     familiesO = makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO)
-    originFams = familiesO[1]
+    originFamiliesO = familiesO[1]
     # also do islands this time
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
-        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,scaffoldTree,paramD,originFams,rootFocalClade,islandFormationSummaryF)
+        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,scaffoldTree,paramD,originFamiliesO,rootFocalClade,islandFormationSummaryF)
 
     ## blast representative genes from each family vs. all strains
     print("  blast rep vs. all again",file=sys.stderr)
-    blastRepGenesVsScaffold(paramD,originFams,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
+    blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
         
     ## final mapping
     print("  map all genes again",file=sys.stderr)
-    locFamNumAr,unmappedVal = mapAllStrainsGenes(paramD,genesO.numGenes,originFams,allStrainsT,blastDir)
+    locFamNumAr,unmappedVal = mapAllStrainsGenes(paramD,genesO.numGenes,originFamiliesO,allStrainsT,blastDir)
     mappedCt,unmappedCt,mappedProp,unmappedProp = arrayCounts(locFamNumAr,unmappedVal)
     rowsL = [['mappedCt','unmappedCt','mappedProp','unmappedProp']]
     rowsL.append([str(mappedCt),str(unmappedCt),format(mappedProp,".3f"),format(unmappedProp,".3f")])
@@ -495,7 +502,7 @@ def makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO):
     
     # calc scores for scaffold strains
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(blastFnL,paramD)
+    scoresO.initializeDataAttributes(blastFnL,paramD,tuple(scaffoldStrainL))
     scoresO = scores.calcRawScores(paramD,scoresO)
     scoresO = scores.calcSynScores(scoresO,geneOrderD,paramD)
     scoresO = scores.calcCoreSynScores(scoresO,scaffoldStrainL,paramD,geneOrderD)    
@@ -504,19 +511,19 @@ def makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO):
     # families
     scaffoldAabrhL = scores.loadOrthos(paramD['aabrhFN'])
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        familiesO = families.createFamiliesO(scaffoldTree,scaffoldStrainL,scoresO,genesO,scaffoldAabrhL,paramD,familyFormationSummaryF)
+        initialFamiliesO,originFamiliesO = families.createFamiliesO(scaffoldTree,scaffoldStrainL,scoresO,genesO,scaffoldAabrhL,paramD,familyFormationSummaryF)
 
-    return familiesO
+    return initialFamiliesO,originFamiliesO
 
-def blastRepGenesVsScaffold(paramD,originFams,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir):
+def blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir):
     '''Get representative genes from each locus family, put in a db, and
 blast vs. all the strains.
     '''
     
-    seqD = genomes.loadSeq(paramD,'_prot.fa',originFams.getAllGenes())
+    seqD = genomes.loadSeq(paramD,'_prot.fa',originFamiliesO.getAllGenes())
 
     # get a set of representative genes from each locusfamily
-    repGenesIterator = getGeneSubsetFromLocusFamilies(originFams, scaffoldTree, scaffoldFamilyRepGenesNumPerFamily, genesO)
+    repGenesIterator = getGeneSubsetFromLocusFamilies(originFamiliesO, scaffoldTree, scaffoldFamilyRepGenesNumPerFamily, genesO)
 
     # write to db
     with open(scaffoldFamilyRepGenesFastaFN,"w") as f:
@@ -531,7 +538,7 @@ blast vs. all the strains.
     blast.runBlast([scaffoldFamilyRepGenesFastaFN],allStrainsFileNamesL,paramD)
 
 # old families.py functions
-def getGeneSubsetFromLocusFamilies(originFams,tree,numRepresentativeGenesPerLocFam,genesO):
+def getGeneSubsetFromLocusFamilies(originFamiliesO,tree,numRepresentativeGenesPerLocFam,genesO):
     '''Loop over all locus families and sample
 numRepresentativeGenesPerLocFam from each.'''
 
@@ -540,11 +547,11 @@ numRepresentativeGenesPerLocFam from each.'''
     subtreeD= tree.createSubtreeD()
     numNodes = tree.nodeCount()
     
-    for lfO in originFams.iterLocusFamilies():
-        for geneNum in getGeneSubsetFromOneLocusFamily(lfO,originFams,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeD):
+    for lfO in originFamiliesO.iterLocusFamilies():
+        for geneNum in getGeneSubsetFromOneLocusFamily(lfO,originFamiliesO,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeD):
             yield geneNum
 
-def getGeneSubsetFromOneLocusFamily(lfO,originFams,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeD):
+def getGeneSubsetFromOneLocusFamily(lfO,originFamiliesO,numRepresentativeGenesPerLocFam,leafL,numNodes,genesO,subtreeD):
     '''Sample numRepresentativeGenesPerLocFam genes from one
 LocusFamily. This function simply divides the LocusFamily genes into
 sets on the left and right branches, and attempts to take a similar
@@ -559,69 +566,22 @@ sized sample from each.'''
         # it's a tip
         return random.sample(lfGenesL,numRepresentativeGenesPerLocFam)
     else:
-        famO = originFams.getFamily(lfO.famNum)
+        famO = originFamiliesO.getFamily(lfO.famNum)
         famTreeO = famO.geneTreeO
         if famTreeO != None:
             lfTreeO = famTreeO.prune(lfGenesL)
             return pruneGeneTree(lfTreeO, numRepresentativeGenesPerLocFam)
         else:
             return random.sample(lfGenesL,numRepresentativeGenesPerLocFam)
-        '''
-        # divide up the genes by node
-        subtree = subtreeD[lfO.lfMrca]
-
-        nodeList = subtree.internals() + subtree.leaves()
-        
-        subtreeNodeGenesD = {strainName:[] for strainName in nodeList}
-        print(subtreeNodeGenesD)
-        for geneNum in lfGenesL:
-            strainName = genesO.numToStrainName(geneNum)
-            subtreeNodeGenesD[strainName].append(geneNum)
-            
-        # get ones from left and right
-        leftS,rightS = createLRSets(subtreeD,lfO.lfMrca,subtreeNodeGenesD,None)
-
-        numLeft = min(len(leftS),numRepresentativeGenesPerLocFam // 2)
-        numRight = min(len(rightS),numRepresentativeGenesPerLocFam - numLeft)
-
-        sampleL = random.sample(leftS,numLeft) + random.sample(rightS,numRight)
-
-        return sampleL
-        '''
-
-def createLRSets(subtreeD,mrca,nodeGenesD,restrictS):
-    '''At given mrca, obtain all genes in species in left branch and put
-in leftS, and all genes from species in right branch to
-rightS. Restrict each of these to be only genes in restrictS. If
-restrictS is None, then use all genes.
-    '''
-
-    mainSub=subtreeD[mrca]
-    leftChild, rightChild = mainSub.children(mainSub.rootNode)
-    leftSub = mainSub.subtree(leftChild)
-    rightSub = mainSub.subtree(rightChild)
-    
-    leftS=set()
-    for tip in leftSub.leaves():
-        leftS.update(nodeGenesD[tip])
-    rightS=set()
-    for tip in rightSub.leaves():
-        rightS.update(nodeGenesD[tip])
-
-    if restrictS != None:    
-        leftS.intersection_update(restrictS)
-        rightS.intersection_update(restrictS)
-        
-    return(leftS,rightS)
    
-def mapAllStrainsGenes(paramD,numGenesAllStrains,originFams,allStrainsT,blastDir):
+def mapAllStrainsGenes(paramD,numGenesAllStrains,originFamiliesO,allStrainsT,blastDir):
     '''For every gene in all the strains, map onto the scaffold genes
 using the blast output. Creates an array, where the index is gene
 number and the value is family number. unmappedVal is reserved to
 indicate no blast similarity.
     '''
     # decide 32 or 16 bit for locFamNumAr
-    numFam = originFams.getNumFamilies()
+    numFam = originFamiliesO.getNumFamilies()
     if numFam > 2**16:
         print("Number of families is",numFam,"so using 32 bit array",file=sys.stderr)
         arSizeInBytes = 4
@@ -638,7 +598,7 @@ indicate no blast similarity.
     # first, go through all genes in scaffold strains and correctly
     # mark their family in the array. at same time create gene2FamNumD
     gene2LocFamNumD = {}
-    for locusFamO in originFams.iterLocusFamilies():
+    for locusFamO in originFamiliesO.iterLocusFamilies():
         for gene in locusFamO.iterGenes():
             locFamNum = locusFamO.locusFamNum
             locFamNumAr[gene] = locFamNum
@@ -740,6 +700,9 @@ which will maximize the number of additional genes we can map.
     #for strain in allStrainsT:
     #    if strain not in scaffoldStrainsL:
     #        hitCountD[strain] = 0
+
+    if numStrainsToAddToScaffold == 0:
+        return []
             
     hitArray = [[0 for i in range(len(allStrainsT))] for x in range(len(allStrainsT))]
 
@@ -755,15 +718,6 @@ which will maximize the number of additional genes we can map.
             strainNum2 = allStrainsT.index(strain2)
             hitArray[strainNum1][strainNum2] += 1
             hitArray[strainNum2][strainNum1] += 1
-            #if strain2 not in hitCountD:
-            #    print(targetGene,strain2)
-            #    sys.exit()
-        
-        #hitCountD[strain] += 1
-        
-
-    # find the highest scoring ones
-    #strainsToAddL = sorted(hitCountD.items(),reverse=True,key=lambda x: x[1])[:numStrainsToAddToScaffold]
 
     strainsToAddL = []
     while len(strainsToAddL) < numStrainsToAddToScaffold:
