@@ -398,10 +398,24 @@ def debugWrapper(paramD):
     ## Set up the modules a bit differently for interactive mode
     import code,sys,numpy
     from .xenoGI import analysis,parameters,trees,genomes,families,islands,analysis,Score,scores
+
+    sys.path.insert(0,os.path.join(sys.path[0],'/biology/bush/htrans/xenoGI.work/misc/'))
+    import xlMode
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-   
+
+    scaffoldRtreeO = trees.Rtree()
+    scaffoldRtreeO.fromNewickFileLoadSpeciesTree(paramD['scaffoldTreeFN'])
+
+    scaffoldStrainsL = list(scaffoldRtreeO.leaves())
+
+    unMappedGenesFileL = ['fasta/unMappedGenes0.fa','fasta/unMappedGenes2.fa','fasta/unMappedGenes5.fa','fasta/unMappedGenes8.fa','fasta/unMappedGenes10.fa', 'fasta/unMappedGenes3.fa','fasta/unMappedGenes6.fa','fasta/unMappedGenes9.fa','fasta/unMappedGenes1.fa','fasta/unMappedGenes4.fa','fasta/unMappedGenes7.fa']
+
+    allStrainsT = strainNamesT
+    
+    strainsToAddL = xlMode.pickAdditionalStrains(allStrainsT,scaffoldStrainsL,'blast/',unMappedGenesFileL,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'],genesO,paramD['numStrainsToAddToScaffold'],paramD['percIdentThresh'])
+    
     # set up interactive console
     vars = globals()
     vars.update(locals())

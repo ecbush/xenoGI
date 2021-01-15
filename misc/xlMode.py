@@ -394,39 +394,17 @@ scaffold, and finally maps all genes again.'''
     ## Load a few useful data structues
     genesO = genomes.genes(paramD['geneInfoFN'])
     outGroupL = [paramD['outGroup']]
-    scaffoldTree = trees.Rtree()
-    scaffoldTree.fromNewickFileLoadSpeciesTree(scaffoldTreeFN)
+    scaffoldRtreeO = trees.Rtree()
+    scaffoldRtreeO.fromNewickFileLoadSpeciesTree(scaffoldTreeFN)
     allStrainsT = xenoGI.readStrainInfoFN(strainInfoFN)
 
-
-    ## Add in the user specified strains (Consider adding functionality to specify strains without choosing all)
-    '''
-    scaffoldStrainsL = list(scaffoldTree.leaves())
-    userSpecifiedStrainsFileName = paramD['userSpecifiedStrainsFileName']
-    userSpecifiedStrainsL = []
-    if userSpecifiedStrainsFileName != None:
-        f=open(userSpecifiedStrainsFileName,'r')
-        while True:
-            s=f.readline()
-            if s=='':
-                break
-            userSpecifiedStrainsL.append(s)
-    
-        
-    newScaffoldStrainsL = list(set(scaffoldStrainsL) | set(userSpecifiedStrainsL))
-    allStrainsTree = trees.Rtree()
-    allStrainsTree.fromNewickFileLoadSpeciesTree(allStrainsTreeFN,outGroupL,True)
-    prepareBL(allStrainsTree)
-    scaffoldTree = prune(allStrainsTree,newScaffoldStrainsL, scaffoldTreeFN)
-    '''
-    
     ## run xenoGI
     print("  xenoGI first run",file=sys.stderr)
-    initialFamiliesO,originFamiliesO = makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO)
+    initialFamiliesO,originFamiliesO = makeFamiliesScaffold(paramD,scaffoldRtreeO,fastaDir,blastDir,genesO)
     
     ## blast representative genes from each family vs. all strains
     print("  blast rep vs. all",file=sys.stderr)
-    blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
+    blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldRtreeO,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
 
     ## map genes using blast output
     print("  map all genes",file=sys.stderr)
@@ -447,28 +425,28 @@ scaffold, and finally maps all genes again.'''
 
     ## pick additional strains and add to scaffold tree
     print("  pick additional strains",file=sys.stderr)
-    scaffoldStrainsL = list(scaffoldTree.leaves())
+    scaffoldStrainsL = list(scaffoldRtreeO.leaves())
     strainsToAddL = pickAdditionalStrains(allStrainsT,scaffoldStrainsL,blastDir,unMappedGenesFileL,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'],genesO,paramD['numStrainsToAddToScaffold'],paramD['percIdentThresh'])
     allStrainsTree = trees.Rtree()
     allStrainsTree.fromNewickFileLoadSpeciesTree(allStrainsTreeFN,outGroupL,True)
     prepareBL(allStrainsTree)
-    scaffoldTree = prune(allStrainsTree,scaffoldStrainsL+strainsToAddL, scaffoldTreeFN) # new scaffold
-    scaffoldStrainsL = list(scaffoldTree.leaves())
+    scaffoldRtreeO = prune(allStrainsTree,scaffoldStrainsL+strainsToAddL, scaffoldTreeFN) # new scaffold
+    scaffoldStrainsL = list(scaffoldRtreeO.leaves())
     
     ## re-run xenoGI on larger scaffold
     print("  xenoGI second run",file=sys.stderr)
-    rootFocalClade = "".join([x for x in scaffoldTree.children(scaffoldTree.rootNode) if x != outGroupL[0]]) # get child that is not outgroup
+    rootFocalClade = "".join([x for x in scaffoldRtreeO.children(scaffoldRtreeO.rootNode) if x != outGroupL[0]]) # get child that is not outgroup
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],scaffoldStrainsL)
-    subtreeD=scaffoldTree.createSubtreeD()
-    familiesO = makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO)
+    subtreeD=scaffoldRtreeO.createSubtreeD()
+    familiesO = makeFamiliesScaffold(paramD,scaffoldRtreeO,fastaDir,blastDir,genesO)
     originFamiliesO = familiesO[1]
     # also do islands this time
     with open(paramD['islandFormationSummaryFN'],'w') as islandFormationSummaryF:
-        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,scaffoldTree,paramD,originFamiliesO,rootFocalClade,islandFormationSummaryF)
+        locIslByNodeD = islands.makeLocusIslands(geneOrderD,subtreeD,scaffoldRtreeO,paramD,originFamiliesO,rootFocalClade,islandFormationSummaryF)
 
     ## blast representative genes from each family vs. all strains
     print("  blast rep vs. all again",file=sys.stderr)
-    blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
+    blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldRtreeO,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir)
         
     ## final mapping
     print("  map all genes again",file=sys.stderr)
@@ -480,13 +458,13 @@ scaffold, and finally maps all genes again.'''
     
     return
 
-def makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO):
+def makeFamiliesScaffold(paramD,scaffoldRtreeO,fastaDir,blastDir,genesO):
     '''Run regular xenoGI on a scaffold tree.'''
 
     # some useful stuff
-    scaffoldStrainL = list(scaffoldTree.leaves())
+    scaffoldStrainL = list(scaffoldRtreeO.leaves())
     geneOrderD = genomes.createGeneOrderD(paramD['geneOrderFN'], scaffoldStrainL)
-    subtreeD = scaffoldTree.createSubtreeD
+    subtreeD = scaffoldRtreeO.createSubtreeD
     
     # blast scaffold strains
     fastaToBlastL = []
@@ -511,11 +489,11 @@ def makeFamiliesScaffold(paramD,scaffoldTree,fastaDir,blastDir,genesO):
     # families
     scaffoldAabrhL = scores.loadOrthos(paramD['aabrhFN'])
     with open(paramD['familyFormationSummaryFN'],'w') as familyFormationSummaryF:
-        initialFamiliesO,originFamiliesO = families.createFamiliesO(scaffoldTree,scaffoldStrainL,scoresO,genesO,scaffoldAabrhL,paramD,familyFormationSummaryF)
+        initialFamiliesO,originFamiliesO = families.createFamiliesO(scaffoldRtreeO,scaffoldStrainL,scoresO,genesO,scaffoldAabrhL,paramD,familyFormationSummaryF)
 
     return initialFamiliesO,originFamiliesO
 
-def blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldTree,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir):
+def blastRepGenesVsScaffold(paramD,originFamiliesO,scaffoldRtreeO,scaffoldFamilyRepGenesFastaFN,scaffoldFamilyRepGenesNumPerFamily,genesO,allStrainsT,fastaDir):
     '''Get representative genes from each locus family, put in a db, and
 blast vs. all the strains.
     '''
@@ -523,7 +501,7 @@ blast vs. all the strains.
     seqD = genomes.loadSeq(paramD,'_prot.fa',originFamiliesO.getAllGenes())
 
     # get a set of representative genes from each locusfamily
-    repGenesIterator = getGeneSubsetFromLocusFamilies(originFamiliesO, scaffoldTree, scaffoldFamilyRepGenesNumPerFamily, genesO)
+    repGenesIterator = getGeneSubsetFromLocusFamilies(originFamiliesO, scaffoldRtreeO, scaffoldFamilyRepGenesNumPerFamily, genesO)
 
     # write to db
     with open(scaffoldFamilyRepGenesFastaFN,"w") as f:
