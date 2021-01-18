@@ -6,51 +6,40 @@ xenoGI tutorial
 Introduction
 ------------
 
-Before doing this tutorial, you should go through the README file, and run the example data set that is distributed with the repository. To do this you will also need to set up the various software packages that xenoGI makes use of (see the README in the repository for details).
+Before doing this tutorial, you should go through the README file, and run the example data set that is distributed with the repository. The README also has notes on installation and the various software packages that are needed.
 
 The purpose of this tutorial is to provide an example of how one would download new data and run it in xenoGI, and also of how to look at the output. It is intended to be run on Linux or Mac. (But could probably work on Windows with some modifications).
 
 We will assume some familiartity with the unix command line, but will otherwise try to work at a basic level.
 
-For consistency in terms of file paths we will set up a tutorial directory and place a copy of the xenoGI repository, as well as the data set we're working on within it. To do this, start a terminal on the machine you're going to work on. In whatever location suits you, create the following directory::
+First steps
+-----------
 
-  mkdir xgiTutorial
+Setting up the tutorial directories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Then move into it::
+We'll first set up a directory for the tutorial. Call it ``xgiTutorial``. (You can do this with the command line, or using the mac gui if you're using a mac).
 
-  cd xgiTutorial
-
-Next we're going to put a copy of the repository inside this directory. (Note that if you prefer to use a pip-installed version you can do that, and skip this step. Just make sure the pip-installed version corresponds to the version for this tutorial. See below). If you already have a copy, feel free to move it here (e.g. with the Mac gui, with the ``mv`` command etc). Alternatively you can clone a new copy. You can do this with a browser via the github website (https://github.com/ecbush/xenoGI). You can also do it at the command line (assuming you have git installed)::
+Next we're going to put a copy of the repository inside this directory. (Note that if you prefer to use a pip-installed version you can do that, and skip this step. Just make sure the pip-installed version corresponds to the version for this tutorial. See below). If you already have a copy of the repository, feel free to move it here. Alternatively you can clone a new copy, either with a browser via the github website (https://github.com/ecbush/xenoGI) or via the command line (assuming you have git installed)::
 
   git clone https://github.com/ecbush/xenoGI
 
-Next put the repository into the right release::
+Next put the repository into the right release. At the command line, cd into the repository directory (``xgiTutorial/xenoGI``). Then do::
 
-  cd xenoGI
   git checkout v3.0.0
-  cd ..
 
-First steps
------------
+Next create a second subdirectory of ``xgiTutorial/`` called ``enterics/``. This is the working directory for the data we'll be using.
+
+Within ``enterics/`` create a subdirectory ``ncbi/``. This is where we're going to put the genome assemblies. (To be clear the path for this directory should be ``xgiTutorial/enterics/ncbi/``).
 
 Getting the genomes
 ~~~~~~~~~~~~~~~~~~~
 
-We'll also create a directory for the data set we're going to work with::
+We'll now download the genome sequences and put them in the ``ncbi`` folder.
 
-  mkdir enterics
-  cd enterics
-
-(You should now be in xgiTutorial/enterics).
-  
 xenoGI makes heavy use of synteny, and therefore requires genomes that are assembled to the scaffold level or better. We're going to work with a set of complete assemblies from enteric bacteria (this is a different set than the one distributed with the repository in the example/ directory)
 
-Within the enterics directory we'll create a subdirectory to hold the gbff files we're going to get::
-
-  mkdir ncbi
-  cd ncbi
-
-The data set for this tutorial consists of 5 bacterial assemblies::
+The data set for this tutorial consists of 5 bacterial assemblies with the following GenBank accession numbers::
   
   GCF_000006945.2
   GCA_000018625.1
@@ -58,7 +47,7 @@ The data set for this tutorial consists of 5 bacterial assemblies::
   GCA_000005845.2
   GCF_000027085.1
 
-If you are on linux (and have wget) you can obtain them at the command line by running this::
+If you are on linux (and have wget) you can obtain the files at the command line by running this::
 
   wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz
   wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/018/625/GCA_000018625.1_ASM1862v1/GCA_000018625.1_ASM1862v1_genomic.gbff.gz
@@ -66,38 +55,37 @@ If you are on linux (and have wget) you can obtain them at the command line by r
   wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/005/845/GCA_000005845.2_ASM584v2/GCA_000005845.2_ASM584v2_genomic.gbff.gz
   wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/085/GCF_000027085.1_ASM2708v1/GCF_000027085.1_ASM2708v1_genomic.gbff.gz
 
-Alternatively, you can go to NCBI's assembly page (https://www.ncbi.nlm.nih.gov/assembly) and enter the assembly accessions above. After clicking on the resulting link to an assembly, you should see the main page for that assembly. On the right there will be a section entitled ``Download Assembly``. You will now click on a link to the ftp directory. For GCF_000006945.2 and GCF_000027085.1 click on the link to the RefSeq assembly. For the others the GenBank assembly. On the ftp page, download the file ending gbff.gz. Once you have all of these, move them into ``xgiTutorial/enterics/ncbi``.
+Alternatively, you can go to NCBI's assembly page (https://www.ncbi.nlm.nih.gov/assembly) and enter the assembly accessions above. xenoGI uses genbank gbff files as input. You'll be downloading files ending in ``gbff.gz``. For more information on how to download genome sequences from NCBI please visit https://www.ncbi.nlm.nih.gov/genome/doc/ftpfaq/.
 
-We next need to uncompress these assembly files, which can be done with::
+After you've downloaded the assemblies and put them in the ``ncbi/`` directory, you need to uncompress them. This can be done at the command line with::
 
   gunzip *.gz
-
-Finally, move up one level to the enterics directory::
-
-  cd ..
-
-(You should now be in ``xgiTutorial/enterics/``).
   
-Setting up a few required files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Setting up ``params.py``
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Copy over a parameter file from the example directory::
+Move back into the main working directory ``xgiTutorial/enterics/``.
+
+We'll next obtain a parameter file by copying the one in the ``example/`` directory distributed with the repository::
 
   cp ../xenoGI/example/params.py .
 
-Next edit ``params.py`` using a text editor such as emacs, vim, nano etc. You should edit the following to give the absolute (full) path to the directory where the blastp and makeblastdb executables reside::
+Next edit ``params.py`` so that ``blastExecutDirPath`` correctly indicates the directory where the blastp and makeblastdb executables reside.
 
-  blastExecutDirPath = '/usr/bin/'
+Also make sure that ``astralPath``, ``musclePath``, ``fastTreePath``, and ``javaPath`` contain the correct paths to the executables for ASTRAL, MUSCLE, FastTree and Java respectively.
 
-Also make sure that ``astralPath``, ``musclePath``, ``fastTreePath``, and ``javaPath`` all correctly point to the executables for ASTRAL, MUSCLE, FastTree and Java respectively.
-
-Go to the ``speciesTreeFN`` entry, and edit it to read::
+Then go to the ``speciesTreeFN`` entry, and edit it to read::
 
   speciesTreeFN='enterics.tre'
 
 Here we've just changed the expected name of the tree file. Of course it doesn't really matter what we name the tree, but it's nice for it to correspond to the species we are working with. (Note that this tree file does not yet exist. We'll create it below).
 
-We also need to specify the names we'll use to refer to each species. Using a text editor, create the file ``ncbiHumanMap.txt`` and paste the following into it::
+You may also want to edit the ``numProcesses`` entry. This determines how many separate processes to run in parts of the code that are parallel. If you have a machine with 32 processors, you would typically set this to 32 or less.
+
+Setting up ``ncbiHumanMap.txt``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We also need to specify the names we'll use to refer to each strain. Using a text editor, create the file ``ncbiHumanMap.txt`` and paste the following into it::
 
   GCF_000006945.2_ASM694v2_genomic.gbff	S_enterica_LT2
   GCA_000018625.1_ASM1862v1_genomic.gbff	S_enterica_AZ
@@ -105,37 +93,17 @@ We also need to specify the names we'll use to refer to each species. Using a te
   GCA_000005845.2_ASM584v2_genomic.gbff	E_coli_K12
   GCF_000027085.1_ASM2708v1_genomic.gbff	C_rodentium
 
+Note that it is possible to set up human readable names by renaming the assembly files. We won't do that here, but if you want to do that for your own projects, see the README. Also see the README for restrictions on characters allowed in strain names.
 
-Using screen
-~~~~~~~~~~~~
+Running xenoGI
+--------------
 
 xenoGI is a command line program that sometimes can take a while to run. If you are working on a remote machine, it may be useful to run xenoGI from within ``screen``, which is available on most linux distributions. For this tutorial, ``screen`` shouldn't be necessary because everything runs in a few minutes. But if you move on to larger datasets it might be helpful.
 
 What screen does is provide a command line which you can "detach". You can then logout of the machine, and your process will keep running. When you log back in, you can retrieve it.
 
-To start screen the first time::
-
-  screen
-
-To detach once you have something running::
-
-  Ctrl+a d
-
-To retrieve the previous screen session::
-
-  screen -r
-
-And finally, when you are all done and want screen to go away::
-
-  Ctrl+d
-
-Running xenoGI
---------------
- 
-Parsing files, blast etc.
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Creating families and 
+Parsing the gbff files
+~~~~~~~~~~~~~~~~~~~~~~
 
 The very first thing we'll do is have xenoGI run through these genbank files, and extract the protein annotations that we'll be using::
 
@@ -149,28 +117,34 @@ Note that we wrote ``python3`` above, but on some systems you may want to write 
 
 (You can make the equivalent adjustment for the commands to follow).
 
+See README for a description of what fields are kept for each gene.
+
+Running blast
+~~~~~~~~~~~~~
+
 Next we do an all vs. all protein blast::
 
   python3 ../xenoGI/xenoGI-runner.py params.py runBlast
 
 This will take several minutes. For the steps below we will also try to give you a sense how long it should take on the tutorial data set. Note that speed may vary somewhat on your setup, but these numbers should give you a rough idea. If you subsequently do this on a larger data set of your own, of course it will take longer.
 
+Calculating scores
+~~~~~~~~~~~~~~~~~~
+
 And then we calculate various types of scores::
 
   python3 ../xenoGI/xenoGI-runner.py params.py calcScores
 
-This should take about 30 seconds.
+The scores calulated in include raw similarity scores, as well as two types of synteny score. The core synteny score measures synteny in a large genomic neighborhood. The regular synteny score represent synteny in a smaller neighborhood. All three types of score can range from 0-1.
+  
+This step should take about 30 seconds.
   
 Determining the species tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In this step we'll determine the species tree for the strains we're looking at. When working on your own data, if you already know the tree, then you would typically skip this step.
+In this step we'll determine the species tree for the strains we're looking at.
 
-(If you don't wan't to do this step in the tutorial, you can skip to the end of this section where the correct species tree is printed, and proceed from there.)
-
-This is the first step where various other software packages are used. It uses MUSCLE and FastTree to make gene trees, and ASTRAL to consolidate those gene trees into a species tree.
-
-We do require that the user specify an outgroup so that we can root the species tree. In the enteric data set we're using, C_rodentium is the outgroup. Before we run the step, we need to specify the outgroup in the ``params.py`` file. Open that file in a text editor. In the 'Making species trees' section there is a parameter ``outGroup`` which has been commented out. Uncomment this (delete the hash) and set it so it reads::
+This step requires that the user specify an outgroup to root the species tree. In the enteric data set we're using, C_rodentium is the outgroup. Before we run the step, we need to specify the outgroup. In the 'Making species trees' section of ``params.py``, there is a parameter ``outGroup`` which has been commented out. Uncomment this (delete the hash) and set it so it reads::
 
   outGroup = 'C_rodentium'
 
@@ -178,55 +152,70 @@ Then run like so::
 
   python3 ../xenoGI/xenoGI-runner.py params.py makeSpeciesTree
 
-This should take a minute or so. It will produce a newick file called ``enterics.tre``. If you skipped this step, you should manually create an ``enterics.tre`` file, with the following contents::
+This should take a minute or so, and will produce a newick file called ``enterics.tre``. Note that xenoGI doesn't make use of branch lengths, and the newick file produced here does not contain them.
 
-  ((E_coli_K12,(S_bongori,(S_enterica_LT2,S_enterica_AZ)s3)s2)s1,C_rodentium)s0;
+For your reference, here's an ascii drawing of the resulting tree, with internal nodes labelled::
 
-For your reference, here's an ascii drawing of this tree, with internal nodes labelled::
-
-         _____ E_coli_K12
+         ________________ E_coli_K12
     ____|
-   |    |s1    ____ S_bongori
+   |    |s1    __________ S_bongori
    |    |_____|
   _|          |s2   _____ S_enterica_LT2
    |s0        |____|s3
    |               |_____ S_enterica_AZ
    |
-   |____ C_rodentium
+   |_____________________ C_rodentium
 
+
+What you would do if you already knew the species tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When working on your own data, if you already know the tree, then you can enter it directly and skip ``makeSpeciesTree``. The species tree needs to be in newick format. It should have named internal nodes, and does not need to have branch lengths (if it has them, they will be ignored). The parameter ``speciesTreeFN`` in ``params.py`` gives the file name for this tree.
+
+If using your own tree, make sure that the names in it match those being used by xenoGI (e.g. the names provided in ``ncbiHumanMap.txt``).
+
+For reference, here's the newick string for the tree reconstructed above::
+
+  ((E_coli_K12,(S_bongori,(S_enterica_LT2,S_enterica_AZ)s3)s2)s1,C_rodentium)s0;
+
+The script ``prepareSpeciesTree.py`` in the ``misc/`` folder may be useful in preparing trees in the right format. (e.g. if you had a tree that was output from a phylogenetic reconstruction program). It will take an unrooted tree in newick and root it, as well as naming the internal nodes. It is described further in the documentation inside ``misc/``.
   
-Creating gene families and locus islands
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Creating gene families
+~~~~~~~~~~~~~~~~~~~~~~
 
 xenoGI does its most detailed reconstruction within a focal clade, leaving one or more species as outgroups. Such outgroups help us to better recognize core genes given the possibility of deletion in some lineages. One parameter we must set is the root of the focal clade. Once again, edit the ``params.py`` file. The line defining the ``rootFocalClade`` should be as follows::
 
   rootFocalClade = 's2'
 
-If it doesn't already say that, change it. This says that the focal clade will be defined by the internal node ``s2``, and corresponds to the Salmonella genus. ``C_rodentium`` and ``E_coli_K12`` will be outgroups.
+This says that the focal clade will be defined by the internal node ``s2``, and corresponds to the Salmonella genus. ``C_rodentium`` and ``E_coli_K12`` will be outgroups.
 
-We will now do a series of steps to make gene families and locus islands.
-
-Create gene families::
+We will now create gene families like so::
 
   python3 ../xenoGI/xenoGI-runner.py params.py makeFamilies
 
-This will take several minutes.
-  
+This will take several minutes on the tutorial data set.
+
+``makeFamilies`` goes through several steps, ultimately producing a set of "origin" families which encompass genes with a common origin. In general, the possible types of origin are core gene or xeno hgt (horiztonal transfer from outside the clade). An origin family resulting from xeno hgt would include all the genes that are descended from one ancestor gene that arrived via hgt. A core origin family would include all genes descended from a core genea in the common ancestor strain. Origin families are broken up into locus families which consist of genes that occur in the same syntenic region. An origin family will consist of one or more locus families.
+
+The process of making families involves, among other things, creating a gene trees and reconciling them against the species tree. For this we use the DTLOR reconciliation model. For more information see the README.
+
+Creating locus islands
+~~~~~~~~~~~~~~~~~~~~~~
+
 Next create locus islands::
   
   python3 ../xenoGI/xenoGI-runner.py params.py makeIslands
 
-This will likely take 1-2 minutes.
+This step involves grouping locus families that have a common origin into locus islands. It will likely take 1-2 minutes.
 
-Then, refine families and remake islands::
+Refinement step
+~~~~~~~~~~~~~~~
+
+Finally we refine families and remake islands::
 
   python3 ../xenoGI/xenoGI-runner.py params.py refine
 
 This will also take 1-2 minutes. In the refinement step, xenoGI goes back and looks at cases where there are multiple most-parsimonious reconciliations. In the previous ``makeFamilies`` step, one of these was chosen arbitrarily. Now xenoGI considers all of the possibilities, and determines which of these is optimal by examining nearby gene families. (On the logic that since these will often have a common origin, it makes sense to chose the most-parsimonious reconciliation the corresponds best to them.)
-
-
-Analysis
---------
 
 Creating output files
 ~~~~~~~~~~~~~~~~~~~~~
@@ -237,17 +226,15 @@ We can now create a set of output files which we'll use in subsequent analysis::
 
 This step is very quick, taking just a few seconds on this data set.
 
+Analysis
+--------
+
 Examining the genes files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The above command creates a subdirectory called analysis. Let's have a look at it::
+The above command creates a subdirectory called analysis. Inside it you should find a set of files beginning with "genes", as well as ``islandsSummary.txt`` and ``islands.tsv``.
 
-  cd analysis/
-  ls
-
-You should see a set of files beginning with "genes", as well as ``islandsSummary.txt`` and ``islands.tsv``.
-
-The genes files contain all the genes in a strain laid out in the order they occur on the contigs (the first line of each specifies what the columns are). Let's start out by looking at a known pathogenicity island, Salmonella Pathogenicity Island 1 (SPI1). This island is known to be present in all three Salmonella strains, S_enterica_LT2, S_enterica_AZ, and S_bongori. In S_enterica_LT2 it is known to extend from STM2865 to STM2900. Let's take a look::
+The genes files contain all the genes in a strain laid out in the order they occur on the contigs (the first line of each specifies what the columns are). Let's start out by looking at a known pathogenicity island, Salmonella Pathogenicity Island 1 (SPI1). This island is known to be present in all three Salmonella strains, S_enterica_LT2, S_enterica_AZ, and S_bongori. In S_enterica_LT2 it is known to extend from STM2865 to STM2900. Let's take a look using a text viewer. From within the analysis directory (``xgiTutorial/enterics/analysis/``) type::
 
   less -S genes-S_enterica_LT2.tsv
 
@@ -258,8 +245,6 @@ FYI, when you want to exit ``less``, type ``q``.
 You can now search within ``less`` by typing forward slash (``/``) and entering the terms you want to search with. Here let's search using locus tag STM2865 which is at the beginning of SPI1.
 
 Here's a truncated bit of what you should see::
-
-
 
   21087_S_enterica_LT2-STM2863  C       OSSS    3225    2724    3166    3225    s0      sitC - iron ABC transporter
   21088_S_enterica_LT2-STM2864  C       OSSS    3224    2723    3165    3224    s0      sitD - iron ABC transporter
@@ -308,7 +293,7 @@ As discussed in the README, a locus island represents a set of gene families wit
 
 Every gene in a particular clade is either a core gene, or arose by xeno horizontal transfer (horizontal transfer from outside the clade). One of the goals of xenoGI is to determine this origin for each gene. The second column in the genes file contains this information. C stands for core, and X for xeno horizontal transfer. Note that for SPI1, all the genes are marked X.
 
-The third column contains a gene history string. Taking the gene 21124_S_enterica_LT2-STM290 for example (invH) the string is OSS. This reflects the history of the gene after insertion, as reconstructed by the DTLOR reconciliation. O stands for origin (in this case the xeno hgt event). And S stands for co-speciation--what happens when a speciation event occurs and both descendent lineages inherit a gene. invH is inferred to have inserted on branch s2. It then underwent co-speciation events at node s2 and node s3. (Other possible characters that could appear in the gene history string are  D, duplication; T, transfer (within the species tree); R, rearrangement).
+The third column contains a gene history string. Taking the gene 21124_S_enterica_LT2-STM290 for example (invH) the string is OSS. This reflects the history of the gene after insertion, as reconstructed by the DTLOR reconciliation. O stands for origin (in this case the xeno hgt event). And S stands for co-speciation--what happens when a speciation event occurs and both descendent lineages inherit a gene. invH is inferred to have inserted on branch s2. It then underwent co-speciation events at node s2 and node s3. Other possible characters that could appear in the gene history string are  D, duplication; T, transfer (within the species tree); R, rearrangement (from one syntenic region to another).
 
 As we noted, the 4th column gives the locus island. The 5th gives the initial family number, the 6th the origin family number, and the 7th the locus family number. We'll use some of these in the examples below.
 
@@ -325,7 +310,7 @@ trgc SARI_01591 SARI_01600
 
 You can search for these as we did above, and see what xenoGI says about the origins of these genes::
 
-  less -S genes-S_enterica_LT2.tsv
+  less -S genes-S_enterica_AZ.tsv
 
 Examining island summary filess
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -343,29 +328,37 @@ Note that there is a tab delimited version of this information contained in the 
 Interactive analysis
 ~~~~~~~~~~~~~~~~~~~~
 
-Above we asked you to look at SPI2 yourself. In the tetrathionate reductase gene cluster portion, one of the genes in S_enterica_AZ was this one::
+It is possible to get additional information using the interactive analysis mode.
 
-  1534_S_enterica_AZ-SARI_01595   X       OSS     2006    3506    4143    4216   s2       hypothetical protein
+Let's say you have a gene and are wanting to learn about the evolution of the family it belongs to. For example, maybe you are interested in SARI_01595 which is part of the tetrathionate reductase gene cluster. To proceed, you need to know the origin family number for this gene.
 
-(This is an entry from ``genes-S_enterica_AZ.tsv``)
-  
-Say you were interested in knowing some more detail about the evolution of this family after it inserted. You can learn more, as follows. Back at the unix prompt, cd up to the main enterics directory::
+One way to find out is to look in the genes files, as described above. Another way involves using the ``findGene`` function in interactive analysis.
 
-  cd ..
-
-(You should now be in ``xgiTutorial/enterics``).
-
-From here type::
+From a terminal prompt in the main enterics directory (``xgiTutorial/enterics``) type::
 
   python3 ../xenoGI/xenoGI-runner.py params.py interactiveAnalysis
 
+Once the python promp comes up, type::
+
+  findGene("SARI_01595")
+
+(Note that tab completion works in interactive mode, at least on Linux).
+
+The output should look like this::
+
+  <gene:1534_S_enterica_AZ-SARI_01595 locIsl:2006 ifam:3506 ofam:4143 locFam:4216 hypothetical protein>
+
+``findGene`` searches all the information associated with a gene. So you can potentially give it not only a locus tag, but also common name, protein ID etc.
+  
 ``printFam``
 ^^^^^^^^^^^^
-Then at the python prompt type::
+We can see from this that the origin family is 4143. (It is possible that on your machine the numbers will be different. If so, substitute the number you got for 4143 below).
+
+We can now type the following at the python prompt::
 
   printFam(4143,originFamiliesO)
-
-We are printing origin family 4154 (the number for which we got from the genes file entry printed above). This produces the following::
+  
+This produces the following output::
 
     Family 4143
         LocusFamily 4216 s2 4189 root_b 1534_S_enterica_AZ-SARI_01595 19655_S_enterica_LT2-STM1387 14955_S_bongori-A464_1417
@@ -480,7 +473,7 @@ The third argument is optional, and is an open file handle. Doing this can be us
 
 Let's now go though the various parts of this output.
 
-The family we've just printed is an origin family. Origin families represent the more refined stage of family analysis, and are what users are most likely to be interested in. An origin family has a gene tree associated with it, and also a reconciliation that places that gene tree onto the species tree. At the base of this reconciliation is an origin event. In this case, that is a xeno hgt event. (The other alternative is if a family is a core gene family).
+The family we've just printed is an origin family. Origin families represent the more refined stage of family analysis, and are what users are most likely to be interested in. An origin family has a gene tree associated with it, and also a reconciliation that places that gene tree onto the species tree. At the base of this reconciliation is an origin event. In this case, it is a xeno hgt event. (The other alternative is if a family is a core gene family).
 
 The first line of the output gives the family number.
 
@@ -488,7 +481,7 @@ Next come some lines printing out the locus families that are part of this origi
 
 In this case there is only one locus family, number 4216. This locus family originated on branch s2 of the species tree. It it found in syntenic region 4189, and it's origin point in the gene tree is the root branch of that tree. The remainder of this line consists of a listing of the genes in this locus family. In this case there are 3, one in each of the 2 S. enterica strains, and 1 in the S. bongori strain.
 
-The next element of the output is the source family. Because we're looking at an origin family, the source family for that will be what we call an initial family--initial family 3506 in this case. (This bit of information would be useful if you wanted to go back to the original initial family and look at how it was split up into origin families).
+The next element of the output is the source family. Because we're looking at an origin family, the source family for that will be what we call an initial family--initial family 3506 in this case. (This bit of information would be useful if you wanted to go back to the initial family and look at how it was split up into origin families).
 
 The next elements are 3 score matricies, showing the raw, core synteny, and regular synteny scores for the genes in this origin family. All of these scores take on values ranging from 0 to 1.
 
@@ -496,9 +489,9 @@ The raw score is a sequence similarity score. In this case, all 3 genes are fair
 
 The core synteny score reflects synteny as defined relative to core genes (large scale or long distance synteny). In this case, we can see that all 3 genes are in the same location given the very high scores.
 
-The regular synteny score represents more fine grained synteny, looking at a neighborhood of 20 genes around each family member. These synteny scores are also high.
+The regular synteny score represents more fine grained synteny, looking at a neighborhood of 20 genes around each family member. These synteny scores are also high in this case.
 
-The high synteny between all family members is the reason that there is only a single locus family in this origin family.
+The high synteny between all family members is the reason that xenoGI made only a single locus family in this origin family.
 
 The next element of the output is a printout of scores between family members, and non-family members. (The non-family members represent all genes that have significant blast hits vs. family members.) You might be interested in this if you suspected that there were some genes left out of the family that should have been included.
 
@@ -521,11 +514,11 @@ Listed below this is what happened to the two children of the gene tree root nod
 ``printLocusIsland``
 ^^^^^^^^^^^^^^^^^^^^
 
-Sometimes you might be interested in looking at a particular locus island, and seeing it in each of the strains where it occurs. One way to do this is to look through all the genes files for those strains.
+Sometimes you might be interested in looking at a particular locus island, and seeing it in each of the strains where it occurs. One way to do this is to look through all the genes files for those strains (as described above).
 
 However, interactive analysis provides a convenient way of printing a locus island in all the strains where it occurs.
 
-For example, the entry in ``genes-S_enterica_AZ.tsv`` shown above is part of locus island 2006. Let's view that locus island.
+For example, the gene SARI_01595 that we were interested in above is part of locus island 2006. Let's view that locus island.
 
 At the python prompt (which you got by running the interactiveAnalysis command) type the following::
 

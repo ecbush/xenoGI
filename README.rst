@@ -79,12 +79,14 @@ The working directory must contain:
 
 * A subdirectory of sequence files. In the example, this is called ``ncbi/``. Contained in this subdirectory will be genbank (gbff) files for the species. The parameter ``genbankFilePath`` in ``params.py`` has the path to these files.
 
-Naming of genbank files
-~~~~~~~~~~~~~~~~~~~~~~~
+Naming of strains
+~~~~~~~~~~~~~~~~~
 
 The system needs a way to connect the sequence files to the names used in the tree.
 
-In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ``ncbiHumanMap.txt``. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the species used in the tree file. Note that the species name should not contain any dashes, spaces, commas or special characters. In ``params.py`` the parameter ``fileNameMapFN`` is set to point to this file.
+In the example, the sequence files have names corresponding to their assembly accession number from ncbi. We connect these to the human readable names in example.tre using a mapping given in the file ``ncbiHumanMap.txt``. This file has two columns, the first giving the name of the genbank file, and the second giving the name for the strain used in the tree file. In ``params.py`` the parameter ``fileNameMapFN`` is set to point to this file.
+
+Note that the strain names should not contain any dashes, spaces, commas or special characters.
 
 Another approach is to change the names of the sequence files to match what's in the tree. If you do this, then you should set ``fileNameMapFN = None`` in ``params.py``. (This is not necessary in the example, which is already set to run the other way).
 
@@ -128,7 +130,7 @@ If for some reason you don't want to install via pip, then you can download the 
 What the steps do
 ~~~~~~~~~~~~~~~~~
 
-* ``parseGenbank`` runs through the genbank files and produces input files that are used by subsequent code.
+* ``parseGenbank`` runs through the genbank files and produces input files that are used by subsequent code. This step pulls out every CDS feature that has a ``/translation`` tag. The fields that are recorded (if present) are locus_tag, protein_id, product (that is gene description), and chromosomal coordinates as well as the protein sequence. If the parameter ``dnaBasedGeneTrees`` is True, the DNA sequence for each gene is kept as well.
   
 * ``runBlast`` does an all vs. all protein blast of the genes in these strains. The number of processes it will run in parallel is specified by the ``numProcesses`` parameter in the parameter file. Before running a particular comparison, runBlast checks to see if the output file for that comparison already exists (e.g. from a previous run). If so it skips the comparison.
   
@@ -160,7 +162,7 @@ In fact, a locus family has several possible origins. It may be due to a horizon
 
 xenoGI does this during the process of family formation. It begins by forming large gene groupings using single linkage clustering and sequence similarity as determined by blast. It then takes these "blast families", breaks up the larger ones (which must be done for reasons of time efficiency in later steps), and uses them as a basis for making a set of families which we call initial families. For each initial family, xenoGI creates a gene tree using MUSCLE and FastTree (the user can determine whether this should be done with DNA or protein by setting the input parameter dnaBasedGeneTrees). It then reconciles each resulting gene tree to the species tree using the DTLOR model.
 
-DTLOR is an extension we have developed to the DTL (duplication-transfer-loss) reconciliation model. It is especially suited to reconciliation in clades of closely related microbes because it allows some of the evolution of a gene family to occur outside of the given species tree. In particular, it allows multiple entry events into the species tree (where DTL allows only one). To facilitate the recognition of such entry events, the model also keeps track of *syntenic region* of each gene as it evolves in the species tree. Two genes are said to be in the same syntenic region if they share a substantial fraction of core genes in a relatively large window around them and, second, they share a certain amount of similarity among all genes in a smaller window around them. Thus, in addition to duplication, transfer, and loss events, the DTLOR model adds *origin* events to indicate that a gene is transferred from outside of the species tree and *rearrangement* events that account for changes in the syntenic regions of genes within the same the genome.
+DTLOR is an extension we have developed to the DTL (duplication-transfer-loss) reconciliation model. It is especially suited to reconciliation in clades of closely related microbes because it allows some of the evolution of a gene family to occur outside of the given species tree. In particular, it allows multiple entry events into the species tree (where DTL allows only one). To facilitate the recognition of such entry events, the model also keeps track of the *syntenic region* of each gene as it evolves in the species tree. Two genes are said to be in the same syntenic region if they share a substantial fraction of core genes in a relatively large window around them and, second, they share a certain amount of similarity among all genes in a smaller window around them. Thus, in addition to duplication, transfer, and loss events, the DTLOR model adds *origin* events to indicate that a gene is transferred from outside of the species tree and *rearrangement* events that account for changes in the syntenic regions of genes within the same the genome.
 
 xenoGI obtains a reconciliation for each initial family, and then uses these to break the initial families up according to origin events. The new families that result from this are called *origin families* because each one has an origin event at its base. For families whose origin is placed below the root of the species tree, the possible origins are horizontal transfer from outside or rearrangement. In general, users will be more interested in origin families than initial families. However the class representing initial families does contain some information (the raw reconciliation output) which isn't present in the origin families, and may occasionally be of interest.
 
@@ -230,12 +232,14 @@ From within python, you can then run functions such as
     printLocusIslandsAtNode('s2')         # All locus islands at node s2
     printLocusIslandsAtNode('E_coli_K12') # All locus islands on the E. coli K12 branch
 
-* findLocusIsland
+* findGene
 
   Usage::
   
-    findLocusIsland('gadA') # Find a locus island associated with a gene name or description``
-    
+    findGene('gadA')
+
+  Find information about a gene. Searches all the fields present in the geneInfo file, so the search string can be a locus tag, protein ID, a common name, or something present in the description. For each hit, prints the gene, LocusIsland, initialFamily, originFamily, LocusFamily and gene description.
+  
 * printLocusIsland
 
   Say we've identified locus island 1550 as being of interest. We can print it like this::
