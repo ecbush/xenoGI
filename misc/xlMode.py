@@ -178,7 +178,7 @@ def trimTree(paramD):
     for i in range(numIters):
         redundList = []
         pairDict = {}
-        makeDictForTreeO(treeToTrimO, pairDict, redundList)
+        makeDictForTreeO(treeToTrimO, pairDict, redundList, protectedList[0])
         leaf = pickToPruneForTreeO(pairDict, protectedList)
         treeToTrimO = pruneLeafForTreeO(leaf, treeToTrimO)
 
@@ -198,14 +198,14 @@ def getDistForTreeO(node1, node2, treeO):
         dist = treeO.branchLenD[(branchPair[1], branchPair[0])]
     return dist
 
-def makeDictForTreeO(treeO, pairDict, redundList):
+def makeDictForTreeO(treeO, pairDict, redundList, lonePairer):
     ''' calls getNeighborForTreeO on all of the leaves '''
     for leaf in treeO.leaves():
         parentNode = treeO.getParent(leaf)
         if leaf not in redundList and parentNode != treeO.rootNode:
-            getNeighborForTreeO(treeO, pairDict,redundList, leaf, parentNode)
+            getNeighborForTreeO(treeO, pairDict,redundList, leaf, parentNode, lonePairer)
 
-def getNeighborForTreeO(treeO, pairDict, redundList, leaf, parentNode):
+def getNeighborForTreeO(treeO, pairDict, redundList, leaf, parentNode, lonePairer):
     ''' finds nearest neighbor of each leaf '''
     leafDist = getDistForTreeO(leaf, parentNode, treeO)
     leftChild, rightChild = treeO.children(parentNode)
@@ -222,8 +222,14 @@ def getNeighborForTreeO(treeO, pairDict, redundList, leaf, parentNode):
     else:
         sisDict = getSisterForTreeO(leaf, parentNode, treeO, leafDist)
         multiDict = getMultiForTreeO(leaf, parentNode, treeO, leafDist)
-        pairDict.update(sisDict)
-        pairDict.update(multiDict)
+        # adjustment made for distant leaf (only cut if last choice)
+        if sisDict == {} and multiDict == {}:
+            loneDict = {}
+            loneDict[(leaf, lonePairer)] = float('inf')
+            pairDict.update(loneDict)
+        else:
+            pairDict.update(sisDict)
+            pairDict.update(multiDict)
 
 def getSisterForTreeO(leaf, parentNode, treeO, leafDist):
     ''' gets the sister of a leaf in a TreeO '''
@@ -352,7 +358,7 @@ def prune(allStrainsTreeO, scafStrainsL, scaffoldTreeFN):
     for i in range(numIters):
         redundList = []
         pairDict = {}
-        makeDictForTreeO(treeToTrimO, pairDict, redundList)
+        makeDictForTreeO(treeToTrimO, pairDict, redundList, scafStrainsL[0])
         leaf = pickToPruneForTreeO(pairDict, scafStrainsL)
         treeToTrimO = pruneLeafForTreeO(leaf, treeToTrimO)
     
@@ -369,7 +375,7 @@ def pruneGeneTree(geneTreeO, numGenes):
     for i in range(numIters):
         redundList = []
         pairDict = {}
-        makeDictForTreeO(treeToTrimO, pairDict, redundList)
+        makeDictForTreeO(treeToTrimO, pairDict, redundList, '')
         leaf = pickToPruneForTreeO(pairDict,[])
         treeToTrimO = pruneLeafForTreeO(leaf, treeToTrimO)
     return list(treeToTrimO.leaves())
@@ -426,6 +432,7 @@ scaffold, and finally maps all genes again.'''
     ## pick additional strains and add to scaffold tree
     print("  pick additional strains",file=sys.stderr)
     scaffoldStrainsL = list(scaffoldRtreeO.leaves())
+
     strainsToAddL = pickAdditionalStrains(allStrainsT,scaffoldStrainsL,blastDir,unMappedGenesFileL,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'],genesO,paramD['numStrainsToAddToScaffold'],paramD['percIdentThresh'])
     allStrainsTree = trees.Rtree()
     allStrainsTree.fromNewickFileLoadSpeciesTree(allStrainsTreeFN,outGroupL,True)
