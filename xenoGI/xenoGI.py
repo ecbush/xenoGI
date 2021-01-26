@@ -348,14 +348,17 @@ def interactiveAnalysisWrapper(paramD):
             print("Reconciliation of gene tree onto species tree",file=fileF)       
             fam.printReconByGeneTree(genesO,fileF)
         
-    def findLocusIsland(searchStr,fileF=sys.stdout):
-        '''Print the gene, LocusIsland family and LocusFamily associated with
-    searchStr. This is a wrapper that assumes various required objects
-    are present at the top level.
+    def findGene(searchStr,fileF=sys.stdout):
+        '''Find information about a gene. Searches all the fields present in
+    the geneInfo file, so the search string can be a locus tag, protein ID, a
+    common name, or something present in the description. For each
+    hit, prints the gene, LocusIsland, initialFamily, originFamily,
+    LocusFamily and gene description. This is a wrapper that assumes
+    various required objects are present at the top level.
         '''
         L=matchFamilyIsland(genesO,gene2FamIslandD,searchStr)
-        for geneName,locusIslandNum, famNum, locusFamNum in L:
-            print("<gene:"+str(geneName)+">","<locIsl:"+str(locusIslandNum)+">","<fam:"+str(famNum)+">","<locFam:"+str(locusFamNum)+">",file=fileF)
+        for geneName,locusIslandNum,ifamNum,ofamNum,locusFamNum,descrip in L:
+            print("<gene:"+str(geneName),"locIsl:"+str(locusIslandNum),"ifam:"+str(ifamNum),"ofam:"+str(ofamNum),"locFam:"+str(locusFamNum),descrip+">",file=fileF)
 
     def printLocusIsland(locusIslandNum,synWSize,fileF=sys.stdout):
         '''Print a LocusIsland and its genomic context in each species. We
@@ -404,18 +407,7 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-
-    scaffoldRtreeO = trees.Rtree()
-    scaffoldRtreeO.fromNewickFileLoadSpeciesTree(paramD['scaffoldTreeFN'])
-
-    scaffoldStrainsL = list(scaffoldRtreeO.leaves())
-
-    unMappedGenesFileL = ['fasta/unMappedGenes0.fa','fasta/unMappedGenes2.fa','fasta/unMappedGenes5.fa','fasta/unMappedGenes8.fa','fasta/unMappedGenes10.fa', 'fasta/unMappedGenes3.fa','fasta/unMappedGenes6.fa','fasta/unMappedGenes9.fa','fasta/unMappedGenes1.fa','fasta/unMappedGenes4.fa','fasta/unMappedGenes7.fa']
-
-    allStrainsT = strainNamesT
-    
-    strainsToAddL = xlMode.pickAdditionalStrains(allStrainsT,scaffoldStrainsL,'blast/',unMappedGenesFileL,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'],genesO,paramD['numStrainsToAddToScaffold'],paramD['percIdentThresh'])
-    
+   
     # set up interactive console
     vars = globals()
     vars.update(locals())

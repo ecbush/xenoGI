@@ -43,15 +43,16 @@ fields of geneInfoD.'''
         for value in valueT:
             if type(value)==str:
                 if searchStr in value:
-                    geneMatchL.append(geneNum)
+                    descrip = valueT[4]
+                    geneMatchL.append((geneNum,descrip))
                     break
 
     # get family numbers and island numbers
     outL=[]
-    for geneNum in geneMatchL:
+    for geneNum,descrip in geneMatchL:
         geneName = genesO.numToName(geneNum)
-        (locusIslandNum, famNum, locusFamNum) = gene2FamIslandD[geneNum]
-        outL.append((geneName,locusIslandNum, famNum, locusFamNum))
+        (locusIslandNum,ifamNum,ofamNum,locusFamNum) = gene2FamIslandD[geneNum]
+        outL.append((geneName,locusIslandNum,ifamNum,ofamNum,locusFamNum,descrip))
     return outL
         
 ## Print scores associated with a family
@@ -268,15 +269,17 @@ def printAllLocusIslandsTsv(islandByNodeD,speciesRtreeO,rootFocalClade,familiesO
             print("\t".join(printL),file=fileF)
     return
     
-def createGene2FamIslandD(islandByNodeD,familiesO):
+def createGene2FamIslandD(islandByNodeD,originFamiliesO):
     '''Creates a dictionary keyed by gene number which has the
 LocusIsland, Family and LocusFamily for each gene.'''
     D = {}
     for islandsAtNodeL in islandByNodeD.values():
         for locusIslandO in islandsAtNodeL:
-            for locusFamO in locusIslandO.iterLocusFamilies(familiesO):
+            for locusFamO in locusIslandO.iterLocusFamilies(originFamiliesO):
                 for gene in locusFamO.iterGenes():
-                    D[gene] = (locusIslandO.id,locusFamO.famNum,locusFamO.locusFamNum)
+                    ofamNum = locusFamO.famNum
+                    ifamNum = originFamiliesO.getFamily(ofamNum).sourceFam
+                    D[gene] = (locusIslandO.id,ifamNum,ofamNum,locusFamO.locusFamNum)
 
     return D
 
