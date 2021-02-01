@@ -27,21 +27,26 @@ def parseGenbank(paramD,fastaOutFileDir,genbankFileList,fileNameMapD):
     if problemGenbankFileL != []:
 
         with open(paramD['problemGenbankFN'],'w') as problemGenbankF:
-            problemGenbankF.write("\n".join(problemGenbankFileL)+"\n")
+            for probT in problemGenbankFileL:
+                problemGenbankF.write("\t".join(probT)+"\n")
     
-        raise ValueError('Some genbank files lack protein annotations. They are listed in ' + paramD['problemGenbankFN'] + '. Please remove and run again.\n')
+        raise ValueError('Some genbank files have problems with their annotations. They are listed in ' + paramD['problemGenbankFN'] + '. Please remove and run again.\n')
     
 def parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneInfoFile,geneOrderOutFile,fastaOutFileDir,problemGenbankFileL):
-    '''Parse a single genbank file. We pass through twice. Once to
-identify redundant genes, so we can avoid them. And another time to
-get the stuff we want.
-
+    '''Parse a single genbank file.
     '''
     genbankName = os.path.split(fileName)[-1]
     speciesName = fileNameMapD[genbankName]
 
+    # verify that there are protein annotations
     if not verifyProteinAnnotations(fileName):
-        problemGenbankFileL.append(fileName)
+        problemGenbankFileL.append((fileName,'lacks protein annotations'))
+        return geneNum,problemGenbankFileL 
+
+    # if using dna for gene trees, verify that dna annotations 3x
+    # longer than protein
+    if dnaBasedGeneTrees and not verifyDnaAnnotations(fileName):
+        problemGenbankFileL.append((fileName,'length of dna and protein annotations do not correspond properly'))
         return geneNum,problemGenbankFileL 
     
     # start a block for this species in geneInfoFile
@@ -150,3 +155,21 @@ protein annotations. Return True if it does, False if not.'''
     # made it all the way through with no annotations
     return False
     
+def verifyDnaAnnotations(fileName):
+    '''Run through genbank file fileName verifying that dna gene
+annotations are 3x longer than protein annotations. Return True if so
+in all cases, False otherwise.
+    '''
+    with open(fileName, 'rU') as f:
+        for record in SeqIO.parse(f, "genbank"):
+            # iterate through the genes on the chromosome
+            for feature in record.features:
+                # choose only the features that are protein coding genes
+                if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
+                    aaSeq = feature.qualifiers['translation'][0]
+                    dnaSeq = str(feature.extract(record.seq))
+                    if (len(aaSeq) + 1) * 3 != len(dnaSeq):
+                        return False
+    # made it all the way through so annotations ok
+    return True
+   

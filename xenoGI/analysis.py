@@ -439,9 +439,8 @@ def printGenes(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClad
             geneName = '  '+geneName
 
         # family info
-        locIslNum,ofamNum,locFamNum = gene2FamIslandD[geneNum]
+        locIslNum,ifamNum,ofamNum,locFamNum = gene2FamIslandD[geneNum]
         famO = originFamiliesO.getFamily(ofamNum)
-        ifamNum = famO.sourceFam
         
         # only print geneHistory,orign if gene is in focal clade
         if strainName in focalCladeStrainsS:

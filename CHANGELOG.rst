@@ -3,7 +3,7 @@ Change Log
 ==========
 
 -------------------
-3.0.0_ - 2021-01-13
+3.0.0_ - 2021-02-01
 -------------------
 
 This is a major release, meaning things like parameter files and output files have changed.

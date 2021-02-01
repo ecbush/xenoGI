@@ -3,7 +3,7 @@ sys.path.insert(0,os.path.join(sys.path[0],'../xenoGI'))
 from xenoGI import xenoGI,blast,trees,scores,genomes,Score,families,islands,analysis
 from Bio import Phylo
 
-random.seed(42)
+#random.seed(42)
 
 ###### Obtain core ortho sets wrapper ######
         
