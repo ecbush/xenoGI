@@ -302,7 +302,7 @@ Quit out of ``less`` by typing ``q``.
 A second pathogenicity island in Salmonella, SPI2 is known to have two parts with different evolutionary origins. The type III secretion system (t3ss) is shared by Salmonella enterica strains, but is lacking outside that group. On our enterics tree, this means it inserted on the s3 branch. There is also a portion of SPI2 that is called the tetrathionate reductase gene cluster (trgc). This portion is present in other species in the Salmonella genus. On our enterics tree it inserted on the s2 branch. The following locus tags define the beginning and end of these regions in SPI2 in S_enterica_AZ.
 
 ==== ========== ==========
-       From         To
+ \     From         To
 ==== ========== ==========
 t3ss SARI_01560 SARI_01590
 trgc SARI_01591 SARI_01600
