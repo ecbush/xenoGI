@@ -303,7 +303,7 @@ A second pathogenicity island in Salmonella, SPI2 is known to have two parts wit
 
 ==== ========== ==========
        From         To
----- ---------- ----------
+==== ========== ==========
 t3ss SARI_01560 SARI_01590
 trgc SARI_01591 SARI_01600
 ==== ========== ==========
