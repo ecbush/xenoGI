@@ -169,13 +169,13 @@ qend slen sstart send.
             if queryStr.isdigit():
                 queryGene = int(queryStr)
             else:
-                queryGene = queryStr
+                queryGene = blastLine[0]
 
             subjectStr = blastLine[1].split('_')[0]
             if subjectStr.isdigit():
                 subjectGene = int(subjectStr)
             else:
-                subjectGene = subjectStr
+                subjectGene = blastLine[1]
 
             evalue = float(blastLine[2])
             if evalue < evalueThresh:
