@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "3.0.0"
+__version__ = "3.0.1"
 import sys, glob, os, readline, rlcompleter
 from . import parameters,genbank,blast,trees,genomes,Score,scores,families,islands,analysis,islandBed
 from .Tree import *
@@ -12,14 +12,14 @@ def main():
         assert(len(sys.argv) == 3)
         paramFN=sys.argv[1]
         task = sys.argv[2]
-        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands','refine', 'printAnalysis', 'createIslandBed', 'plotScoreHists', 'interactiveAnalysis', 'runAll', 'version', 'debug'])
+        assert(task in ['parseGenbank', 'runBlast', 'calcScores','makeSpeciesTree', 'makeFamilies', 'makeIslands','refine', 'printAnalysis', 'interactiveAnalysis', 'createIslandBed', 'plotScoreHists', 'aminoAcidIdentity', 'runAll', 'version', 'debug'])
     
     except:
         print(
             """
    Exactly two arguments required.
       1. A path to a parameter file.
-      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, refine, printAnalysis, createIslandBed, plotScoreHists, interactiveAnalysis, runAll or version.
+      2. The task to be run which must be one of: parseGenbank, runBlast, calcScores, makeSpeciesTree, makeFamilies, makeIslands, refine, printAnalysis, interactiveAnalysis, createIslandBed, plotScoreHists, aminoAcidIdentity, runAll or version.
 
    For example: 
       xenoGI params.py parseGenbank
@@ -64,17 +64,24 @@ def main():
     elif task == 'printAnalysis':
         printAnalysisWrapper(paramD,paramD['speciesTreeFN'],paramD['rootFocalClade'])
 
-    #### createIslandBed
-    elif task == 'createIslandBed':
-        createIslandBedWrapper(paramD)
-
     #### interactiveAnalysis
     elif task == 'interactiveAnalysis':
         interactiveAnalysisWrapper(paramD)
         
+    #### createIslandBed
+    elif task == 'createIslandBed':
+        createIslandBedWrapper(paramD)
+
     #### plotScoreHists
     elif task == 'plotScoreHists':
         scores.plotScoreHists(paramD)
+
+    #### aminoAcidIdentity
+    elif task == 'aminoAcidIdentity':
+        '''Assumes runBlast has already been run.'''
+        strainNamesT = readStrainInfoFN(paramD['strainInfoFN'])
+        aaiD=analysis.aminoAcidIdentity(strainNamesT,paramD)
+        analysis.printAminoAcidIdentity(aaiD,strainNamesT)
         
     #### runAll
     elif task == 'runAll':

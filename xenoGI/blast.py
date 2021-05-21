@@ -151,6 +151,25 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
+def constructBlastFileList(strainNamesT,paramD):
+    '''Constructs the path to all blast files that should be present given
+the strains in strainNamesT. Returns two lists of the same
+length. pathL, with the paths. strainPairL with tuples of the pairs of
+strains.
+    '''
+
+    blastFileJoinStr = paramD['blastFileJoinStr']
+    blastDir,blastExt = paramD['blastFilePath'].split("*")
+
+    pathL = []
+    strainPairL = []
+    for strain1 in strainNamesT:
+        for strain2 in strainNamesT:
+            path = os.path.join(blastDir,strain1+blastFileJoinStr+strain2+blastExt)
+            pathL.append(path)
+            strainPairL.append((strain1,strain2))
+    return pathL,strainPairL
+
 def parseBlastFile(blastFN,evalueThresh,alignCoverThresh,percIdentThresh):
     '''Parse a single blast output file, returning all hits as a list of
 tuples. alignCoverThresh is a threshold for the length of the
