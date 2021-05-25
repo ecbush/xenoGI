@@ -80,7 +80,8 @@ def main():
     elif task == 'aminoAcidIdentity':
         '''Assumes runBlast has already been run.'''
         strainNamesT = readStrainInfoFN(paramD['strainInfoFN'])
-        aaiD=analysis.aminoAcidIdentity(strainNamesT,paramD)
+        blastDir,blastExt = paramD['blastFilePath'].split("*")
+        aaiD=analysis.aminoAcidIdentity(strainNamesT,paramD['blastFileJoinStr'],blastDir,blastExt,paramD['evalueThresh'])
         analysis.printAminoAcidIdentity(aaiD,strainNamesT)
         
     #### runAll
@@ -414,7 +415,7 @@ def debugWrapper(paramD):
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-   
+
     # set up interactive console
     vars = globals()
     vars.update(locals())

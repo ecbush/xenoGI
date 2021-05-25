@@ -50,7 +50,7 @@ strainPairScoreLocationD.
             # and also for 2 vs 1), or may only have one (e.g. for
             # strain 1 vs strain 1).
             for fn in pairT:
-                for g1,g2,evalue,alCov,pident,score in blast.parseBlastFile(fn,evalueThresh,alignCoverThresh,percIdentThresh):
+                for g1,g2,evalue,alCov,pident,score,alLen in blast.parseBlastFile(fn,evalueThresh,alignCoverThresh,percIdentThresh):
                     
                     # because we have blast files going both ways
                     # (e.g. strain 1 vs strain 2 and also strain 2 vs

@@ -55,23 +55,16 @@ fields of geneInfoD.'''
 
 ## amino acid identity
 
-def aminoAcidIdentity(strainNamesT,paramD):
+def aminoAcidIdentity(strainNamesT,blastFileJoinStr,blastDir,blastExt,evalueThresh):
     '''Calculate amino acid identity between all strains in
 strainNamesT. For each pair of strains, we get all best reciprocal hit
 alignments. We then report the amino acid identity one would get from
 them if they were concatenated. Return as a dict.
     '''
 
-    pathL,strainPairL = blast.constructBlastFileList(strainNamesT,paramD)
-
-    # load all blast files
-    blastD = {}
-    for i in range(len(pathL)):
-        blastPath = pathL[i]
-        strainPair = strainPairL[i]
-         # set coverage and percid thresh to 0, to take all.
-        blastD[strainPair] = blast.parseBlastFile(blastPath, paramD['evalueThresh'], 0, 0)
-
+    # alignCoverThresh,percIdentThresh both 0
+    blastD,strainPairL = blast.createBlastD(strainNamesT,blastFileJoinStr,blastDir,blastExt,evalueThresh,0,0)
+    
     # get recipt hits
     aaiD = {}
     for strainPair in strainPairL:
@@ -89,87 +82,53 @@ def getRecipBestHits(blastL1, blastL2):
             the reciprocal best hits found in the two blast tables.
     '''
     # convert the parsed blast tables to best hit dictionaries
-    bestHits1D = getBestHitsDictionary(blastL1)
-    bestHits2D = getBestHitsDictionary(blastL2)
+    bestHits1D = blast.getBestHitsDictionary(blastL1)
+    bestHits2D = blast.getBestHitsDictionary(blastL2)
 
     # save instances where there is a reciprocal best hit
     recipBestD = {}
     for key1 in bestHits1D.keys():
         # get the best hit name
-        hit1 = bestHits1D[key1]['hit']
+        hit1 = bestHits1D[key1][0]
 
         # get the hit's best hit (if possible)
         if hit1 in bestHits2D.keys():
             key2 = hit1
-            hit2 = bestHits2D[key2]['hit']
+            hit2 = bestHits2D[key2][0]
 
             # save if the best hits are reciprocal
             if hit2 == key1:
-                pid1 = bestHits1D[key1]['pident']
-                pid2 = bestHits2D[key2]['pident']
-
-                recipBestD[(key1, key2)] = [pid1, pid2]
+                pident1 = bestHits1D[key1][1]
+                alLen1 = bestHits1D[key1][3]
+                pident2 = bestHits2D[key2][1]
+                alLen2 = bestHits2D[key2][3]
+                recipBestD[(key1, key2)] = [pident1,alLen1,pident2,alLen2]
 
     return recipBestD
 
-def getBestHitsDictionary(blastL):
-    '''getBestHitsDictionary: Accepts a parsed blast table as input (list
-            of tuples). Uses the 'score' to determine the best hit for
-            each unique query. Returns a dictionary containing the
-            best hits with the query names as the keys.
-
-    '''
-    # constants
-    KEY_INDEX = 0
-    HIT_INDEX = 1
-    PID_INDEX = 4
-    SCORE_INDEX = 5
-    
-    # initialize the output
-    bestHitD = {}
-
-    for entry in blastL:
-        # put values into more compact variable names
-        key = entry[KEY_INDEX]
-        hit = entry[HIT_INDEX]
-        pid = entry[PID_INDEX]
-        score = entry[SCORE_INDEX]
-
-        # only one entry per query, only keep the one with the highest score
-        if key not in bestHitD.keys():
-            bestHitD[key] = {'hit': hit, 'pident': pid, 'score': score}
-        elif score > bestHitD[key]['score']:
-            bestHitD[key] = {'hit': hit, 'pident': pid, 'score': score}
-    
-    return bestHitD
-
 def calculateAaiFromRecipBestHits(recipBestHitsD):
     ''' calculateAaiFromRecipBestHits:
             Accepts a dictionary containing the reciprocal best hits for a pair
             of genomes. Calculates and returns the average amino acid identity 
-            for that pair.
+            for that pair, weighting by alignment length.
     '''
     # extract percent identities into a single list
-    pidL = []
+    pidentL = []
+    lenL=[]
     for key in recipBestHitsD.keys():
-        pidL.extend(recipBestHitsD[key])
-    
-    # return the mean value of the list
-    return sum(pidL) / len(pidL)
+        pident1,alLen1,pident2,alLen2 = recipBestHitsD[key]
+        pidentL.append(pident1)
+        pidentL.append(pident2)
+        lenL.append(alLen1)
+        lenL.append(alLen2)
 
-def calculateAaiFromRecipBestHits(recipBestHitsD):
-    ''' calculateAaiFromRecipBestHits:
-            Accepts a dictionary containing the reciprocal best hits for a pair
-            of genomes. Calculates and returns the average amino acid identity 
-            for that pair.
-    '''
-    # extract percent identities into a single list
-    pidL = []
-    for key in recipBestHitsD.keys():
-        pidL.extend(recipBestHitsD[key])
-    
-    # return the mean value of the list
-    return sum(pidL) / len(pidL)
+    # average, weighting by alignment length
+    aai = 0
+    lenSum = sum(lenL)
+    for i in range(len(pidentL)):
+        aai += pidentL[i]*lenL[i]/lenSum
+        
+    return aai
 
 def printAminoAcidIdentity(aaiD,strainNamesT,fileF=sys.stdout):
     '''Print amino acid identity into a nice table, diven a dict of values.'''

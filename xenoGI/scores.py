@@ -208,11 +208,10 @@ each and the score.'''
 #### Calculating the set of all around best reciprocal hit homologs
 #    (used in core synteny scores below)
 
-def createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh,aabrhFN):
+def createAabrhL(strainNamesL,blastFileJoinStr,blastDir,blastExt,evalueThresh,alignCoverThresh,percIdentThresh,aabrhFN):
     '''Get the sets of all around best reciprocal hits.'''
 
-    blastDir = blastFilePath.split("*")[0]
-    rHitsL=getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh)
+    rHitsL=getAllReciprocalHits(strainNamesL,blastFileJoinStr,blastDir,blastExt,evalueThresh,alignCoverThresh,percIdentThresh)
     
     # get sets of genes in first species that have a reciprocal best
     # hit in each other species. this is to save time in next step.
@@ -247,12 +246,14 @@ per line.'''
     f.close()
     return orthoL
 
-def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh):
+def getAllReciprocalHits(strainNamesL,blastFileJoinStr,blastDir,blastExt,evalueThresh,alignCoverThresh,percIdentThresh):
     '''return an upper-diagonal (N-1)xN matrix where each entry
     [i][j] (j > i) contains a dictionary of best reciprocal hits
     between species i and species j, as indexed in list strainNamesL;
     key is always gene in species i, and value gene in species j'''
 
+    blastD,strainPairL = blast.createBlastD(strainNamesL,blastFileJoinStr,blastDir,blastExt,evalueThresh,alignCoverThresh,percIdentThresh)
+    
     rHitsL = []
     
     for i in range(len(strainNamesL)): 
@@ -261,50 +262,28 @@ def getAllReciprocalHits(blastDir,strainNamesL,evalueThresh,alignCoverThresh,per
         # reciprocal hits between species i and j (keyed by species i)
         for j in range(len(strainNamesL)):
             if j > i:
-                rHitsL[i].append(getReciprocalHits(strainNamesL[i],strainNamesL[j],blastDir,evalueThresh,alignCoverThresh,percIdentThresh))
+                rHitsL[i].append(getReciprocalHits(blastD[(strainNamesL[i],strainNamesL[j])],blastD[(strainNamesL[j],strainNamesL[i])]))
             else:
                 rHitsL[i].append(None)
     return rHitsL
 
+def getReciprocalHits(blastL1,blastL2):
+    '''Given matching blast output (in opposite directions) return a
+dictionary of reciprocal best hits.'''
 
-def getReciprocalHits(strainName1,strainName2,blastDir,evalueThresh,alignCoverThresh,percIdentThresh):
-    '''Given strain names and blast file directory name, load hits between
-two strains in each direction, then go through and keep only the
-reciprocal hits. Returns dictionary where keys are genes in strain 1
-and values are corresponding genes in strain 2.'''
-    # get best hits of 1 blasted against 2...
-    hits1D = getHits(blastDir+strainName1+'_-VS-_'+strainName2+'.out',evalueThresh,alignCoverThresh,percIdentThresh)
-    # ...and 2 blasted against 1
-    hits2D = getHits(blastDir+strainName2+'_-VS-_'+strainName1+'.out',evalueThresh,alignCoverThresh,percIdentThresh)
-
+    bestHits1D = blast.getBestHitsDictionary(blastL1)
+    bestHits2D = blast.getBestHitsDictionary(blastL2)
+    
     # then store only the reciprocal best hits
     recipHitsD = {}
-    for query in hits1D:
-        hit = hits1D[query]
-        nextHit = hits2D.get(hit)
-        if nextHit == query:
-            recipHitsD[query] = hit
+    for query in bestHits1D:
+        hit = bestHits1D[query][0]
+        if hit in bestHits2D:
+            nextHit = bestHits2D[hit][0]
+            if nextHit == query:
+                recipHitsD[query] = hit
 
     return recipHitsD
-
-def getHits(fileName, evalueThresh,alignCoverThresh,percIdentThresh):
-    """Given a BLAST output file, returns a dictionary keyed by the genes
-    in the query species, with the values being the top hit (if any)
-    for those genes. Assumes the blast hits for each query are given
-    from most to least significant. which appears to be the
-    case. Thresholds for minimum similarity and maximum length
-    difference are globally defined.
-    """
-    hitsD = {}
-    tempEvalueD = {} # just to help us get the hit with the best evalue
-    for queryGene,subjectGene,evalue,alCov,pident,score in blast.parseBlastFile(fileName,evalueThresh,alignCoverThresh,percIdentThresh):
-
-        if not queryGene in hitsD or evalue < tempEvalueD[queryGene]:
-            # if it isn't there, or if new hit has a better evalue, record
-            tempEvalueD[queryGene] = evalue
-            hitsD[queryGene] = subjectGene
-
-    return hitsD           
 
 def getPossibleGenesD(rHitsL):
     '''return dict containing an entry for each gene in species 0 that has
@@ -381,14 +360,16 @@ def calcCoreSynScores(scoresO,strainNamesL,paramD,geneOrderD):
 aabrhHardCoreL. Scores are between 0 and 1, giving the percentage of syntenic
 genes shared.'''
 
+    blastFileJoinStr = paramD['blastFileJoinStr']
     blastFilePath = paramD['blastFilePath']
+    blastDir,blastExt = paramD['blastFilePath'].split("*")
     evalueThresh = paramD['evalueThresh']
     alignCoverThresh = paramD['alignCoverThresh']
     percIdentThresh = paramD['percIdentThresh']
     aabrhFN = paramD['aabrhFN']
     coreSynWsize = paramD['coreSynWsize']
     
-    aabrhHardCoreL = createAabrhL(blastFilePath,strainNamesL,evalueThresh,alignCoverThresh,percIdentThresh,aabrhFN)
+    aabrhHardCoreL = createAabrhL(strainNamesL,blastFileJoinStr,blastDir,blastExt,evalueThresh,alignCoverThresh,percIdentThresh,aabrhFN)
 
     geneToAabrhD = createGeneToAabrhD(aabrhHardCoreL)
     coreSyntenyD = createCoreSyntenyD(geneToAabrhD,geneOrderD,coreSynWsize)

@@ -151,16 +151,29 @@ blast write to file, we dump std_out. return std_err.'''
     stdout, stderr = pipes.communicate()
     return stderr
 
-def constructBlastFileList(strainNamesT,paramD):
+def createBlastD(strainNamesT,blastFileJoinStr,blastDir,blastExt,evalueThresh,alignCoverThresh,percIdentThresh):
+    '''Create a dictionary of blast output. Keyed by strain pair, with
+values being the list returned by parseBlastFile.
+    '''
+    pathL,strainPairL = constructBlastFileList(strainNamesT,blastFileJoinStr,blastDir,blastExt)
+
+    # load all blast files
+    blastD = {}
+    for i in range(len(pathL)):
+        blastPath = pathL[i]
+        strainPair = strainPairL[i]
+         # set coverage and percid thresh to 0, to take all.
+        blastD[strainPair] = parseBlastFile(blastPath,evalueThresh,alignCoverThresh,percIdentThresh)
+
+    return blastD,strainPairL
+
+def constructBlastFileList(strainNamesT,blastFileJoinStr,blastDir,blastExt):
     '''Constructs the path to all blast files that should be present given
 the strains in strainNamesT. Returns two lists of the same
 length. pathL, with the paths. strainPairL with tuples of the pairs of
 strains.
+
     '''
-
-    blastFileJoinStr = paramD['blastFileJoinStr']
-    blastDir,blastExt = paramD['blastFilePath'].split("*")
-
     pathL = []
     strainPairL = []
     for strain1 in strainNamesT:
@@ -175,7 +188,7 @@ def parseBlastFile(blastFN,evalueThresh,alignCoverThresh,percIdentThresh):
 tuples. alignCoverThresh is a threshold for the length of the
 alignment relative to query and subject length. The files have the
 following fields (our custom output) qseqid sseqid evalue qlen qstart
-qend slen sstart send.
+qend slen sstart send pident score.
     '''
     L=[]
     with open(blastFN,'r') as f:
@@ -208,7 +221,41 @@ qend slen sstart send.
                 score = int(blastLine[10])
 
                 alCov = ((qend-qstart) + (send-sstart)) / (qlen+slen)
+                alLen = ((qend-qstart) + (send-sstart)) / 2 # av align len
+                
                 if alCov > alignCoverThresh and pident > percIdentThresh:
-                    L.append((queryGene,subjectGene,evalue,alCov,pident,score))
+                    L.append((queryGene,subjectGene,evalue,alCov,pident,score,alLen))
             s = f.readline()
     return L
+
+def getBestHitsDictionary(blastL):
+    '''getBestHitsDictionary: Accepts a parsed blast table as input (list
+            of tuples). Uses the 'score' to determine the best hit for
+            each unique query. Returns a dictionary containing the
+            best hits with the query names as the keys and
+            (hit,pident,score) as value.
+    '''
+    # constants
+    QUERY_INDEX = 0
+    HIT_INDEX = 1
+    PIDENT_INDEX = 4
+    SCORE_INDEX = 5
+    ALIGNLEN_INDEX = 6
+    
+    # initialize the output
+    bestHitD = {}
+
+    for entry in blastL:
+        # put values into more compact variable names
+        query = entry[QUERY_INDEX]
+        hit = entry[HIT_INDEX]
+        pident = entry[PIDENT_INDEX]
+        score = entry[SCORE_INDEX]
+        alLen = entry[ALIGNLEN_INDEX]
+        
+        # only one entry per query, only keep the one with the highest score
+        if query not in bestHitD.keys() or score > bestHitD[query][2]:
+            bestHitD[query] = (hit,pident,score,alLen)
+    
+    return bestHitD
+
