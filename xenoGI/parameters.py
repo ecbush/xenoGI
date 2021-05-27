@@ -89,6 +89,7 @@ hashArrayScaleFactor = 2
 
 makeSpeciesTreeWorkingDir = 'makeSpeciesTreeWorkDir'
 deleteSpeciesTreeWorkingDir = False # if True, we delete when done
+deleteSpeciesGeneTreeAlignmentFiles = True # if True, alignment files deleted, even when working dir is kept.
 
 # where to put gene trees for the aabrh hard core families
 aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'

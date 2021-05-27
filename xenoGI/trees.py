@@ -129,8 +129,9 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     makeGeneTrees(paramD,True,genesO,workDir,gtFileStem,newAabrhHardCoreL)
 
     # remove alignments
-    for fn in glob.glob(os.path.join(workDir,"align*.afa")):
-        os.remove(fn)
+    if deleteSpeciesGeneTreeAlignmentFiles:
+        for fn in glob.glob(os.path.join(workDir,"align*.afa")):
+            os.remove(fn)
     
     ## run Astral on gene trees
 
@@ -176,8 +177,9 @@ def makeGeneFamilyTrees(paramD,genesO,familiesO,gtFileStem = 'fam'):
     makeGeneTrees(paramD,False,genesO,workDir,gtFileStem,orthoTL)
 
     # remove alignments
-    for fn in glob.glob(os.path.join(workDir,"align*.afa")):
-        os.remove(fn)
+    if deleteSpeciesGeneTreeAlignmentFiles:
+        for fn in glob.glob(os.path.join(workDir,"align*.afa")):
+            os.remove(fn)
     
     return
 
