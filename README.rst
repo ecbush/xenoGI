@@ -294,6 +294,12 @@ Print the version number::
    
   xenoGI params.py version
 
+Calculate the amino acid identity between strains:
+
+  xenoGI params.py aminoAcidIdentity
+
+This uses blast output, and so should be run after the runBlast step. It identifies the best reciprocal hits between each pair of strains. It then averages protein identity across these, weighted by alignment length.
+  
 Produce a set of pdf files showing histograms of scores between all possible strains::
 
   xenoGI params.py plotScoreHists
