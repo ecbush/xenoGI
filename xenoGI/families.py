@@ -1464,7 +1464,7 @@ originFamiliesO.
 
     # run on multiple processors
     with Pool(processes=paramD['numProcesses']) as p:
-        for ifamNum,bestMprOrigFormatD in p.imap_unordered(getBestMprOrigForamatD, argumentL):
+        for ifamNum,bestMprOrigFormatD in p.imap_unordered(getBestMprOrigFormatD, argumentL):
             # put output bestMprs back in ifam objects
             ifam = initialFamiliesO.getFamily(ifamNum)
             ifam.addMprD(bestMprOrigFormatD)
@@ -1491,7 +1491,7 @@ originFamiliesO.
 
     return initialFamiliesO,originFamiliesO
 
-def getBestMprOrigForamatD(argumentL):
+def getBestMprOrigFormatD(argumentL):
     '''Given a candidate ifam, find the best MPR given nearbyOfamL.'''
 
     # Note: passing the largish objects in argumentL could become a problem with large datasets

@@ -111,6 +111,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     outSpeciesTreeFN = paramD['speciesTreeFN'] # for main output
     outGroupTaxaL = [paramD['outGroup']]
     deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
+    deleteSpeciesGeneTreeAlignmentFiles = paramD['deleteSpeciesGeneTreeAlignmentFiles']
     
     # if tree file already exists, throw error
     if os.path.isfile(outSpeciesTreeFN):
@@ -160,6 +161,8 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
 def makeGeneFamilyTrees(paramD,genesO,familiesO,gtFileStem = 'fam'):
     '''Given a families object, create a gene tree for each family.'''
 
+    deleteSpeciesGeneTreeAlignmentFiles = paramD['deleteSpeciesGeneTreeAlignmentFiles']
+    
     # create work dir if it doesn't already exist
     workDir = paramD['geneFamilyTreesDir']
     if glob.glob(workDir)==[]:
