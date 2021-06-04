@@ -410,12 +410,15 @@ def debugWrapper(paramD):
     import code,sys,numpy
     from .xenoGI import analysis,parameters,trees,genomes,families,islands,analysis,Score,scores
 
-    sys.path.insert(0,os.path.join(sys.path[0],'/biology/bush/htrans/xenoGI.work/misc/'))
-    import xlMode
-    
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
 
+    ut = Utree()
+    ut.fromNewickFile("t.tre")
+    print(ut)
+    
+    bpTree = Phylo.read("t.tre", 'newick', rooted=False)
+    
     # set up interactive console
     vars = globals()
     vars.update(locals())

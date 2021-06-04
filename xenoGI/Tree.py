@@ -106,9 +106,9 @@ we still hold it as a string.
         
     def fromString(self,treeStr):
         '''Populate attributes by parsing the string treeStr (which has likely
-been read from a file). This method allows multifurcating trees. See
-fileStr method for description of format.
-
+been read from a file, and is our native file format for trees). This
+method allows multifurcating trees. See fileStr method for description
+of format.
         '''
         rootArbNode,nodeConnecStr,branchLenStr = treeStr.split("|")
 
@@ -510,7 +510,10 @@ preparation such as naming internal nodes).
 
     def toNewickStr(self,includeBrLength=False,nodeLabelD=None):
         '''Output a newick string.'''
-        return self.__traverseForNewickStr__(self.rootNode,ROOT_PARENT_NAME,includeBrLength,nodeLabelD)
+        if self.nodeConnectD == None:
+            return "()"
+        else:
+            return self.__traverseForNewickStr__(self.rootNode,ROOT_PARENT_NAME,includeBrLength,nodeLabelD)
         
     def subtree(self,node):
         '''Return a new Rtree object with the subtree rooted at node.'''
@@ -849,7 +852,10 @@ named interal nodes (we will create those).
 
     def toNewickStr(self,includeBrLength=False,nodeLabelD=None):
         '''Output a newick string.'''
-        if self.nodeCount() == 1:
+        if self.nodeConnectD == None:
+            # empty
+            return "()"
+        elif self.nodeCount() == 1:
             return "("+self.leafNodeT[0]+")"
         elif self.nodeCount() == 2:
             # two tip tree is a special case            
@@ -1037,16 +1043,18 @@ named internal nodes, and we name them here: g0, g1 etc.
             # operate over this branch, joining the two nodes with no
             # node in between.
 
+            # get branch length for new branch with root removed
+            if bpClade[0].branch_length == None or bpClade[1].branch_length == None:
+                brLen = None
+            else:
+                brLen = bpClade[0].branch_length + bpClade[1].branch_length
+            
+            # handle cases where one or two are terminal
             if bpClade[0].is_terminal() and bpClade[1].is_terminal():
                 # both terminal
                 iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
                 iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
                 
-                # get branches
-                if bpClade[0].branch_length == None or bpClade[1].branch_length == None:
-                    brLen = None
-                else:
-                    brLen = bpClade[0].branch_length + bpClade[1].branch_length
                 branchLenL = [(bpClade[0].name,bpClade[1].name,brLen)]
                 
             elif bpClade[0].is_terminal():
@@ -1055,11 +1063,22 @@ named internal nodes, and we name them here: g0, g1 etc.
                 iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[0],"g"+str(iNodeNum),nodeConnectD,iNodeNum)
                 iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpClade[1],bpClade[0].name,nodeConnectD,iNodeNum)
 
+                # fix len of br made when root removed
+                for i in range(len(branchLenL)):
+                    if bpClade[0].name in branchLenL[i]:
+                        # only be 1 branch w/this in it. Update the
+                        # len to proper one calculated above
+                        branchLenL[i] = (branchLenL[i][0],branchLenL[i][1],brLen)
+                
             elif bpClade[1].is_terminal():
                 # 1 is terminal, 0 not
                 # parent node for 1 will be based on current iNodeNum
                 iNodeNum,nodeConnectD,_ = self.__bioPhyloToNodeConnectD__(bpClade[1],"g"+str(iNodeNum),nodeConnectD,iNodeNum)
                 iNodeNum,nodeConnectD,branchLenL = self.__bioPhyloToNodeConnectD__(bpClade[0],bpClade[1].name,nodeConnectD,iNodeNum)
+                # fix len of br made when root removed
+                for i in range(len(branchLenL)):
+                    if bpClade[1].name in branchLenL[i]:
+                        branchLenL[i] = (branchLenL[i][0],branchLenL[i][1],brLen)
 
             else:
                 # neither is terminal
@@ -1083,7 +1102,13 @@ named internal nodes, and we name them here: g0, g1 etc.
                 # include in branchLenL. The entry that has
                 # ("g"+str(iNodeNumAtBaseOf0),"g"+str(iNodeNumAtBaseOf1),brLen)
                 for brLenT in tempBranchLenL:
-                    if brLenT[0] != "g"+str(iNodeNumAtBaseOf0) or brLenT[1] != "g"+str(iNodeNumAtBaseOf1):
+                    if brLenT[0] == "g"+str(iNodeNumAtBaseOf0) and brLenT[1] == "g"+str(iNodeNumAtBaseOf1):
+                        pass
+                    elif brLenT[1] == "g"+str(iNodeNumAtBaseOf0) and brLenT[0] == "g"+str(iNodeNumAtBaseOf1):
+                        # keep this, updating len of br
+                        newBrLenT = (brLenT[1],brLenT[0],brLen) # brLen is correct len of br where root removed
+                        branchLenL.append(newBrLenT)
+                    else:
                         branchLenL.append(brLenT)
         else:
             # general case
