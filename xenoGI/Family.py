@@ -652,10 +652,14 @@ geneTreeNode. eventType is a string, D T L O R.'''
             eventCtr = 0
             for child in self.geneTreeO.children(geneTreeNode):
                 # count on child branch, then recurse
+                eventValueL = []
                 if (child,'b') in self.dtlorMprD:
-                    for eventValue in self.dtlorMprD[(child,'b')]:
-                        if eventValue[0] == eventType:
-                            eventCtr += 1
+                    eventValueL.extend(self.dtlorMprD[(child,'b')])
+                if (child,'n') in self.dtlorMprD:
+                    eventValueL.extend(self.dtlorMprD[(child,'n')])
+                for eventValue in eventValueL:
+                    if eventValue[0] == eventType:
+                        eventCtr += 1
                 eventCtr += self.countEventsBelowNode(child,eventType)
             return eventCtr
 
