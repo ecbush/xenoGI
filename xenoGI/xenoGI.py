@@ -412,12 +412,6 @@ def debugWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
-
-    ut = Utree()
-    ut.fromNewickFile("t.tre")
-    print(ut)
-    
-    bpTree = Phylo.read("t.tre", 'newick', rooted=False)
     
     # set up interactive console
     vars = globals()

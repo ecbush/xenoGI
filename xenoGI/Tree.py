@@ -1024,7 +1024,79 @@ node.'''
             aUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[1],branchPair[0])
             bUtreeO = subUtree(self.nodeConnectD,self.branchPairT,self.branchLenD,branchPair[0],branchPair[1])
             return aUtreeO,bUtreeO
-        
+
+    def makeDistanceMatrix(self) -> dict:
+        """ makeDistanceMatrix:
+                Accepts a Utree object as input. Constructs and returns a matrix 
+                of the cophenetic distances for all of the pairwise combinations of
+                the tips. Returns the matrix as a dictionary keyed by tuples conta-
+                ining each pairwise combination.
+        """
+        # get all tips as a list
+        tipsL = list(self.leafNodeT)
+        # build a dictionary of all pairwise combinations
+        tableD = dict()
+        for tip1 in tipsL:
+            for tip2 in tipsL:
+                # self-vs-self comparisons are on the diagonal; they should be zero
+                if tip1 == tip2:
+                    distance = 0.0
+                # calculate the cophenetic distances for each comparison
+                else:
+                    # calculate the distance between the two tips
+                    path = self.__treePathfinder__(tip1, tip2)
+                    distance = self.__sumBranchLengths__(path)
+                # save the calculated distance in the tableD
+                tableD[(tip1, tip2)] = distance
+        return tableD
+    
+    def __treePathfinder__(self, origin:str, end:str, previous:str=None) -> list:
+        """ __treePathfinder__:
+                Accepts a Utree object, a string indicating the starting node/tip,
+                a string indicating the ending node/tip, and a string indicating 
+                the previous origin (used for recursion) as inputs. Recurses throu-
+                gh the the tree to find the branches (indicated by pairs of nodes)
+                that will connect the origin to the end within the tree. Returns a 
+                list of tuples where each tuple contains a pair of nodes.
+        """
+        # get all the nodes/tips that are connected to the origin
+        allConnxns = self.nodeConnectD[origin]
+         # base case: the end is connected to the origin
+        if end in allConnxns:
+            return [(origin, end)]
+        # iterate through the origin's connections
+        outL = list()
+        for connxn in allConnxns:
+            # only process connections that aren't leaves or the previous node
+            if not self.isLeaf(connxn) and connxn != previous:
+                # recurse on connection towards the specified 'end'
+                path = self.__treePathfinder__(connxn, end, previous=origin)
+                # if a path was found ...
+                if path != []:
+                    # ... then append the origin and its connection to the list ...
+                    outL.append((origin, connxn))
+                    # ... and add the path that was found to the list
+                    outL += path
+        # returns an empty list if nothing was found or if nothing to do
+        return outL
+
+    def __sumBranchLengths__(self, pathL:list) -> float:
+        """ __sumBranchLengths__:
+                Accepts a Utree object and a list of node-pairs (tuples) as inputs.
+                Calculates and returns the total distance represented by the list
+                of node-pairs.
+        """
+        # initialize the sum
+        totalLen = 0.0
+        # for each node-pair in the list
+        for nodePair in pathL:
+            # flip the order if the pair is not a key in branchLenD
+            if nodePair not in self.branchLenD.keys():
+                nodePair = (nodePair[1], nodePair[0])
+            # add the length to the running total
+            totalLen += self.branchLenD[nodePair]
+        return totalLen
+
     def __bioPhyloToNodeConnectD__(self,bpClade,parentNodeStr,nodeConnectD,iNodeNum):
         '''Convert a biopython clade object to a node connection dict with
 keys that are nodes, and values that are the nodes connected to. For
