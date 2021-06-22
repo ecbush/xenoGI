@@ -397,11 +397,11 @@ def interactiveAnalysisWrapper(paramD):
     scoresO.createNodeConnectD() # make nodeConnectD attribute
     
     # set up interactive console
-    vars = globals()
-    vars.update(locals())
-    readline.set_completer(rlcompleter.Completer(vars).complete)
+    variables = globals()
+    variables.update(locals())
+    readline.set_completer(rlcompleter.Completer(variables).complete)
     readline.parse_and_bind("tab: complete")
-    code.InteractiveConsole(vars).interact()
+    code.InteractiveConsole(variables).interact()
 
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
@@ -414,8 +414,8 @@ def debugWrapper(paramD):
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
     
     # set up interactive console
-    vars = globals()
-    vars.update(locals())
-    readline.set_completer(rlcompleter.Completer(vars).complete)
+    variables = globals()
+    variables.update(locals())
+    readline.set_completer(rlcompleter.Completer(variables).complete)
     readline.parse_and_bind("tab: complete")
-    code.InteractiveConsole(vars).interact()
+    code.InteractiveConsole(variables).interact()
