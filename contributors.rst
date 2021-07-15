@@ -6,6 +6,8 @@ Alexander Eng
 Juliet Forman
 Tona Gonzalez
 Kevin Heath
+Justin Jiang
+Michelle Johnson
 Alexander Lee
 Ran Libeskind-Hadas
 Jingyi Liu
@@ -14,6 +16,7 @@ Ross Mawhorter
 Santi Santichaivekin
 Dan Stoebel
 Zunyan Wang
+Trenton Wesley
 Matthew Wilber
 Joe Wirth
 Helen Wu

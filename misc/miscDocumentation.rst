@@ -168,3 +168,85 @@ And print info on this origin family::
 
   >>> printFam(famNum,originFamiliesO)
 
+
+downloadGenbank.py: automatically setting up a xenoGI working directory
+-----------------------------------------------------------------------
+
+Code for downloading ncbi genbanks. The below command is intended to
+be run before any calls to xenoGI, as it sets up the ncbi folder and
+human-readable map file, which are required for parseGenbank. The name
+of the folder and the map file are read in from params.py, so
+params.py is required, and any changes to params.py should be made
+before running this script.
+
+In addition, downloadGenbank is dependent on ncbiPythonTools.py, so that module must 
+also be accessible
+
+Calling the Function
+~~~~~~~~~~~~~~~~~~~~
+
+downloadGenbanks.py takes in three commandline arguments.
+These arguments are:
+
+1) A file name. This should be a text file with no header, and each line
+   represents a genbank to be downloaded. The first column of this file
+   is made of UID numbers and/or ascenscion numbers. All numbers must be from 
+   the same database, which is specified as the second argument.
+   The second column, separated by a tab character, is optional. This second 
+   column should contain names to be associated with the genbank, which are used
+   in the human map file (giving human-readable names to the downloaded genbanks)
+
+   In the below example file, the id numbers are from the nucleotide database
+
+   ::
+
+      NZ_CP009044.1   
+      NZ_CP007773.1   user_inputted_name
+      NZ_CP020478.1   
+   
+   The next example file, with accession numbers, would yield the same results
+
+   ::
+
+      GCF_000736415.1   some_other_name
+      GCF_000816305.1   
+      GCF_002080395.1
+
+
+2) The database associated with the id numbers. In the first file above, this would be
+   ‘nuccore’, as nuccore is the name of the Entrez database. In the second file above, 
+   either 'nuccore' or 'assembly' would be accepted. All possible E-utility database 
+   names are listed here:
+   https://www.ncbi.nlm.nih.gov/books/NBK25497/table/chapter2.T._entrez_unique_identifiers_ui/?report=objectonly
+
+3) an email: Entrez uses an email to make calls. While it runs
+   without it, providing an email is preferred for working with the ncbi database.
+
+Example call::
+  python3 path-to-xenoGI-github-repository/misc/downloadGenbank.py assemblyList.txt assembly researcher@hmc.edu
+
+Functions in Interactive mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If no inputs are given, downloadGenbank will start as an interactive. 
+While reading in from a file is still possible using the function fileToDownload, 
+other functions are included for other input types. For these functions, the email 
+(if so desired) should be manually set, using ``Entrez.email = yourEmail@email.address``
+
+* queryToDownload
+
+  This function takes in a keyword(s) as a string, a number of results
+  to be returned as an integer (retmax), and an email. Using Entrez's esearch, the specified database is
+  searched using the keyword / keywords, and the search results are downloaded. 
+  More on Entrez's esearch can be found here: (https://biopython.org/docs/1.75/api/Bio.Entrez.html#Bio.Entrez.esearch)
+
+* searchToDownload
+
+  If a more specific search is desired, an already-created Entrez search handle can be inputted.
+  This function takes in the search and the database the search targets, and an email.
+
+* downloadMultipleGBFFS
+
+  This function is called by the other two, and takes in a python list of ids, 
+  the database they are related to, and an email.
+
