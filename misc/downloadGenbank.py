@@ -683,24 +683,6 @@ def main():
     try:
         # check the number of arguments, where the first argument is always downloadGenbank
         assert(len(sys.argv) == 1 or len(sys.argv)==4)
-        # three arguments -> file name, database, email
-        if len(sys.argv) == 4:
-            # read in the arguments
-            fileName = sys.argv[1]
-            database = sys.argv[2]
-            email = sys.argv[3]
-            # download, with email!
-            fileToDownload(fileName, database, email)
-        # no arguments -> set up interactive console
-        else:
-            # import required packages
-            import readline, code, rlcompleter
-            # code stolen from interactiveAnalysis xenoGI function
-            vars = globals()
-            vars.update(locals())
-            readline.set_completer(rlcompleter.Completer(vars).complete)
-            readline.parse_and_bind("tab: complete")
-            code.InteractiveConsole(vars).interact()
     # if incorrect number of arguments given, quit
     except:
         warnings.warn(
@@ -716,6 +698,25 @@ def main():
             """
             )#,file=sys.stderr)
         sys.exit(1)
+    
+    # three arguments -> file name, database, email
+    if len(sys.argv) == 4:
+        # read in the arguments
+        fileName = sys.argv[1]
+        database = sys.argv[2]
+        email = sys.argv[3]
+        # download, with email!
+        fileToDownload(fileName, database, email)
+    # no arguments -> set up interactive console
+    else:
+        # import required packages
+        import readline, code, rlcompleter
+        # code stolen from interactiveAnalysis xenoGI function
+        vars = globals()
+        vars.update(locals())
+        readline.set_completer(rlcompleter.Completer(vars).complete)
+        readline.parse_and_bind("tab: complete")
+        code.InteractiveConsole(vars).interact()
 
 # RUN MAIN !
 if __name__ == "__main__" :
