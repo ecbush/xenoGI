@@ -261,6 +261,8 @@ def assemblyIdToFTP(assemblyID):
         # do not add the ftp to the list of ftps if it is already in the list
         if currentFTP in ftpList:
             warnings.warn('the path for ' + currentSpecies + ' is a duplicate: skipping')
+            ftpList.append('MISSING')
+            speciesList.append('MISSING')
         else:
             # add the ftp
             ftpList.append(currentFTP)
@@ -339,9 +341,11 @@ def validateSummary(summary):
         warnings.warn("The genome for id number " +idNum+ " is not a 'Complete Genome'."\
             + " Downloading it anyways")
 
-def convertInputsToUIDs(idNums:list, database:str, email=None):
+def old_convertInputsToUIDs(idNums:list, database:str, email=None):
     '''Given a list of id numbers (uid's OR accession numbers, or a mix of) returns
-       a list of all the idnumbers as UID's (converts accession numbers to UIDS)'''
+       a list of all the idnumbers as UID's (converts accession numbers to UIDS).
+       Resulted in an error where multiple duplicate results could be returned for
+       one uid, and the retmax would cause no results to be returned for other ids.'''
     # initialize a string to use in Entrez search
     uids = ''
     # iterator through id's
@@ -362,6 +366,35 @@ def convertInputsToUIDs(idNums:list, database:str, email=None):
     handle.close()
     # get just the ids
     idList = result['IdList']
+    # check all were found
+    if len(idList) != len(idNums):
+        warnings.warn(""" The number of results found was not the number of id's given.
+        Id's given: """ + str(idNums) + """
+        Id's found: """ + str(idList))
+    return idList
+
+def convertInputsToUIDs(idNums:list, database:str, email=None):
+    '''Given a list of id numbers (uid's OR accession numbers, or a mix of) returns
+       a list of all the idnumbers as UID's (converts accession numbers to UIDS)'''
+    # set Entrez email
+    if email != None:
+        Entrez.email = email
+    # initialize list for uids
+    idList = []
+    # iterate through id's given
+    for id in idNums:
+        # check if id is a digit uid
+        if id.isdigit():
+            # if a uid is given, we just add the uid
+            idList.append(id)
+        # for id's that are not uid's
+        else:
+            # run an esearch for the term/accession number
+            handle = Entrez.esearch(term = id, db = database, retmax = 1)
+            result = Entrez.read(handle, validate = False)
+            handle.close()
+            # add the id to list
+            idList.append(result['IdList'][0])
     # check all were found
     if len(idList) != len(idNums):
         warnings.warn(""" The number of results found was not the number of id's given.
@@ -413,7 +446,7 @@ def checkOutgroup(speciesList):
             # outgroup not found message
             print('\nThe outgroup ' +outgroup+ ' as provided in params.py does not appear in the results.' +
                   'This may be because the name does not match exactly, or because no analog exists.')
-            userChoice = input('Would you like the outgrouop to be searched for and have it downloaded now? [y/N] ')
+            userChoice = input('Would you like the outgroup to be searched for and have it downloaded now? [y/N] ')
             # search for outgroup
             if userChoice.lower() == 'yes' or userChoice.lower() == 'y':
                 # find the outgroup
@@ -481,6 +514,9 @@ def downloadMultipleGBFFs(listOfIdNums:list, database:str, email:str = None, lis
     fileNames = []
     # iterate through the ftp path list
     for i in range(len(ftps)):
+        # if the ftp == 'MISSING', we skip it
+        if ftps[i] == 'MISSING':
+            continue
         # get the downloadable file name from the ftp path
         fixedFtp = ftpToFileName(ftps[i])
         # get the correct out file name
@@ -495,16 +531,29 @@ def downloadMultipleGBFFs(listOfIdNums:list, database:str, email:str = None, lis
 
         else:
             warnings.warn('file '+outFileName+' already exists. Skipping')
+            specNames[i] == 'DUPLICATE: SKIPPED'
 
     # HUMAN MAP
 
     # if human names specified, we fill out any files w/out names
     if listOfHumanNames != None:
-        '''iterate through, for each '' entry, replace with specnames'''
+        # initialize a place for final names
+        finalNames = []
+        # iterate through, for each '' entry, replace with specnames
         for i in range(len(listOfHumanNames)):
-            if listOfHumanNames[i] == '':
-                listOfHumanNames[i] = specNames[i]
-        specNames = listOfHumanNames
+            # if the species name is 'missing', we do not add it
+            if specNames[i] == 'MISSING':
+                continue
+            # we replace '' entries with the species names, and override human names
+            # with 'duplicate' if the entry is a duplicate
+            if listOfHumanNames[i] == '' or specNames[i] == 'DUPLICATE: SKIPPED':
+                finalNames.append(specNames[i])
+            # given a replacement human name, and the file is not a duplicate, we use the human name
+            else:
+                finalNames.append(listOfHumanNames[i])
+        # make specNames match finalNames
+        specNames = finalNames
+    
     # check if the mapfilename exists. If it doesn't, make it
     if glob.glob(MAPFILENAME) == []:
         makeHumanMap(fileNames, specNames, MAPFILENAME)
