@@ -2,7 +2,47 @@
 recon_viewer.py
 View a single reconciliation using matplotlib
 Credit to Justin Jiang, Trenton Wesley, and the Ran lab
+
+Additions made by Michelle Johnson with the Bush lab
+
+To create images, this module should be imported into interactiveAnalysis. An 
+example call to create and save a figure looks as follows:
+    figure = plotOriginFamily(number)
+    figure.save("filename.extension")
+or, 
+    figure3099 = plotOriginFamily(3099)
+    figure3099.save("ofam_plot-3099.svg")
+etc.
+
+Currently, there is an error where trees have cycles in them. This causes the 
+object to be returned to be None.
+
+The interface with rest of xenoGI only works for origin family objects, and is 
+dependent on objects most easily accessed through interactive analysis. However,
+the required objects can also be set up in an interactive workspace using the
+setup function. All functions added to interface with xenoGI are located at the 
+bottom of this file, under the block "NECESSARY XENOGI TRANSLATION FUNCTIONS". 
+
+Various edits have been made to the original recon_viewer file: some fixed bugs,
+others just edited the file to interface better with xenoGI inputs. Images are 
+readable, but losses are no longer branches but instead nodes (red X). 
+dict_to_reconciliation also returns two objects (each a separate class), one 
+which holds DTS objects and the other that holds LOR objects. Most edits made
+which I am uncertain of are marked with a comment containing the word "BETA". 
+
+Current Issues:
+    Legend is incorrect
+    Temporal Graphs contain cycles, likely as a result of an error in build_temporal_graph
+
+Future Improvements:
+    Legend could be placed somewhere that doesn't obscure the figure
+    Loss branches could actually lose said branches
+    Duplications could have two branches as opposed to only one
+        This would require information which is currently unavailable to us
+    Text could sized appropriately (width as well as height)
 """
+from __future__ import annotations
+from xenoGI.families import REARRANGEMENT
 from empress.recon_vis import recon, tree, plot_tools, render_settings
 
 from typing import Union, Dict, Tuple, List, NamedTuple
@@ -38,7 +78,7 @@ def render(host_dict: dict, parasite_dict: dict, recon_dict: dict, event_frequen
     :return Figure Object
     """
     host_tree, parasite_tree, consistency_type = build_trees_with_temporal_order(host_dict, parasite_dict, recon_dict)
-    recon_obj = dict_to_reconciliation(recon_dict, event_frequencies)
+    recon_obj, branchRecon_obj = dict_to_reconciliation(recon_dict, event_frequencies)
 
     # Checks to see if the trees(or reconciliation) are empty
     if host_tree is None or parasite_tree is None or recon_obj is None:
@@ -69,7 +109,7 @@ def render(host_dict: dict, parasite_dict: dict, recon_dict: dict, event_frequen
     # Determine the length of the longest string in the host tree's leaf list
     longest_host_name = max([len(leaf.name) for leaf in host_tree.leaf_list()])
     # Render Parasite Tree
-    _render_parasite(fig, parasite_tree, recon_obj, host_lookup, parasite_lookup, show_internal_labels, show_freq, font_size, longest_host_name)
+    _render_parasite(fig, parasite_tree, recon_obj, branchRecon_obj, host_lookup, parasite_lookup, show_internal_labels, show_freq, font_size, longest_host_name)
 
     return fig
 
@@ -167,13 +207,14 @@ def _render_host_helper(fig: FigureWrapper, node: Node, show_internal_labels: bo
 
 
 def _render_parasite(fig: FigureWrapper, parasite_tree: Tree, recon_obj: Reconciliation,  
-        host_lookup: dict, parasite_lookup: dict, show_internal_labels: bool, show_freq: bool, 
-        font_size: float, longest_host_name: int):
+        branch_recon: Reconciliation, host_lookup: dict, parasite_lookup: dict, 
+        show_internal_labels: bool, show_freq: bool, font_size: float, longest_host_name: int):
     """
     Render the parasite tree.
     :param fig: Figure object that visualizes trees using MatplotLib
     :param parasite_tree: Parasite tree represented as a Tree object
     :param recon_obj: Reconciliation object that represents an edge-to-edge mapping from a parasite tree to a host tree
+    :param branch_recon: Reconciliation object that contains 'branch' events - i.e., O R and L
     :param host_lookup: Dictionary with host node names as the key and host node objects as the values
     :param parasite_lookup: Dictionary with parasite node names as the key and parasite node objects as the values
     :param show_internal_labels: Boolean that determines whether or not the internal labels are shown
@@ -182,7 +223,7 @@ def _render_parasite(fig: FigureWrapper, parasite_tree: Tree, recon_obj: Reconci
     :param longest_host_name: The number of symbols in the longest host tree tip name
     """
     root = parasite_tree.root_node
-    _render_parasite_helper(fig, root, recon_obj, host_lookup, parasite_lookup, show_internal_labels, show_freq, font_size, longest_host_name)
+    _render_parasite_helper(fig, root, recon_obj, branch_recon, host_lookup, parasite_lookup, show_internal_labels, show_freq, font_size, longest_host_name)
 
 
 def _populate_host_tracks(node: Node, recon_obj: Reconciliation, host_lookup: dict):
@@ -220,12 +261,13 @@ def _is_sharing_track(node: Node, host_name: str, recon_obj: Reconciliation):
     return host_name == left_host_name or host_name == right_host_name
 
 
-def _render_parasite_helper(fig: FigureWrapper,  node: Node, recon_obj: Reconciliation, host_lookup: dict, parasite_lookup: dict, show_internal_labels: bool, show_freq: bool, font_size: float, longest_host_name : int):
+def _render_parasite_helper(fig: FigureWrapper,  node: Node, recon_obj: Reconciliation, branch_recon: Reconciliation, host_lookup: dict, parasite_lookup: dict, show_internal_labels: bool, show_freq: bool, font_size: float, longest_host_name : int):
     """
     Helper function for rendering the parasite tree.
     :param fig: Figure object that visualizes trees using MatplotLib
     :param node: Node object representing the parasite event being rendered
     :param recon_obj: Reconciliation object that represents an edge-to-edge mapping from  a parasite tree to a host tree
+    :param branch_recon: Reconciliation object that only contains branch events (ORL)
     :param host_lookup: Dictionary with host node names as the key and host node objects as the values
     :param parasite_lookup: Dictionary with parasite node names as the key and parasite node objects as the values
     :param show_internal_labels: Boolean that determines whether or not the internal labels are shown
@@ -260,6 +302,11 @@ def _render_parasite_helper(fig: FigureWrapper,  node: Node, recon_obj: Reconcil
     if node.is_leaf():
         node.layout.y += host_node.get_and_update_track(Track.HORIZONTAL) * host_node.layout.offset
         _render_parasite_node(fig, node, event, font_size, longest_host_name)
+        # draw branch events - beta
+        if node.name in branch_recon._parasite_map:
+            mapping_node = branch_recon.mapping_of(node.name)
+            branch_event = branch_recon.event_of(mapping_node)
+            _render_branch_event(node, mapping_node, branch_event, host_lookup, fig)
         return
 
     # If the Node is in their own track, change their position
@@ -268,9 +315,9 @@ def _render_parasite_helper(fig: FigureWrapper,  node: Node, recon_obj: Reconcil
 
     left_node, right_node = _get_children(node, recon_obj, parasite_lookup)
 
-    _render_parasite_helper(fig, left_node, recon_obj, host_lookup,
+    _render_parasite_helper(fig, left_node, recon_obj, branch_recon, host_lookup,
         parasite_lookup, show_internal_labels, show_freq, font_size, longest_host_name)
-    _render_parasite_helper(fig, right_node, recon_obj, host_lookup,
+    _render_parasite_helper(fig, right_node, recon_obj, branch_recon, host_lookup,
         parasite_lookup, show_internal_labels, show_freq, font_size, longest_host_name)
 
     # Checking to see if left node is mapped to the same host node as parent
@@ -287,7 +334,7 @@ def _render_parasite_helper(fig: FigureWrapper,  node: Node, recon_obj: Reconcil
         if min_col >= node.layout.col:
             _fix_transfer(node, left_node, right_node, host_node, host_lookup, parasite_lookup, recon_obj)
 
-    _render_parasite_branches(fig, node, recon_obj, host_lookup, parasite_lookup)
+    _render_parasite_branches(fig, node, recon_obj, branch_recon, host_lookup, parasite_lookup)
     _render_parasite_node(fig, node, event, font_size, longest_host_name, show_internal_labels, show_freq)
 
 
@@ -405,12 +452,13 @@ def _sigmoid(x: float):
     return (1 / (1 + math.e**(-SIGMOID_SCALE*x)))  # 0.8 is a magic value that can be adjusted
 
 
-def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconciliation, host_lookup: dict, parasite_lookup: dict):
+def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconciliation, branch_recon: Reconciliation, host_lookup: dict, parasite_lookup: dict):
     """
     Very basic branch drawing
     :param fig: Figure object that visualizes trees using MatplotLib
     :param node: Node object representing the parasite event being rendered
     :param recon_obj: Reconciliation object that represents an edge-to-edge mapping from  a parasite tree to a host tree
+    :param branch_recon: Reconciliation object representing ORL events (branch events)
     :param host_lookup: Dictionary with host node names as the key and host node objects as the values
     :param parasite_lookup: Dictionary with parasite node names as the key and parasite node objects as the values
     """
@@ -434,6 +482,57 @@ def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconc
         raise ValueError('%s is not an known event type' % event.event_type)
     # Losses are implicitly implied and are not mapped to any specific node
 
+    # draw branch events - beta
+    if node.name in branch_recon._parasite_map:
+        mapping_node = branch_recon.mapping_of(node.name)
+        branch_event = branch_recon.event_of(mapping_node)
+        _render_branch_event(node, mapping_node, branch_event, host_lookup, fig)
+
+def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
+    """
+    Gotta connect parent node to uhhhhhhhh node_pos.y. aeiou aeiou aeiou aeiou aeiou 
+    question mark explanation mark question mark excalamation mark I'm laughing for real right now
+    """
+    # node is a PARASITE node
+    host_name = mapping_node.host
+    host_node = host_lookup[host_name]
+
+    parent_node = None
+
+    # offset = None
+
+    if event.event_type == EventType.ORIGIN:
+        parent_node = host_node.parent_node
+    else:
+        parent_node = parasite_node.parent_node
+    
+    host_parent_pos = Position(parent_node.layout.x, \
+            parent_node.layout.y)
+
+    '''try:
+        # parent_node = parasite_node.parent_node # fixing position ??
+        host_parent_pos = Position(parent_node.layout.x, \
+            parent_node.layout.y)
+        print('try: ' + str(parasite_node))
+    except: # origin has no parent ?
+        offset = host_node.layout.offset
+        host_parent_pos = Position(host_node.layout.x - offset, \
+            host_node.layout.y)
+        print('except: ' + str(parasite_node))'''
+
+    current_pos = Position(parasite_node.layout.x, parasite_node.layout.y)
+
+    # node_pos = Position(host_node.layout.x, host_node.layout.y)
+    # mid_pos = Position(node_pos.x, current_pos.y)
+
+     # There was some good h_track and v_track stuff in here copied from uuhhh. Place that calls _render_loss branch. I deleted it for no good reason
+
+    render_color, render_shape = _event_color_shape(event)
+    mid_pos = Position(host_parent_pos.x, current_pos.y)
+    fig.dot(mid_pos, col=render_color, marker=render_shape)
+
+    if event.event_type is EventType.ORIGIN:
+        fig.line(mid_pos, current_pos, PARASITE_EDGE_COLOR)
 
 def _connect_children(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
     """
@@ -448,17 +547,19 @@ def _connect_children(node: Node, host_lookup: dict, parasite_lookup: dict, reco
     _connect_child_to_parent(node, right_node, host_lookup, recon_obj, fig)
 
 
-def _render_loss_branch(node_pos: Position, next_pos: Position, fig: FigureWrapper):
+def _render_normal_branch(node_pos: Position, next_pos: Position, fig: FigureWrapper):
     """
     Renders a loss branch given a two positions
     :param node_pos: x and y position of a node
     :param next_pos: x and y position of another node
     :param fig: Figure object that visualizes trees using MatplotLib
+
+    previously _render_loss_branch
     """
     # Create vertical line to next node
     mid_pos = Position(node_pos.x, next_pos.y)
-    fig.line(node_pos, mid_pos, LOSS_EDGE_COLOR, linestyle='--')
-    fig.line(mid_pos, next_pos, PARASITE_EDGE_COLOR)
+    fig.line(node_pos, mid_pos, NORMAL_EDGE_COLOR) # previously (node_pos, mid_pos, LOSS_EDGE_COLOR, linestyle='--')
+    fig.line(mid_pos, next_pos, NORMAL_EDGE_COLOR) # previously (mid_pos, next_pos, PARASITE_EDGE_COLOR)
 
 
 def _render_cospeciation_branch(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
@@ -573,7 +674,8 @@ def _render_transfer_branch(node_pos: Position, right_pos: Position, fig: Figure
         fig.line(node_pos, mid_pos, PARASITE_EDGE_COLOR)
         fig.line(mid_pos, right_pos, PARASITE_EDGE_COLOR)
     else:
-        transfer_edge_color = transparent_color(PARASITE_EDGE_COLOR, TRANSFER_TRANSPARENCY)
+        transfer_edge_color = MAROON # previously: transparent_color(PARASITE_EDGE_COLOR, TRANSFER_TRANSPARENCY) -beta
+        # note: this appears to have made no difference on plots ??
         fig.arrow_segment(node_pos, right_pos, transfer_edge_color)
         fig.line(node_pos, right_pos, transfer_edge_color)
 
@@ -596,6 +698,7 @@ def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, re
     
     current_pos = Position(child_node.layout.x, child_node.layout.y)
 
+    """
     while host_node.layout.row != stop_row and host_node.parent_node:
         parent_node = host_node.parent_node
         if parent_node.layout.row < host_node.layout.row:
@@ -609,11 +712,13 @@ def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, re
 
         sub_parent_pos = Position(parent_node.layout.x - (offset * v_track), \
             parent_node.layout.y + (offset * h_track))
+        
+        # sub_parent_pos = Position(parent_node.layout.x - offset, parent_node.layout.y + offset) # beta
 
-        _render_loss_branch(sub_parent_pos, current_pos, fig)
+        _render_normal_branch(sub_parent_pos, current_pos, fig)
 
         host_node = parent_node
-        current_pos = sub_parent_pos
+        current_pos = sub_parent_pos """ # BETA
     
     node_pos = Position(node.layout.x, node.layout.y)
     mid_pos = Position(node_pos.x, current_pos.y)
@@ -636,6 +741,12 @@ def _event_color_shape(event: Event):
         return DUPLICATION_NODE_COLOR, DUPLICATION_NODE_SHAPE
     if event.event_type is EventType.TRANSFER:
         return TRANSFER_NODE_COLOR, TRANSFER_NODE_SHAPE
+    if event.event_type is EventType.ORIGIN:
+        return ORIGIN_NODE_COLOR, ORIGIN_NODE_SHAPE
+    if event.event_type is EventType.REARRANGEMENT:
+        return REARRANGEMENT_NODE_COLOR, REARRANGEMENT_NODE_SHAPE
+    if event.event_type is EventType.LOSS:
+        return LOSS_COLOR_SHAPE
     return None, None 
 
 
@@ -704,8 +815,13 @@ def dict_to_tree(tree_dict: dict, tree_type: TreeType) -> Tree:
         "pTop" (parasite)
     :return: A representation of the tree in Tree format (see tree.py)
     """
-
-    root = "hTop" if tree_type == TreeType.HOST else "pTop"
+    # pull the root from the tree dictionary
+    root = ''
+    for geneKey in tree_dict:
+        parent_name = tree_dict[geneKey][0]
+        # root will have a parent named 'h_root' or 'p_root'
+        if parent_name == 'h_root' or parent_name == 'p_root':
+            root = geneKey
     output_tree = Tree()
     output_tree.tree_type = tree_type
     output_tree.root_node = _dict_to_tree_helper(tree_dict, root)
@@ -740,10 +856,10 @@ def _find_roots(old_recon_graph) -> List[MappingNode]:
     for mapping in old_recon_graph:
         for event in old_recon_graph[mapping]:
             etype, left, right = event
-            if etype in 'SDT':
+            if etype in 'SDTO':
                 not_roots.add(left)
                 not_roots.add(right)
-            elif etype == 'L':
+            elif etype == 'L' or etype == 'R':
                 child = left
                 not_roots.add(child)
             elif etype == 'C':
@@ -769,42 +885,56 @@ def dict_to_reconciliation(old_recon: Dict[Tuple, List], event_frequencies: Dict
         ('n4', 'm1'): [('C', (None, None), (None, None))],
     }
     """
+    # check that we have only one root
     roots = _find_roots(old_recon)
     if len(roots) > 1:
         raise ValueError("old_recon has many roots")
     root = roots[0]
+    # initialize a normal reconciliation object and one for branch events
     recon_obj = Reconciliation(root)
+    branchRecon_obj = BranchReconciliation(root)
     event = None
     for mapping in old_recon:
         host, parasite = mapping
-        if len(old_recon[mapping]) != 1:
-            raise ValueError('old_recon mapping node has no or multiple events')
-        event_tuple = old_recon[mapping][0]
-        etype, left, right = event_tuple
-        mapping_node = MappingNode(host, parasite)
-        if etype in 'SDT':
-            left_parasite, left_host = left
-            right_parasite, right_host = right
-            left_mapping = MappingNode(left_parasite, left_host)
-            right_mapping = MappingNode(right_parasite, right_host)
-            if etype == 'S':
-                event = Cospeciation(left_mapping, right_mapping)
-            if etype == 'D':
-                event = Duplication(left_mapping, right_mapping)
-            if etype == 'T':
-                event = Transfer(left_mapping, right_mapping)
-        elif etype == 'L':
-            child_parasite, child_host = left
-            child_mapping = MappingNode(child_parasite, child_host)
-            event = Loss(child_mapping)
-        elif etype == 'C':
-            event = TipTip()
-        else:
-            raise ValueError('%s not in "SDTLC"' % etype)
-        if event_frequencies is not None:
-            event._freq = event_frequencies[event_tuple]
-        recon_obj.set_event(mapping_node, event)
-    return recon_obj
+        # iterate through all events
+        for event_tuple in old_recon[mapping]:
+            etype, left, right = event_tuple
+            mapping_node = MappingNode(host, parasite)
+            # events with two children
+            if etype in 'SDTO':
+                left_parasite, left_host = left
+                right_parasite, right_host = right
+                left_mapping = MappingNode(left_parasite, left_host)
+                right_mapping = MappingNode(right_parasite, right_host)
+                if etype == 'S':
+                    event = Cospeciation(left_mapping, right_mapping)
+                if etype == 'D':
+                    event = Duplication(left_mapping, right_mapping)
+                if etype == 'T':
+                    event = Transfer(left_mapping, right_mapping)
+                if etype == 'O':
+                    event = Origin(left_mapping, right_mapping)
+            # events with one child
+            elif etype in 'LR':
+                child_parasite, child_host = left
+                child_mapping = MappingNode(child_parasite, child_host)
+                if etype == 'L':
+                    event = Loss(child_mapping)
+                if etype == 'R':
+                    event = Rearrangement(child_mapping)
+            # leaf events
+            elif etype == 'C':
+                event = TipTip()
+            else:
+                raise ValueError('%s not in "SDTLCOR"' % etype)
+            if event_frequencies is not None:
+                event._freq = event_frequencies[event_tuple]
+            # add event to matching reconciliation object
+            if etype in 'SDTC':
+                recon_obj.set_event(mapping_node, event)
+            elif etype in 'ORL':
+                branchRecon_obj.set_event(mapping_node, event)
+    return recon_obj, branchRecon_obj
 
 # Temporal ordering utilities
 
@@ -889,9 +1019,11 @@ def build_formatted_tree(tree_dict):
              are the children of this node tuple in the tree.
     """
     tree_type = None
-    if 'pTop' in tree_dict:
-        tree_type = TreeType.PARASITE
-    else:
+    # look for 'p_root' as a parent. If found, set treeType to parasite
+    for key in tree_dict:
+        if tree_dict[key][0] == 'p_root':
+            tree_type = TreeType.PARASITE
+    if tree_type == None:
         tree_type = TreeType.HOST
 
     formatted_tree = {}
@@ -903,8 +1035,8 @@ def build_formatted_tree(tree_dict):
         # the temporal graph contains internal node tuples as keys,
         # and their children nodes tuples as values
         node_name = _bottom_node(edge_four_tuple)
-        left_child_name = edge_four_tuple[2][1]
-        right_child_name = edge_four_tuple[3][1]
+        left_child_name = edge_four_tuple[2]
+        right_child_name = edge_four_tuple[3]
         formatted_tree[(node_name, tree_type)] = [(left_child_name, tree_type), (right_child_name, tree_type)]
     return formatted_tree
 
@@ -932,6 +1064,9 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
         Note that leaves of the host and parasite trees are not considered here.
         The associated value is a list of node tuples that are the children of this node tuple
         in the temporal graph.
+    
+    There's currently a huge can of worms in this function, certain nodes are being added when
+    they shouldn't be, hence all the nasty print statements.
     """
     # create a dictionary that maps each host and parasite node to its parent
     parent = create_parent_dict(host_dict, parasite_dict)
@@ -941,6 +1076,7 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
     # initialize the final temporal graph to the combined temporal graphs of host and parasite tree
     temporal_graph = temporal_host_tree
     temporal_graph.update(temporal_parasite_tree)
+    print(str(temporal_graph))
     # add temporal relations implied by each node mapping and the corresponding event
     for node_mapping in reconciliation:
         parasite, host = node_mapping
@@ -948,15 +1084,46 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
         # get the event corresponding to this node mapping
         event_tuple = reconciliation[node_mapping][0]
         event_type = event_tuple[0]
-        # if event type is a loss, the parasite is not actually mapped to the host in final
-        # reconciliation, so we skip the node_mapping
-        if event_type == 'L':
-            continue
+        # loss-type events are included under new two-reconciliations model
         # if the node_mapping is not a leaf_mapping, we add the first relation
         if event_type != 'C':
-            temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
+            print("NOT C: " + str(parasite) + " , " + str(host))
+            '''if (parasite, TreeType.PARASITE) in temporal_graph:
+                temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
+            else:
+                temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]'''
+            if (host, TreeType.HOST) in temporal_graph:
+                if (parasite, TreeType.PARASITE) not in temporal_graph[(host, TreeType.HOST)]:
+                    if (parasite, TreeType.PARASITE) in temporal_graph:
+                        print("1")
+                        temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
+                    else: # add leaves specifically for RL events on branches that lead to leaves
+                        print("2")
+                        temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]
+            else: # add leaves specifically for RL events on branches that lead to leaves
+                if (parasite, TreeType.PARASITE) in temporal_graph:
+                    print("3")
+                    temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
+                else: # add leaves specifically for RL events on branches that lead to leaves
+                    print("4")
+                    temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]
+
+            '''if (parasite, TreeType.PARASITE) in temporal_graph:
+                if (host, TreeType.HOST) in temporal_graph:
+                    if (parasite, TreeType.PARASITE) not in temporal_graph[(host, TreeType.HOST)]:
+                        if parasite == 'g2':
+                            print("g2")
+                        temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
+                else:
+                    temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
+            else: # add leaves specifically for RL events on branches that lead to leaves
+                temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]'''
         # if the node_mapping is not a mapping onto the root of host tree, we add the second relation
-        if host_parent != 'Top':
+        if host_parent != 'h_root' and host_parent != 'p_root' and event_type != 'C' and event_type != 'L': # didn't exclude 'C' previously
+            # Why are host_parents added ? -beta
+            print("NOT many things: " + str(host_parent) + ", " + str(parasite))
+            print(event_tuple)
+            '''if (host, TreeType.HOST) not in temporal_graph[(parasite, TreeType.PARASITE)]: # BETA'''
             temporal_graph[(host_parent, TreeType.HOST)].append((parasite, TreeType.PARASITE))
         
         # if event is a transfer, then we add two more temporal relations
@@ -965,6 +1132,7 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
             right_child_mapping = event_tuple[2]
             right_child_parasite, right_child_host = right_child_mapping
             # since a transfer event is horizontal, we have these two implied relations
+            print("T: " + str(right_child_mapping) + " : " + str(parent[right_child_host]))
             temporal_graph[(parent[right_child_host], TreeType.HOST)].append((parasite, TreeType.PARASITE))
 
     for node_tuple in temporal_graph:
@@ -1018,7 +1186,7 @@ def topological_order_helper(start_node, start_order, visiting_nodes, unvisited_
     :return: the start order to be used by the remaing nodes of temporal graph that have not been labeled
     """
     next_order = start_order
-    is_leaf = start_node not in temporal_graph
+    is_leaf = start_node not in temporal_graph or start_node[0].isdigit() # leaves should always be numbers for gene trees
     if is_leaf:
         return False, next_order
     else:
@@ -1148,6 +1316,8 @@ class EventType(Enum):
     TRANSFER = 3
     LOSS = 4
     TIPTIP = 5
+    ORIGIN = 6
+    REARRANGEMENT = 7
 
 class Event(ABC):
     """
@@ -1234,6 +1404,16 @@ class Transfer(TwoChildrenEvent):
     def event_type(self) -> EventType:
         return EventType.TRANSFER
 
+class Origin(TwoChildrenEvent):
+    """
+    Origin is an event where two children of the parasite vertex map to a single
+    host vertex. There is no parent. Origin event has two child MappingNode 
+    named left and right."""
+
+    @property
+    def event_type(self) -> EventType:
+        return EventType.ORIGIN
+
 class Loss(Event):
     """
     Loss is an event where the parasite vertex goes down to only one of 
@@ -1268,6 +1448,41 @@ class Loss(Event):
     def event_type(self) -> EventType:
         return EventType.LOSS
 
+# added by Michelle
+class Rearrangement(Event):
+    """
+    Rearrangement is an event where the parasite vertex mapps to the same host
+    vertex as the parent. 
+    Rearrangement event has one child MappingNode called child. The parasite of 
+    the child MappingNode (self.child.parasite) is the same as the parasite of 
+    the MappingNode that incurs the rearrangement.
+    """
+
+    def __init__(self, child: MappingNode, freq=None):
+        """
+        Creates a Rearrangement event. The lost event has one child MappingNode
+        called child.
+        """
+        super().__init__(freq)
+        self._child = child
+
+    @property
+    def child(self) -> MappingNode:
+        return self._child
+    
+    def __eq__(self, other):
+        return type(self) == type(other) and self._child == other.child
+    
+    def __hash__(self):
+        return hash(self._child)
+    
+    def __repr__(self):
+        return "%s(%s)" % (type(self).__name__, self._child)
+
+    @property
+    def event_type(self) -> EventType:
+        return EventType.REARRANGEMENT
+
 class TipTip(Event):
     """
     TipTip (tip mapping) is an event where both the parasite and the host are 
@@ -1289,6 +1504,78 @@ class TipTip(Event):
     @property
     def event_type(self) -> EventType:
         return EventType.TIPTIP
+
+class BranchReconciliation:
+    """
+    Reconciliation is a tree that represents an edge-to-edge mapping from 
+    a parasite tree to a host tree. The Reconciliation starts with source
+    MappingNode where the parasite first enters the host. Each MappingNode
+    has one corresponding Event. Each event has up to two children MappingNode
+    depending on its type. The leaves of the tree are the TipTip events which
+    have no children MappingNode.
+    """
+    def __init__(self, source: MappingNode, initial_map: Dict[MappingNode, Event] = {}):
+        """
+        Creates a Reconciliation tree. The Reconciliation starts with source
+        MappingNode where the parasite first enters the host.
+        """
+        self.source = source
+        self._map = initial_map
+        self._parasite_map: Dict[str, MappingNode] = {}
+    
+    def __eq__(self, other):
+        return type(self) == type(other) and self._map == other._map
+    
+    def __repr__(self):
+        return "%s(source=%s, %s)" % (type(self).__name__, self.source, self._map)
+    
+    def set_event(self, mapping: MappingNode, event: Event):
+        """
+        Set the event corresponding to mapping.
+        """
+        # if event.event_type is not EventType.LOSS:
+        self._parasite_map[mapping.parasite] = mapping
+        self._map[mapping] = event
+    
+    def event_of(self, mapping: MappingNode) -> Event:
+        """
+        Get the event corresponding to mapping.
+        """
+        return self._map[mapping]
+
+    def mapping_of(self, parasite: str) -> MappingNode:
+        """
+        Returns the MappingNode of the parasite vertex. This is where that
+        parasite vertex maps to. Never returns a mapping node that corresponds
+        to a loss event.
+        """
+        return self._parasite_map[parasite]
+    
+    def is_sink(self, mapping: MappingNode) -> bool:
+        """
+        Whether the host and the parasite of the mapping are leaves of its
+        phylogenic tree with a tip mapping.
+        """
+        return self._map[mapping].event_type is EventType.TIPTIP
+
+    def __contains__(self, mapping: MappingNode):
+        return True if mapping in self._map else False
+    
+    def save(self, path: str, metadata: Dict[str, str] = {}):
+        """
+        Save the Reconciliation to path, e.g. ``save('./reconname')``
+        This will save the Reconciliation along with the metadata if metadata
+        is specified, e.g. ``save('./reconname', {'created_at': 'Noon'})``.
+        The metadata is only for book-keeping purposes and is not read when load.
+        """
+        raise NotImplementedError
+    
+    @staticmethod
+    def load(path) -> 'Reconciliation':
+        """
+        Load a Reconciliation from path, e.g. ``Reconciliation.load('./reconname')``.
+        """
+        raise NotImplementedError
 
 class Reconciliation:
     """
@@ -1342,6 +1629,9 @@ class Reconciliation:
         phylogenic tree with a tip mapping.
         """
         return self._map[mapping].event_type is EventType.TIPTIP
+
+    def __contains__(self, mapping: MappingNode):
+        return True if mapping in self._map else False
     
     def save(self, path: str, metadata: Dict[str, str] = {}):
         """
@@ -1574,6 +1864,100 @@ class Tree:
 
 ##################################################################
 ##################################################################
+############ NECESSARY RENDER_SETTINGS FUNCTIONS #################
+##################################################################
+##################################################################
+
+# py
+
+VERTICAL_OFFSET = 0.3       # Offset for drawing parasite nodes above host nodes
+COSPECIATION_OFFSET = .3    # Offest for drawing parasite nodes closer to host 
+                            # nodes for speciation events
+NODE_OFFSET = 0.3
+TRACK_OFFSET = 0.3
+TIP_TEXT_OFFSET_X = .3
+
+
+# Colors
+# Define new colors as 4-tuples of the form (r, g, b, 1) where
+# r, g, b are values between 0 and 1 indicating the amount of red, green, and blue.
+RED = (1, 0, 0, 1)
+
+
+MAROON = (0.5, 0, 0, 1)
+GREEN = (0, 0.5, 0, 1)
+
+PURPLE = (0.5, 0, 0.5, 1)
+BLACK = (0, 0, 0, 1)
+GRAY = (0.5, 0.5, 0.5, 1)
+WHITE = (1, 1, 1, 1)
+PURPLE = (.843, .00, 1.0, 1)
+
+BLUE = (.09, .216, .584, 1)
+ROYAL_BLUE = (.3, .4, .9, 1)
+CYAN = (.3, .9, .75, 1)
+RED_BLUSH = (.882, .255, .412, 1)
+PRETTY_YELLOW = (.882, .725, .255, 1)
+ORANGE_ORANGE = (1.00, .502, 0, 1)
+
+LEAF_NODE_COLOR = BLUE
+COSPECIATION_NODE_COLOR = ORANGE_ORANGE
+DUPLICATION_NODE_COLOR = PURPLE
+TRANSFER_NODE_COLOR = RED_BLUSH
+ORIGIN_NODE_COLOR = GREEN
+REARRANGEMENT_NODE_COLOR = PRETTY_YELLOW
+HOST_NODE_COLOR = BLACK
+HOST_EDGE_COLOR = BLACK
+PARASITE_EDGE_COLOR = ROYAL_BLUE
+LOSS_EDGE_COLOR = GRAY
+
+NORMAL_EDGE_COLOR = RED
+LOSS_COLOR_SHAPE = RED, "x"
+
+TRANSFER_TRANSPARENCY = 0.25
+
+LEAF_NODE_SHAPE = "o"
+COSPECIATION_NODE_SHAPE = "o"
+DUPLICATION_NODE_SHAPE = "D"
+TRANSFER_NODE_SHAPE = "s"
+ORIGIN_NODE_SHAPE = "o"
+REARRANGEMENT_NODE_SHAPE = "D"
+
+TIP_ALIGNMENT = 'center'
+
+CENTER_CONSTANT = 3 / 8
+
+NODESIZE = 8
+START_SIZE = -60
+STEP_SIZE = 50
+MIN_FONT_SIZE = 0
+MAX_FONT_SIZE = .3
+COUNT_OFFSET = 3
+PUSHED_NODE_OFFSET = 0.5
+
+INTERNAL_NODE_ALPHA = 0.7
+
+HOST_NODE_BORDER_COLOR = WHITE
+PARASITE_NODE_BORDER_COLOR = BLACK
+
+TREE_TITLE = ""
+
+LEGEND_ELEMENTS = [
+       Line2D([0], [0], marker= COSPECIATION_NODE_SHAPE, color='w', label='Cospeciation',
+              markerfacecolor=COSPECIATION_NODE_COLOR, markersize=NODESIZE),
+       Line2D([0], [0], marker=DUPLICATION_NODE_SHAPE, color='w', label='Duplication',
+              markerfacecolor=DUPLICATION_NODE_COLOR, markersize=NODESIZE),
+       Line2D([0], [0], marker=TRANSFER_NODE_SHAPE, color='w', label='Transfer',
+              markerfacecolor=TRANSFER_NODE_COLOR, markersize=NODESIZE),
+       LineCollection([[(0, 0)]], linestyles=['dashed'],
+              colors=[LOSS_EDGE_COLOR], label='Loss')
+]
+
+UP_ARROW_ROTATION = 0
+DOWN_ARROW_ROTATION = 180
+
+##################################################################
+##################################################################
 ############# NECESSARY PLOT_TOOLS FUNCTIONS #####################
 ##################################################################
 ##################################################################
@@ -1703,95 +2087,213 @@ class FigureWrapper:
 
 ##################################################################
 ##################################################################
-############ NECESSARY RENDER_SETTINGS FUNCTIONS #################
+########### NECESSARY XENOGI TRANSLATION FUNCTIONS ###############
 ##################################################################
 ##################################################################
 
-# py
+from xenoGI.xenoGI import genomes, parameters, loadTreeRelatedData, loadGenomeRelatedData, families
+from xenoGI.Family import *
 
-VERTICAL_OFFSET = 0.3       # Offset for drawing parasite nodes above host nodes
-COSPECIATION_OFFSET = .3    # Offest for drawing parasite nodes closer to host 
-                            # nodes for speciation events
-NODE_OFFSET = 0.3
-TRACK_OFFSET = 0.3
-TIP_TEXT_OFFSET_X = .3
+#-----------------------------------------------------------------
+# OriginFamiy dtlorMprD -> Reconstruction Dictionary
+#-----------------------------------------------------------------
 
+def addAppend(key, value, dictionary):
+    """ adds or appends a value to a dictionary, depending on if the key exists
+    """
+    # if key is in dictionary, append
+    if key in dictionary:
+        dictionary[key].append(value)
+    # if key is not in dictionary, we add it.
+    else:
+        dictionary[key] = [value]
 
-# Colors
-# Define new colors as 4-tuples of the form (r, g, b, 1) where
-# r, g, b are values between 0 and 1 indicating the amount of red, green, and blue.
-RED = (1, 0, 0, 1)
+def addOneKey(genesO:genomes.genes, geneTree:Tree, MprD:dict, mprdKey:tuple, outDict:dict, geneToKeyD:dict):
+    """ adds a single entry to the reconciliation dictionary (outDict)
+    :param genesO:  genesO object, called 'genesO' in interactive analysis
+    :param geneTree:  Tree object representing the gene tree
+    :param MprD:  most probable reconciliation dictionary
+    :param mprdKey:  tuple representing the key for the MprD that we should be working with
+    :param outDict:  reconciliation dictionary being edited
+    :param geneToKeyD:  dictionary mapping gene names to the reconciliation keys
+    :return geneToKeyD (updated)
+    """
+    # only run if the key we're looking for is in the dictionary
+    if mprdKey in MprD:
+        # unpack mprd entry
+        geneLocation,geneNB = mprdKey
+        reconKey = ()
+        eventsOrdered = MprD[mprdKey][::-1]
+        # check all events
+        for eventT in eventsOrdered:
+            event,speciesLocation,stNB,locus = eventT
+            # create the mprdKey
+            reconKey = (geneLocation, speciesLocation)
+            reconValue = ()
+            # L and R events have only one child (the next event)
+            if event == 'L' or event == 'R':
+                child = geneToKeyD[geneLocation]
+                reconValue = (event, child, None)
+            # DTO events have two children
+            else:
+                # check for children
+                rightChild, leftChild = geneTree.children(geneLocation)
+                leftChildKey = geneToKeyD[leftChild]
+                rightChildKey = geneToKeyD[rightChild]
+                reconValue = (event, leftChildKey, rightChildKey)
+            # add event, and key
+            addAppend(reconKey, reconValue, outDict)
+            geneToKeyD[geneLocation] = reconKey
 
+def mprdToReconHelper(genesO:genomes.genes, geneTree:Tree, MprD:dict, node:str, outDict:dict):
+    """ creates the reconcilliation dictionary by recursing through enries in MprD.
+        returns geneToOutKey dictionary, because higher levels in the tree are 
+        dependent on this dictionary: to figure out what proper keys are for
+        higher-levels, we need the keys from the lower levels, (including leaves)
+    :param genesO:  genesO object, called 'genesO' in interactive analysis
+    :param geneTree:  Tree object representing the gene tree
+    :param MprD:  most probable reconciliation dictionary
+    :param node: str representing the node to start at and recurse down from
+    :param outDict: reconciliation dictionary being edited
+    :return geneToOutKey, a dictionary mapping genes to their keys. This is 
+            required for consistent naming
+    """
+    # at a tip
+    key = ()
+    value = ()
+    # given a gene (as in, a child from geneTreeO.children(node)), give the associated key in outKey
+    geneToOutKey = {}
+    if geneTree.isLeaf(node): # give none, only one option
+        # create the key for the leaf
+        species = genesO.numToStrainName(int(node))
+        key = (node, species)
+        # add the key to dictionary mapping genes to appropriate keys
+        geneToOutKey[node] = key
+        if (node, 'b') in MprD: # may be a loss or rearrangement
+            addOneKey(genesO, geneTree, MprD, (node, 'b'), outDict, geneToOutKey)
+        value = ('C', (None, None), (None, None))
+        addAppend(key, value, outDict)
+    else: # go through both children
+        leftChild, rightChild = geneTree.children(node)
+        # add the appropriate out keys to the dictionary, and recurse
+        geneToOutKey = {**geneToOutKey, **mprdToReconHelper(genesO, geneTree, MprD, leftChild, outDict)}
+        geneToOutKey = {**geneToOutKey, **mprdToReconHelper(genesO, geneTree, MprD, rightChild, outDict)}
+        # check for n
+        mprdKey1 = (node, 'n')
+        addOneKey(genesO, geneTree, MprD, mprdKey1, outDict, geneToOutKey)
+        # check for b
+        mprdKey2 = (node, 'b')
+        addOneKey(genesO, geneTree, MprD, mprdKey2, outDict, geneToOutKey)
+    return geneToOutKey
 
-MAROON = (0.5, 0, 0, 1)
-GREEN = (0, 0.5, 0, 1)
+def mprdToRecon(genesO:genomes.genes, geneTree:Tree, MprD:dict):
+    """ Translate an MprD (most probable recon dictionary) to a reconciliation 
+        dictionary format that render takes in. 
+    :param genesO:  genesO object, called 'genesO' in interactive analysis
+    :param geneTree:  Rtree object representing the gene tree
+    :param MprD:  the most probable reconciliation dictionary (ofam.dtlorMprD)
+    :return reconciliation dictionary
+    """
+    # get the root
+    root = geneTree.rootNode
+    # initialize empty dictionary
+    dictionary = {}
+    # edit the dictionary
+    mprdToReconHelper(genesO, geneTree, MprD, root, dictionary)
+    return dictionary
 
-PURPLE = (0.5, 0, 0.5, 1)
-BLACK = (0, 0, 0, 1)
-GRAY = (0.5, 0.5, 0.5, 1)
-WHITE = (1, 1, 1, 1)
-PURPLE = (.843, .00, 1.0, 1)
+#-----------------------------------------------------------------
+# Tree things -> Better tree things
+#-----------------------------------------------------------------
 
-BLUE = (.09, .216, .584, 1)
-ROYAL_BLUE = (.3, .4, .9, 1)
-CYAN = (.3, .9, .75, 1)
-RED_BLUSH = (.882, .255, .412, 1)
-PRETTY_YELLOW = (.882, .725, .255, 1)
-ORANGE_ORANGE = (1.00, .502, 0, 1)
+def getSpecies(reconDict:dict):
+    """ Pulls the second value from each key in a reconstruction dictionary, yielding
+        all species involved in the reconstruction.
+    :param reconDict:  reconstruction dictionary
+    :return List of species mentioned in the reconstruction
+    """
+    # initialize list
+    species = []
+    for key in reconDict:
+        geneLocation, speciesLocation = key
+        species.append(speciesLocation)
+    return species
 
-LEAF_NODE_COLOR = BLUE
-COSPECIATION_NODE_COLOR = ORANGE_ORANGE
-DUPLICATION_NODE_COLOR = PURPLE
-TRANSFER_NODE_COLOR = RED_BLUSH
-HOST_NODE_COLOR = BLACK
-HOST_EDGE_COLOR = BLACK
-PARASITE_EDGE_COLOR = ROYAL_BLUE
-LOSS_EDGE_COLOR = GRAY
+def catchLeafDictionary(dictionary:dict, replacementValue:str):
+    """ Host(species)/Parasite(gene) trees containing only a single entry have
+        a root parent's name that is not h_root or p_root, which causes errors
+        farther down the line. This function catches those dictionaries, and sets them
+        to a non-erroring state. (changes root parent to replacementValue)
+    :param dictionary:  dictionary created by calling "Rtree.createDtlorD" on a given Rtree
+    :param replacementValue:  either 'h_root' for hosts or 'p_root' for parasites
+    :return nothing
+    """
+    # if dictionary is a leaf
+    if len(dictionary) == 1:
+        # should only be one key
+        onlyKey = list(dictionary.keys())[0]
+        # set the 'parent' of the only entry to replacementValue
+        parent, node, leftChild, rightChild = dictionary[onlyKey]
+        dictionary[onlyKey] = (replacementValue, node, leftChild, rightChild)
 
-TRANSFER_TRANSPARENCY = 0.25
+#-----------------------------------------------------------------
+# Origin family -> figure
+#-----------------------------------------------------------------
 
-LEAF_NODE_SHAPE = "o"
-COSPECIATION_NODE_SHAPE = "o"
-DUPLICATION_NODE_SHAPE = "D"
-TRANSFER_NODE_SHAPE = "s"
+def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, speciesTreeObject:Tree.Rtree, number:int):
+    """ Renders a reconciliation using 'render', given an origin family number
+    :param genesO:  genesO object, called 'genesO' in interactive analysis
+    :param originFamilyObject:  Family object containing all origin families, called 'originFamiliesO' in interactive analysis
+    :param speciesTreeObject:  Host / species tree. Called 'speciesTtreeO' in interactive analysis
+    :param number:  integer number for the origin family that reconstruction should be generated on.
+    :return Figure Object
+    """
+    # get the origin family, and get its reconstruction dictionary
+    ofam = originFamilyObject.getFamily(number)
+    mprD = ofam.dtlorMprD
+    reconDict = mprdToRecon(genesO, ofam.geneTreeO, mprD)
+    
+    # get the smallest possible tree that the reconstruction can be mapped on
+    #   saves space by only using the portion of the species graph required
+    speciesList = getSpecies(reconDict)
+    mrca = speciesTreeObject.findMrca(speciesList)
+    subtree = speciesTreeObject.subtree(mrca)
+    
+    # change trees into dictionaries, fixing them if we are working with a single species
+    hostDict = subtree.createDtlorD(True)
+    catchLeafDictionary(hostDict, 'h_root')
+    parasiteDict = ofam.geneTreeO.createDtlorD(False)
+    catchLeafDictionary(parasiteDict, 'p_root')
 
-TIP_ALIGNMENT = 'center'
+    # render and return the figure
+    outputFigure = render(hostDict, parasiteDict, reconDict, show_legend=False) #, show_internal_labels= True)
+    return outputFigure
 
-CENTER_CONSTANT = 3 / 8
+def plotOriginFamily(number:int):
+    """ Wrapper function for ofamRender, should work in interactiveAnalysis
+    :param number:  integer number for the origin family that reconstruction should be generated on.
+    :return Figure Object
+    """
+    # render and return
+    figure = ofamRender(genesO, originFamiliesO, speciesRtreeO, number)
+    return figure
 
-NODESIZE = 8
-START_SIZE = -60
-STEP_SIZE = 50
-MIN_FONT_SIZE = 0
-MAX_FONT_SIZE = .3
-COUNT_OFFSET = 3
-PUSHED_NODE_OFFSET = 0.5
+def setup():
+    # creates genesO, speciesRtreeO, and originFamiliesO for plotOriginFamily
+    # STOLEN FROM INTERACTIVE ANALYSIS
+    paramFN = 'params.py'
+    global paramD
+    paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
 
-INTERNAL_NODE_ALPHA = 0.7
+    global genesO
+    global speciesRtreeO
+    global originFamiliesO
+    strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
+    speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+    genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
+    genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
-HOST_NODE_BORDER_COLOR = WHITE
-PARASITE_NODE_BORDER_COLOR = BLACK
-
-TREE_TITLE = ""
-
-LEGEND_ELEMENTS = [
-       Line2D([0], [0], marker= COSPECIATION_NODE_SHAPE, color='w', label='Cospeciation',
-              markerfacecolor=COSPECIATION_NODE_COLOR, markersize=NODESIZE),
-       Line2D([0], [0], marker=DUPLICATION_NODE_SHAPE, color='w', label='Duplication',
-              markerfacecolor=DUPLICATION_NODE_COLOR, markersize=NODESIZE),
-       Line2D([0], [0], marker=TRANSFER_NODE_SHAPE, color='w', label='Transfer',
-              markerfacecolor=TRANSFER_NODE_COLOR, markersize=NODESIZE),
-       LineCollection([[(0, 0)]], linestyles=['dashed'],
-              colors=[LOSS_EDGE_COLOR], label='Loss')
-]
-
-UP_ARROW_ROTATION = 0
-DOWN_ARROW_ROTATION = 180
-
-#### FUNCTION for running (tona just began, and had in a different file. I wanted it here for now)
-
-def visualize_reconciliation(species_tree, gene_tree, phi, locus_map, D, T, L, O, R):
-    C, C_star, C_graph = DTL_reconcile(species_tree, gene_tree, phi, D, T, L)
-    S, S_star, S_graph = synteny_reconcile(species_tree, gene_tree, locus_map, R)
-    G = {**C_graph, **S_graph}
-    reconVis.render(species_tree, gene_tree, G)
+'''setup()
+fig = plotOriginFamily(3099)
+fig.save("reconVis_3099_test.svg") '''
