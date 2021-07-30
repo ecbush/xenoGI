@@ -5,16 +5,22 @@ Credit to Justin Jiang, Trenton Wesley, and the Ran lab
 
 Additions made by Michelle Johnson with the Bush lab
 
-To create images, this module should be imported into interactiveAnalysis. An 
-example call to create and save a figure looks as follows:
-    figure = plotOriginFamily(number)
+To create images, this module should be imported into interactiveAnalysis. The 
+function ofamRender returns a figure object, which has the methods .save and 
+.show to view the figure. The .show method will open the figure in a matplotlib 
+window, and the image that gets saved is dependent on the window size (i.e., a 
+call to save without a call to show may be less readable than showing the figure
+and saving from the matplotlib window. Some example calls to create and save/
+show a figure looks as follows:
+    figure = ofamRender(genesO, originFamiliesO, speciesRtreeO, originFamilyNumber)
     figure.save("filename.extension")
 or, 
-    figure3099 = plotOriginFamily(3099)
+    figure3099 = ofamRender(genesO, originFamiliesO, speciesRtreeO, 3099)
+    figure3099.show()
     figure3099.save("ofam_plot-3099.svg")
 etc.
 
-Currently, there is an error where trees have cycles in them. This causes the 
+There is sometimes an error where trees have cycles in them. This causes the 
 object to be returned to be None.
 
 The interface with rest of xenoGI only works for origin family objects, and is 
@@ -32,7 +38,10 @@ which I am uncertain of are marked with a comment containing the word "BETA".
 
 Current Issues:
     Legend is incorrect
-    Temporal Graphs contain cycles, likely as a result of an error in build_temporal_graph
+    Losses currently mapped to nodes are incorrect - should be mapped to one of
+        the branches under that node (which is unknown)
+    X Temporal Graphs contain cycles, likely as a result of an error in build_temporal_graph
+        - fixed ? by commenting out a large block
 
 Future Improvements:
     Legend could be placed somewhere that doesn't obscure the figure
@@ -490,8 +499,12 @@ def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconc
 
 def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
     """
-    Gotta connect parent node to uhhhhhhhh node_pos.y. aeiou aeiou aeiou aeiou aeiou 
-    question mark explanation mark question mark excalamation mark I'm laughing for real right now
+    Draws a node on the branch leading to the given parasite_node.
+    :param parasite_node:  the node the event happens on/before
+    :param mapping_node:  node mapping the parasite_node to a species_node
+    :param event:  the event type
+    :param host_lookup:  dictionary with host node names as key and host node objects as values
+    :param fig:  Figure Object
     """
     # node is a PARASITE node
     host_name = mapping_node.host
@@ -499,10 +512,16 @@ def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
 
     parent_node = None
 
-    # offset = None
-
     if event.event_type == EventType.ORIGIN:
         parent_node = host_node.parent_node
+        # ERROR CAN OCCUR IF HOST_NODE IS s0
+        if parent_node == None:
+            offset = host_node.layout.x - parasite_node.layout.x
+            parent_node = Node('parentOfOrigin')
+            parent_node.layout = NodeLayout()
+            parent_node.set_layout(x=parasite_node.layout.x - (offset), \
+                                    y=parasite_node.layout.y)
+            
     else:
         parent_node = parasite_node.parent_node
     
@@ -524,8 +543,6 @@ def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
 
     # node_pos = Position(host_node.layout.x, host_node.layout.y)
     # mid_pos = Position(node_pos.x, current_pos.y)
-
-     # There was some good h_track and v_track stuff in here copied from uuhhh. Place that calls _render_loss branch. I deleted it for no good reason
 
     render_color, render_shape = _event_color_shape(event)
     mid_pos = Position(host_parent_pos.x, current_pos.y)
@@ -553,13 +570,11 @@ def _render_normal_branch(node_pos: Position, next_pos: Position, fig: FigureWra
     :param node_pos: x and y position of a node
     :param next_pos: x and y position of another node
     :param fig: Figure object that visualizes trees using MatplotLib
-
-    previously _render_loss_branch
     """
     # Create vertical line to next node
     mid_pos = Position(node_pos.x, next_pos.y)
-    fig.line(node_pos, mid_pos, NORMAL_EDGE_COLOR) # previously (node_pos, mid_pos, LOSS_EDGE_COLOR, linestyle='--')
-    fig.line(mid_pos, next_pos, NORMAL_EDGE_COLOR) # previously (mid_pos, next_pos, PARASITE_EDGE_COLOR)
+    fig.line(node_pos, mid_pos, NORMAL_EDGE_COLOR) 
+    fig.line(mid_pos, next_pos, NORMAL_EDGE_COLOR)
 
 
 def _render_cospeciation_branch(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
@@ -1076,7 +1091,6 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
     # initialize the final temporal graph to the combined temporal graphs of host and parasite tree
     temporal_graph = temporal_host_tree
     temporal_graph.update(temporal_parasite_tree)
-    print(str(temporal_graph))
     # add temporal relations implied by each node mapping and the corresponding event
     for node_mapping in reconciliation:
         parasite, host = node_mapping
@@ -1087,12 +1101,11 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
         # loss-type events are included under new two-reconciliations model
         # if the node_mapping is not a leaf_mapping, we add the first relation
         if event_type != 'C':
-            print("NOT C: " + str(parasite) + " , " + str(host))
-            '''if (parasite, TreeType.PARASITE) in temporal_graph:
+            if (parasite, TreeType.PARASITE) in temporal_graph:
                 temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
             else:
-                temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]'''
-            if (host, TreeType.HOST) in temporal_graph:
+                temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]
+            '''if (host, TreeType.HOST) in temporal_graph:
                 if (parasite, TreeType.PARASITE) not in temporal_graph[(host, TreeType.HOST)]:
                     if (parasite, TreeType.PARASITE) in temporal_graph:
                         print("1")
@@ -1106,7 +1119,7 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
                     temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
                 else: # add leaves specifically for RL events on branches that lead to leaves
                     print("4")
-                    temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]
+                    temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]'''
 
             '''if (parasite, TreeType.PARASITE) in temporal_graph:
                 if (host, TreeType.HOST) in temporal_graph:
@@ -1119,12 +1132,12 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
             else: # add leaves specifically for RL events on branches that lead to leaves
                 temporal_graph[(parasite, TreeType.PARASITE)] = [(host, TreeType.HOST)]'''
         # if the node_mapping is not a mapping onto the root of host tree, we add the second relation
-        if host_parent != 'h_root' and host_parent != 'p_root' and event_type != 'C' and event_type != 'L': # didn't exclude 'C' previously
+        """if host_parent != 'h_root' and host_parent != 'p_root' and event_type != 'C' and event_type != 'L': # didn't exclude 'C' previously
             # Why are host_parents added ? -beta
             print("NOT many things: " + str(host_parent) + ", " + str(parasite))
             print(event_tuple)
             '''if (host, TreeType.HOST) not in temporal_graph[(parasite, TreeType.PARASITE)]: # BETA'''
-            temporal_graph[(host_parent, TreeType.HOST)].append((parasite, TreeType.PARASITE))
+            temporal_graph[(host_parent, TreeType.HOST)].append((parasite, TreeType.PARASITE))"""
         
         # if event is a transfer, then we add two more temporal relations
         if event_type == 'T' and add_strong_constraints:
@@ -1132,7 +1145,6 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
             right_child_mapping = event_tuple[2]
             right_child_parasite, right_child_host = right_child_mapping
             # since a transfer event is horizontal, we have these two implied relations
-            print("T: " + str(right_child_mapping) + " : " + str(parent[right_child_host]))
             temporal_graph[(parent[right_child_host], TreeType.HOST)].append((parasite, TreeType.PARASITE))
 
     for node_tuple in temporal_graph:
@@ -2269,7 +2281,7 @@ def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, species
     outputFigure = render(hostDict, parasiteDict, reconDict, show_legend=False) #, show_internal_labels= True)
     return outputFigure
 
-def plotOriginFamily(number:int):
+def plotOriginFamily(genesO, number:int):
     """ Wrapper function for ofamRender, should work in interactiveAnalysis
     :param number:  integer number for the origin family that reconstruction should be generated on.
     :return Figure Object
