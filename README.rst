@@ -59,7 +59,7 @@ If you use xenoGI in a publication, please cite the following:
 
 Bush EC, Clark AE, DeRanek CA, Eng A, Forman J, Heath K, Lee AB, Stoebel DM, Wang Z, Wilber M, Wu H. xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria. BMC Bioinformatics. 19(32). 2018.
 
-Liu J, Mawhorter R, Liu I, Santichaivekin S, Bush E, Libeskind-Hadas R. Maximum Parsimony Reconciliation in the DTLOR Model. bioRxiv. 2021.
+Liu J, Mawhorter R, Liu I, Santichaivekin S, Bush E, Libeskind-Hadas R. Maximum Parsimony Reconciliation in the DTLOR Model. BMC Bioinformatics. 22(394). 2021.
 
 How to use
 ----------

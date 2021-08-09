@@ -222,8 +222,11 @@ These arguments are:
 3) an email: Entrez uses an email to make calls. While it runs
    without it, providing an email is preferred for working with the ncbi database.
 
-Example call::
-  python3 path-to-xenoGI-github-repository/misc/downloadGenbank.py assemblyList.txt assembly researcher@hmc.edu
+Example call
+
+::
+
+   python3 path-to-xenoGI-github-repository/misc/downloadGenbank.py assemblyList.txt assembly researcher@hmc.edu
 
 Functions in Interactive mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
