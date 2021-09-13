@@ -52,7 +52,6 @@ Future Improvements:
 """
 from __future__ import annotations
 from xenoGI.families import REARRANGEMENT
-from empress.recon_vis import recon, tree, plot_tools, render_settings
 
 from typing import Union, Dict, Tuple, List, NamedTuple
 import math
@@ -2256,7 +2255,7 @@ def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, species
     """ Renders a reconciliation using 'render', given an origin family number
     :param genesO:  genesO object, called 'genesO' in interactive analysis
     :param originFamilyObject:  Family object containing all origin families, called 'originFamiliesO' in interactive analysis
-    :param speciesTreeObject:  Host / species tree. Called 'speciesTtreeO' in interactive analysis
+    :param speciesTreeObject:  Host / species tree. Called 'speciesRtreeO' in interactive analysis
     :param number:  integer number for the origin family that reconstruction should be generated on.
     :return Figure Object
     """
@@ -2278,7 +2277,7 @@ def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, species
     catchLeafDictionary(parasiteDict, 'p_root')
 
     # render and return the figure
-    outputFigure = render(hostDict, parasiteDict, reconDict, show_legend=False) #, show_internal_labels= True)
+    outputFigure = render(hostDict, parasiteDict, reconDict, show_legend=False, show_internal_labels= True)
     return outputFigure
 
 def plotOriginFamily(genesO, number:int):
