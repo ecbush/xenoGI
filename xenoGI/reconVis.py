@@ -51,7 +51,7 @@ Future Improvements:
     Text could sized appropriately (width as well as height)
 """
 from __future__ import annotations
-from xenoGI.families import REARRANGEMENT
+# from xenoGI.families import REARRANGEMENT
 
 from typing import Union, Dict, Tuple, List, NamedTuple
 import math
@@ -199,11 +199,12 @@ def _render_host_helper(fig: FigureWrapper, node: Node, show_internal_labels: bo
         else:
             fig.text_v2(text_offset, node.name, HOST_NODE_COLOR, size=font_size, vertical_alignment=TIP_ALIGNMENT)    
     else:
-        fig.dot(node_pos, col=HOST_NODE_COLOR)  # Render host node
+        # fig.dot(node_pos, col=HOST_NODE_COLOR)  # Render host node
+        fig.halfDot(node_pos, col=HOST_NODE_COLOR) # slightly smaller species node
         if show_internal_labels:
             color = transparent_color(HOST_NODE_COLOR, INTERNAL_NODE_ALPHA)
             text_xy = (node_pos.x, node_pos.y)
-            fig.text_v2(text_xy, node.name, color, size=font_size, border_col=HOST_NODE_BORDER_COLOR)
+            fig.text_v2(text_xy, node.name, color, size=font_size*1/2, border_col=HOST_NODE_BORDER_COLOR) #the *1/2 reduces the font size
         left_x, left_y = node.left_node.layout.x, node.left_node.layout.y
         right_x, right_y = node.right_node.layout.x, node.right_node.layout.y
         fig.line(node_pos, (node_pos.x, left_y), HOST_EDGE_COLOR)
@@ -312,9 +313,10 @@ def _render_parasite_helper(fig: FigureWrapper,  node: Node, recon_obj: Reconcil
         _render_parasite_node(fig, node, event, font_size, longest_host_name)
         # draw branch events - beta
         if node.name in branch_recon._parasite_map:
-            mapping_node = branch_recon.mapping_of(node.name)
-            branch_event = branch_recon.event_of(mapping_node)
-            _render_branch_event(node, mapping_node, branch_event, host_lookup, fig)
+            mapping_nodes = branch_recon.mapping_of(node.name)
+            for mapping_node in mapping_nodes: # MICHELLE (changed _parasite_map to form (str, list))
+                branch_event = branch_recon.event_of(mapping_node)
+                _render_branch_event(node, mapping_node, branch_event, host_lookup, fig)
         return
 
     # If the Node is in their own track, change their position
@@ -429,7 +431,7 @@ def _render_parasite_node(fig: FigureWrapper,  node: Node, event: Event, font_si
         else:
             raise RuntimeError("Could not render reconciliation: show_freq is True but event.freq is None")
     if text:
-        fig.text_v2(node_pos, text, text_color, size=font_size, border_col=PARASITE_NODE_BORDER_COLOR)
+        fig.text_v2(node_pos, text, text_color, size=font_size * (1/2), border_col=PARASITE_NODE_BORDER_COLOR) # *1/2 reduces the font size
 
 
 def _get_frequency_text(frequency: float):
@@ -484,17 +486,25 @@ def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconc
     elif event.event_type is EventType.DUPLICATION:
         _connect_children(node, host_lookup, parasite_lookup, recon_obj, fig)
     elif event.event_type is EventType.TRANSFER:
-        _render_transfer_branch(node_pos, right_pos, fig, node, host_lookup, recon_obj, right_node)
-        _connect_child_to_parent(node, left_node, host_lookup, recon_obj, fig)
+        left_pos = Position(left_node.layout.x, left_node.layout.y)
+        # determine which side is the same, draw the other side as transfer
+        if node_pos.y != right_pos.y:
+            _render_transfer_branch(node_pos, right_pos, fig, node, host_lookup, recon_obj, right_node)
+            _render_normal_branch(node_pos, left_pos, fig) # fix issues where the transfer branch tracks all the way back to origin instead of desired stop
+        else:
+            _render_transfer_branch(node_pos, left_pos, fig, node, host_lookup, recon_obj, right_node)
+            _render_normal_branch(node_pos, right_pos, fig)
+        # _connect_child_to_parent(node, left_node, host_lookup, recon_obj, fig) # why do I need this?? MICHELLE
     else:
         raise ValueError('%s is not an known event type' % event.event_type)
     # Losses are implicitly implied and are not mapped to any specific node
 
     # draw branch events - beta
     if node.name in branch_recon._parasite_map:
-        mapping_node = branch_recon.mapping_of(node.name)
-        branch_event = branch_recon.event_of(mapping_node)
-        _render_branch_event(node, mapping_node, branch_event, host_lookup, fig)
+        mapping_nodes = branch_recon.mapping_of(node.name)
+        for mapping_node in mapping_nodes:
+            branch_event = branch_recon.event_of(mapping_node)
+            _render_branch_event(node, mapping_node, branch_event, host_lookup, fig)
 
 def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
     """
@@ -543,9 +553,11 @@ def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
     # node_pos = Position(host_node.layout.x, host_node.layout.y)
     # mid_pos = Position(node_pos.x, current_pos.y)
 
-    render_color, render_shape = _event_color_shape(event)
-    mid_pos = Position(host_parent_pos.x, current_pos.y)
-    fig.dot(mid_pos, col=render_color, marker=render_shape)
+    # get rearrangement nodes, do not have loss nodes
+    if event.event_type is not EventType.LOSS:
+        render_color, render_shape = _event_color_shape(event)
+        mid_pos = Position(host_parent_pos.x, current_pos.y)
+        fig.dot(mid_pos, col=render_color, marker=render_shape)
 
     if event.event_type is EventType.ORIGIN:
         fig.line(mid_pos, current_pos, PARASITE_EDGE_COLOR)
@@ -563,7 +575,7 @@ def _connect_children(node: Node, host_lookup: dict, parasite_lookup: dict, reco
     _connect_child_to_parent(node, right_node, host_lookup, recon_obj, fig)
 
 
-def _render_normal_branch(node_pos: Position, next_pos: Position, fig: FigureWrapper):
+def _render_loss_branch(node_pos: Position, next_pos: Position, fig: FigureWrapper):
     """
     Renders a loss branch given a two positions
     :param node_pos: x and y position of a node
@@ -572,9 +584,14 @@ def _render_normal_branch(node_pos: Position, next_pos: Position, fig: FigureWra
     """
     # Create vertical line to next node
     mid_pos = Position(node_pos.x, next_pos.y)
-    fig.line(node_pos, mid_pos, NORMAL_EDGE_COLOR) 
-    fig.line(mid_pos, next_pos, NORMAL_EDGE_COLOR)
+    fig.line(node_pos, mid_pos, LOSS_EDGE_COLOR, linestyle='--')
+    fig.line(mid_pos, next_pos, PARASITE_EDGE_COLOR)
 
+def _render_normal_branch(node_pos: Position, next_pos:Position, fig: FigureWrapper):
+    # Create vertical line to next node
+    mid_pos = Position(node_pos.x, next_pos.y)
+    fig.line(node_pos, mid_pos, PARASITE_EDGE_COLOR) 
+    fig.line(mid_pos, next_pos, PARASITE_EDGE_COLOR)
 
 def _render_cospeciation_branch(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
     """
@@ -609,8 +626,9 @@ def _render_cospeciation_branch(node: Node, host_lookup: dict, parasite_lookup: 
         if host_node.layout.lower_v_track < (host_node.layout.x - node_pos.x) / offset:
             host_node.layout.lower_v_track += (host_node.layout.x - node_pos.x) / offset + offset
     else:
-        stop_row = host_node.left_node.layout.row
-        _connect_child_to_parent(node, left_node, host_lookup, recon_obj, fig, stop_row=stop_row)
+        # stop_row = host_node.left_node.layout.row # -beta test, parse in left & right as stop nodes to catch cases where left/right labels are swapped
+        stop_rows = (host_node.left_node.layout.row, host_node.right_node.layout.row)
+        _connect_child_to_parent(node, left_node, host_lookup, recon_obj, fig, stop_rows=stop_rows) # -beta test
 
     # Draw Right node
     if host_node.right_node.name == right_host_node.name:
@@ -618,8 +636,9 @@ def _render_cospeciation_branch(node: Node, host_lookup: dict, parasite_lookup: 
         if host_node.layout.upper_v_track < (host_node.layout.x - node_pos.x) / offset:
             host_node.layout.upper_v_track += (host_node.layout.x - node_pos.x) / offset + offset
     else:
-        stop_row = host_node.right_node.layout.row
-        _connect_child_to_parent(node, right_node, host_lookup, recon_obj, fig, stop_row=stop_row)
+        # stop_row = host_node.right_node.layout.row # -beta test, same as above
+        stop_rows = (host_node.left_node.layout.row, host_node.right_node.layout.row)
+        _connect_child_to_parent(node, right_node, host_lookup, recon_obj, fig, stop_rows=stop_rows) # originally stop_row
 
 
 def _get_children(node: Node, recon_obj: Reconciliation, parasite_lookup: dict):
@@ -680,13 +699,13 @@ def _render_transfer_branch(node_pos: Position, right_pos: Position, fig: Figure
         is_upwards = True if y_midpoint < mid_pos.y else False
         arrow_pos = Position(node_pos.x, y_midpoint)
         if is_upwards:
-            fig.triangle(arrow_pos, PARASITE_EDGE_COLOR)
+            fig.triangle(arrow_pos, TRANSFER_NODE_COLOR)
         else:
-            fig.triangle(arrow_pos, PARASITE_EDGE_COLOR, rotation=DOWN_ARROW_ROTATION)
+            fig.triangle(arrow_pos, TRANSFER_NODE_COLOR, rotation=DOWN_ARROW_ROTATION)
 
         # Draw branch to midpoint, then draw branch to child
-        fig.line(node_pos, mid_pos, PARASITE_EDGE_COLOR)
-        fig.line(mid_pos, right_pos, PARASITE_EDGE_COLOR)
+        fig.line(node_pos, mid_pos, TRANSFER_NODE_COLOR)
+        fig.line(mid_pos, right_pos, TRANSFER_NODE_COLOR)
     else:
         transfer_edge_color = MAROON # previously: transparent_color(PARASITE_EDGE_COLOR, TRANSFER_TRANSPARENCY) -beta
         # note: this appears to have made no difference on plots ??
@@ -694,7 +713,7 @@ def _render_transfer_branch(node_pos: Position, right_pos: Position, fig: Figure
         fig.line(node_pos, right_pos, transfer_edge_color)
 
 
-def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper,  stop_row: float = None):
+def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper, stop_rows: list = []): # stop_row: float = None): MICHELLE
     """
     Connects a child node to its parent node
     :param node: Node object representing a parasite event
@@ -704,35 +723,49 @@ def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, re
     :param fig: Figure object that visualizes trees using MatplotLib
     :param stop_row: row number to stop line drawing on
     """
+    # get map between node (parasite) and host
     mapping_node = recon_obj.mapping_of(child_node.name)
     host_node = host_lookup[mapping_node.host]
+      
+    # switch stop rows from singular to multiple, to catch left/right issues in cospeciation events
+    # if no stop_row specified, use input node as stopping point
+    #if stop_row == None:
+    if stop_rows == []:
+        stop_rows = [node.layout.row] # originally singular
     
-    if stop_row == None:
-        stop_row = node.layout.row
-    
+    # start at the child
     current_pos = Position(child_node.layout.x, child_node.layout.y)
 
-    """
-    while host_node.layout.row != stop_row and host_node.parent_node:
+    # """ REMOVAL START
+    # if the host we are looking at is not in the same row as our given node, we loop
+    # while host_node.layout.row != stop_row and host_node.parent_node:
+    while host_node.layout.row not in stop_rows and host_node.parent_node:
         parent_node = host_node.parent_node
+        # if the parent node is below the current node, we're on the upper track
         if parent_node.layout.row < host_node.layout.row:
             v_track = parent_node.get_and_update_track(Track.UPPER_VERTICAL)
+        # else, we are on the lower track
         else:
             v_track = parent_node.get_and_update_track(Track.LOWER_VERTICAL)
+            # update track until we are where the upper track is (???)
             while v_track < parent_node.layout.upper_v_track:
                 v_track = parent_node.get_and_update_track(Track.LOWER_VERTICAL)
+        # get the horizantal track
         h_track = parent_node.get_and_update_track(Track.HORIZONTAL)
+        # create offset!
         offset = parent_node.layout.offset
 
-        sub_parent_pos = Position(parent_node.layout.x - (offset * v_track), \
-            parent_node.layout.y + (offset * h_track))
+        # get the position to draw to, should be next to the species node before the current node
+        # sub_parent_pos = Position(parent_node.layout.x - (offset * v_track), \
+        #     parent_node.layout.y + (offset * h_track))
         
-        # sub_parent_pos = Position(parent_node.layout.x - offset, parent_node.layout.y + offset) # beta
+        sub_parent_pos = Position(parent_node.layout.x - offset, parent_node.layout.y + offset) # commented out, written by Michelle as a test (beta)
 
-        _render_normal_branch(sub_parent_pos, current_pos, fig)
+        _render_loss_branch(sub_parent_pos, current_pos, fig) # should be _loss_branch MICHELLE
 
+        # iterate such that we start at the last host node we drew to
         host_node = parent_node
-        current_pos = sub_parent_pos """ # BETA
+        current_pos = sub_parent_pos # """ REMOVAL END
     
     node_pos = Position(node.layout.x, node.layout.y)
     mid_pos = Position(node_pos.x, current_pos.y)
@@ -898,6 +931,7 @@ def dict_to_reconciliation(old_recon: Dict[Tuple, List], event_frequencies: Dict
         ('n3', 'm3'): [('C', (None, None), (None, None))],
         ('n4', 'm1'): [('C', (None, None), (None, None))],
     }
+    Returns recon_obj (SDTC) and branchRecon_obj (ORL)
     """
     # check that we have only one root
     roots = _find_roots(old_recon)
@@ -1099,7 +1133,8 @@ def build_temporal_graph(host_dict: dict, parasite_dict: dict, reconciliation: d
         event_type = event_tuple[0]
         # loss-type events are included under new two-reconciliations model
         # if the node_mapping is not a leaf_mapping, we add the first relation
-        if event_type != 'C':
+        # if event_type != 'C':
+        if event_type not in 'CL':
             if (parasite, TreeType.PARASITE) in temporal_graph:
                 temporal_graph[(parasite, TreeType.PARASITE)].append((host, TreeType.HOST))
             else:
@@ -1532,7 +1567,7 @@ class BranchReconciliation:
         """
         self.source = source
         self._map = initial_map
-        self._parasite_map: Dict[str, MappingNode] = {}
+        self._parasite_map: Dict[str, list] = {}
     
     def __eq__(self, other):
         return type(self) == type(other) and self._map == other._map
@@ -1545,7 +1580,11 @@ class BranchReconciliation:
         Set the event corresponding to mapping.
         """
         # if event.event_type is not EventType.LOSS:
-        self._parasite_map[mapping.parasite] = mapping
+        if mapping.parasite not in self._parasite_map:
+            self._parasite_map[mapping.parasite] = [mapping]
+        else:
+            self._parasite_map[mapping.parasite].append(mapping)
+        # add to map
         self._map[mapping] = event
     
     def event_of(self, mapping: MappingNode) -> Event:
@@ -1939,6 +1978,7 @@ TIP_ALIGNMENT = 'center'
 CENTER_CONSTANT = 3 / 8
 
 NODESIZE = 8
+SPECIES_NODESIZE = 4
 START_SIZE = -60
 STEP_SIZE = 50
 MIN_FONT_SIZE = 0
@@ -1954,12 +1994,16 @@ PARASITE_NODE_BORDER_COLOR = BLACK
 TREE_TITLE = ""
 
 LEGEND_ELEMENTS = [
+       Line2D([0], [0], marker= ORIGIN_NODE_SHAPE, color='w', label = 'Origin',
+              markerfacecolor=ORIGIN_NODE_COLOR, markersize=NODESIZE),
        Line2D([0], [0], marker= COSPECIATION_NODE_SHAPE, color='w', label='Cospeciation',
               markerfacecolor=COSPECIATION_NODE_COLOR, markersize=NODESIZE),
        Line2D([0], [0], marker=DUPLICATION_NODE_SHAPE, color='w', label='Duplication',
               markerfacecolor=DUPLICATION_NODE_COLOR, markersize=NODESIZE),
        Line2D([0], [0], marker=TRANSFER_NODE_SHAPE, color='w', label='Transfer',
               markerfacecolor=TRANSFER_NODE_COLOR, markersize=NODESIZE),
+       Line2D([0], [0], marker=REARRANGEMENT_NODE_SHAPE, color='w', label='Rearrangement',
+              markerfacecolor=REARRANGEMENT_NODE_COLOR, markersize=NODESIZE),
        LineCollection([[(0, 0)]], linestyles=['dashed'],
               colors=[LOSS_EDGE_COLOR], label='Loss')
 ]
@@ -1996,7 +2040,7 @@ FONTSIZE = 12
 DEFAULT_VERTICAL_ALIGNMENT = 'bottom'
 DEFAULT_VERTICAL_ALIGNMENT_2 = 'top'
 DEFAULT_HORIZONTAL_ALIGNMENT = 'right'
-DEFAULT_LOCATION = 'upper left'
+DEFAULT_LOCATION = 'lower left' #'upper left'
 DEFAULT_LINESTYLE = '-'
 DEFAULT_TRIANGLE_LINESTYLE = 'None'
 DEFAULT_DOT_MARKER = 'o'
@@ -2045,6 +2089,12 @@ class FigureWrapper:
         Plot dot at point p
         """
         self.axis.plot(point.x, point.y, marker, color=col, zorder=DOT_Z_ORDER)
+
+    def halfDot(self, point: Position, marker: str = DEFAULT_DOT_MARKER, col: tuple = BLACK):
+        """
+        Plot slightly smaller dot at point p
+        """
+        self.axis.plot(point.x, point.y, marker, color=col, zorder = DOT_Z_ORDER, markersize=SPECIES_NODESIZE)
 
     def text(self, point: tuple, string: str, col: tuple = RED, size=FONTSIZE, h_a: str = DEFAULT_HORIZONTAL_ALIGNMENT):
         x, y = point
@@ -2305,6 +2355,3 @@ def setup():
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
 
-'''setup()
-fig = plotOriginFamily(3099)
-fig.save("reconVis_3099_test.svg") '''
