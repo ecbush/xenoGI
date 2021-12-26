@@ -406,7 +406,7 @@ will be used (e.g. in family formation).
         if gene in self.nodeConnectD:
             return self.nodeConnectD[gene]
         else:
-            return None
+            return []
         
     def createNodeEdgeL(self,geneNamesO):
         '''Create an attribute nodeEdgeL. Index in this list corresponds to
