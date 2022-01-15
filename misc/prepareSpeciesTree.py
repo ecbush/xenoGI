@@ -11,11 +11,13 @@ if __name__ == "__main__":
     outGroupTaxaL = sys.argv[3:]
     
     bpTree = Phylo.read(inTreeFN, 'newick')
+    bpTree = trees.prepareTree(bpTree,outGroupTaxaL)
     
     speciesRtreeO = Tree.Rtree()
-    speciesRtreeO.fromNewickFileLoadSpeciesTree(inTreeFN,outGroupTaxaL)
+    nodeConnectD,branchLenD = speciesRtreeO.__bioPhyloToNodeConnectD__(bpTree)    
+    speciesRtreeO.populateAttributes(nodeConnectD,bpTree.root.name)
     
     # write final tree. rooted, with named internal nodes and no
     # branch lengths
     with open(outTreeFN,'w') as f:
-        f.write(speciesRtreeO.toNewickStr())
+        f.write(speciesRtreeO.toNewickStr()+";")
