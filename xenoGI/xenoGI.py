@@ -351,7 +351,7 @@ def interactiveAnalysisWrapper(paramD):
             print(fam.geneTreeO.toNewickStr(),file=fileF)
             print()
             print("Gene tree annotated with reconciliation [branch events | node events]",file=fileF)
-            print(fam.getNewickGeneTreeWithReconLabels(genesO),file=fileF)
+            print(fam.getNewickGeneTreeWithReconLabels(genesO,includeBrLength=True),file=fileF)
             print(file=fileF)
             print("Reconciliation of gene tree onto species tree",file=fileF)       
             fam.printReconByGeneTree(genesO,fileF)
@@ -384,6 +384,8 @@ def interactiveAnalysisWrapper(paramD):
         vPrintLocusIslandsAtNode(islandByNodeD[node],paramD['rootFocalClade'],subtreeD,originFamiliesO,genesO,fileF)
 
     ## Load data
+
+    print("Loading data, this may take some time...")
     
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
@@ -402,6 +404,8 @@ def interactiveAnalysisWrapper(paramD):
     readline.set_completer(rlcompleter.Completer(variables).complete)
     readline.parse_and_bind("tab: complete")
     code.InteractiveConsole(variables).interact()
+
+    print("Ready for interactive analysis.")
 
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
