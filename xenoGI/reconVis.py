@@ -37,17 +37,11 @@ which holds DTS objects and the other that holds LOR objects. Most edits made
 which I am uncertain of are marked with a comment containing the word "BETA". 
 
 Current Issues:
-    Legend is incorrect
-    Losses currently mapped to nodes are incorrect - should be mapped to one of
-        the branches under that node (which is unknown)
-    X Temporal Graphs contain cycles, likely as a result of an error in build_temporal_graph
-        - fixed ? by commenting out a large block
+    A tree that consists of just a leaf causes errors
+    Duplications don't have an offset
 
 Future Improvements:
     Legend could be placed somewhere that doesn't obscure the figure
-    Loss branches could actually lose said branches
-    Duplications could have two branches as opposed to only one
-        This would require information which is currently unavailable to us
     Text could sized appropriately (width as well as height)
 """
 from __future__ import annotations
@@ -2301,7 +2295,7 @@ def catchLeafDictionary(dictionary:dict, replacementValue:str):
 # Origin family -> figure
 #-----------------------------------------------------------------
 
-def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, speciesTreeObject:Tree.Rtree, number:int):
+def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, speciesTreeObject:Tree.Rtree, number:int, show_legend: bool = True):
     """ Renders a reconciliation using 'render', given an origin family number
     :param genesO:  genesO object, called 'genesO' in interactive analysis
     :param originFamilyObject:  Family object containing all origin families, called 'originFamiliesO' in interactive analysis
@@ -2327,7 +2321,7 @@ def ofamRender(genesO:genomes.genes, originFamilyObject:Family.Families, species
     catchLeafDictionary(parasiteDict, 'p_root')
 
     # render and return the figure
-    outputFigure = render(hostDict, parasiteDict, reconDict, show_legend=False, show_internal_labels= True)
+    outputFigure = render(hostDict, parasiteDict, reconDict, show_legend, show_internal_labels= True)
     return outputFigure
 
 def plotOriginFamily(genesO, number:int):
