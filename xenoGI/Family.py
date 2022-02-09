@@ -687,7 +687,7 @@ geneTreeNode. eventType is a string, D T L O R.'''
                 dtlorScore += self.dtlorScoreBelowNode(paramD,child)
             return dtlorScore
         
-    def getNewickGeneTreeWithReconLabels(self,genesO):
+    def getNewickGeneTreeWithReconLabels(self,genesO,includeBrLength=False):
         '''Print out a Newick string where the nodes are labeled with
 events. Format for annotations are [branch events | node events ]. For
 tips on the gene tree, the "node event" is the species it ends up
@@ -715,7 +715,7 @@ in.
             nodeLabelD[node] = nodeStr
 
         # put in newick string
-        return self.geneTreeO.toNewickStr(nodeLabelD=nodeLabelD)
+        return self.geneTreeO.toNewickStr(includeBrLength=includeBrLength,nodeLabelD=nodeLabelD)
 
 class Families:
 
