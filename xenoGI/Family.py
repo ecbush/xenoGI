@@ -116,7 +116,8 @@ locus family.'''
             rootOfLfSubtree = self.reconRootKey[0]
             lfSubtreeO = fam.geneTreeO.subtree(rootOfLfSubtree)
             fam.printReconByGeneTreeHelper(fam.dtlorMprD,lfSubtreeO,genesO,self.reconRootKey[0],0,fileF)
-        #self,dtlorMprD,geneRtreeO,genesO,node,level,fileF=sys.stdout    
+        #self,dtlorMprD,geneRtreeO,genesO,node,level,fileF=sys.stdout
+        
     def getStr(self,genesO,sep):
         '''Return a string representation of a single LocusFamily. Separator
 between elements given by sep. Elements are: locusFamNum lfMrca gene1

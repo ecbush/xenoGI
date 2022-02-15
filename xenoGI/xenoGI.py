@@ -317,8 +317,11 @@ def interactiveAnalysisWrapper(paramD):
         fam = familiesO.getFamily(familyNum)
         # print out the locus families
         for lfO in fam.getLocusFamilies():
-            print("    LocusFamily",lfO.getStr(genesO," "),file=fileF)
-
+            print("    LocusFamily",lfO.locusFamNum,file=fileF)
+            print("      lfMrca "+lfO.lfMrca,file=fileF)
+            for geneNum in lfO.iterGenes():
+                print("      "+genesO.numToName(geneNum),file=fileF)
+            
         if hasattr(fam,"sourceFam"):
             print(file=fileF)
             print("    Source family",fam.sourceFam,file=fileF)
@@ -403,9 +406,8 @@ def interactiveAnalysisWrapper(paramD):
     variables.update(locals())
     readline.set_completer(rlcompleter.Completer(variables).complete)
     readline.parse_and_bind("tab: complete")
-    code.InteractiveConsole(variables).interact()
-
     print("Ready for interactive analysis.")
+    code.InteractiveConsole(variables).interact()
 
 def debugWrapper(paramD):
     '''Take us into interactive mode for debugging.'''
