@@ -608,6 +608,31 @@ preparation such as naming internal nodes).
             mrca = self.findMrcaPair(mrca,node)
         return mrca
 
+    def calcDistanceBetweenNodes(self, ancNode, descNode):
+        ''' Takes in two nodes in the tree and calculates the distance 
+        assuming that the first node is ancestral'''
+        if ancNode == descNode:
+            return 0
+        else:
+            currentNode = descNode
+            pairsLeadingToAnc = []
+            while currentNode != ancNode:
+                if currentNode == self.rootNode:
+                    print("criteria for input nodes not met")
+                    print("ancNode = " + ancNode)
+                    print("descNode = " + descNode)
+                    return float('inf')
+                higherNode = self.getParent(currentNode)
+                pairsLeadingToAnc.append((currentNode,higherNode))
+                currentNode = higherNode
+            distSum = 0
+            for pair in pairsLeadingToAnc:
+                if pair in self.branchLenD:
+                    distSum += self.branchLenD[pair]
+                else:
+                    distSum += self.branchLenD[(pair[1],pair[0])]
+            return distSum
+
     def prune(self,leafL):
         '''Prune down to a tree with only the leaves in leafL, combining
 branches and removing nodes as needed. Returns a new Rtree.
