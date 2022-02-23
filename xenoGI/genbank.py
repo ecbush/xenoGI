@@ -70,7 +70,7 @@ def parseGenbankSingleFile(geneNum,fileName,dnaBasedGeneTrees,fileNameMapD,geneI
         genesOnChromL = []
         for feature in record.features:
             # choose only the features that are protein coding genes
-            if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
+            if feature.type == "CDS" and 'translation' in feature.qualifiers:
 
                 start = int(feature.location.start)
                 end = int(feature.location.end)
@@ -149,7 +149,7 @@ protein annotations. Return True if it does, False if not.'''
             # iterate through the genes on the chromosome
             for feature in record.features:
                 # choose only the features that are protein coding genes
-                if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
+                if feature.type == "CDS" and 'translation' in feature.qualifiers:
                     # at least one annotation
                     return True
     # made it all the way through with no annotations
