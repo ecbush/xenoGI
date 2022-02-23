@@ -104,10 +104,6 @@ def main():
     elif task == 'debug':
         debugWrapper(paramD)
 
-    #### validation via simulation
-    elif task == 'simValidation':
-        simValidationWrapper(paramD)
-        
 ######## Task related functions
 
 def parseGenbankWrapper(paramD):
