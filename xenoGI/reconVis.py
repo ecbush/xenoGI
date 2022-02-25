@@ -490,7 +490,7 @@ def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconc
     if event.event_type is EventType.COSPECIATION:
         _render_cospeciation_branch(node, host_lookup, parasite_lookup, recon_obj, fig)
     elif event.event_type is EventType.DUPLICATION:
-        _connect_children(node, host_lookup, parasite_lookup, recon_obj, fig)
+        _render_cospeciation_branch(node, host_lookup, parasite_lookup, recon_obj, fig) # changed to have two children for duplication, originally # _connect_children(node, host_lookup, parasite_lookup, recon_obj, fig)
     elif event.event_type is EventType.TRANSFER:
         left_pos = Position(left_node.layout.x, left_node.layout.y)
         # determine which side is the same, draw the other side as transfer
@@ -576,8 +576,17 @@ def _connect_children(node: Node, host_lookup: dict, parasite_lookup: dict, reco
     :param recon_obj: Reconciliation object that represents an edge-to-edge mapping from  a parasite tree to a host tree
     :param fig: Figure object that visualizes trees using MatplotLib
     """
+    print(node)
     left_node, right_node = _get_children(node, recon_obj, parasite_lookup)
+    print(left_node)
+    print(right_node)
+    # FUNKY EDITING, JUST TO SEE WHAT HAPPENS
+    print(node.layout.y)
+    node.layout.y += TRACK_OFFSET / 2
+    print(node.layout.y)
     _connect_child_to_parent(node, left_node, host_lookup, recon_obj, fig)
+    node.layout.y += (TRACK_OFFSET * -1)
+    print(node.layout.y)
     _connect_child_to_parent(node, right_node, host_lookup, recon_obj, fig)
 
 
@@ -756,7 +765,7 @@ def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, re
             # update track until we are where the upper track is (???)
             while v_track < parent_node.layout.upper_v_track:
                 v_track = parent_node.get_and_update_track(Track.LOWER_VERTICAL)
-        # get the horizantal track
+        # get the horizontal track
         h_track = parent_node.get_and_update_track(Track.HORIZONTAL)
         # create offset!
         offset = parent_node.layout.offset
