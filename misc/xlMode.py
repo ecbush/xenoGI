@@ -55,7 +55,9 @@ file."""
         allGenomesStrainNamesL.remove('randomSampleAabrh')
 
     # get list of all around best reciprocal hits for this sample
-    randomSampleAabrhL = scores.createAabrhL(paramD['blastFilePath'],sampleGenomesStrainNamesL,paramD['evalueThresh'],paramD['alignCoverThresh'],paramD['percIdentThresh'],paramD['randomSampleAabrhFN'])
+    blastFileJoinStr = paramD['blastFileJoinStr']
+    blastDir,blastExt = paramD['blastFilePath'].split("*")
+    randomSampleAabrhL = scores.createAabrhL(sampleGenomesStrainNamesL, blastFileJoinStr, blastDir, blastExt, paramD['evalueThresh'],paramD['alignCoverThresh'],paramD['percIdentThresh'],paramD['randomSampleAabrhFN'])
     
     # write all to a single file
     fastaDir = os.path.split(paramD['fastaFilePath'])[0]

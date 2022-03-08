@@ -618,9 +618,6 @@ preparation such as naming internal nodes).
             pairsLeadingToAnc = []
             while currentNode != ancNode:
                 if currentNode == self.rootNode:
-                    print("criteria for input nodes not met")
-                    print("ancNode = " + ancNode)
-                    print("descNode = " + descNode)
                     return float('inf')
                 higherNode = self.getParent(currentNode)
                 pairsLeadingToAnc.append((currentNode,higherNode))
