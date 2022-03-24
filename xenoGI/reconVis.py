@@ -490,7 +490,7 @@ def _render_parasite_branches(fig: FigureWrapper,  node: Node, recon_obj: Reconc
     if event.event_type is EventType.COSPECIATION:
         _render_cospeciation_branch(node, host_lookup, parasite_lookup, recon_obj, fig)
     elif event.event_type is EventType.DUPLICATION:
-        _render_cospeciation_branch(node, host_lookup, parasite_lookup, recon_obj, fig) # changed to have two children for duplication, originally # _connect_children(node, host_lookup, parasite_lookup, recon_obj, fig)
+        _render_duplication_branch(node, host_lookup, parasite_lookup, recon_obj, fig) # changed to have two children for duplication, originally # _connect_children(node, host_lookup, parasite_lookup, recon_obj, fig)
     elif event.event_type is EventType.TRANSFER:
         left_pos = Position(left_node.layout.x, left_node.layout.y)
         # determine which side is the same, draw the other side as transfer
@@ -599,14 +599,79 @@ def _render_loss_branch(node_pos: Position, next_pos: Position, fig: FigureWrapp
     """
     # Create vertical line to next node
     mid_pos = Position(node_pos.x, next_pos.y)
+    fig.backgroundLine(node_pos, mid_pos)
+    fig.backgroundLine(mid_pos, next_pos)
     fig.line(node_pos, mid_pos, LOSS_EDGE_COLOR, linestyle='--')
     fig.line(mid_pos, next_pos, PARASITE_EDGE_COLOR)
 
 def _render_normal_branch(node_pos: Position, next_pos:Position, fig: FigureWrapper):
     # Create vertical line to next node
     mid_pos = Position(node_pos.x, next_pos.y)
+    fig.backgroundLine(node_pos, mid_pos)
+    fig.backgroundLine(mid_pos, next_pos)
     fig.line(node_pos, mid_pos, PARASITE_EDGE_COLOR) 
     fig.line(mid_pos, next_pos, PARASITE_EDGE_COLOR)
+
+def _render_duplication_branch(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
+    # BAD IDEAS ABOUND LETS GOO
+    """
+    Renders the cospeciation branch.
+    :param node: Node object representing the parasite event being rendered
+    :param host_lookup: Dictionary with host node names as the key and host node objects as the values
+    :param parasite_lookup: Dictionary with parasite node names as the key and parasite node objects as the values
+    :param recon_obj: Reconciliation object that represents an edge-to-edge mapping from  a parasite tree to a host tree
+    :param fig: Figure object that visualizes trees using MatplotLib
+    """
+    left_node, right_node = _get_children(node, recon_obj, parasite_lookup)
+
+    node_pos = Position(node.layout.x, node.layout.y)
+    left_pos = Position(left_node.layout.x, left_node.layout.y)
+    right_pos = Position(right_node.layout.x, right_node.layout.y)
+
+    mapping_node = recon_obj.mapping_of(node.name)
+    host_node = host_lookup[mapping_node.host]
+
+    # Update h_track
+    host_node.get_and_update_track(Track.HORIZONTAL)
+
+    left_mapping_node = recon_obj.mapping_of(left_node.name)
+    left_host_node = host_lookup[left_mapping_node.host]
+
+    right_mapping_node = recon_obj.mapping_of(right_node.name)
+    right_host_node = host_lookup[right_mapping_node.host]
+    # Draw left node
+    offset = host_node.layout.offset
+
+    if host_node.name == left_host_node.name:
+        fig.backgroundLine(node_pos, left_pos)
+        fig.line(node_pos, left_pos, PARASITE_EDGE_COLOR)
+        if host_node.layout.lower_v_track < (host_node.layout.x - node_pos.x) / offset:
+            host_node.layout.lower_v_track += (host_node.layout.x - node_pos.x) / offset + offset
+    elif host_node.left_node.name == left_host_node.name:
+        _render_curved_line_to(node_pos, left_pos, fig)
+        if host_node.layout.lower_v_track < (host_node.layout.x - node_pos.x) / offset:
+            host_node.layout.lower_v_track += (host_node.layout.x - node_pos.x) / offset + offset
+    else:
+        # stop_row = host_node.left_node.layout.row # -beta test, parse in left & right as stop nodes to catch cases where left/right labels are swapped
+        stop_rows = (host_node.left_node.layout.row, host_node.right_node.layout.row)
+        _connect_child_to_parent(node, left_node, host_lookup, recon_obj, fig, stop_rows=stop_rows) # -beta test
+
+    # Draw Right node
+        # FOR DUPLICATIONS !! BETA TEST THIS WHOLE ELIF IS A SHOT IN THE DARK
+    if host_node.name == right_host_node.name:
+        fig.backgroundLine(node_pos, right_pos)
+        fig.line(node_pos, right_pos, PARASITE_EDGE_COLOR)
+        if host_node.layout.lower_v_track < (host_node.layout.x - node_pos.x) / offset:
+            host_node.layout.lower_v_track += (host_node.layout.x - node_pos.x) / offset + offset
+    elif host_node.right_node.name == right_host_node.name:
+        _render_curved_line_to(node_pos, right_pos, fig)
+        if host_node.layout.upper_v_track < (host_node.layout.x - node_pos.x) / offset:
+            host_node.layout.upper_v_track += (host_node.layout.x - node_pos.x) / offset + offset
+    else:
+        # stop_row = host_node.right_node.layout.row # -beta test, same as above
+        stop_rows = (host_node.left_node.layout.row, host_node.right_node.layout.row)
+        _connect_child_to_parent(node, right_node, host_lookup, recon_obj, fig, stop_rows=stop_rows) # originally stop_row
+
 
 def _render_cospeciation_branch(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
     """
@@ -685,6 +750,8 @@ def _render_curved_line_to(node_pos: Position, other_pos: Position, fig: FigureW
     :param fig: Figure object that visualizes trees using MatplotLib
     """
     mid_pos = Position(node_pos.x, other_pos.y)
+    fig.backgroundLine(node_pos, mid_pos)
+    fig.backgroundLine(mid_pos, other_pos)
     fig.line(node_pos, mid_pos, PARASITE_EDGE_COLOR)
     fig.line(mid_pos, other_pos, PARASITE_EDGE_COLOR)
 
@@ -719,12 +786,15 @@ def _render_transfer_branch(node_pos: Position, right_pos: Position, fig: Figure
             fig.triangle(arrow_pos, TRANSFER_NODE_COLOR, rotation=DOWN_ARROW_ROTATION)
 
         # Draw branch to midpoint, then draw branch to child
+        fig.backgroundLine(node_pos, mid_pos)
+        fig.backgroundLine(mid_pos, right_pos)
         fig.line(node_pos, mid_pos, TRANSFER_NODE_COLOR)
         fig.line(mid_pos, right_pos, TRANSFER_NODE_COLOR)
     else:
         transfer_edge_color = MAROON # previously: transparent_color(PARASITE_EDGE_COLOR, TRANSFER_TRANSPARENCY) -beta
         # note: this appears to have made no difference on plots ??
         fig.arrow_segment(node_pos, right_pos, transfer_edge_color)
+        fig.backgroundLine(node_pos, right_pos)
         fig.line(node_pos, right_pos, transfer_edge_color)
 
 
@@ -781,10 +851,12 @@ def _connect_child_to_parent(node: Node, child_node: Node, host_lookup: dict, re
         # iterate such that we start at the last host node we drew to
         host_node = parent_node
         current_pos = sub_parent_pos # """ REMOVAL END
-    
+
     node_pos = Position(node.layout.x, node.layout.y)
     mid_pos = Position(node_pos.x, current_pos.y)
 
+    fig.backgroundLine(node_pos, mid_pos)
+    fig.backgroundLine(mid_pos, current_pos)
     fig.line(node_pos, mid_pos, PARASITE_EDGE_COLOR)
     fig.line(mid_pos, current_pos, PARASITE_EDGE_COLOR)
 
@@ -2040,6 +2112,7 @@ Plotting tools using matplotlib
 # If matplotlib doesn't pop up a window, force it to use tkinter backend
 # matplotlib.use("tkagg")
 LINEWIDTH = 1
+WHITE_LINEWIDTH = 2
 TEXTWIDTH = .3
 BORDER_WIDTH = 1.2
 
@@ -2098,6 +2171,14 @@ class FigureWrapper:
         x_1, y_1 = point_1
         x_2, y_2 = point_2
         self.axis.plot([x_1, x_2], [y_1, y_2], color=col, linewidth=LINEWIDTH, linestyle=linestyle, zorder=LINE_Z_ORDER)
+
+    def backgroundLine(self, point_1: Position, point_2: Position, col: tuple = WHITE, linestyle: str = DEFAULT_LINESTYLE):
+        """
+        Draw background line from point p1 to p2
+        """
+        x_1, y_1 = point_1
+        x_2, y_2 = point_2
+        self.axis.plot([x_1, x_2], [y_1, y_2], color=col, linewidth=WHITE_LINEWIDTH, linestyle=linestyle, zorder=LINE_Z_ORDER)
 
     def dot(self, point: Position, marker: str = DEFAULT_DOT_MARKER, col: tuple = BLACK):
         """
