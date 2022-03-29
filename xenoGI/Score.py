@@ -12,7 +12,7 @@ class Score:
         self.strainPairScoreLocationD = {}
         self.scoreD = {}
 
-    def initializeDataAttributes(self,blastFnL,paramD,strainNamesT):
+    def initializeDataAttributes(self,blastFnL,paramD,strainNamesT,genesO):
         '''This method takes a new, empty object and fills the data attributes
 by reading through blast files to identify pairs of genes with
 edges. Also creates the array for storing raw scores, initialized to
@@ -20,11 +20,11 @@ edges. Also creates the array for storing raw scores, initialized to
 included here depend on what is found in the blast files in blastFnL.
 
         '''
-        self.fillEndNodesToEdgeD(blastFnL,paramD,strainNamesT)
+        self.fillEndNodesToEdgeD(blastFnL,paramD,strainNamesT,genesO)
         self.numEdges=len(self.endNodesToEdgeD)
         self.initializeScoreArray('rawSc')
 
-    def fillEndNodesToEdgeD(self,blastFnL,paramD,strainNamesT):
+    def fillEndNodesToEdgeD(self,blastFnL,paramD,strainNamesT,genesO):
         '''Run through blast files, finding all pairs of genes with signicant
 similarity. Use these to fill endNodesToEdgeD. Also keep track of the
 edge numbers associated with particular strain pairs and save in
@@ -39,7 +39,13 @@ strainPairScoreLocationD.
         
         blastFnByPairD = self.getBlastFnByPairD(blastFnL,blastFileJoinStr,strainNamesT)
 
+        # get edges
         edgeNum=0
+        for g in genesO.iterGenes(): # first every gene vs itself
+            self.endNodesToEdgeD[(g,g)] = edgeNum
+            edgeNum += 1
+            
+        # now get edges out of blast files
         for strainPair in blastFnByPairD:
             pairT = blastFnByPairD[strainPair]
             

@@ -160,7 +160,7 @@ def calcScoresWrapper(paramD,blastFnL):
     
     # object for storing scores
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(blastFnL,paramD,strainNamesT)
+    scoresO.initializeDataAttributes(blastFnL,paramD,strainNamesT,genesO)
 
     ## similarity scores
     scoresO = scores.calcRawScores(paramD,scoresO)
@@ -414,6 +414,10 @@ def debugWrapper(paramD):
 
     strainNamesT,genesO,geneOrderD = loadGenomeRelatedData(paramD)
     speciesRtreeO,subtreeD = loadTreeRelatedData(paramD['speciesTreeFN'])
+
+    scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
+    aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
+
     
     # set up interactive console
     variables = globals()
