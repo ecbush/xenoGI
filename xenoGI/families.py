@@ -103,6 +103,10 @@ def homologyCheck(genesO,aabrhHardCoreL,scoresO,outputSummaryF,paramD):
     homologousPeakMissingL = []
     for strainPair in scoresO.getStrainPairs():
 
+        if strainPair[0] == strainPair[1]:
+            # strain vs self, skip
+            continue
+        
         scoreIterator = scoresO.iterateScoreByStrainPair(strainPair,'rawSc')
         binHeightL,indexToBinCenterL = scoreHist(scoreIterator,scoreHistNumBins)
         homologPeakLeftExtremePos=homologPeakChecker(binHeightL,indexToBinCenterL,binWidth,paramD)
