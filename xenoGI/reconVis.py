@@ -527,45 +527,32 @@ def _render_branch_event(parasite_node, mapping_node, event, host_lookup, fig):
 
     parent_node = None
 
-    if event.event_type == EventType.ORIGIN:
-        parent_node = host_node.parent_node
-        # ERROR CAN OCCUR IF HOST_NODE IS s0
-        if parent_node == None:
-            offset = host_node.layout.x - parasite_node.layout.x
-            parent_node = Node('parentOfOrigin')
-            parent_node.layout = NodeLayout()
-            parent_node.set_layout(x=parasite_node.layout.x - (offset), \
-                                    y=parasite_node.layout.y)
-            
-    else:
-        parent_node = parasite_node.parent_node
+    # if event.event_type == EventType.ORIGIN:
+    parent_node = host_node.parent_node
+    # ERROR CAN OCCUR IF HOST_NODE IS s0
+    if parent_node == None:
+        offset = host_node.layout.x - parasite_node.layout.x
+        parent_node = Node('parentOfOrigin')
+        parent_node.layout = NodeLayout()
+        parent_node.set_layout(x=parasite_node.layout.x - (offset), \
+                                y=parasite_node.layout.y)
     
     host_parent_pos = Position(parent_node.layout.x, \
             parent_node.layout.y)
 
-    '''try:
-        # parent_node = parasite_node.parent_node # fixing position ??
-        host_parent_pos = Position(parent_node.layout.x, \
-            parent_node.layout.y)
-        print('try: ' + str(parasite_node))
-    except: # origin has no parent ?
-        offset = host_node.layout.offset
-        host_parent_pos = Position(host_node.layout.x - offset, \
-            host_node.layout.y)
-        print('except: ' + str(parasite_node))'''
-
     current_pos = Position(parasite_node.layout.x, parasite_node.layout.y)
+    mid_pos = Position(host_parent_pos.x, current_pos.y)
 
-    # node_pos = Position(host_node.layout.x, host_node.layout.y)
-    # mid_pos = Position(node_pos.x, current_pos.y)
+    # get rearrangement nodes (and possibly others ?), do not have loss nodes
+    if event.event_type is not EventType.LOSS and event.event_type is not EventType.ORIGIN:
+        render_color, render_shape = _event_color_shape(event)
+        fig.dot(mid_pos, col=render_color, marker=render_shape)
 
-    # get rearrangement nodes, do not have loss nodes
-    if event.event_type is not EventType.LOSS:
+    # handle origin nodes
+    if event.event_type is EventType.ORIGIN:
         render_color, render_shape = _event_color_shape(event)
         mid_pos = Position(host_parent_pos.x, current_pos.y)
         fig.dot(mid_pos, col=render_color, marker=render_shape)
-
-    if event.event_type is EventType.ORIGIN:
         fig.line(mid_pos, current_pos, PARASITE_EDGE_COLOR)
 
 def _connect_children(node: Node, host_lookup: dict, parasite_lookup: dict, recon_obj: Reconciliation, fig: FigureWrapper):
