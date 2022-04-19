@@ -108,12 +108,31 @@ def writeFastaLine(f,gene,seqD):
     f.write(">"+str(gene)+"_rsamp"+"\n")
     f.write(seqD[gene]+"\n")
 
+def getHits(fileName, evalueThresh,alignCoverThresh,percIdentThresh):
+    """Given a BLAST output file, returns a dictionary keyed by the genes
+    in the query species, with the values being the top hit (if any)
+    for those genes. Assumes the blast hits for each query are given
+    from most to least significant. which appears to be the
+    case. Thresholds for minimum similarity and maximum length
+    difference are globally defined.
+    """
+    hitsD = {}
+    tempEvalueD = {} # just to help us get the hit with the best evalue
+    for queryGene,subjectGene,evalue,alCov,pident,score,alLen in blast.parseBlastFile(fileName,evalueThresh,alignCoverThresh,percIdentThresh):
+
+        if not queryGene in hitsD or evalue < tempEvalueD[queryGene]:
+            # if it isn't there, or if new hit has a better evalue, record
+            tempEvalueD[queryGene] = evalue
+            hitsD[queryGene] = subjectGene
+
+    return hitsD
+
 def getCoreGenes(allGenomesStrainNamesL,blastDir,randomSampleAabrhL,orthoL,paramD):
     # for every strain in all genomes, we find all blast hits with the sampled group. 
     for strain in allGenomesStrainNamesL:
         randomSampleAabrhFastaStem = paramD['randomSampleAabrhFastaFN'].split(".fa")[0]
         blastFN = os.path.join(blastDir,randomSampleAabrhFastaStem+'_-VS-_'+strain+'.out')
-        strainHitsD = scores.getHits(blastFN,paramD['evalueThresh'],paramD['alignCoverThresh'], paramD['percIdentThresh'])
+        strainHitsD = getHits(blastFN,paramD['evalueThresh'],paramD['alignCoverThresh'], paramD['percIdentThresh'])
         # now for every set, we check if the best hit of each gene is the same gene 
         # if so, we add that gene to the orthoL and move to the next genome. else, remove the set
         for aabrhInd in range(len(randomSampleAabrhL)):
@@ -596,7 +615,7 @@ indicate no blast similarity.
     for strain in allStrainsT:
         scaffoldFamilyRepGenesFastaStem = paramD['scaffoldFamilyRepGenesFastaFN'].split(".")[0]
         blastFN = os.path.join(blastDir,scaffoldFamilyRepGenesFastaStem+'_-VS-_'+strain+'.out')
-        for queryGene,targetGene,evalue,alCov,pIdent,score in blast.parseBlastFile(blastFN,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'], paramD['percIdentThresh']):
+        for queryGene,targetGene,evalue,alCov,pIdent,score,alLen in blast.parseBlastFile(blastFN,paramD['evalueThresh'],paramD['xlMapAlignCoverThresh'], paramD['percIdentThresh']):
             queryLocFam = gene2LocFamNumD[queryGene]
             if evalue < evalueAr[targetGene]:
                 evalueAr[targetGene] = evalue
@@ -698,7 +717,7 @@ which will maximize the number of additional genes we can map.
         fileOnly = os.path.split(unMappedGenesFN)[-1]
         unMappedGenesFileStem = fileOnly.split(".")[0]
         blastFN = os.path.join(blastDir,unMappedGenesFileStem+'_-VS-_'+unMappedGenesFileStem+'.out')
-        for queryGene,targetGene,evalue,alCov,pIdent,score in blast.parseBlastFile(blastFN,evalueThresh,alignCoverThresh,percIdentThresh):
+        for queryGene,targetGene,evalue,alCov,pIdent,score,alLen in blast.parseBlastFile(blastFN,evalueThresh,alignCoverThresh,percIdentThresh):
             strain1=genesO.numToStrainName(queryGene)
             strainNum1 = allStrainsT.index(strain1)
             strain2=genesO.numToStrainName(targetGene)
