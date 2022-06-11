@@ -156,6 +156,14 @@ nonHomologPeakProminence = 1
 nonHomologLeftPeakLimit = 0
 nonHomologRightPeakLimit = 0.6
 
+## GeneRax
+
+GeneRaxMappingFileStem = "mapping_file_"
+GeneRaxMappingFileExt = ".link"
+GeneRaxInputListFN = "geneRaxInputList.txt"
+GeneRaxDNASubstModel = "GTR+G"
+GeneRaxProtSubstModel = "LG"
+
 ## Splitting blast and initial families
 
 # threshold of branch lengths for splitting unrooted gene trees from

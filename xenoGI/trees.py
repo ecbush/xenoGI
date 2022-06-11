@@ -127,7 +127,7 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     for orthoNum,orthoT in enumerate(aabrhHardCoreL):
         newAabrhHardCoreL.append((orthoNum,orthoT))
     
-    makeGeneTrees(paramD,True,genesO,workDir,gtFileStem,newAabrhHardCoreL)
+    makeGeneTreesFastTree(paramD,True,genesO,workDir,gtFileStem,newAabrhHardCoreL)
 
     # remove alignments
     if deleteSpeciesGeneTreeAlignmentFiles:
@@ -157,43 +157,144 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     ## delete the working directory
     if deleteSpeciesTreeWorkingDir:
         shutil.rmtree(workDir)
-        
-def makeGeneFamilyTrees(paramD,genesO,familiesO,gtFileStem = 'fam'):
-    '''Given a families object, create a gene tree for each family.'''
 
-    deleteSpeciesGeneTreeAlignmentFiles = paramD['deleteSpeciesGeneTreeAlignmentFiles']
-    
-    # create work dir if it doesn't already exist
-    workDir = paramD['geneFamilyTreesDir']
-    if glob.glob(workDir)==[]:
-        os.mkdir(workDir)
+# GeneRax gene tree making        
+def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
+    '''Given a list of ortho groups, orthoTL, use GeneRax to make a gene
+ tree for each and put in workDir. strainHeader is a boolean that if
+ True means we put the strain in the header for alignments (so we'll
+ end up with that for the names of the tips of the tree). gtFileStem
+ gives the stem of the name for the gene tree files. orthoTL is a list
+ of (orthoGroupNum,orthoT) where orthoT has the genes in an ortholog
+ group.
 
-    # create gene tuple for each family
-    orthoTL = []
-    for familyO in familiesO.iterFamilies():
-        familyT = tuple(familyO.iterGenes())
-        if len(familyT) > 1:
-            # don't bother with single gene fams
-            orthoTL.append((familyO.famNum,familyT))
+    '''
+
+    numProcesses = paramD['numProcesses']    
+    musclePath = paramD['musclePath']
+    geneRaxPath = paramD['geneRaxPath']
+
+    # create alignments [TEMP]
+    createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
+
+    # create support files for running GeneRax
+    createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO)
+
+    # create the file listing alignment and mapping files for each family
+    createGeneRaxInputList(paramD,orthoTL,workDir)
+
             
-    # make gene trees
-    makeGeneTrees(paramD,False,genesO,workDir,gtFileStem,orthoTL)
+def createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
+    '''Create alignments for all the ortho groups in orthoTL using MUSCLE.'''
 
-    # remove alignments
-    if deleteSpeciesGeneTreeAlignmentFiles:
-        for fn in glob.glob(os.path.join(workDir,"align*.afa")):
-            os.remove(fn)
-    
+    # set up argumentL
+
+    argumentL = [([],[],paramD,strainHeader,genesO,workDir,musclePath) for i in range(numProcesses)]
+
+    counter = 0
+    for orthoGroupNum,orthoT in orthoTL:
+        # we use counter for placememnt in argumentL since at least in
+        # the case of single gene families, some will be missing
+        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
+        argumentL[counter%numProcesses][0].append(orthoGroupNumStr)
+        argumentL[counter%numProcesses][1].append(orthoT)
+        counter += 1
+        
+    # run
+    with Pool(processes=numProcesses) as p:
+        for _ in p.imap_unordered(alignOneOrthoTGroup, argumentL):
+            pass
+
     return
 
-def makeGeneTrees(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
-    '''Given a list of ortho groups, orthoTL, make a gene tree for each
-and put in workDir. strainHeader is a boolean that if True means we
-put the strain in the header for alignments (so we'll end up with that
-for the names of the tips of the tree). gtFileStem gives the stem of
-the name for the gene tree files. orthoTL is a list of
-(orthoGroupNum,orthoT) where orthoT has the genes in an ortholog
-group.
+def alignOneOrthoTGroup(argT):
+    '''Function for aligning one family in a multi processing context.'''
+    
+    orthoGroupNumStrL,orthoTL,paramD,strainHeader,genesO,workDir,musclePath = argT
+
+    # get set of all genes in orthoTL to restrict size of seqD's
+    orthoGenesS=set()
+    for orthoT in orthoTL:
+        orthoGenesS.update(orthoT)
+    
+    # load protein and dna sequences
+    protSeqD=genomes.loadSeq(paramD, '_prot.fa',genesS=orthoGenesS)
+
+    if paramD['dnaBasedGeneTrees'] == True:
+        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa',genesS=orthoGenesS)
+    else:
+        dnaSeqD = {}
+
+    # align each orthoT in this orthoTL
+    for i in range(len(orthoTL)):
+        orthoT = orthoTL[i]
+        orthoGroupNumStr = orthoGroupNumStrL[i]
+
+        # get temp and output align file names
+        inTempProtFN=os.path.join(workDir,"tempProt"+orthoGroupNumStr+".fa")
+        outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
+
+        
+        alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
+        
+        os.remove(inTempProtFN) # remove unaligned prot file
+
+def createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO):
+    '''Create the set of mapping files that shows which species each gene is in.'''
+    
+    mappingFileStem = paramD['GeneRaxMappingFileStem']
+    mappingFileExt = paramD['GeneRaxMappingFileExt']
+
+    for orthoGroupNum,orthoT in orthoTL:
+        # we use counter for placememnt in argumentL since at least in
+        # the case of single gene families, some will be missing
+        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
+        mappingFN = os.path.join(workDir,mappingFileStem + orthoGroupNumStr + mappingFileExt)
+        
+        with open(mappingFN,'w') as mappingF:
+            for geneNum in orthoT:
+                strainName = genesO.numToStrainName(geneNum)
+                mappingF.write(str(geneNum)+" "+strainName+"\n")
+
+def createGeneRaxInputList(paramD,orthoTL,workDir):
+    '''Create the geneRaxInputList.txt file which asigns alignment and
+mapping files to each family.'''
+
+
+    mappingFileStem = paramD['GeneRaxMappingFileStem']
+    mappingFileExt = paramD['GeneRaxMappingFileExt']
+
+    if paramD['dnaBasedGeneTrees']:
+        subModel = paramD['GeneRaxDNASubstModel']
+    else:
+        subModel = paramD['GeneRaxProtSubstModel']
+        
+    fn = os.path.join(workDir,paramD['GeneRaxInputListFN'])
+    
+    with open(fn,'w') as f:
+
+        f.write("[FAMILIES] # this is a comment\n")
+
+        for orthoGroupNum,orthoT in orthoTL:
+            orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
+            # we will run GeneRax from workDir, so don't need to include in paths
+            mappingFN = mappingFileStem + orthoGroupNumStr + mappingFileExt
+            alignFN="align"+orthoGroupNumStr+".afa"
+
+            f.write("- family_"+str(orthoGroupNum)+"\n")
+            f.write("alignment = "+alignFN+"\n")
+            f.write("mapping = "+mappingFN+"\n")
+            f.write("subst_model = "+subModel+"\n")
+
+# FastTree gene tree making        
+def makeGeneTreesFastTree(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
+    '''Given a list of ortho groups, orthoTL, use FastTree to make a gene
+ tree for each and put in workDir. strainHeader is a boolean that if
+ True means we put the strain in the header for alignments (so we'll
+ end up with that for the names of the tips of the tree). gtFileStem
+ gives the stem of the name for the gene tree files. orthoTL is a list
+ of (orthoGroupNum,orthoT) where orthoT has the genes in an ortholog
+ group.
 
     '''
     numProcesses = paramD['numProcesses']    
@@ -215,12 +316,12 @@ group.
         
     # run
     with Pool(processes=numProcesses) as p:
-        for _ in p.imap_unordered(makeOneGeneTreeGroup, argumentL):
+        for _ in p.imap_unordered(makeOneGeneTreeGroupFastTree, argumentL):
             pass
 
     return
         
-def makeOneGeneTreeGroup(argT):
+def makeOneGeneTreeGroupFastTree(argT):
     '''Wrapper for multiprocessing. Given a group of orthoT's to work on,
 calls makeOneGeneTree on each.'''
     
@@ -243,12 +344,12 @@ calls makeOneGeneTree on each.'''
     for i in range(len(orthoTL)):
         orthoGroupNumStr = orthoGroupNumStrL[i]
         orthoT = orthoTL[i]
-        makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath)
+        makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath)
     
-def makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath):
+def makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath):
     ''' Makes one gene tree from an ortho list. If dnaSeqD is empty, uses protein only.'''
  
-    # get temp align file names
+    # get temp and output align file names
     inTempProtFN=os.path.join(workDir,"tempProt"+orthoGroupNumStr+".fa")
     outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
 
@@ -265,6 +366,8 @@ def makeOneGeneTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD
         # using dna
         subprocess.check_call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
+#
+        
 def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
     '''Given genes in a single ortholog set, align them with muscle. If
 dnaSeqD is empty, uses protein only.'''

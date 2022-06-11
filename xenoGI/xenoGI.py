@@ -418,7 +418,15 @@ def debugWrapper(paramD):
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
     aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
-    
+    #geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+    #blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
+    #blastFamilyFN = paramD['blastFamilyFN']
+    #maxBlastFamSize = int(paramD['maxBlastFamSizeMultiplier'] * speciesRtreeO.leafCount())
+
+    with open(paramD['familyFormationSummaryFN'],'w') as outputSummaryF:
+        families.createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputSummaryF)
+        
+        
     # set up interactive console
     variables = globals()
     variables.update(locals())

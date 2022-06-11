@@ -66,6 +66,7 @@ dnaBasedGeneTrees = True
 # e.g. 'C:\\Users\\guest\\muscle\\muscle.exe'
 musclePath = '/usr/bin/muscle'
 fastTreePath = '/usr/local/bin/FastTree'
+geneRaxPath = '/usr/local/GeneRax/build/bin/generax'
 javaPath = '/usr/bin/java'
 
 #### Family formation ####

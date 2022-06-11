@@ -239,14 +239,28 @@ def createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputS
         
     # delete any pre-existing blast family trees
     blastFamGeneTreeFilePath = os.path.join(geneFamilyTreesDir,blastFamGeneTreeFileStem+'*.tre')
+
     for fn in glob.glob(blastFamGeneTreeFilePath):
         os.remove(fn)
 
-    trees.makeGeneTrees(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,blastFamilySetL)
+    # run GeneRax on families of 3 genes or more. Run FastTree on rest
+    # (will put branch lengths on 2 species trees, which we want
+    geneRaxBlastFamilySetL = []
+    fastTreeBlastFamilySetL = []
+    for i,bSet in blastFamilySetL:
+        if len(bSet) > 2:
+            geneRaxBlastFamilySetL.append((i,bSet))
+        else:
+            fastTreeBlastFamilySetL.append((i,bSet))
+            
+    trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,fastTreeBlastFamilySetL)
+    
+    trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,geneRaxBlastFamilySetL)
 
-    # remove alignments
-    for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
-        os.remove(fn)
+    # remove alignments [TEMP, uncomment later]
+    #if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
+    #    for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
+    #        os.remove(fn)
     
 def createBlastFamilySetL(scoresO,genesO,strainNamesT,outputSummaryF,maxBlastFamSize):
     '''
@@ -519,13 +533,14 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
     for orthoT in aabrhHardCoreL:
         newAabrhHardCoreL.append((orthoNum,orthoT))
         orthoNum += 1
-    trees.makeGeneTrees(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
+    trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
     
     aabrhHardCoreGeneTreeL = loadGeneTrees(paramD,aabrhHardCoreGeneTreeFileStem)
 
     # remove alignments
-    for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
-        os.remove(fn)
+    if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
+        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
+            os.remove(fn)
 
     ## split blast family trees
 
