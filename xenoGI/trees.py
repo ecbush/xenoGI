@@ -173,8 +173,13 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     numProcesses = paramD['numProcesses']    
     musclePath = paramD['musclePath']
     geneRaxPath = paramD['geneRaxPath']
-
-    # create alignments [TEMP]
+    GeneRaxInputListFN = paramD['GeneRaxInputListFN']
+    speciesTreeFN = paramD['speciesTreeFN']
+    GeneRaxReconcilationModel = paramD['GeneRaxReconcilationModel']
+    GeneRaxSearchRadius = paramD['GeneRaxSearchRadius']
+    GeneRaxOutputDirN = paramD['GeneRaxOutputDirN']+"-"+gtFileStem
+    
+    # create alignments
     createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
 
     # create support files for running GeneRax
@@ -183,7 +188,16 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     # create the file listing alignment and mapping files for each family
     createGeneRaxInputList(paramD,orthoTL,workDir)
 
-            
+    # run generax
+    subprocess.check_call(["mpiexec", "-np",str(numProcesses),geneRaxPath,"-f",os.path.join(workDir,GeneRaxInputListFN),"-s",speciesTreeFN,"-r",GeneRaxReconcilationModel,"--max-spr-radius",str(GeneRaxSearchRadius),"-p",os.path.join(workDir,GeneRaxOutputDirN)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    
+    # copy genetree files out of generax output directory
+    for orthoGroupNum,orthoT in orthoTL:
+        grOutputFN = os.path.join(workDir,GeneRaxOutputDirN,"results","family_"+str(orthoGroupNum),"geneTree.newick")
+        orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's
+        destGeneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
+        shutil.copyfile(grOutputFN,destGeneTreeFN)
+    
 def createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
     '''Create alignments for all the ortho groups in orthoTL using MUSCLE.'''
 
@@ -246,8 +260,6 @@ def createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO):
     mappingFileExt = paramD['GeneRaxMappingFileExt']
 
     for orthoGroupNum,orthoT in orthoTL:
-        # we use counter for placememnt in argumentL since at least in
-        # the case of single gene families, some will be missing
         orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
         mappingFN = os.path.join(workDir,mappingFileStem + orthoGroupNumStr + mappingFileExt)
         
@@ -260,16 +272,16 @@ def createGeneRaxInputList(paramD,orthoTL,workDir):
     '''Create the geneRaxInputList.txt file which asigns alignment and
 mapping files to each family.'''
 
-
     mappingFileStem = paramD['GeneRaxMappingFileStem']
     mappingFileExt = paramD['GeneRaxMappingFileExt']
-
+    GeneRaxInputListFN = paramD['GeneRaxInputListFN']
+    
     if paramD['dnaBasedGeneTrees']:
         subModel = paramD['GeneRaxDNASubstModel']
     else:
         subModel = paramD['GeneRaxProtSubstModel']
         
-    fn = os.path.join(workDir,paramD['GeneRaxInputListFN'])
+    fn = os.path.join(workDir,GeneRaxInputListFN)
     
     with open(fn,'w') as f:
 
@@ -278,8 +290,8 @@ mapping files to each family.'''
         for orthoGroupNum,orthoT in orthoTL:
             orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
             # we will run GeneRax from workDir, so don't need to include in paths
-            mappingFN = mappingFileStem + orthoGroupNumStr + mappingFileExt
-            alignFN="align"+orthoGroupNumStr+".afa"
+            mappingFN = os.path.join(workDir,mappingFileStem + orthoGroupNumStr + mappingFileExt)
+            alignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
 
             f.write("- family_"+str(orthoGroupNum)+"\n")
             f.write("alignment = "+alignFN+"\n")
@@ -365,8 +377,6 @@ def makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD
     else:
         # using dna
         subprocess.check_call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-
-#
         
 def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
     '''Given genes in a single ortholog set, align them with muscle. If

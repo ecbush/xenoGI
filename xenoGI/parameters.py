@@ -108,6 +108,16 @@ geneFamilyTreesDir = 'geneFamilyTrees'
 aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
 blastFamGeneTreeFileStem = 'blastFam'
 
+## GeneRax
+
+GeneRaxDNASubstModel = "GTR+G"
+GeneRaxProtSubstModel = "LG+G"
+GeneRaxReconcilationModel = "UndatedDTL"
+GeneRaxSearchRadius = 5
+GeneRaxMappingFileStem = "mapping_file_"
+GeneRaxMappingFileExt = ".link"
+GeneRaxInputListFN = "geneRaxInputList.txt"
+GeneRaxOutputDirN = "geneRaxOutputDir"
 
 #### Family formation ####
 
@@ -155,14 +165,6 @@ nonHomologPeakWidth = 0.15
 nonHomologPeakProminence = 1
 nonHomologLeftPeakLimit = 0
 nonHomologRightPeakLimit = 0.6
-
-## GeneRax
-
-GeneRaxMappingFileStem = "mapping_file_"
-GeneRaxMappingFileExt = ".link"
-GeneRaxInputListFN = "geneRaxInputList.txt"
-GeneRaxDNASubstModel = "GTR+G"
-GeneRaxProtSubstModel = "LG"
 
 ## Splitting blast and initial families
 

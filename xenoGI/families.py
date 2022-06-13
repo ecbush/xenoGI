@@ -257,10 +257,10 @@ def createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputS
     
     trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,geneRaxBlastFamilySetL)
 
-    # remove alignments [TEMP, uncomment later]
-    #if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
-    #    for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
-    #        os.remove(fn)
+    # remove alignments
+    if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
+        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
+            os.remove(fn)
     
 def createBlastFamilySetL(scoresO,genesO,strainNamesT,outputSummaryF,maxBlastFamSize):
     '''
@@ -533,7 +533,7 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
     for orthoT in aabrhHardCoreL:
         newAabrhHardCoreL.append((orthoNum,orthoT))
         orthoNum += 1
-    trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
+    trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
     
     aabrhHardCoreGeneTreeL = loadGeneTrees(paramD,aabrhHardCoreGeneTreeFileStem)
 
@@ -600,6 +600,28 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
         
     return initialFamiliesO, locusMapD
 
+"""
+def loadGeneTrees(paramD,geneTreeFileStem):
+    '''Load gene trees from the geneFamilyTreesDir that begin with
+    geneTreeFileStem.
+    '''
+    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+    if not os.path.isdir(geneFamilyTreesDir):
+        raise FileNotFoundError("Directory of gene trees is missing.")
+
+    # load gene trees, divide into bifurcating vs. multifurcating
+    allGtFilePath = os.path.join(geneFamilyTreesDir,geneTreeFileStem+'*.tre')
+    allTreeFN_L=list(sorted(glob.glob(allGtFilePath)))
+
+    geneTreeL = []
+    for geneTreeFN in allTreeFN_L:
+        geneRtreeO = Rtree()
+        geneRtreeO.fromNewickFile(geneTreeFN,includeBrLen=True)
+        famNum = int(geneTreeFN.split(geneTreeFileStem)[1].split('.tre')[0].lstrip('0'))
+        geneTreeL.append((famNum,geneRtreeO))
+
+    return geneTreeL
+"""
 def loadGeneTrees(paramD,geneTreeFileStem):
     '''Load gene trees from the geneFamilyTreesDir that begin with
     geneTreeFileStem.
