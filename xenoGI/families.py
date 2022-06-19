@@ -600,28 +600,6 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
         
     return initialFamiliesO, locusMapD
 
-"""
-def loadGeneTrees(paramD,geneTreeFileStem):
-    '''Load gene trees from the geneFamilyTreesDir that begin with
-    geneTreeFileStem.
-    '''
-    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
-    if not os.path.isdir(geneFamilyTreesDir):
-        raise FileNotFoundError("Directory of gene trees is missing.")
-
-    # load gene trees, divide into bifurcating vs. multifurcating
-    allGtFilePath = os.path.join(geneFamilyTreesDir,geneTreeFileStem+'*.tre')
-    allTreeFN_L=list(sorted(glob.glob(allGtFilePath)))
-
-    geneTreeL = []
-    for geneTreeFN in allTreeFN_L:
-        geneRtreeO = Rtree()
-        geneRtreeO.fromNewickFile(geneTreeFN,includeBrLen=True)
-        famNum = int(geneTreeFN.split(geneTreeFileStem)[1].split('.tre')[0].lstrip('0'))
-        geneTreeL.append((famNum,geneRtreeO))
-
-    return geneTreeL
-"""
 def loadGeneTrees(paramD,geneTreeFileStem):
     '''Load gene trees from the geneFamilyTreesDir that begin with
     geneTreeFileStem.
