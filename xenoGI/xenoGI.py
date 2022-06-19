@@ -295,13 +295,13 @@ def interactiveAnalysisWrapper(paramD):
 
     ## Set up the modules a bit differently for interactive mode
     import code,sys
-    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printLocusIslandNeighb,vPrintLocusIslandsAtNode,printOutsideFamilyScores
+    from xenoGI.analysis import createGene2FamIslandD,printScoreMatrix,matchFamilyIsland,printLocusIslandNeighb,vPrintLocusIslandsAtNode,printOutsideFamilyScores,getOFamsWithEvent
     from .xenoGI import families
     
     ## Wrapper analysis functions. For convenience these assume a
     ## bunch of global variables.
     
-    def printFam(familyNum,familiesO,fileF=sys.stdout):
+    def printFam(familiesO,familyNum,fileF=sys.stdout):
         '''This is a wrapper to provide an easy way to print relevant info on
     a family. For ease of use, we take only two arguments, assuming
     all the other required stuff is available at the top
@@ -418,7 +418,15 @@ def debugWrapper(paramD):
     scoresO = scores.readScores(strainNamesT,paramD['scoresFN'])
     aabrhHardCoreL = scores.loadOrthos(paramD['aabrhFN'])
 
-    
+    #geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+    #blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
+    #blastFamilyFN = paramD['blastFamilyFN']
+    #maxBlastFamSize = int(paramD['maxBlastFamSizeMultiplier'] * speciesRtreeO.leafCount())
+
+    with open(paramD['familyFormationSummaryFN'],'w') as outputSummaryF:
+        families.createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputSummaryF)
+        
+        
     # set up interactive console
     variables = globals()
     variables.update(locals())

@@ -108,6 +108,16 @@ geneFamilyTreesDir = 'geneFamilyTrees'
 aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
 blastFamGeneTreeFileStem = 'blastFam'
 
+## GeneRax
+
+GeneRaxDNASubstModel = "GTR+G"
+GeneRaxProtSubstModel = "LG+G"
+GeneRaxReconcilationModel = "UndatedDTL"
+GeneRaxSearchRadius = 5
+GeneRaxMappingFileStem = "mapping_file_"
+GeneRaxMappingFileExt = ".link"
+GeneRaxInputListFN = "geneRaxInputList.txt"
+GeneRaxOutputDirN = "geneRaxOutputDir"
 
 #### Family formation ####
 

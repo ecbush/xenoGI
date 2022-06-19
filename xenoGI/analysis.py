@@ -558,3 +558,29 @@ def printGenes(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClad
             print("\t".join(infoL),file=fileF)
         
     return
+
+## print families associated with a particular event
+
+def getOFamsWithEvent(originFamiliesO,eventToFind):
+    '''Return a list of all origin families where eventToFind occurs in reconciliation.'''
+
+    #subRtreeO = speciesRtreeO.subtree(cladeName)
+    #for node in subRtreeO.preorder():
+    #    liO = islandByNodeD[node]
+
+    # run through originFamiliesO, sep C and X. and group by node
+
+    def isInFam(ofamO,eventToFind):
+        for L in ofamO.dtlorMprD.values():
+            if L != []:
+                for event,stLoc,stNB,synLocus in L:
+                    if event == eventToFind:
+                        return True
+        return False
+    
+    ofamL = []
+    for ofamO in originFamiliesO.iterFamilies():
+        if isInFam(ofamO,eventToFind):
+            ofamL.append(ofamO.famNum)
+            
+    return ofamL
