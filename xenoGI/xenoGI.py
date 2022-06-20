@@ -80,8 +80,7 @@ def main():
     elif task == 'aminoAcidIdentity':
         '''Assumes runBlast has already been run.'''
         strainNamesT = readStrainInfoFN(paramD['strainInfoFN'])
-        blastDir,blastExt = paramD['blastFilePath'].split("*")
-        aaiD=analysis.aminoAcidIdentity(strainNamesT,paramD['blastFileJoinStr'],blastDir,blastExt,paramD['evalueThresh'])
+        aaiD=analysis.calculateAAI(paramD,strainNamesT)
         analysis.printAminoAcidIdentity(aaiD,strainNamesT)
         
     #### runAll
