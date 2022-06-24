@@ -1,4 +1,4 @@
-import sys,statistics
+import sys,os,statistics
 from .Family import *
 from .Island import *
 from . import blast,trees,scores,islands
@@ -55,79 +55,128 @@ fields of geneInfoD.'''
 
 ## amino acid identity
 
-def aminoAcidIdentity(strainNamesT,blastFileJoinStr,blastDir,blastExt,evalueThresh):
-    '''Calculate amino acid identity between all strains in
-strainNamesT. For each pair of strains, we get all best reciprocal hit
-alignments. We then report the amino acid identity one would get from
-them if they were concatenated. Return as a dict.
-    '''
+def calculateAAI(paramD:dict,strainNamesT:tuple) -> dict:
+    """calculateAAI:
+            Accepts a Parameters object as input. Calculates the average amino
+            acid identity (AAI) for each pair of strains in the analysis. Cons-
+            tructs and returns a dictionary whose keys are strain pairs and wh-
+            ose values are AAI values.
+        The steps taken are
+        * get a list of all UNIQUE strain pairs
+          - for [a,b,c] --> [(a,a),(a,b),(a,c),(b,a),(b,b),(b,c),(c,a),(c,b),(c,c)]
+        * for each strain pair
+          - construct the filename of the two blastp files
+          - we get all best reciprocal hit alignments. We then report
+            the amino acid identity one would get from them if they were
+            concatenated.
+          - store the values in a dictionary keyed by pairs
+    """
+    # extract relevant data from paramD
+    joinStr  = paramD['blastFileJoinStr']
+    blastDir = os.path.dirname(paramD['blastFilePath'])
+    blastExt = os.path.splitext(paramD['blastFilePath'])[1]
+    evl = paramD['evalueThresh']
+    aln = paramD['alignCoverThresh']
+    pid = paramD['percIdentThresh']
 
-    # alignCoverThresh,percIdentThresh both 0
-    blastD,strainPairL = blast.createBlastD(strainNamesT,blastFileJoinStr,blastDir,blastExt,evalueThresh,0,0)
-    
-    # get recipt hits
-    aaiD = {}
-    for strainPair in strainPairL:
+    # get a list of all strain pairs
+    allStrainPairsL = __getAllStrainPairs(strainNamesT)
 
-        recipBestHitsD = getRecipBestHits(blastD[strainPair],blastD[(strainPair[1],strainPair[0])])
+    # initialize the output dictionary
+    aaiD = dict()
 
-        aaiD[(strainPair)] = calculateAaiFromRecipBestHits(recipBestHitsD)
+    # load each pair one at a time and calculate on the fly (rather
+    # than putting it all in a blastD) to save memory
+    for strA,strB in allStrainPairsL:
+        # for self versus self comparisons
+        if strA == strB:
+            # no need to do any work; the answer is 100
+            aaiD[(strA,strB)] = 100.0
+        
+        # for self versus non-self comparisons
+        else:
+            # determine the two file names to compare
+            blastFN1 = os.path.join(blastDir, strA + joinStr + strB + blastExt)
+            blastFN2 = os.path.join(blastDir, strB + joinStr + strA + blastExt)
 
+            # calculate and save the AAI for strainA versus strainB
+            aai = __calculateAaiForOnePair(blastFN1, blastFN2, evl, aln, pid)
+            aaiD[(strA,strB)] = aai
     return aaiD
 
-def getRecipBestHits(blastL1, blastL2):
-    ''' getRecipBestHits:
-            Accepts two lists of blast output corresponding to both the forward and 
-            reverse blast results for a given pair of genomes. Returns a dictionary of 
-            the reciprocal best hits found in the two blast tables.
-    '''
+def __getAllStrainPairs(strainNamesT:tuple) -> list:
+    """ getAllStrainPairs
+            Takes a tuple of strain names and creates and returns a li-
+            st of all unique pairwise combinations of strains as tuples.
+    """
+
+    # make a list of all the pairs: (a,a) and (a,b) but not (b,a)
+    allStrainPairsL = list()
+    for idxA in range(len(strainNamesT)):
+        for idxB in range(idxA,len(strainNamesT)):
+            allStrainPairsL.append((strainNamesT[idxA], strainNamesT[idxB]))
+    
+    return allStrainPairsL
+
+
+def __calculateAaiForOnePair(blastFN1:str, blastFN2:str, evalue:float, \
+                                      alignCover:float, percId:float) -> float:
+    """ calculateAaiForOnePair:
+            Accepts two blast files (str), and three cutoffs (float) as inputs.
+            Determines the reciprocal best hits for the pair of blast files and
+            uses them to calculate the average amino acid identity (AAI) for
+            the pair. Returns the AAI value as a float.
+    """
+    # constants
+    NAME_IDX = 0
+    PID_IDX = 1
+    ALN_LEN_IDX = 3
+
+    # load the blastp files
+    blastL1 = blast.parseBlastFile(blastFN1, evalue, alignCover, percId)
+    blastL2 = blast.parseBlastFile(blastFN2, evalue, alignCover, percId)
+
     # convert the parsed blast tables to best hit dictionaries
     bestHits1D = blast.getBestHitsDictionary(blastL1)
     bestHits2D = blast.getBestHitsDictionary(blastL2)
 
-    # save instances where there is a reciprocal best hit
-    recipBestD = {}
+    # initialize two runnings sums
+    weightedPid = 0
+    totalAlnLen = 0
+
+    # for each reciprocal best hit
     for key1 in bestHits1D.keys():
         # get the best hit name
-        hit1 = bestHits1D[key1][0]
+        hit1 = bestHits1D[key1][NAME_IDX]
 
         # get the hit's best hit (if possible)
         if hit1 in bestHits2D.keys():
             key2 = hit1
-            hit2 = bestHits2D[key2][0]
+            hit2 = bestHits2D[key2][NAME_IDX]
 
-            # save if the best hits are reciprocal
+            # if the best hits are reciprocal
             if hit2 == key1:
-                pident1 = bestHits1D[key1][1]
-                alLen1 = bestHits1D[key1][3]
-                pident2 = bestHits2D[key2][1]
-                alLen2 = bestHits2D[key2][3]
-                recipBestD[(key1, key2)] = [pident1,alLen1,pident2,alLen2]
+                # determine pid forward and pid reverse
+                pid1 = bestHits1D[key1][PID_IDX]
+                pid2 = bestHits2D[key2][PID_IDX]
 
-    return recipBestD
-
-def calculateAaiFromRecipBestHits(recipBestHitsD):
-    ''' calculateAaiFromRecipBestHits:
-            Accepts a dictionary containing the reciprocal best hits for a pair
-            of genomes. Calculates and returns the average amino acid identity 
-            for that pair, weighting by alignment length.
-    '''
-    # extract percent identities into a single list
-    pidentL = []
-    lenL=[]
-    for key in recipBestHitsD.keys():
-        pident1,alLen1,pident2,alLen2 = recipBestHitsD[key]
-        pidentL.append(pident1)
-        pidentL.append(pident2)
-        lenL.append(alLen1)
-        lenL.append(alLen2)
-
-    # average, weighting by alignment length
-    aai = 0
-    lenSum = sum(lenL)
-    for i in range(len(pidentL)):
-        aai += pidentL[i]*lenL[i]/lenSum
+                # determine the alignment lengths
+                alLen1 = bestHits1D[key1][ALN_LEN_IDX]
+                alLen2 = bestHits2D[key2][ALN_LEN_IDX]
         
+                # update the weighted pid sum
+                weightedPid += pid1 * alLen1
+                weightedPid += pid2 * alLen2
+
+                # update the total alignment length
+                totalAlnLen += alLen1 + alLen2
+
+    # calculate AAI from the data; prevent division by zero
+    if totalAlnLen > 0:
+        aai = weightedPid / totalAlnLen
+    else:
+        aai = 0
+    
     return aai
 
 def printAminoAcidIdentity(aaiD,strainNamesT,fileF=sys.stdout):
@@ -558,3 +607,29 @@ def printGenes(neighbGenesL,genesO,gene2FamIslandD,originFamiliesO,rootFocalClad
             print("\t".join(infoL),file=fileF)
         
     return
+
+## print families associated with a particular event
+
+def getOFamsWithEvent(originFamiliesO,eventToFind):
+    '''Return a list of all origin families where eventToFind occurs in reconciliation.'''
+
+    #subRtreeO = speciesRtreeO.subtree(cladeName)
+    #for node in subRtreeO.preorder():
+    #    liO = islandByNodeD[node]
+
+    # run through originFamiliesO, sep C and X. and group by node
+
+    def isInFam(ofamO,eventToFind):
+        for L in ofamO.dtlorMprD.values():
+            if L != []:
+                for event,stLoc,stNB,synLocus in L:
+                    if event == eventToFind:
+                        return True
+        return False
+    
+    ofamL = []
+    for ofamO in originFamiliesO.iterFamilies():
+        if isInFam(ofamO,eventToFind):
+            ofamL.append(ofamO.famNum)
+            
+    return ofamL

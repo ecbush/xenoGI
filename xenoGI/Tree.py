@@ -508,6 +508,16 @@ preparation such as naming internal nodes).
         else:
             self.populateAttributes(nodeConnectD,bpTree.root.name)
 
+    def fromNewickFile(self,treeFN,includeBrLen=False):
+        '''Populate attributes based on newick file in treeFN. Assumes a rooted tree.
+        '''
+        bpTree = Phylo.read(treeFN, 'newick', rooted=True)
+        nodeConnectD,branchLenD = self.__bioPhyloToNodeConnectD__(bpTree)
+        if includeBrLen:
+            self.populateAttributes(nodeConnectD,bpTree.root.name,branchLenD)
+        else:
+            self.populateAttributes(nodeConnectD,bpTree.root.name)
+            
     def toNewickStr(self,includeBrLength=False,nodeLabelD=None):
         '''Output a newick string.'''
         if self.nodeConnectD == None:
