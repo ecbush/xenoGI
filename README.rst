@@ -260,6 +260,23 @@ From within python, you can then run functions such as
     
   Note that this function takes a family number, not a locus family number.
 
+* reconVis
+
+  reconVis is an additional package for visualizing origin family gene trees, and must be imported in 
+  interactiveAnalysis to work. The main function is called ofamRender
+
+  The function ofamRender returns a figure object, which has the methods .save and 
+  .show to view the figure. The .show method will open the figure in a matplotlib 
+  window, and the image that gets saved is dependent on the window size (i.e., a 
+  call to save without a call to show may be less readable than showing the figure
+  and saving from the matplotlib window. 
+
+  Usage::
+    
+    figure3099 = ofamRender(genesO, originFamiliesO, speciesRtreeO, 3099)
+    figure3099.show()
+    figure3099.save("ofam_plot-3099.svg")
+
 Obtaining a species tree if you don't already have one
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
