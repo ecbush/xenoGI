@@ -102,6 +102,10 @@ def calculateAAI(paramD:dict,strainNamesT:tuple) -> dict:
             # calculate and save the AAI for strainA versus strainB
             aai = __calculateAaiForOnePair(blastFN1, blastFN2, evl, aln, pid)
             aaiD[(strA,strB)] = aai
+
+            # calculate and save the AAI for strainB versus strainA
+            aai = __calculateAaiForOnePair(blastFN2, blastFN1, evl, aln, pid)
+            aaiD[(strB,strA)] = aai
     return aaiD
 
 def __getAllStrainPairs(strainNamesT:tuple) -> list:
