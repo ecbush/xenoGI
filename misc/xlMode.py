@@ -1,4 +1,4 @@
-import sys,random,os,glob,numpy,ctypes,math
+import sys,random,os,glob,numpy,ctypes,math,shutil
 sys.path.insert(0,os.path.join(sys.path[0],'../xenoGI'))
 from xenoGI import xenoGI,blast,trees,scores,genomes,Score,families,islands,analysis
 from Bio import Phylo
@@ -463,6 +463,7 @@ scaffold, and finally maps all genes again.'''
     
     ## re-run xenoGI on larger scaffold
     print("  xenoGI second run",file=sys.stderr)
+    shutil.rmtree(paramD['geneFamilyTreesDir']) # rm fam trees dir from last run
     rootFocalClade = "".join([x for x in scaffoldRtreeO.children(scaffoldRtreeO.rootNode) if x != outGroupL[0]]) # get child that is not outgroup
     geneOrderD=genomes.createGeneOrderD(paramD['geneOrderFN'],scaffoldStrainsL)
     subtreeD=scaffoldRtreeO.createSubtreeD()
@@ -508,7 +509,7 @@ def makeFamiliesScaffold(paramD,scaffoldRtreeO,fastaDir,blastDir,genesO):
     
     # calc scores for scaffold strains
     scoresO=Score.Score()
-    scoresO.initializeDataAttributes(blastFnL,paramD,tuple(scaffoldStrainL))
+    scoresO.initializeDataAttributes(blastFnL,paramD,tuple(scaffoldStrainL),genesO)
     scoresO = scores.calcRawScores(paramD,scoresO)
     scoresO = scores.calcSynScores(scoresO,geneOrderD,paramD)
     scoresO = scores.calcCoreSynScores(scoresO,scaffoldStrainL,paramD,geneOrderD)    

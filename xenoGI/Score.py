@@ -42,8 +42,10 @@ strainPairScoreLocationD.
         # get edges
         edgeNum=0
         for g in genesO.iterGenes(): # first every gene vs itself
-            self.endNodesToEdgeD[(g,g)] = edgeNum
-            edgeNum += 1
+            if genesO.numToStrainName(g) in strainNamesT:
+                # but only do it for genes that occur in a strain in strainNamesT
+                self.endNodesToEdgeD[(g,g)] = edgeNum
+                edgeNum += 1
             
         # now get edges out of blast files
         for strainPair in blastFnByPairD:

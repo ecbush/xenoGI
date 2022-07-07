@@ -630,7 +630,7 @@ Move these to the same location as the bed file. Then unzip them::
 
   gunzip GCF_000006945.2_ASM694v2_cds_from_genomic.fna.gz GCF_000006945.2_ASM694v2_genomic.gff.gz
 
-Now start the IGB broswer. From the File menu, select "Open Genome from File". Select the fna file you just downloaded and unpacked. Once that has complete, again go to the File meno. This time select "Open File", and select ``S_enterica_LT2-island.bed``.
+Now start the IGB broswer. From the File menu, select "Open Genome from File". Select the fna file you just downloaded and unpacked. Once that has completed, again go to the File menu. This time select "Open File", and select ``S_enterica_LT2-island.bed``.
 
 To get the genes to display, you may have to click "Load Data" in the upper right.
 

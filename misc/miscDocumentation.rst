@@ -71,6 +71,25 @@ Run it like this::
 As output it produces a rooted gene tree (determined by trying all possible rootings and picking the one with the best reconcilation) and a representation of the reconcilation given by traversing the gene tree.
 
 
+Plot the reconciliation associated with one origin family
+---------------------------------------------------------
+
+  reconVis is an additional package for visualizing origin family gene trees, and must be imported in 
+  interactiveAnalysis to work. The main function is called ofamRender
+
+  The function ofamRender returns a figure object, which has the methods .save and 
+  .show to view the figure. The .show method will open the figure in a matplotlib 
+  window, and the image that gets saved is dependent on the window size (i.e., a 
+  call to save without a call to show may be less readable than showing the figure
+  and saving from the matplotlib window. 
+
+  Usage::
+    
+    figure3099 = ofamRender(genesO, originFamiliesO, speciesRtreeO, 3099)
+    figure3099.show()
+    figure3099.save("ofam_plot-3099.svg")
+
+
 Identify proteins with similarity to provided multifasta
 --------------------------------------------------------
 
