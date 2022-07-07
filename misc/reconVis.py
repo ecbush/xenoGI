@@ -1,12 +1,24 @@
-"""
-recon_viewer.py
+"""recon_viewer.py
 View a single reconciliation using matplotlib
-Credit to Justin Jiang, Trenton Wesley, and the Ran lab
+Credit to Justin Jiang, Trenton Wesley, and the Ran Libeskind-Hadas lab
 
 Additions made by Michelle Johnson with the Bush lab
 
-To create images, this module should be imported into interactiveAnalysis. The 
-function ofamRender returns a figure object, which has the methods .save and 
+This script can be used to plot a reconciliation associated with an
+origin family. You run it from within a xenoGI analysis directory, at
+the top level. Usage:
+
+python3 path-to-xenoGI-github-repository/misc/reconVis.py params.py 495
+
+The plots produced are of varying quality. It has occasionally been of
+use to us, so we're providing it as is. Our hope is to develop a
+better plotting option using a different framework in the future.
+
+The text below describes a bit more about the script. Another way to
+use it would be to put python in interactive analysis (use the command
+above, but replace python3 with python3 -i).
+
+The function ofamRender returns a figure object, which has the methods .save and 
 .show to view the figure. The .show method will open the figure in a matplotlib 
 window, and the image that gets saved is dependent on the window size (i.e., a 
 call to save without a call to show may be less readable than showing the figure
@@ -54,12 +66,13 @@ Future Improvements:
         current solution is color based, could look into physical separation
         also needs a separate color for if a duplication occurs after a prev. one
     Text could sized appropriately (width as well as height)
+
 """
 from __future__ import annotations
 # from xenoGI.families import REARRANGEMENT
 
 from typing import Union, Dict, Tuple, List, NamedTuple
-import math
+import math,sys,os
 
 from collections import OrderedDict, namedtuple
 from enum import Enum
@@ -2261,7 +2274,9 @@ class FigureWrapper:
 ##################################################################
 ##################################################################
 
-from xenoGI.xenoGI import genomes, parameters, loadTreeRelatedData, loadGenomeRelatedData, families
+sys.path.insert(0,os.path.join(sys.path[0],'..'))
+from xenoGI import genomes, parameters, families
+from xenoGI import Tree as xenoGITree
 from xenoGI.Family import *
 
 #-----------------------------------------------------------------
@@ -2463,4 +2478,24 @@ def setup():
     genesO.initializeGeneInfoD(paramD['geneInfoFN'],strainNamesT)
     genesO.initializeGeneNumToNameD(paramD['geneInfoFN'],strainNamesT)
     originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
+
+
+
+#### Run it
+
+if __name__ == "__main__":
+    paramFN = sys.argv[1]
+    ofamNum = int(sys.argv[2])
+
+    paramD = parameters.createParametersD(parameters.baseParamStr,paramFN)
+    genesO = genomes.genes(paramD['geneInfoFN'])
+    
+    speciesRtreeO = xenoGITree.Rtree()
+    speciesRtreeO.fromNewickFileLoadSpeciesTree(paramD['speciesTreeFN'])
+
+    originFamiliesO = families.readFamilies(paramD['originFamilyFN'],speciesRtreeO,genesO,"origin")
+    
+    fig = ofamRender(genesO, originFamiliesO, speciesRtreeO, ofamNum)
+    fig.show()
+
 
