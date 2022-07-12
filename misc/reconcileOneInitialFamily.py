@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # prepare input arguments, initFam number doesn't matter, so made it 1
     argT = (1,speciesRtreeO,ifamO.geneTreeO.unroot(),tipMapD,gtLocusMapD,D,T,L,O,R) 
     # reconcile
-    initFamNum,geneRtreeO,graphD,minCost = families.reconcile(argT)
+    initFamNum,geneRtreeO,graphD,minCost = families.reconcileOneUnRootedGeneTree(argT)
 
     # output
     

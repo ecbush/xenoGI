@@ -56,6 +56,10 @@ originFamilies object.
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD)
     print("Initial families:",file=outputSummaryF)
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
+
+    ## TEMP
+    sys.exit()
+    ##
     
     # reconcile
     initialFamiliesO = reconcileGeneTrees(initialFamiliesO.iterFamilies(),speciesRtreeO,initialFamiliesO,locusMapD,genesO,numProcesses,D,T,L,O,R)
