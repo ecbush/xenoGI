@@ -11,7 +11,7 @@ Requirements
 
   We need blastp and makeblastdb executables (ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/).
 
-* MUSCLE (https://www.drive5.com/muscle/). For creating protein or DNA alignments.
+* MUSCLE V5 (https://www.drive5.com/muscle/). For creating protein or DNA alignments.
 
 * FastTree (http://www.microbesonline.org/fasttree/). To make gene trees.
 

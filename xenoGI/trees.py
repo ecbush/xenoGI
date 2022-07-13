@@ -365,11 +365,16 @@ def makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD
     inTempProtFN=os.path.join(workDir,"tempProt"+orthoGroupNumStr+".fa")
     outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
 
-    # align
-    alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
-    os.remove(inTempProtFN) # remove unaligned prot file
+    ## align
+
+    # if there's only one seq, just make that the alignment file
+    if len(orthoT) <2:
+        writeFasta(outAlignFN,orthoT,strainHeader,genesO,protSeqD)
+    else:
+        alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
+        os.remove(inTempProtFN) # remove unaligned prot file
     
-    # make gene tree
+    ## make gene tree
     geneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
     if dnaSeqD == {}:
         # using protein
@@ -385,8 +390,8 @@ dnaSeqD is empty, uses protein only.'''
     # write prots we want to align to temp file
     writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
 
-    # align proteins
-    retCode = subprocess.call([musclePath, '-in' ,inProtFN, '-out', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    # align proteins (muscle 5 syntax here)
+    retCode = subprocess.call([musclePath, '-align' ,inProtFN, '-output', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     if retCode != 0:
         raise Exception("Alignment failed for "+inProtFN)
