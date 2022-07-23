@@ -90,6 +90,8 @@ hashArrayScaleFactor = 2
 makeSpeciesTreeWorkingDir = 'makeSpeciesTreeWorkDir'
 deleteSpeciesTreeWorkingDir = False # if True, we delete when done
 deleteSpeciesGeneTreeAlignmentFiles = True # if True, alignment files deleted, even when working dir is kept.
+deleteGeneRaxMappingFiles = True # if True, mapping files that match genes to species are deleted
+deleteGeneRaxOutputDir = True # if True deletes the output dir made by generax (after we copy the tree)
 
 # where to put gene trees for the aabrh hard core families
 aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'

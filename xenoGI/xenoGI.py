@@ -345,14 +345,24 @@ def interactiveAnalysisWrapper(paramD):
         print(file=fileF)
 
         if hasattr(fam,"printReconByGeneTree"):
-            print("Gene tree",file=fileF)
-            print(fam.geneTreeO.toNewickStr(),file=fileF)
-            print()
-            print("Gene tree annotated with reconciliation [branch events | node events]",file=fileF)
-            print(fam.getNewickGeneTreeWithReconLabels(genesO,includeBrLength=True),file=fileF)
-            print(file=fileF)
-            print("Reconciliation of gene tree onto species tree",file=fileF)       
-            fam.printReconByGeneTree(genesO,fileF)
+            # is ofam
+            ofam = fam
+        else:
+            # is ifam, we must convert dtlorMprD to node format before printing
+            speciesPreOrderT = speciesRtreeO.preorder()
+            dtlorMprD = fam.getMprReconDFromMpr(speciesPreOrderT,paramD)
+            ofam = originFamily(None,None,geneTreeO=fam.geneTreeO,dtlorMprD=dtlorMprD)
+            ofam.printReconByGeneTree(genesO)
+
+        print("Gene tree",file=fileF)
+        print(ofam.geneTreeO.toNewickStr(),file=fileF)
+        print()
+        print("Gene tree annotated with reconciliation [branch events | node events]",file=fileF)
+        print(ofam.getNewickGeneTreeWithReconLabels(genesO,includeBrLength=True),file=fileF)
+        print(file=fileF)
+        print("Reconciliation of gene tree onto species tree",file=fileF)       
+        ofam.printReconByGeneTree(genesO,fileF)
+            
         
     def findGene(searchStr,fileF=sys.stdout):
         '''Find information about a gene. Searches all the fields present in

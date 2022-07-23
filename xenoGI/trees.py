@@ -191,13 +191,21 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     # run generax
     subprocess.check_call(["mpiexec", "-np",str(numProcesses),geneRaxPath,"-f",os.path.join(workDir,GeneRaxInputListFN),"-s",speciesTreeFN,"-r",GeneRaxReconcilationModel,"--max-spr-radius",str(GeneRaxSearchRadius),"-p",os.path.join(workDir,GeneRaxOutputDirN)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     
-    # copy genetree files out of generax output directory
+    # copy genetree files out of generax output directory. If generax failed on any, keep track
+    failedOrthoSetL = []
     for orthoGroupNum,orthoT in orthoTL:
         grOutputFN = os.path.join(workDir,GeneRaxOutputDirN,"results","family_"+str(orthoGroupNum),"geneTree.newick")
         orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's
         destGeneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
-        shutil.copyfile(grOutputFN,destGeneTreeFN)
-    
+
+        try:
+            shutil.copyfile(grOutputFN,destGeneTreeFN)
+        except FileNotFoundError:
+            failedOrthoSetL.append((orthoGroupNum,orthoT))   
+
+    return failedOrthoSetL
+            
+            
 def createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
     '''Create alignments for all the ortho groups in orthoTL using MUSCLE.'''
 

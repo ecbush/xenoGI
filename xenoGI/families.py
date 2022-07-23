@@ -57,10 +57,6 @@ originFamilies object.
     print("Initial families:",file=outputSummaryF)
     writeFamilyFormationSummary(initialFamiliesO,outputSummaryF)
 
-    ## TEMP
-    sys.exit()
-    ##
-    
     # reconcile
     initialFamiliesO = reconcileGeneTrees(initialFamiliesO.iterFamilies(),speciesRtreeO,initialFamiliesO,locusMapD,genesO,numProcesses,D,T,L,O,R)
 
@@ -220,6 +216,7 @@ def createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputS
     blastFamGeneTreeFileStem = paramD['blastFamGeneTreeFileStem']
     blastFamilyFN = paramD['blastFamilyFN']
     maxBlastFamSize = int(paramD['maxBlastFamSizeMultiplier'] * speciesRtreeO.leafCount())
+    GeneRaxOutputDirN = paramD['GeneRaxOutputDirN']+"-"+blastFamGeneTreeFileStem
     
     ## get blast families as list of sets
     print("Blast families:",file=outputSummaryF)
@@ -257,15 +254,14 @@ def createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputS
         else:
             fastTreeBlastFamilySetL.append((i,bSet))
             
-    trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,fastTreeBlastFamilySetL)
-    
-    trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,geneRaxBlastFamilySetL)
+    failedGeneRaxOrthoSetL = trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,geneRaxBlastFamilySetL)
 
-    # remove alignments
-    if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
-        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
-            os.remove(fn)
+    fastTreeBlastFamilySetL.extend(failedGeneRaxOrthoSetL)
     
+    trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,fastTreeBlastFamilySetL)
+
+    cleanUpAfterTreeMaking(paramD,GeneRaxOutputDirN)
+
 def createBlastFamilySetL(scoresO,genesO,strainNamesT,outputSummaryF,maxBlastFamSize):
     '''
     Input
@@ -509,7 +505,26 @@ set in connecL if none of the existing sets have either gene.
     newClusterS = set([gn1,gn2])
     splitClusterL.append(newClusterS)
     return splitClusterL
-            
+
+def cleanUpAfterTreeMaking(paramD,GeneRaxOutputDirN):
+    '''Delete various files if parameters indicate we should.'''
+
+    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+    
+    # remove alignments
+    if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
+        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
+            os.remove(fn)
+
+    # remove mapping files            
+    if paramD['deleteGeneRaxMappingFiles']:
+        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"mapping_file*.link")):
+            os.remove(fn)
+
+    # remove generax output dir
+    if paramD['deleteGeneRaxOutputDir']:
+        shutil.rmtree(os.path.join(geneFamilyTreesDir,GeneRaxOutputDirN))
+
 ## Initial family formation    
 def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF):
     ''''''
@@ -541,10 +556,7 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
     
     aabrhHardCoreGeneTreeL = loadGeneTrees(paramD,aabrhHardCoreGeneTreeFileStem)
 
-    # remove alignments
-    if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
-        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
-            os.remove(fn)
+    cleanUpAfterTreeMaking(paramD,paramD['GeneRaxOutputDirN']+"-"+aabrhHardCoreGeneTreeFileStem)
 
     ## split blast family trees
 
@@ -897,7 +909,8 @@ in that family, add the family to the object.
             locusMapD[gene]=locusFamNumCounter
             speciesL.append(genesO.numToStrainName(gene))
         lfMrca=speciesRtreeO.findMrca(speciesL)
-        lf=LocusFamily(famNumCounter,locusFamNumCounter,lfMrca)
+        # create a lf. for initial families, locusNum is the same as locusFamNum.
+        lf=LocusFamily(famNumCounter,locusFamNumCounter,lfMrca,locusNum=locusFamNumCounter)
         lf.addGenes(locusFamilyL, genesO)
         totalAddedTolocusFamilies+=len(locusFamilyL)
         initialFamiliesO.addLocusFamily(lf)

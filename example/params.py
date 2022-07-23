@@ -48,7 +48,7 @@ blastExecutDirPath = '/usr/bin/'
 # full path to the ASTRAL executable. On Windows you may need to put
 # in a second slash as an escape.
 # e.g. 'C:\\Users\\guest\\Astral\\astral.5.6.3.jar'
-astralPath = '/usr/local/Astral/astral.5.6.3.jar'
+astralPath = '/usr/local/bin/astral'
 
 # Single outgroup species to be used in rooting species
 # tree. Uncomment and enter value here if making species tree.
@@ -64,9 +64,9 @@ dnaBasedGeneTrees = True
 # full paths to muscle, FastTree, java and ASTRAL. On Windows you may
 # need to put in a second slash as an escape,
 # e.g. 'C:\\Users\\guest\\muscle\\muscle.exe'
-musclePath = '/usr/bin/muscle'
-fastTreePath = '/usr/local/bin/FastTree'
-geneRaxPath = '/usr/local/GeneRax/build/bin/generax'
+musclePath = '/usr/local/bin/muscle'
+fastTreePath = '/usr/local/bin/fasttree'
+geneRaxPath = '/usr/local/bin/generax'
 javaPath = '/usr/bin/java'
 
 #### Family formation ####
