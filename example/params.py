@@ -60,7 +60,7 @@ astralPath = '/usr/local/bin/astral'
 # If we should use DNA based alignments to make tree, then this should
 # be True, otherwise False
 dnaBasedGeneTrees = True
-useGeneRaxToMakeSpeciesTrees = False # if False, use FastTree only
+useGeneRaxToMakeSpeciesTrees = True # if False, use FastTree only
 
 # full paths to muscle, FastTree, java and ASTRAL. On Windows you may
 # need to put in a second slash as an escape,

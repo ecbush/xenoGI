@@ -13,7 +13,7 @@ Requirements
 
 * MUSCLE V5 (https://www.drive5.com/muscle/). For creating protein or DNA alignments.
 
-* FastTree (http://www.microbesonline.org/fasttree/). To make gene trees.
+* FastTree (http://www.microbesonline.org/fasttree/). For making gene trees.
 
 * GeneRax (https://github.com/BenoitMorel/GeneRax). For making (species tree aware) gene trees. This is optional but recommended.
   
@@ -109,7 +109,7 @@ Before running xenoGI you'll have to ensure that it knows where various executab
 
 (Change '/usr/bin/' to correspond to the right location on your system).
 
-Also make sure that the absolute paths to MUSCLE and FastTree are correct in ``params.py`` (the parameters ``musclePath`` and ``fastTreePath``). If you intend to use generax to make species tree aware gene trees, then you also need to set ``geneRaxPath``.
+Also make sure that the absolute paths to MUSCLE and FastTree are correct in ``params.py`` (the parameters ``musclePath`` and ``fastTreePath``). If you intend to use generax to make species tree aware gene trees, then you also need to set ``geneRaxPath``. (The default parameter file is set to use generax, so unless you change the ``useGeneRaxToMakeSpeciesTrees`` parameter, described below, you'll need to supply a ``geneRaxPath``).
 
 If you will be using the makeSpeciesTree functionality, then you will also need to specify ``astralPath`` and ``javaPath``.
 
@@ -201,7 +201,7 @@ Notes on several input parameters
 
 * ``dnaBasedGeneTrees`` specifies what will be used to make gene trees. If this is set to True, the method will use DNA based alignments, otherwise it will use protein alignments.
 
-* ``useGeneRaxToMakeSpeciesTrees``. If set to True, xenoGI uses GeneRax in addition to FastTree to make species trees. GeneRax produces species-tree-aware gene trees, which are known to be of higher quality than gene trees calculated from gene sequences alone. (The cost is that GeneRax is slower). Is using GeneRax, then you also need to specify the parameter ``geneRaxPath``.
+* ``useGeneRaxToMakeSpeciesTrees``. If set to True, xenoGI uses GeneRax in addition to FastTree to make species trees. GeneRax produces species-tree-aware gene trees, which are known to be of higher quality than gene trees calculated from gene sequences alone. (The cost is that GeneRax is slower). If using GeneRax then you also need to specify the parameter ``geneRaxPath``.
   
 * The DTLOR cost parameters: ``duplicationCost``, ``transferCost``, ``lossCost``, ``originCost``, ``rearrangeCost``. The parsimony based reconciliation algorithm finds the minimum cost mapping of a gene tree onto the species tree. These parameters specify the costs for each of the DTLOR operations. The params.py file included in the example directory contains a set of costs we have found to work reasonably well, however users may potentially want to adjust these. The same parameters are used for all reconciliations, with one exception (see next bullet).
 
@@ -308,7 +308,7 @@ Print the version number::
    
   xenoGI params.py version
 
-Calculate the amino acid identity between strains:
+Calculate the amino acid identity between strains::
 
   xenoGI params.py aminoAcidIdentity
 

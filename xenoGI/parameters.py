@@ -100,7 +100,7 @@ astralTreeFN = 'astralTree.tre'
 
 #### Making gene trees ####
 
-useGeneRaxToMakeSpeciesTrees = False # if False, use FastTree only
+useGeneRaxToMakeSpeciesTrees = True # if False, use FastTree only
 
 # directory to store trees for gene families
 geneFamilyTreesDir = 'geneFamilyTrees'
