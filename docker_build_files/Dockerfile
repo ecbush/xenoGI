@@ -39,6 +39,8 @@ RUN ln -s /GeneRax/build/bin/generax /usr/local/bin/generax
 RUN ln -s /Astral/astral.5.7.8.jar /usr/local/bin/astral
 
 # clone xenoGI
-RUN git clone -b devel https://github.com/ecbush/xenoGI.git
+RUN git clone -b master https://github.com/ecbush/xenoGI.git
 
+# make an alias for easily calling xenoGI
+RUN echo "alias xenoGI='python3 /xenoGI/xenoGI-runner.py'" >> ~/.bashrc
 
