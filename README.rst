@@ -15,6 +15,8 @@ Requirements
 
 * FastTree (http://www.microbesonline.org/fasttree/). To make gene trees.
 
+* GeneRax (https://github.com/BenoitMorel/GeneRax). For making (species tree aware) gene trees. This is optional but recommended.
+  
 * Python 3
 
 * Python package dependencies
@@ -41,17 +43,23 @@ Requirements
 
 * Comments on platforms.
 
-  xenoGI is developed on Linux, but has also been tested on Mac and Windows.
+  xenoGI is developed on Linux. The docker image (linked below) is the easiest way to run on Mac and Windows.
 
 Installation
 ------------
 
-The easiest way to install is using pip::
+Via pip::
 
   pip3 install xenoGI
 
-(You will separately need to install blast+, MUSCLE, FastTree and optionally ASTRAL.)
-  
+(You will separately need to install blast+, MUSCLE, FastTree, and optionally GeneRax and ASTRAL.)
+
+Via docker. Download and run the following docker image::
+
+  https://hub.docker.com/r/ecbush/xenoGI
+
+This link has further instructions.
+
 Citation
 --------
 
@@ -101,7 +109,9 @@ Before running xenoGI you'll have to ensure that it knows where various executab
 
 (Change '/usr/bin/' to correspond to the right location on your system).
 
-Also make sure that the absolute paths to MUSCLE and FastTree are correct in ``params.py`` (the parameters ``musclePath`` and ``fastTreePath``). If you will be using the makeSpeciesTree functionality, then you will also need to specify ``astralPath`` and ``javaPath``.
+Also make sure that the absolute paths to MUSCLE and FastTree are correct in ``params.py`` (the parameters ``musclePath`` and ``fastTreePath``). If you intend to use generax to make species tree aware gene trees, then you also need to set ``geneRaxPath``.
+
+If you will be using the makeSpeciesTree functionality, then you will also need to specify ``astralPath`` and ``javaPath``.
 
 Running the code
 ~~~~~~~~~~~~~~~~
@@ -138,7 +148,7 @@ What the steps do
   
 * ``calcScores`` calculates similarity and synteny scores between genes in the strains. It is also (mostly) parallelized.
   
-* ``makeFamilies`` calculates gene families using blast, FastTree, and a customized variant of the DTL reconciliation algorithm called DTLOR. This approach considers synteny in the family formation process.
+* ``makeFamilies`` calculates gene families using blast, FastTree, GeneRax (optionally), and a customized variant of the DTL reconciliation algorithm called DTLOR. This approach considers synteny in the family formation process.
 
 * ``makeIslands`` groups families according to their origin, putting families with a common origin together as islands. It is partly parallelized.
 
@@ -191,6 +201,8 @@ Notes on several input parameters
 
 * ``dnaBasedGeneTrees`` specifies what will be used to make gene trees. If this is set to True, the method will use DNA based alignments, otherwise it will use protein alignments.
 
+* ``useGeneRaxToMakeSpeciesTrees``. If set to True, xenoGI uses GeneRax in addition to FastTree to make species trees. GeneRax produces species-tree-aware gene trees, which are known to be of higher quality than gene trees calculated from gene sequences alone. (The cost is that GeneRax is slower). Is using GeneRax, then you also need to specify the parameter ``geneRaxPath``.
+  
 * The DTLOR cost parameters: ``duplicationCost``, ``transferCost``, ``lossCost``, ``originCost``, ``rearrangeCost``. The parsimony based reconciliation algorithm finds the minimum cost mapping of a gene tree onto the species tree. These parameters specify the costs for each of the DTLOR operations. The params.py file included in the example directory contains a set of costs we have found to work reasonably well, however users may potentially want to adjust these. The same parameters are used for all reconciliations, with one exception (see next bullet).
 
 * ``reconcilePermissiveOriginGeneListPath``. This parameter is commented out by default, and will only be useful in certain situations. There are some genomic islands that insert repeatedly in the same syntenic region. An example is the SCCmec element in *Staphylococcus aureus*. In such cases, it is desirable to do the reconciliation with cost parameters that are permissive to origin events. xenoGI allows users to identify families that should be handled in this way. The first step is to create a file of xenoGI genes belonging to such families (one gene per line). We then set the ``reconcilePermissiveOriginGeneListPath`` to point to this file. The script ``getProteinsWithBlastHitsVsMultifasta.py`` in the misc/ directory may be useful in producing this file. The documentaiton for the misc directory has some further information.

@@ -71,21 +71,6 @@ Run it like this::
 As output it produces a rooted gene tree (determined by trying all possible rootings and picking the one with the best reconcilation) and a representation of the reconcilation given by traversing the gene tree.
 
 
-Plot the reconciliation associated with one origin family
----------------------------------------------------------
-
-This script can be used to plot a reconciliation associated with an
-origin family (it uses matplotlib). You run it from within a xenoGI
-analysis directory, at the top level. Usage::
-
-  python3 path-to-xenoGI-github-repository/misc/reconVis.py params.py 495
-
-This will plot the reconcilation associated with origin family 495.
-
-The plots produced are of varying quality. The script has occasionally
-been of use to us, so we're providing it as is. Our hope is to develop
-a better plotting option using a different framework in the future.
-
 Identify proteins with similarity to provided multifasta
 --------------------------------------------------------
 

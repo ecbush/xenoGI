@@ -73,6 +73,10 @@ originFamilies object.
     writeFamilies(initialFamiliesO,initFamilyFN,genesO,strainNamesT,paramD) # update with recons
     writeFamilies(originFamiliesO,originFamilyFN,genesO,strainNamesT,paramD)
 
+    # optionally delete gene trees work dir
+    if paramD['deleteGeneFamilyTreesDir']:
+        shutil.rmtree(os.path.join(paramD['geneFamilyTreesDir']))
+    
     return initialFamiliesO,originFamiliesO
 
 ## Support functions
@@ -244,23 +248,30 @@ def createBlastFamilies(paramD,speciesRtreeO,strainNamesT,scoresO,genesO,outputS
     for fn in glob.glob(blastFamGeneTreeFilePath):
         os.remove(fn)
 
-    # run GeneRax on families of 3 genes or more. Run FastTree on rest
-    # (will put branch lengths on 2 species trees, which we want
-    geneRaxBlastFamilySetL = []
-    fastTreeBlastFamilySetL = []
-    for i,bSet in blastFamilySetL:
-        if len(bSet) > 2:
-            geneRaxBlastFamilySetL.append((i,bSet))
-        else:
-            fastTreeBlastFamilySetL.append((i,bSet))
-            
-    failedGeneRaxOrthoSetL = trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,geneRaxBlastFamilySetL)
+    # make trees
+    if paramD['useGeneRaxToMakeSpeciesTrees']:
+        # use GeneRax
+        # run GeneRax on families of 3 genes or more. Run FastTree on rest
+        # (will put branch lengths on 2 species trees, which we want
+        geneRaxBlastFamilySetL = []
+        fastTreeBlastFamilySetL = []
+        for i,bSet in blastFamilySetL:
+            if len(bSet) > 2:
+                geneRaxBlastFamilySetL.append((i,bSet))
+            else:
+                fastTreeBlastFamilySetL.append((i,bSet))
 
-    fastTreeBlastFamilySetL.extend(failedGeneRaxOrthoSetL)
-    
+        failedGeneRaxOrthoSetL = trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,geneRaxBlastFamilySetL)
+
+        fastTreeBlastFamilySetL.extend(failedGeneRaxOrthoSetL)
+    else:
+        # use FastTree for all
+        fastTreeBlastFamilySetL = blastFamilySetL
+        
     trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,blastFamGeneTreeFileStem,fastTreeBlastFamilySetL)
 
-    cleanUpAfterTreeMaking(paramD,GeneRaxOutputDirN)
+    # collect and save blast family trees into a single file at the top level
+    collectBlastFamilyTreesToSingleFile(paramD)
 
 def createBlastFamilySetL(scoresO,genesO,strainNamesT,outputSummaryF,maxBlastFamSize):
     '''
@@ -506,24 +517,17 @@ set in connecL if none of the existing sets have either gene.
     splitClusterL.append(newClusterS)
     return splitClusterL
 
-def cleanUpAfterTreeMaking(paramD,GeneRaxOutputDirN):
-    '''Delete various files if parameters indicate we should.'''
-
-    geneFamilyTreesDir = paramD['geneFamilyTreesDir']
+def collectBlastFamilyTreesToSingleFile(paramD):
+    '''Collect and save blast family trees into a single file at the top
+level.
+    '''
+    blastFamGeneTreeL = loadGeneTreesFromDir(paramD,paramD['blastFamGeneTreeFileStem'])
     
-    # remove alignments
-    if paramD['deleteSpeciesGeneTreeAlignmentFiles']:
-        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"align*.afa")):
-            os.remove(fn)
-
-    # remove mapping files            
-    if paramD['deleteGeneRaxMappingFiles']:
-        for fn in glob.glob(os.path.join(geneFamilyTreesDir,"mapping_file*.link")):
-            os.remove(fn)
-
-    # remove generax output dir
-    if paramD['deleteGeneRaxOutputDir']:
-        shutil.rmtree(os.path.join(geneFamilyTreesDir,GeneRaxOutputDirN))
+    with open(paramD['blastFamilyTreeFN'],'w') as f:
+        for famNum,geneUtreeO in blastFamGeneTreeL:
+            treeStr = geneUtreeO.toNewickStr(includeBrLength=True)
+            f.write(str(famNum)+'\t'+treeStr+'\n')
+    return
 
 ## Initial family formation    
 def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,outputSummaryF):
@@ -535,7 +539,7 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
     forceSplitUtreeBalanceMultiplier = paramD['forceSplitUtreeBalanceMultiplier']
 
     ## load gene trees
-    blastFamGeneTreeL = loadGeneTrees(paramD,blastFamGeneTreeFileStem)
+    blastFamGeneTreeL = loadGeneTreesFromDir(paramD,blastFamGeneTreeFileStem)
 
     # delete any aabrh gene trees
     # aside: for aabrh trees made for species tree calculation, the
@@ -552,11 +556,10 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
     for orthoT in aabrhHardCoreL:
         newAabrhHardCoreL.append((orthoNum,orthoT))
         orthoNum += 1
-    trees.makeGeneTreesGeneRax(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
-    
-    aabrhHardCoreGeneTreeL = loadGeneTrees(paramD,aabrhHardCoreGeneTreeFileStem)
 
-    cleanUpAfterTreeMaking(paramD,paramD['GeneRaxOutputDirN']+"-"+aabrhHardCoreGeneTreeFileStem)
+    trees.makeGeneTreesFastTree(paramD,False,genesO,geneFamilyTreesDir,aabrhHardCoreGeneTreeFileStem,newAabrhHardCoreL)
+    
+    aabrhHardCoreGeneTreeL = loadGeneTreesFromDir(paramD,aabrhHardCoreGeneTreeFileStem)
 
     ## split blast family trees
 
@@ -616,7 +619,7 @@ def createInitialFamiliesO(paramD,genesO,aabrhHardCoreL,scoresO,speciesRtreeO,ou
         
     return initialFamiliesO, locusMapD
 
-def loadGeneTrees(paramD,geneTreeFileStem):
+def loadGeneTreesFromDir(paramD,geneTreeFileStem):
     '''Load gene trees from the geneFamilyTreesDir that begin with
     geneTreeFileStem.
     '''

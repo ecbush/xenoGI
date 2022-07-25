@@ -60,13 +60,14 @@ astralPath = '/usr/local/bin/astral'
 # If we should use DNA based alignments to make tree, then this should
 # be True, otherwise False
 dnaBasedGeneTrees = True
+useGeneRaxToMakeSpeciesTrees = False # if False, use FastTree only
 
 # full paths to muscle, FastTree, java and ASTRAL. On Windows you may
 # need to put in a second slash as an escape,
 # e.g. 'C:\\Users\\guest\\muscle\\muscle.exe'
 musclePath = '/usr/local/bin/muscle'
 fastTreePath = '/usr/local/bin/fasttree'
-geneRaxPath = '/usr/local/bin/generax'
+geneRaxPath = '/usr/local/bin/generax' # ignored if generax not used
 javaPath = '/usr/bin/java'
 
 #### Family formation ####

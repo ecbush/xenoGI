@@ -178,15 +178,16 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     GeneRaxReconcilationModel = paramD['GeneRaxReconcilationModel']
     GeneRaxSearchRadius = paramD['GeneRaxSearchRadius']
     GeneRaxOutputDirN = paramD['GeneRaxOutputDirN']+"-"+gtFileStem
+    alignStem = "align"+"-"+gtFileStem
     
     # create alignments
-    createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
+    createAlignmentsGeneRax(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
 
     # create support files for running GeneRax
     createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO)
 
     # create the file listing alignment and mapping files for each family
-    createGeneRaxInputList(paramD,orthoTL,workDir)
+    createGeneRaxInputList(paramD,orthoTL,workDir,alignStem)
 
     # run generax
     subprocess.check_call(["mpiexec", "-np",str(numProcesses),geneRaxPath,"-f",os.path.join(workDir,GeneRaxInputListFN),"-s",speciesTreeFN,"-r",GeneRaxReconcilationModel,"--max-spr-radius",str(GeneRaxSearchRadius),"-p",os.path.join(workDir,GeneRaxOutputDirN)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -206,16 +207,16 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     return failedOrthoSetL
             
             
-def createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
+def createAlignmentsGeneRax(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
     '''Create alignments for all the ortho groups in orthoTL using MUSCLE.'''
 
     # set up argumentL
 
-    argumentL = [([],[],paramD,strainHeader,genesO,workDir,musclePath) for i in range(numProcesses)]
+    argumentL = [([],[],paramD,alignStem,strainHeader,genesO,workDir,musclePath) for i in range(numProcesses)]
 
     counter = 0
     for orthoGroupNum,orthoT in orthoTL:
-        # we use counter for placememnt in argumentL since at least in
+        # we use counter for placement in argumentL since at least in
         # the case of single gene families, some will be missing
         orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
         argumentL[counter%numProcesses][0].append(orthoGroupNumStr)
@@ -232,7 +233,7 @@ def createAlignmentsGeneRax(paramD,strainHeader,genesO,workDir,musclePath,numPro
 def alignOneOrthoTGroup(argT):
     '''Function for aligning one family in a multi processing context.'''
     
-    orthoGroupNumStrL,orthoTL,paramD,strainHeader,genesO,workDir,musclePath = argT
+    orthoGroupNumStrL,orthoTL,paramD,alignStem,strainHeader,genesO,workDir,musclePath = argT
 
     # get set of all genes in orthoTL to restrict size of seqD's
     orthoGenesS=set()
@@ -253,9 +254,8 @@ def alignOneOrthoTGroup(argT):
         orthoGroupNumStr = orthoGroupNumStrL[i]
 
         # get temp and output align file names
-        inTempProtFN=os.path.join(workDir,"tempProt"+orthoGroupNumStr+".fa")
-        outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
-
+        inTempProtFN=os.path.join(workDir,"tempProt-"+orthoGroupNumStr+".fa")
+        outAlignFN=os.path.join(workDir,alignStem+"-"+orthoGroupNumStr+".afa")
         
         alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
         
@@ -276,7 +276,7 @@ def createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO):
                 strainName = genesO.numToStrainName(geneNum)
                 mappingF.write(str(geneNum)+" "+strainName+"\n")
 
-def createGeneRaxInputList(paramD,orthoTL,workDir):
+def createGeneRaxInputList(paramD,orthoTL,workDir,alignStem):
     '''Create the geneRaxInputList.txt file which asigns alignment and
 mapping files to each family.'''
 
@@ -299,7 +299,7 @@ mapping files to each family.'''
             orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
             # we will run GeneRax from workDir, so don't need to include in paths
             mappingFN = os.path.join(workDir,mappingFileStem + orthoGroupNumStr + mappingFileExt)
-            alignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
+            alignFN=os.path.join(workDir,alignStem+"-"+orthoGroupNumStr+".afa")
 
             f.write("- family_"+str(orthoGroupNum)+"\n")
             f.write("alignment = "+alignFN+"\n")
@@ -370,8 +370,8 @@ def makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD
     ''' Makes one gene tree from an ortho list. If dnaSeqD is empty, uses protein only.'''
  
     # get temp and output align file names
-    inTempProtFN=os.path.join(workDir,"tempProt"+orthoGroupNumStr+".fa")
-    outAlignFN=os.path.join(workDir,"align"+orthoGroupNumStr+".afa")
+    inTempProtFN=os.path.join(workDir,"tempProt"+"-"+gtFileStem+"-"+orthoGroupNumStr+".fa")
+    outAlignFN=os.path.join(workDir,"align"+"-"+gtFileStem+"-"+orthoGroupNumStr+".afa")
 
     ## align
 
@@ -398,8 +398,8 @@ dnaSeqD is empty, uses protein only.'''
     # write prots we want to align to temp file
     writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
 
-    # align proteins (muscle 5 syntax here)
-    retCode = subprocess.call([musclePath, '-align' ,inProtFN, '-output', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    # align proteins (muscle 5 syntax here. only 1 thread each since we're doing many)
+    retCode = subprocess.call([musclePath,'-threads', '1', '-align' ,inProtFN, '-output', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
     if retCode != 0:
         raise Exception("Alignment failed for "+inProtFN)

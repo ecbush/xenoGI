@@ -254,6 +254,15 @@ scoresO.
     print("Printing all scores with non-family members",file=fileF)
     printTable(rowL,indent=2,fileF=fileF)
 
+def countAllEvents(originFamiliesO):
+    '''Count all events in originFamiliesO and print result.'''
+
+    for event in ('D','T','L','O','R'):
+        D = getEventCountD(originFamiliesO,event)
+        print(event,sum(map(sum,D.values())))
+
+    return
+        
 def getEventCountD(originFamiliesO,eventType):
     '''Produce a dict keyed by species node with value a list of counts of
 eventType for every locus family at that node.

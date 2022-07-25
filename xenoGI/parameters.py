@@ -88,10 +88,7 @@ hashArrayScaleFactor = 2
 #### Making species trees ####
 
 makeSpeciesTreeWorkingDir = 'makeSpeciesTreeWorkDir'
-deleteSpeciesTreeWorkingDir = False # if True, we delete when done
-deleteSpeciesGeneTreeAlignmentFiles = True # if True, alignment files deleted, even when working dir is kept.
-deleteGeneRaxMappingFiles = True # if True, mapping files that match genes to species are deleted
-deleteGeneRaxOutputDir = True # if True deletes the output dir made by generax (after we copy the tree)
+deleteSpeciesTreeWorkingDir = True # if True, we delete when done
 
 # where to put gene trees for the aabrh hard core families
 aabrhHardCoreGeneTreesFN = 'aabrhHardCoreGeneTrees.out'
@@ -103,8 +100,11 @@ astralTreeFN = 'astralTree.tre'
 
 #### Making gene trees ####
 
+useGeneRaxToMakeSpeciesTrees = False # if False, use FastTree only
+
 # directory to store trees for gene families
 geneFamilyTreesDir = 'geneFamilyTrees'
+deleteGeneFamilyTreesDir = True # if True, delete working dir when done
 
 # file stems
 aabrhHardCoreGeneTreeFileStem = 'aabrhHardCoreFam'
@@ -128,6 +128,7 @@ aabrhFN = 'aabrhHardCore.out'
 
 # Other families
 blastFamilyFN = 'blastFam.out'
+blastFamilyTreeFN = 'blastFamTrees.out'
 initFamilyFN = 'initFam.out'
 originFamilyFN = 'originFam.out'
 
