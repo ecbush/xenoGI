@@ -54,12 +54,12 @@ Via pip::
 
 (You will separately need to install blast+, MUSCLE, FastTree, and optionally GeneRax and ASTRAL.)
 
-Via docker. Download and run the following docker image::
+Via docker. For some instructions on using docker, go here:
 
-  https://hub.docker.com/r/ecbush/xenoGI
+  https://hub.docker.com/r/ecbush/xenogi
 
-This link has further instructions.
-
+Using docker, xenoGI get's run within a virtual machine. This is nice because you don't have to worry about all the dependencies above (they're provided in our image). This does come at some cost in terms of performance.
+  
 Citation
 --------
 

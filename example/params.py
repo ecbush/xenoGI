@@ -92,4 +92,4 @@ rearrangeCost = 7
 #### Parallelization ####
 
 # in parallel code, how many threads to use
-numProcesses = 50
+numProcesses = 8

@@ -9,7 +9,7 @@ RUN apt-get install -y python3.9 python3-pip python3-setuptools python3-dev pyth
 RUN apt-get install -y ncbi-blast+ fasttree
 RUN apt-get install -y flex bison libgmp3-dev cmake mpich # for compiling generax
 RUN apt-get -y install default-jre # for astral
-RUN apt-get install -y nano wget git unzip
+RUN apt-get install -y nano wget git unzip screen htop
 
 # install required python modules
 RUN pip3 install numpy scipy Bio
@@ -19,12 +19,15 @@ RUN mkdir /exec
 
 # install muscle
 RUN wget https://github.com/rcedgar/muscle/releases/download/v5.1/muscle5.1.linux_intel64
-RUN chmod ugo+x muscle5.1.linux_intel64
 RUN mv muscle5.1.linux_intel64 /exec/muscle
+# or for arm64
+#RUN wget https://github.com/rcedgar/muscle/releases/download/v5.1/muscle5.1.macos_arm64
+#RUN mv muscle5.1.macos_arm64 /exec/muscle
+
+RUN chmod ugo+x /exec/muscle
 
 # install generax
 RUN git clone --recursive https://github.com/BenoitMorel/GeneRax
-#WORKDIR "GenRax"
 RUN cd /GeneRax && sh install.sh
 
 # install ASTRAL
