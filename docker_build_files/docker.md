@@ -20,19 +20,13 @@ RAM usage depends on how many strains you have. For the example data set, 6 GB s
 ### To mount the image as a container, perform the following steps:
 Pull the docker image from docker hub.
 
-If you are running on an amd64 machine (most people) then do this:
-
           $ docker pull ecbush/xenogi:3.1.0_amd64
-
-If you are running on an arm64 machine (ie an M1 mac) then do this:
-
-          $ docker pull ecbush/xenogi:3.1.0_arm64
 
 You can then create a directory where you're indending to have xenoGI run. Let's say you have put a copy of the ``example/`` directory from the github repository in /home/data/example. You can run a container (instance) of the image you just got, and mount that example directory into its file system. Like this:
 
           $ docker run -it --name myContainer -v /home/data/example:/example ecbush/xenogi:3.1.0_amd64 bash
 
-Note that if you were on an M1 mac, then you'd substitute arm64 for amd64. Also note that you must provide the __ABSOLUTE PATH__ to your working directory.
+Note that you must provide the __ABSOLUTE PATH__ to your working directory.
 
 ## Running xenoGI
 

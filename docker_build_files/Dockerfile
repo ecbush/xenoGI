@@ -20,10 +20,6 @@ RUN mkdir /exec
 # install muscle
 RUN wget https://github.com/rcedgar/muscle/releases/download/v5.1/muscle5.1.linux_intel64
 RUN mv muscle5.1.linux_intel64 /exec/muscle
-# or for arm64
-#RUN wget https://github.com/rcedgar/muscle/releases/download/v5.1/muscle5.1.macos_arm64
-#RUN mv muscle5.1.macos_arm64 /exec/muscle
-
 RUN chmod ugo+x /exec/muscle
 
 # install generax
