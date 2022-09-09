@@ -128,11 +128,6 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     
     makeGeneTreesFastTree(paramD,True,genesO,workDir,gtFileStem,newAabrhHardCoreL)
 
-    # remove alignments
-    if deleteSpeciesGeneTreeAlignmentFiles:
-        for fn in glob.glob(os.path.join(workDir,"align*.afa")):
-            os.remove(fn)
-    
     ## run Astral on gene trees
 
     # concatenate all gene tree files
