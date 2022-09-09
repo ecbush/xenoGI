@@ -111,7 +111,6 @@ def makeSpeciesTree(paramD,aabrhHardCoreL,genesO):
     outSpeciesTreeFN = paramD['speciesTreeFN'] # for main output
     outGroupTaxaL = [paramD['outGroup']]
     deleteSpeciesTreeWorkingDir = paramD['deleteSpeciesTreeWorkingDir']
-    deleteSpeciesGeneTreeAlignmentFiles = paramD['deleteSpeciesGeneTreeAlignmentFiles']
     
     # if tree file already exists, throw error
     if os.path.isfile(outSpeciesTreeFN):

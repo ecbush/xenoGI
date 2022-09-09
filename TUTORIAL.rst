@@ -26,7 +26,7 @@ Next we're going to put a copy of the repository inside this directory. (Note th
 
 Next put the repository into the right release. At the command line, cd into the repository directory (``xgiTutorial/xenoGI``). Then do::
 
-  git checkout v3.0.0
+  git checkout v3.1.0
 
 Next create a second subdirectory of ``xgiTutorial/`` called ``enterics/``. This is the working directory for the data we'll be using.
 
@@ -72,7 +72,7 @@ We'll next obtain a parameter file by copying the one in the ``example/`` direct
 
 Next edit ``params.py`` so that ``blastExecutDirPath`` correctly indicates the directory where the blastp and makeblastdb executables reside.
 
-Also make sure that ``astralPath``, ``musclePath``, ``fastTreePath``, and ``javaPath`` contain the correct paths to the executables for ASTRAL, MUSCLE, FastTree and Java respectively.
+Also make sure that ``astralPath``, ``musclePath``,``geneRaxPath``, ``fastTreePath``, and ``javaPath`` contain the correct paths to the executables for ASTRAL, MUSCLE, GeneRaxx, FastTree and Java respectively.
 
 Then go to the ``speciesTreeFN`` entry, and edit it to read::
 
