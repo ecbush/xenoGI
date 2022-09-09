@@ -356,7 +356,7 @@ We can see from this that the origin family is 4143. (It is possible that on you
 
 We can now type the following at the python prompt::
 
-  printFam(4143,originFamiliesO)
+  printFam(originFamiliesO,4143)
   
 This produces the following output::
 
@@ -467,7 +467,7 @@ This produces the following output::
 
 Note that if you want to save this output directly to a file you can do like this::
 
-    printFam(4143,originFamiliesO,open("ofam4143.txt","w"))
+    printFam(originFamiliesO,4143,open("ofam4143.txt","w"))
 
 The third argument is optional, and is an open file handle. Doing this can be useful if you have a large family, and you want to view it without lines wrapping. (e.g. with ``less -S``).
 
