@@ -85,6 +85,7 @@ Hereafter, tagged releases correspond to pypi releases. The master branch will h
 
 Initial release, corresponding to our article: "xenoGI: reconstructing the history of genomic island insertions in clades of closely related bacteria".
 
+.. _3.1.0:  https://github.com/ecbush/xenoGI/compare/v3.0.0...v3.1.0
 .. _3.0.0:  https://github.com/ecbush/xenoGI/compare/v2.2.0...v3.0.0
 .. _2.2.0:  https://github.com/ecbush/xenoGI/compare/v2.1.0...v2.2.0
 .. _2.1.0:  https://github.com/ecbush/xenoGI/compare/v2.0.0...v2.1.0
