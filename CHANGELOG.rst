@@ -3,6 +3,14 @@ Change Log
 ==========
 
 -------------------
+3.1.0_ - 2022-09-10
+-------------------
+
+- Now have the option to use GeneRax to create gene trees in a species-tree aware way. If useGeneRaxToMakeSpeciesTrees is set to True (as is the case in the default params.py) GeneRax will be used. If False, FastTree is used. GeneRax makes the gene trees more accurate, and cuts down on spurious events in our reconciliations. However there is a significant cost in terms of speed (about 2 fold on our example data set).
+- Now using MUSCLE v5
+- Added an aminoAcidIdentity flag which uses blast output to calculate the average amino acid identity between strains.
+
+-------------------
 3.0.0_ - 2021-02-01
 -------------------
 
