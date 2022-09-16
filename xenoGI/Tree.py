@@ -177,6 +177,14 @@ tip.
         connecT = self.nodeConnectD[node]
         return connecT[0] # parent is first element
 
+    def getBranchLen(self,branchPair):
+        '''Return the branch length for the branch defined by branchPair.'''
+
+        if self.branchLenD == None:
+            return None
+        else:
+            return self.branchLenD[branchPair]
+        
     def binarize(self,gtLocusMapD=None):
         '''Arbitarily convert a tree with multifurcating nodes into one with
 binary nodes. Newly introduced nodes have a "b" in their naming to

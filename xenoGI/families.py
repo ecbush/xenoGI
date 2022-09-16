@@ -672,10 +672,10 @@ threshold.
 def splitUtreeThreshold(utreeL,splitThresh,subsetAabrhL,doNotSplitBranchPairS):
     '''Given an input list containing Utree objects, recursively split
 these until there are no branches longer than splitThresh. Trees in
-utreeL should not be single tip trees.
+utreeL should not be single tip trees. 
     '''
 
-    def getBranchToSpit(utreeL,doNotSplitBranchPairS):
+    def getBranchToSplit(utreeL,doNotSplitBranchPairS):
         i=-1 # for empty list case
         for i in range(len(utreeL)):
             for splitBranchPair,splitBrLen in utreeL[i].getBranchesByLengthL():
@@ -689,7 +689,7 @@ utreeL should not be single tip trees.
     ## main splitUtree
 
     # get tree index in utreeL and branch to split
-    aboveThreshInd,splitBranchPair,splitBrLen = getBranchToSpit(utreeL,doNotSplitBranchPairS)
+    aboveThreshInd,splitBranchPair,splitBrLen = getBranchToSplit(utreeL,doNotSplitBranchPairS)
 
     if splitBranchPair == None: # done
         return utreeL
@@ -701,7 +701,7 @@ utreeL should not be single tip trees.
 
         remainderL = []
         aUtreeO,bUtreeO = utreeL[aboveThreshInd].split(splitBranchPair)
-
+        
         # check that this split preserves aabrh sets
         if dividesAabrhSets(aUtreeO,bUtreeO,subsetAabrhL):
             doNotSplitBranchPairS.add(splitBranchPair)
@@ -719,7 +719,13 @@ utreeL should not be single tip trees.
                 completeL.append(bUtreeO)
             else:
                 remainderL.append(bUtreeO)
-            
+
+            # When we split off utrees, we merge 2 branches into a
+            # larger branch which should not be split unless one of
+            # the original branches that went into it is above
+            # theshold
+            doNotSplitBranchPairS = checkIfNewlyMergedBranchShouldNotBeSplit(utreeL[aboveThreshInd],splitThresh,splitBranchPair,doNotSplitBranchPairS)
+                
         # put the results back in the todo list and recurse
         remainderL.extend(utreeL[aboveThreshInd+1:])
         remainderSplitL = splitUtreeThreshold(remainderL,splitThresh,subsetAabrhL,doNotSplitBranchPairS)
@@ -739,6 +745,45 @@ neither.
             # overlap with both. aabrh has been divided.
             return True
     return False
+
+def checkIfNewlyMergedBranchShouldNotBeSplit(origUtree,splitThresh,splitBranchPair,doNotSplitBranchPairS):
+    '''In making utrees on either side of the split, we have removed two
+nodes. Where a node is removed, two branches are merged. this bigger
+merged branch should only be split later if one or both of the branches
+which went into it were above threshold.
+    '''
+
+    # funcs
+
+    def somethingAboveThreshold(sbtree,node,splitThresh):
+        '''Determine if any of the children of the 2 subtrees are above threshold.'''
+        # get subtrees on each side
+        for child in sbtree.children(node):
+            if sbtree.getBranchLen((node,child)) > splitThresh:
+                return True
+        return False
+
+    
+    # main section of checkIfNewlyMergedBranchShouldNotBeSplit
+    # root orig tree on splitBranchPair
+    rtree = origUtree.rootIncludeBranchLen(splitBranchPair)
+
+    for node in splitBranchPair:
+        sbtree = rtree.subtree(node)
+    
+        if not somethingAboveThreshold(sbtree,node,splitThresh):
+            # the children of this subtree define a branch in the
+            # split utree. We should not split on this branch, since
+            # neither of the branches in the rooted subtree are above
+            # threshold.
+            branchNotToSplitPair = sbtree.children(node)
+            if len(branchNotToSplitPair) == 2:
+                
+                doNotSplitBranchPairS.add(branchNotToSplitPair)
+                doNotSplitBranchPairS.add((branchNotToSplitPair[1],branchNotToSplitPair[0])) # both ways
+            
+    return doNotSplitBranchPairS
+    
     
 def splitUtreeFailsafe(utreeL,maxInitialFamSize,forceSplitUtreeBalanceMultiplier,subsetAabrhL):
     '''Function for cutting tree size down in order to limit dtlor
