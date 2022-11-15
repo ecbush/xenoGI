@@ -175,7 +175,7 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     alignStem = "align"+"-"+gtFileStem
     
     # create alignments
-    createAlignmentsGeneRax(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
+    createAlignments(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
 
     # create support files for running GeneRax
     createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO)
@@ -201,7 +201,7 @@ def makeGeneTreesGeneRax(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL):
     return failedOrthoSetL
             
             
-def createAlignmentsGeneRax(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
+def createAlignments(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL):
     '''Create alignments for all the ortho groups in orthoTL using MUSCLE.'''
 
     # set up argumentL
@@ -251,10 +251,37 @@ def alignOneOrthoTGroup(argT):
         inTempProtFN=os.path.join(workDir,"tempProt-"+orthoGroupNumStr+".fa")
         outAlignFN=os.path.join(workDir,alignStem+"-"+orthoGroupNumStr+".afa")
         
-        alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
-        
-        os.remove(inTempProtFN) # remove unaligned prot file
+        if len(orthoT) <2: # if there's only one seq, make that the align file
+            writeFasta(outAlignFN,orthoT,strainHeader,genesO,protSeqD)
+        else:
+            alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
+            os.remove(inTempProtFN) # remove unaligned prot file
 
+def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
+    '''Given genes in a single ortholog set, align them with muscle. If
+dnaSeqD is empty, uses protein only.'''
+
+    # write prots we want to align to temp file
+    writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
+
+    # align proteins (muscle 5 syntax here. only 1 thread each since we're doing many)
+    retCode = subprocess.call([musclePath,'-threads', '1', '-align' ,inProtFN, '-output', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+
+    if retCode != 0:
+        raise Exception("Alignment failed for "+inProtFN)
+    
+    if dnaSeqD != {}:
+        # back align to get dna alignment, overwriting protein alignment.
+        protAlignL = []
+        for header,alignedProtSeq in fasta.load(outAlignFN):
+            if strainHeader:
+                protAlignL.append((int(header.rstrip().split()[1]),header,alignedProtSeq))
+            else:
+                protAlignL.append((int(header.rstrip()[1:]),header,alignedProtSeq))
+        backAlign(outAlignFN,protAlignL,dnaSeqD,genesO)
+
+    return
+        
 def createMappingFilesGeneRax(paramD,orthoTL,workDir,genesO):
     '''Create the set of mapping files that shows which species each gene is in.'''
     
@@ -311,12 +338,16 @@ def makeGeneTreesFastTree(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL)
  group.
 
     '''
+    alignStem = "align"+"-"+gtFileStem
     numProcesses = paramD['numProcesses']    
     musclePath = paramD['musclePath']
     fastTreePath = paramD['fastTreePath']
+
+    ## make alignments
+    createAlignments(paramD,alignStem,strainHeader,genesO,workDir,musclePath,numProcesses,orthoTL)
     
     ## make gene trees
-    argumentL = [([],[],paramD,strainHeader,genesO,workDir,gtFileStem,musclePath,fastTreePath) for i in range(numProcesses)]
+    argumentL = [([],paramD,workDir,gtFileStem,fastTreePath) for i in range(numProcesses)]
 
     # set up argumentL
     counter = 0
@@ -325,7 +356,6 @@ def makeGeneTreesFastTree(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL)
         # the case of single gene families, some will be missing
         orthoGroupNumStr = str(orthoGroupNum).zfill(6) # pad w/ 0's so ls will display in right order
         argumentL[counter%numProcesses][0].append(orthoGroupNumStr)
-        argumentL[counter%numProcesses][1].append(orthoT)
         counter += 1
         
     # run
@@ -336,79 +366,32 @@ def makeGeneTreesFastTree(paramD,strainHeader,genesO,workDir,gtFileStem,orthoTL)
     return
         
 def makeOneGeneTreeGroupFastTree(argT):
-    '''Wrapper for multiprocessing. Given a group of orthoT's to work on,
-calls makeOneGeneTree on each.'''
+    '''Wrapper for multiprocessing. Given a group of orthoT's to work
+    on, calls makeOneGeneTreeFastTree on each.'''
     
-    orthoGroupNumStrL,orthoTL,paramD,strainHeader,genesO,workDir,gtFileStem,musclePath,fastTreePath = argT
+    orthoGroupNumStrL,paramD,workDir,gtFileStem,fastTreePath = argT
 
-    # get set of all genes in orthoTL to restrict size of seqD's
-    orthoGenesS=set()
-    for orthoT in orthoTL:
-        orthoGenesS.update(orthoT)
-    
-    # load protein and dna sequences
-    protSeqD=genomes.loadSeq(paramD, '_prot.fa',genesS=orthoGenesS)
-
-    if paramD['dnaBasedGeneTrees'] == True:
-        dnaSeqD = genomes.loadSeq(paramD, '_dna.fa',genesS=orthoGenesS)
-    else:
-        dnaSeqD = {}
+    dnaBasedGeneTrees = paramD['dnaBasedGeneTrees']
 
     # make trees
-    for i in range(len(orthoTL)):
-        orthoGroupNumStr = orthoGroupNumStrL[i]
-        orthoT = orthoTL[i]
-        makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath)
+    for orthoGroupNumStr in orthoGroupNumStrL:
+        makeOneGeneTreeFastTree(gtFileStem,orthoGroupNumStr,workDir,dnaBasedGeneTrees,fastTreePath)
     
-def makeOneGeneTreeFastTree(orthoGroupNumStr,orthoT,strainHeader,genesO,protSeqD,dnaSeqD,workDir,gtFileStem,musclePath,fastTreePath):
-    ''' Makes one gene tree from an ortho list. If dnaSeqD is empty, uses protein only.'''
+def makeOneGeneTreeFastTree(gtFileStem,orthoGroupNumStr,workDir,dnaBasedGeneTrees,fastTreePath):
+    ''' Makes one gene tree from an ortho list. If dnaBasedGeneTrees is False, uses protein only.'''
  
-    # get temp and output align file names
-    inTempProtFN=os.path.join(workDir,"tempProt"+"-"+gtFileStem+"-"+orthoGroupNumStr+".fa")
-    outAlignFN=os.path.join(workDir,"align"+"-"+gtFileStem+"-"+orthoGroupNumStr+".afa")
+    # get align file names
+    alignStem = "align"+"-"+gtFileStem
+    outAlignFN=os.path.join(workDir,alignStem+"-"+orthoGroupNumStr+".afa")
 
-    ## align
-
-    # if there's only one seq, just make that the alignment file
-    if len(orthoT) <2:
-        writeFasta(outAlignFN,orthoT,strainHeader,genesO,protSeqD)
-    else:
-        alignOneOrthoT(orthoT,strainHeader,musclePath,inTempProtFN,outAlignFN,protSeqD,dnaSeqD,genesO)
-        os.remove(inTempProtFN) # remove unaligned prot file
-    
     ## make gene tree
     geneTreeFN = os.path.join(workDir,gtFileStem+orthoGroupNumStr+".tre")
-    if dnaSeqD == {}:
+    if dnaBasedGeneTrees == False:
         # using protein
         subprocess.check_call([fastTreePath, '-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     else:
         # using dna
         subprocess.check_call([fastTreePath,'-gtr','-nt','-out',geneTreeFN,outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        
-def alignOneOrthoT(orthoT,strainHeader,musclePath,inProtFN,outAlignFN,protSeqD,dnaSeqD,genesO):
-    '''Given genes in a single ortholog set, align them with muscle. If
-dnaSeqD is empty, uses protein only.'''
-
-    # write prots we want to align to temp file
-    writeFasta(inProtFN,orthoT,strainHeader,genesO,protSeqD)
-
-    # align proteins (muscle 5 syntax here. only 1 thread each since we're doing many)
-    retCode = subprocess.call([musclePath,'-threads', '1', '-align' ,inProtFN, '-output', outAlignFN],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-
-    if retCode != 0:
-        raise Exception("Alignment failed for "+inProtFN)
-    
-    if dnaSeqD != {}:
-        # back align to get dna alignment, overwriting protein alignment.
-        protAlignL = []
-        for header,alignedProtSeq in fasta.load(outAlignFN):
-            if strainHeader:
-                protAlignL.append((int(header.rstrip().split()[1]),header,alignedProtSeq))
-            else:
-                protAlignL.append((int(header.rstrip()[1:]),header,alignedProtSeq))
-        backAlign(outAlignFN,protAlignL,dnaSeqD,genesO)
-
-    return
     
 def writeFasta(inProtFN,orthoT,strainHeader,genesO,seqD):
     '''Writes a fasta block. seqs are specified in orthoT, and obtained
