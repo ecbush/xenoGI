@@ -3,6 +3,12 @@ Change Log
 ==========
 
 -------------------
+3.1.1_ - 2022-12-15
+-------------------
+
+- Separated functions doing alignments and tree making for the sake of compatibility with PHANTASM.
+
+-------------------
 3.1.0_ - 2022-09-10
 -------------------
 

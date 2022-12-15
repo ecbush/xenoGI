@@ -26,7 +26,7 @@ Next we're going to put a copy of the repository inside this directory. (Note th
 
 Next put the repository into the right release. At the command line, cd into the repository directory (``xgiTutorial/xenoGI``). Then do::
 
-  git checkout v3.1.0
+  git checkout v3.1.1
 
 Next create a second subdirectory of ``xgiTutorial/`` called ``enterics/``. This is the working directory for the data we'll be using.
 

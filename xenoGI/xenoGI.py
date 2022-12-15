@@ -1,5 +1,5 @@
 """Provides the entry point to xenoGI's functionality."""
-__version__ = "3.1.0"
+__version__ = "3.1.1"
 import sys, glob, os, readline, rlcompleter
 from . import parameters,genbank,blast,trees,genomes,Score,scores,families,islands,analysis,islandBed
 from .Tree import *
