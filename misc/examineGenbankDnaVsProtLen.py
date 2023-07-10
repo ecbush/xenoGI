@@ -3,7 +3,7 @@ from Bio import SeqIO
 
 fileName = sys.argv[1]
 
-# Usage: python3 ~/xenoGI/misc/examineGenbankDnaVsProtLen.py GBFF_Files/WIS_EcoECOR69_DRAFTv1.gbff
+# Usage: python3 ~/xenoGI/misc/examineGenbankDnaVsProtLen.py ncbi/someGenome.gbff
 # prints out those cases where dna/3 is the same as aa length
 # note that normally dna/3 should equal aa len + 1 (accounting for the stops being missing in the aa seqs).
 
