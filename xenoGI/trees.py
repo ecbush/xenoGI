@@ -420,7 +420,7 @@ def backAlign(outAlignFN,protAlignL,dnaSeqD,genesO):
             dnaSeq = dnaSeqD[geneNum]
             lenProtein = len(protSeq) - protSeq.count('-')
             if (lenProtein + 1) * 3 != len(dnaSeq):
-                # dna has stop codon                          
+                # expecting dna to have stop, protein not
                 raise IndexError("Lengths of dna and protein do not correspond.")
 
             strainName = genesO.numToStrainName(geneNum)

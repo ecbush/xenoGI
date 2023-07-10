@@ -165,7 +165,7 @@ in all cases, False otherwise.
             # iterate through the genes on the chromosome
             for feature in record.features:
                 # choose only the features that are protein coding genes
-                if feature.type == "CDS" and 'protein_id' in feature.qualifiers and 'translation' in feature.qualifiers:
+                if feature.type == "CDS" and 'translation' in feature.qualifiers:
                     aaSeq = feature.qualifiers['translation'][0]
                     dnaSeq = str(feature.extract(record.seq))
                     if (len(aaSeq) + 1) * 3 != len(dnaSeq):
